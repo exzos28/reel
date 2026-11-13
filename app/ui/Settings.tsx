@@ -21,7 +21,7 @@ export function Settings(props: { freeBytes: () => number | null; onClose: () =>
   return (
     <Scroll style={{ flex: 1, backgroundColor: colors.ink() }}>
       <View style={{ paddingHorizontal: safe().x, paddingVertical: safe().y, gap: u(32) }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: u(24) }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: u(24) }}>
           <BackButton focused={() => false} onPress={props.onClose} />
           <Text style={{ ...type.page(), color: colors.snow() }}>{t("settings.title")}</Text>
         </View>

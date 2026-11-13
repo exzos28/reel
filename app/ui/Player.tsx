@@ -10,10 +10,9 @@ import { cleanup, computed, effect, Image, keymap, signal, Text, Video, View, ty
 import { t } from "nsh/i18n";
 import { Catalog, Fmt } from "app/native";
 import { episodeCode, episodeText, runtime, titleText, type Episode, type Release } from "./catalog";
-import { Icon } from "./components";
+import { BACK_SIZE, BackButton, Icon } from "./components";
 import { duration, playing as what, play, position, status as core, stop, timeline } from "./playback";
 import { alpha, colors, focusRing, font, radius, safe, type, u } from "./theme";
-import backIcon from "./icons/back.svg";
 import playIcon from "./icons/play.svg";
 import pauseIcon from "./icons/pause.svg";
 import rewindIcon from "./icons/rewind.svg";
@@ -285,17 +284,15 @@ export function Player() {
           }}
         />
         {/* Top: back, title, the episode or release, what the engine is doing. */}
-        <View style={{ position: "absolute", top: safe().y, left: safe().x, right: safe().x, flexDirection: "row", alignItems: "center", gap: u(24) }}>
-          <View
-            role="button"
-            accessibilityLabel={t("player.back")}
+        <View style={{ position: "absolute", top: safe().y, left: safe().x, right: safe().x, flexDirection: "row", alignItems: "flex-start", gap: u(24) }}>
+          <BackButton
+            focused={() => false}
             onPress={stop}
-            hoverStyle={{ backgroundColor: colors.raise() }}
-            style={{ width: u(64), height: u(64), borderRadius: 999, borderCurve: "continuous", alignItems: "center", justifyContent: "center", backgroundColor: alpha(colors.card(), 0.8) }}
-          >
-            <Icon src={() => backIcon} size={28} />
-          </View>
-          <View style={{ gap: u(4), flexShrink: 1 }}>
+            label={() => t("player.back")}
+            background={() => alpha(colors.card(), 0.8)}
+          />
+          {/* The title's first line centred on the button; more lines go below. */}
+          <View style={{ gap: u(4), flexShrink: 1, marginTop: (u(BACK_SIZE) - u(34) * 1.25) / 2 }}>
             <Text style={{ fontFamily: font, fontSize: u(34), fontWeight: 600, color: colors.snow() }}>
               {what() ? titleText(what()!.title) : ""}
             </Text>
