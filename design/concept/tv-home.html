@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>reel — TV home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #0A0F1C;   /* background, blue-black */
+    --deck: #141B2D;    /* raised surfaces */
+    --rule: #26304A;    /* lines, empty tracks */
+    --paper: #F2F4F8;   /* text, Play button */
+    --mist: #8B94A9;    /* secondary text */
+    --lamp: #F5B83D;    /* the one accent: progress, rating, "ready" */
+    --display: "Big Shoulders Display", sans-serif;
+    --body: "Onest", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--night); color: var(--paper); font-family: var(--body); }
+
+  /* hero: the featured film's still, mirrored so the subject sits right */
+  .hero { position: absolute; inset: 0; height: 800px; overflow: hidden; }
+  .hero img { position: absolute; right: -40px; top: -60px; width: 1700px; transform: scaleX(-1); filter: saturate(1.1); }
+  .hero::before { /* glow behind the subject, taken from the film's coat */
+    content: ""; position: absolute; right: 260px; top: 160px; width: 760px; height: 760px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(245,184,61,.28), rgba(245,184,61,0) 65%); z-index: 1; mix-blend-mode: screen; }
+  .hero::after { content: ""; position: absolute; inset: 0; z-index: 2;
+    background:
+      linear-gradient(90deg, var(--night) 18%, rgba(10,15,28,.85) 38%, rgba(10,15,28,0) 62%),
+      linear-gradient(0deg, var(--night) 2%, rgba(10,15,28,0) 45%),
+      linear-gradient(180deg, rgba(10,15,28,.7), rgba(10,15,28,0) 22%); }
+
+  /* floating pill navigation */
+  .nav { position: absolute; top: 44px; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: 6px;
+    padding: 10px; border-radius: 999px; background: rgba(20,27,45,.72); border: 1px solid rgba(255,255,255,.08); backdrop-filter: blur(18px); }
+  .nav .logo { font-family: var(--display); font-weight: 900; font-size: 36px; letter-spacing: .5px; padding: 0 22px 0 18px; color: var(--lamp); }
+  .nav .item { font-size: 26px; font-weight: 600; color: var(--mist); padding: 14px 26px; border-radius: 999px; display: flex; align-items: center; gap: 10px; }
+  .nav .item.selected { color: var(--paper); background: rgba(255,255,255,.1); }
+  .nav .sep { width: 1px; height: 36px; background: var(--rule); margin: 0 6px; }
+  .nav svg { width: 30px; height: 30px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .nav .count { font-size: 18px; font-weight: 700; color: var(--night); background: var(--lamp); border-radius: 999px; padding: 2px 9px; }
+
+  .safe { position: absolute; left: 96px; right: 96px; z-index: 3; }
+  .info { top: 196px; width: 900px; }
+  .title { font-family: var(--display); font-weight: 900; font-size: 150px; line-height: .9; letter-spacing: 4px; text-transform: uppercase; color: var(--lamp);
+    text-shadow: 0 8px 40px rgba(0,0,0,.5); }
+  .meta { display: flex; align-items: center; gap: 22px; margin-top: 20px; font-size: 28px; font-weight: 500; color: var(--paper); }
+  .meta .star { color: var(--lamp); font-weight: 700; }
+  .meta .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mist); }
+  .about { margin-top: 18px; font-size: 28px; line-height: 1.45; color: rgba(242,244,248,.82); max-width: 900px; }
+  .release { display: flex; align-items: center; gap: 14px; margin-top: 16px; font-size: 24px; color: var(--mist); }
+  .release b { color: var(--paper); font-weight: 600; }
+  .health { width: 12px; height: 12px; border-radius: 50%; background: #4ADE80; box-shadow: 0 0 12px #4ADE80; }
+  .actions { display: flex; gap: 18px; margin-top: 28px; }
+  .play { display: flex; align-items: center; gap: 16px; height: 84px; padding: 0 44px 0 36px; border-radius: 999px; background: var(--paper); color: var(--night); font-size: 30px; font-weight: 700; }
+  .play svg { width: 28px; height: 28px; fill: var(--night); }
+  .round { width: 84px; height: 84px; border-radius: 50%; border: 2px solid rgba(255,255,255,.28); background: rgba(10,15,28,.4); display: grid; place-items: center; }
+  .round svg { width: 34px; height: 34px; stroke: var(--paper); fill: none; stroke-width: 2; }
+
+  /* shelf */
+  .shelf { top: 688px; }
+  .shelf h2 { font-size: 38px; font-weight: 700; display: flex; align-items: baseline; gap: 18px; }
+  .shelf h2 span { font-size: 24px; font-weight: 500; color: var(--mist); }
+  .row { display: flex; gap: 28px; margin-top: 40px; }
+  .card { width: 180px; flex: none; }
+  .poster { position: relative; width: 180px; height: 266px; border-radius: 20px; overflow: hidden; background: var(--deck); }
+  .poster img { width: 100%; height: 100%; object-fit: cover; }
+  .badge { position: absolute; top: 12px; font-size: 17px; font-weight: 700; padding: 5px 11px; border-radius: 999px; background: rgba(10,15,28,.78); }
+  .badge.l { left: 12px; } .badge.r { right: 12px; color: var(--lamp); }
+  .track { height: 6px; border-radius: 3px; background: var(--rule); margin-top: 14px; overflow: hidden; }
+  .track i { display: block; height: 100%; background: var(--paper); border-radius: 3px; }
+  .card.dim { opacity: .78; }
+  /* focus: lift + white ring + soft lamp glow; different from "selected" (filled pill) */
+  .card.focused { transform: translateY(-10px) scale(1.05); transform-origin: bottom center; }
+  .card.focused .poster { outline: 5px solid var(--paper); outline-offset: 6px; box-shadow: 0 24px 60px rgba(0,0,0,.6), 0 0 80px rgba(245,184,61,.25); }
+  .card .cap { margin-top: 16px; font-size: 24px; font-weight: 600; opacity: 0; }
+  .card.focused .cap { opacity: 1; }
+  .card .cap small { display: block; font-size: 20px; font-weight: 500; color: var(--mist); margin-top: 4px; }
+</style>
+</head>
+<body>
+  <div class="hero"><img src="img/still-charade.jpg" alt=""></div>
+
+  <nav class="nav">
+    <div class="logo">reel</div>
+    <div class="item selected"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</div>
+    <div class="item">Movies</div>
+    <div class="item">Series</div>
+    <div class="item">Downloads <span class="count">3</span></div>
+    <div class="sep"></div>
+    <div class="item"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>
+    <div class="item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></div>
+  </nav>
+
+  <section class="safe info">
+    <div class="title">Charade</div>
+    <div class="meta"><span class="star">★ 7.9</span><i class="dot"></i>1963<i class="dot"></i>Thriller, Comedy<i class="dot"></i>1 h 53 min</div>
+    <p class="about">A widow in Paris learns that three men are after her late husband's money, and the man helping her keeps changing his name.</p>
+    <div class="release"><i class="health"></i><b>1080p BluRay</b> 2.1 GB, 412 people sharing, starts in seconds</div>
+    <div class="actions">
+      <div class="play"><svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg>Resume from 41:12</div>
+      <div class="round"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+      <div class="round"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></div>
+    </div>
+  </section>
+
+  <section class="safe shelf">
+    <h2>Continue watching <span>7 films</span></h2>
+    <div class="row">
+      <div class="card focused">
+        <div class="poster"><img src="img/poster-charade.jpg" alt=""><span class="badge l">1080p</span><span class="badge r">★ 7.9</span></div>
+        <div class="track"><i style="width:36%"></i></div>
+      </div>
+      <div class="card dim">
+        <div class="poster"><img src="img/poster-metropolis.jpg" alt=""><span class="badge l">4K</span><span class="badge r">★ 8.3</span></div>
+        <div class="track"><i style="width:48%"></i></div>
+      </div>
+      <div class="card dim">
+        <div class="poster"><img src="img/poster-nosferatu.jpg" alt=""><span class="badge l">1080p</span><span class="badge r">★ 7.8</span></div>
+        <div class="track"><i style="width:27%"></i></div>
+      </div>
+      <div class="card dim">
+        <div class="poster"><img src="img/poster-general.jpg" alt="" style="object-position:30% center"><span class="badge l">720p</span><span class="badge r">★ 8.1</span></div>
+        <div class="track"><i style="width:13%"></i></div>
+      </div>
+      <div class="card dim">
+        <div class="poster"><img src="img/poster-detour.jpg" alt=""><span class="badge l">1080p</span><span class="badge r">★ 7.2</span></div>
+        <div class="track"><i style="width:71%"></i></div>
+      </div>
+      <div class="card dim">
+        <div class="poster"><img src="img/poster-friday.jpg" alt=""><span class="badge l">1080p</span><span class="badge r">★ 7.8</span></div>
+        <div class="track"><i style="width:8%"></i></div>
+      </div>
+      <div class="card dim">
+        <div class="poster"><img src="img/poster-sherlock.jpg" alt=""><span class="badge l">720p</span><span class="badge r">★ 8.2</span></div>
+        <div class="track"><i style="width:55%"></i></div>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

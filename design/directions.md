@@ -63,3 +63,67 @@ Left aligned throughout. Rows are shelves of posters; no hero carousel.
 Follow the NSH gallery example (`examples/gallery`): a separate ui package with a `colors` object,
 `radius`, `alpha()`, `focusRing()`, `hovered()` helpers, and components over `nsh/base`. Our values
 are the tokens above.
+
+---
+
+# Direction 2: Cinematic (from user references)
+
+Built from the references the user picked (flystream.net, bingebox.st). **Supersedes Projector
+where they conflict** (hero, palette, poster shape, navigation); Projector's restraint rules still
+apply elsewhere. The user's references also override the "refused defaults" list in
+`.claude/skills/ui-design/SKILL.md` for: hero with gradient fade, floating pill nav, rounded
+posters with badges. Mockups: `design/concept/*.html`, renders in `design/concept/png/`
+(`design/concept/scripts/render.sh`), images in `design/concept/img/` (public domain, see
+`CREDITS.md`, fetched by `scripts/commons_fetch.py`).
+
+## Tokens
+
+| Token | Hex | Role |
+|---|---|---|
+| `night` | `#0A0F1C` | background, blue-black |
+| `deck` | `#141B2D` | raised surfaces: panels, download cards, release rows |
+| `rule` | `#26304A` | lines, empty progress tracks |
+| `paper` | `#F2F4F8` | text, the Play pill, focus |
+| `mist` | `#8B94A9` | secondary text |
+| `lamp` | `#F5B83D` | the one accent: rating, download progress, "selected" marks, glow |
+
+Health of a release (people sharing): green `#4ADE80`, amber `#F59E0B`, red `#F87171`, as signal
+bars, never as the only cue (always with the count).
+
+Radius: posters 20 (TV) / 16 (phone, Mac), panels 28, rows 18, buttons and nav fully round.
+
+## Type
+
+- **Big Shoulders Display** 900: the film's title as a logo, uppercase, large. A film may override
+  it with its own period face when that is its identity (Nosferatu in UnifrakturMaguntia); the app
+  never uses it for UI text.
+- **Onest** 400–700: all UI text.
+
+TV: title 128–150, section 38, body 28, caption 24. Mac: title 104, section 20, body 16.
+Phone: title 68, section 19, body 15.
+
+## Layout
+
+- Full-bleed hero still of the featured film, subject on the right (mirror the still if needed),
+  dark gradients left and bottom, a lamp-coloured radial glow behind the subject.
+- Floating pill nav centered at the top: logo, Home, Movies, Series, Downloads (count badge),
+  search, settings. Phone: the same pill as a bottom tab bar.
+- Hero block left: title, meta (rating, year, genre, runtime), 2 lines about, the release that Play
+  will use (quality, size, people sharing), white Play pill + round secondary buttons.
+- Shelves of portrait posters with quality and rating badges; Continue watching has a watched
+  track under each poster; Downloading uses wide cards with a lamp progress bar and time left.
+- Film screen: release list sorted by how fast it starts (quality, source, size, tracks, people
+  sharing, a plain-words note: "Plays now", "Needs 25 Mbit/s", "Few people sharing").
+- Player: scrubber shows watched (paper), downloaded (lamp) and missing (grey) ranges, with a line
+  "6 min ready ahead, downloading at 3.4 MB/s from 37 people"; Audio, Subtitles and Release in
+  one panel.
+
+## Focus and selected (TV remote)
+
+- **Focus** is always `paper`: posters and rows get a 4–5 px `paper` ring with offset plus a lift
+  (posters translate −10 px and scale 1.05; rows scale 1.01) and a deep shadow; list options in
+  panels fill with `paper` and switch text to `night`. Everything else in the row stays at 78%.
+- **Selected** is always `lamp` and never a ring: a check mark, a lamp bar on the left of a row, a
+  lamp underline on a button, a lighter pill in the nav.
+- Mac uses hover instead of focus for the pointer (lift + play disc on the poster); keyboard focus
+  on Mac uses the TV focus ring.

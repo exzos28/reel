@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>reel — phone home</title>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --night: #0A0F1C; --deck: #141B2D; --rule: #26304A; --paper: #F2F4F8; --mist: #8B94A9; --lamp: #F5B83D; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { position: relative; }
+  html, body { width: 390px; height: 844px; overflow: hidden; background: var(--night); color: var(--paper); font-family: "Onest", sans-serif; }
+  .status { position: absolute; top: 0; left: 0; right: 0; height: 50px; display: flex; justify-content: space-between; align-items: center; padding: 6px 30px 0 34px; font-size: 16px; font-weight: 600; z-index: 4; }
+  .status .r { display: flex; gap: 7px; align-items: center; min-width: 52px; justify-content: flex-end; }
+  .status .bat { display: block; flex: none; width: 25px; height: 12px; border: 1.5px solid var(--paper); border-radius: 4px; padding: 1.5px; } .status .bat i { display: block; height: 100%; width: 70%; background: var(--paper); border-radius: 1.5px; }
+
+  .hero { position: relative; height: 486px; overflow: hidden; }
+  .hero .img { position: absolute; inset: 0; background: url(img/still-charade.jpg) 30% center / auto 100%; }
+  .hero::before { content: ""; position: absolute; left: 20px; top: 150px; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(245,184,61,.3), rgba(245,184,61,0) 65%); z-index: 1; }
+  .hero::after { content: ""; position: absolute; inset: 0; z-index: 2; background: linear-gradient(0deg, var(--night) 8%, rgba(10,15,28,.2) 55%, rgba(10,15,28,.5)); }
+  .hero .info { position: absolute; left: 20px; right: 20px; bottom: 18px; z-index: 3; }
+  .title { font-family: "Big Shoulders Display", sans-serif; font-weight: 900; font-size: 68px; line-height: .9; letter-spacing: 2px; text-transform: uppercase; color: var(--lamp); }
+  .meta { font-size: 14px; color: #C7CCD8; margin-top: 8px; display: flex; gap: 8px; align-items: center; }
+  .meta .star { color: var(--lamp); font-weight: 700; }
+  .meta i { width: 3px; height: 3px; border-radius: 50%; background: var(--mist); }
+  .actions { display: flex; gap: 10px; margin-top: 16px; }
+  .play { flex: 1; height: 48px; border-radius: 999px; background: var(--paper); color: var(--night); display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 700; font-size: 16px; }
+  .play svg { width: 16px; height: 16px; fill: var(--night); }
+  .round { width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.3); display: grid; place-items: center; }
+  .round svg { width: 20px; height: 20px; stroke: var(--paper); fill: none; stroke-width: 2; }
+
+  .shelf { margin-top: 22px; }
+  .shelf h2 { font-size: 19px; font-weight: 700; padding: 0 20px; display: flex; justify-content: space-between; align-items: baseline; }
+  .shelf h2 span { font-size: 13px; color: var(--mist); font-weight: 500; }
+  .row { display: flex; gap: 12px; padding: 12px 20px 0; overflow: hidden; }
+  .dl { display: flex; gap: 12px; width: 268px; flex: none; padding: 10px; border-radius: 18px; background: var(--deck); }
+  .dl img { width: 64px; height: 94px; border-radius: 10px; object-fit: cover; }
+  .dl .t { font-size: 15px; font-weight: 600; } .dl .s { font-size: 12.5px; color: var(--mist); margin-top: 3px; }
+  .dl .d { display: flex; flex-direction: column; justify-content: center; flex: 1; }
+  .track { height: 5px; border-radius: 3px; background: var(--rule); margin-top: 10px; overflow: hidden; } .track i { display: block; height: 100%; background: var(--lamp); }
+  .p { width: 112px; flex: none; }
+  .p .poster { width: 112px; height: 166px; border-radius: 16px; overflow: hidden; position: relative; }
+  .p .poster img { width: 100%; height: 100%; object-fit: cover; }
+  .badge { position: absolute; top: 7px; right: 7px; font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 999px; background: rgba(10,15,28,.8); color: var(--lamp); }
+
+  .tabs { position: absolute; left: 0; right: 0; margin: 0 auto; width: max-content; bottom: 26px; display: flex; gap: 4px; padding: 6px; border-radius: 999px;
+    background: rgba(20,27,45,.82); border: 1px solid rgba(255,255,255,.08); backdrop-filter: blur(20px); box-shadow: 0 10px 30px rgba(0,0,0,.5); z-index: 5; }
+  .tab { height: 48px; padding: 0 16px; border-radius: 999px; display: flex; align-items: center; gap: 8px; color: var(--mist); font-size: 14px; font-weight: 600; }
+  .tab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .tab.selected { background: rgba(255,255,255,.12); color: var(--paper); }
+  .tab .n { position: relative; } .tab .n::after { content: "3"; position: absolute; top: -6px; right: -10px; font-size: 10px; font-weight: 700; background: var(--lamp); color: var(--night); border-radius: 999px; padding: 1px 5px; }
+  .fade { position: absolute; left: 0; right: 0; bottom: 0; height: 120px; background: linear-gradient(0deg, var(--night) 30%, rgba(10,15,28,0)); z-index: 4; }
+</style>
+</head>
+<body>
+  <div class="status"><span>9:41</span><span class="r"><svg width="18" height="12" viewBox="0 0 18 12" fill="#F2F4F8"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><span class="bat"><i></i></span></span></div>
+
+  <section class="hero">
+    <div class="img"></div>
+    <div class="info">
+      <div class="title">Charade</div>
+      <div class="meta"><span class="star">★ 7.9</span><i></i>1963<i></i>Thriller<i></i>1 h 53 min</div>
+      <div class="actions">
+        <div class="play"><svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg>Resume from 41:12</div>
+        <div class="round"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="shelf">
+    <h2>Downloading <span>3 films, 5.2 MB/s</span></h2>
+    <div class="row">
+      <div class="dl"><img src="img/poster-friday.jpg" alt=""><div class="d"><div class="t">His Girl Friday</div><div class="s">81%, 2 min left</div><div class="track"><i style="width:81%"></i></div></div></div>
+      <div class="dl"><img src="img/poster-night.jpg" alt=""><div class="d"><div class="t">Night of the Living Dead</div><div class="s">7%, waiting for people</div><div class="track"><i style="width:7%"></i></div></div></div>
+    </div>
+  </section>
+
+  <section class="shelf">
+    <h2>Silent films <span>See all</span></h2>
+    <div class="row">
+      <div class="p"><div class="poster"><img src="img/poster-metropolis.jpg" alt=""><span class="badge">★ 8.3</span></div></div>
+      <div class="p"><div class="poster"><img src="img/poster-nosferatu.jpg" alt=""><span class="badge">★ 7.8</span></div></div>
+      <div class="p"><div class="poster"><img src="img/poster-sherlock.jpg" alt=""><span class="badge">★ 8.2</span></div></div>
+    </div>
+  </section>
+
+  <div class="fade"></div>
+  <nav class="tabs">
+    <div class="tab selected"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
+    <div class="tab"><span class="n"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></span></div>
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>
+  </nav>
+</body>
+</html>
