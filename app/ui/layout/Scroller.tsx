@@ -6,7 +6,7 @@ import { Scrollbar } from "nsh/base";
 import { alpha, colors, density, u } from "../theme";
 import { stopAll, type ScrollCtl } from "./scrollCtl";
 
-export { scroller, type Placement, type ScrollCtl } from "./scrollCtl";
+export { scroller, type Follow, type Placement, type ScrollCtl } from "./scrollCtl";
 
 /** How long the bar stays after the last scroll or pointer move, ms. */
 const BAR_IDLE = 1000;

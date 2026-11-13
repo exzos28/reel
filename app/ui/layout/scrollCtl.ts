@@ -16,6 +16,9 @@ const DURATION = 200;
  * it whole, or to the start of the content. */
 export type Placement = "anchor" | "nearest" | "start";
 
+/** A block's ref that a scroll view follows while `when` holds (`ScrollCtl.follow`). */
+export type Follow = (when: () => boolean) => (r: ViewRef) => void;
+
 const running = new Set<() => void>();
 /** The viewer took over (wheel, trackpad, drag): every keyed scroll stops. */
 export const stopAll = () => running.forEach((stop) => stop());
