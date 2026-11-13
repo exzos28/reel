@@ -2,12 +2,16 @@
 // headless video never loads, so the time stays where seeks put it).
 import { expect, open, test } from "nsh/test";
 import { readyAhead, readyRanges } from "./ui/scrub";
+import { ENGINE } from "./testEngine";
 
 const status = JSON.stringify({
   state: "ready",
   torrent: 0,
   name: "Sintel",
   files: [{ index: 0, name: "Sintel/sintel.mp4", length: 1000 }],
+  file: 0,
+  stream_url: "http://127.0.0.1:8000/torrents/0/stream/0",
+  low_space: false,
   stats: { total_bytes: 1000, progress_bytes: 300, live: { download_speed: { mbps: 3.4 }, snapshot: { peer_stats: { live: 37 } } } },
 });
 const map = JSON.stringify({ state: "ready", length: 1000, buckets: [1, 1, 1, 0.2, 0, 0, 1, 0, 0, 0] });
@@ -15,7 +19,7 @@ const map = JSON.stringify({ state: "ready", length: 1000, buckets: [1, 1, 1, 0.
 async function playing() {
   const app = await open("./App.tsx", {
     clock: {},
-    modules: { "app/native": { "Engine.start": 8000, "Engine.add": 1, "Engine.status": status, "Engine.fileMap": map } },
+    modules: { "app/native": { ...ENGINE, "Engine.status": status, "Engine.fileMap": map } },
   });
   await app.press("Watch");
   await app.wait(600); // one poll of the engine

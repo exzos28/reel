@@ -34,6 +34,18 @@ player:
   position: Position
   no_source: No source for this film yet. Try one from Free to watch.
   failed: "Could not play: %{message}"
+  no_space: "Not enough space to play: needs %{needed}, %{free} free. Free up space on this device or lower the buffer size in Settings."
+  no_space_unknown: "Not enough space to play: needs %{needed}. Free up space on this device or lower the buffer size in Settings."
+  low_space: This device is out of space, so playback is paused. Free up space or lower the buffer size in Settings.
+
+settings:
+  title: Settings
+  hint: "OK chooses, Back closes."
+  buffer:
+    title: Playback buffer
+    about: How much of the film reel keeps on this device while it plays. A bigger buffer survives slow peers and long seeks better. reel needs this much free space to start a film.
+    free: "%{free} free on this device"
+    default: (default)
 
 films:
   sintel:

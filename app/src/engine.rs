@@ -8,9 +8,11 @@ use std::{
     path::PathBuf,
     sync::{
         Arc, Mutex, OnceLock,
-        atomic::{AtomicU32, Ordering},
+        atomic::{AtomicU32, AtomicU64, Ordering},
     },
 };
+
+use crate::disk;
 
 use anyhow::Context;
 use librqbit::{
@@ -40,6 +42,44 @@ enum Job {
 
 static CORE: OnceLock<Core> = OnceLock::new();
 
+/// The playback buffer the user chose (Settings), MiB. The UI keeps it across
+/// launches and sets it at start. Until the ring buffer exists it is the free
+/// space needed to start a film; the cache itself is wiped after each film.
+static BUFFER_MB: AtomicU64 = AtomicU64::new(DEFAULT_BUFFER_MB);
+pub const DEFAULT_BUFFER_MB: u64 = 256;
+/// Kept free on top of the buffer so the device itself never runs out.
+pub const RESERVE_MB: u64 = 50;
+const MIB: u64 = 1024 * 1024;
+
+pub fn set_buffer_mb(mb: u64) {
+    BUFFER_MB.store(mb.clamp(64, 16 * 1024), Ordering::Relaxed);
+}
+
+pub fn buffer_mb() -> u64 {
+    BUFFER_MB.load(Ordering::Relaxed)
+}
+
+/// Whether there is room to start playing: `{"ok","free","needed","buffer"}`
+/// (bytes; `buffer` in MiB). `free` is null when it cannot be measured, and
+/// then `ok` is true: better to try than to block on a failed measurement.
+pub fn check_space() -> Value {
+    let needed = (buffer_mb() + RESERVE_MB) * MIB;
+    let dir = cache_dir();
+    let _ = std::fs::create_dir_all(&dir);
+    match disk::free_bytes(&dir) {
+        Ok(free) => json!({ "ok": free >= needed, "free": free, "needed": needed, "buffer": buffer_mb() }),
+        Err(e) => {
+            eprintln!("reel engine: free space of {}: {e}", dir.display());
+            json!({ "ok": true, "free": null, "needed": needed, "buffer": buffer_mb() })
+        }
+    }
+}
+
+/// Free space fell under the reserve while playing.
+fn low_space() -> bool {
+    disk::free_bytes(&cache_dir()).is_ok_and(|free| free < RESERVE_MB * MIB)
+}
+
 fn core() -> anyhow::Result<&'static Core> {
     if let Some(core) = CORE.get() {
         return Ok(core);
@@ -50,7 +90,9 @@ fn core() -> anyhow::Result<&'static Core> {
         .thread_name("reel-engine")
         .build()
         .context("starting the engine runtime")?;
-    let dir = download_dir();
+    let dir = cache_dir();
+    // A cache, not a library: whatever a previous run left is stale.
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).with_context(|| format!("creating {}", dir.display()))?;
     let (session, port, api) = rt.block_on(async {
         let session = Session::new(dir).await.context("creating the torrent session")?;
@@ -72,9 +114,36 @@ fn core() -> anyhow::Result<&'static Core> {
     Ok(CORE.get().expect("just set"))
 }
 
-/// Where downloads go for now: a cache folder. TODO: user setting + size limit.
-fn download_dir() -> PathBuf {
-    std::env::temp_dir().join("reel-downloads")
+/// The engine's cache: pieces of what is playing. Only reel writes here, and
+/// it is wiped when the engine starts and after each film.
+pub fn cache_dir() -> PathBuf {
+    std::env::temp_dir().join("reel-cache")
+}
+
+/// Stops a job and deletes what it downloaded.
+pub fn close(job: u32) {
+    let Some(core) = CORE.get() else { return };
+    let Some(state) = core.jobs.lock().unwrap().remove(&job) else { return };
+    if let Job::Ready(handle) = state {
+        let session = core.session.clone();
+        core.rt.spawn(async move {
+            if let Err(e) = session.delete(handle.id().into(), true).await {
+                eprintln!("reel engine: deleting torrent {}: {e:#}", handle.id());
+            }
+        });
+    }
+}
+
+/// The file to play: the largest one with a video extension.
+fn pick_video(files: &[(usize, String, u64)]) -> Option<usize> {
+    const VIDEO: [&str; 6] = ["mp4", "m4v", "mov", "mkv", "webm", "avi"];
+    files
+        .iter()
+        .filter(|(_, name, _)| {
+            name.rsplit_once('.').is_some_and(|(_, ext)| VIDEO.iter().any(|v| ext.eq_ignore_ascii_case(v)))
+        })
+        .max_by_key(|(_, _, len)| *len)
+        .map(|(index, _, _)| *index)
 }
 
 /// Starts the engine if needed; the port of its stream server.
@@ -109,7 +178,9 @@ pub fn add(url: &str) -> anyhow::Result<u32> {
 
 /// The job's state as JSON:
 /// `{"state":"resolving"}`, `{"state":"failed","message":…}`, or
-/// `{"state":"ready","torrent":id,"name":…,"files":[{"index","name","length"}],"stats":{…}}`.
+/// `{"state":"ready","torrent":id,"name":…,"files":[{"index","name","length"}],
+/// "file":index|null,"stream_url":…|null,"low_space":bool,"stats":{…}}`;
+/// `file` is the video to play and `stream_url` where the player opens it.
 pub fn status(job: u32) -> Value {
     let Some(core) = CORE.get() else {
         return json!({ "state": "failed", "message": "the engine is not started" });
@@ -121,26 +192,29 @@ pub fn status(job: u32) -> Value {
         Job::Resolving => json!({ "state": "resolving" }),
         Job::Failed(message) => json!({ "state": "failed", "message": message }),
         Job::Ready(handle) => {
-            let files = handle
+            let files: Vec<(usize, String, u64)> = handle
                 .with_metadata(|m| {
                     m.file_infos
                         .iter()
                         .enumerate()
-                        .map(|(index, f)| {
-                            json!({
-                                "index": index,
-                                "name": f.relative_filename.to_string_lossy(),
-                                "length": f.len,
-                            })
-                        })
-                        .collect::<Vec<_>>()
+                        .map(|(index, f)| (index, f.relative_filename.to_string_lossy().into_owned(), f.len))
+                        .collect()
                 })
                 .unwrap_or_default();
+            let file = pick_video(&files);
+            let stream_url = file.map(|f| format!("http://127.0.0.1:{}/torrents/{}/stream/{f}", core.port, handle.id()));
+            let files: Vec<Value> = files
+                .into_iter()
+                .map(|(index, name, length)| json!({ "index": index, "name": name, "length": length }))
+                .collect();
             json!({
                 "state": "ready",
                 "torrent": handle.id(),
                 "name": handle.name(),
                 "files": files,
+                "file": file,
+                "stream_url": stream_url,
+                "low_space": low_space(),
                 "stats": handle.stats(),
             })
         }
@@ -230,7 +304,35 @@ mod tests {
     use std::io::{Read, Write};
     use std::time::{Duration, Instant};
 
-    use super::Layout;
+    use super::{Layout, pick_video};
+
+    #[test]
+    fn picks_the_largest_video() {
+        let files = vec![
+            (0, "Sintel/poster.jpg".into(), 900_000_000),
+            (1, "Sintel/sintel.mp4".into(), 129_000_000),
+            (2, "Sintel/sample.MKV".into(), 10_000_000),
+            (3, "Sintel/sintel.en.srt".into(), 2_000),
+        ];
+        assert_eq!(pick_video(&files), Some(1));
+        assert_eq!(pick_video(&files[3..]), None);
+    }
+
+    #[test]
+    fn buffer_is_clamped_and_space_is_checked() {
+        super::set_buffer_mb(1);
+        assert_eq!(super::buffer_mb(), 64);
+        super::set_buffer_mb(256);
+        let s = super::check_space();
+        assert_eq!(s["needed"], (256 + super::RESERVE_MB) * super::MIB);
+        assert!(s["free"].as_u64().unwrap() > 0);
+        // A buffer bigger than any disk cannot fit.
+        super::set_buffer_mb(16 * 1024);
+        if s["free"].as_u64().unwrap() < (16 * 1024 + 50) * super::MIB {
+            assert_eq!(super::check_space()["ok"], false);
+        }
+        super::set_buffer_mb(super::DEFAULT_BUFFER_MB);
+    }
 
     #[test]
     fn buckets_of_a_file_inside_the_torrent() {

@@ -7,10 +7,13 @@ import { restoreLanguage } from "./ui/language";
 import { Poster } from "./ui/Poster";
 import { Player } from "./ui/Player";
 import { play, playback, stop } from "./ui/playback";
-import { colors, fonts, safe, type, u } from "./ui/theme";
+import { Settings } from "./ui/Settings";
+import { checkSpace, restoreSettings } from "./ui/preferences";
+import { colors, focusRing, fonts, safe, type, u } from "./ui/theme";
 
 setColorScheme("dark");
 restoreLanguage();
+restoreSettings().catch((e) => console.warn("could not restore settings", e));
 
 function App() {
   // Focus as (shelf, item); each shelf remembers the item it was left on.
@@ -18,6 +21,16 @@ function App() {
   const cols = signal(shelves.map(() => 0));
   const focusedFilm = computed<Film>(() => shelves[row()].items[cols()[row()]]);
   const playing = () => playback().phase !== "idle";
+  const screen = signal<"home" | "settings">("home");
+  /** The remote is on the top bar (Settings) instead of a shelf. */
+  const onTop = signal(false);
+  /** Free space for the Settings screen, read when it opens. */
+  const freeBytes = signal<number | null>(null);
+  const home = () => !playing() && screen() === "home";
+  const openSettings = () => {
+    screen.set("settings");
+    checkSpace().then((s) => freeBytes.set(s.free)).catch(() => freeBytes.set(null));
+  };
 
   const moveCol = (d: number) => {
     const r = row();
@@ -28,22 +41,39 @@ function App() {
 
   keymap.bind(
     {
-      left: () => !playing() && moveCol(-1),
-      right: () => !playing() && moveCol(1),
-      up: () => !playing() && moveRow(-1),
-      down: () => !playing() && moveRow(1),
+      left: () => home() && !onTop() && moveCol(-1),
+      right: () => home() && !onTop() && moveCol(1),
+      up: () => home() && (row() === 0 ? onTop.set(true) : moveRow(-1)),
+      down: () => home() && (onTop() ? onTop.set(false) : moveRow(1)),
     },
     { repeat: true },
   );
   keymap.bind({
-    enter: () => !playing() && play(focusedFilm()),
-    escape: () => stop(),
+    enter: () => home() && (onTop() ? openSettings() : play(focusedFilm())),
+    escape: () => playing() && stop(),
   });
 
   return (
     <If when={!playing()} else={<Player />}>
+    <If when={screen() === "home"} else={<Settings freeBytes={freeBytes} onClose={() => screen.set("home")} />}>
     <Scroll style={{ flex: 1, backgroundColor: colors.hall() }}>
     <View style={{ paddingHorizontal: safe().x, paddingVertical: safe().y, gap: u(40) }}>
+      <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+        <View
+          role="button"
+          onPress={openSettings}
+          style={{
+            borderRadius: 999,
+            borderWidth: 2,
+            borderColor: colors.line(),
+            paddingHorizontal: u(28),
+            paddingVertical: u(10),
+            ...focusRing(onTop()),
+          }}
+        >
+          <Text style={{ fontFamily: fonts.body, fontSize: u(28), color: colors.screen() }}>{t("settings.title")}</Text>
+        </View>
+      </View>
       <FilmHeader film={focusedFilm} onWatch={() => play(focusedFilm())} />
       <Each of={shelves} key={(s) => s.id}>
         {(shelf, r) => (
@@ -58,10 +88,11 @@ function App() {
                 {(film, c) => (
                   <Poster
                     film={film}
-                    focused={() => row() === r() && cols()[r()] === c()}
-                    rowFocused={() => row() === r()}
+                    focused={() => !onTop() && row() === r() && cols()[r()] === c()}
+                    rowFocused={() => !onTop() && row() === r()}
                     onPress={() => {
-                      if (row() === r() && cols()[r()] === c()) return play(film());
+                      if (!onTop() && row() === r() && cols()[r()] === c()) return play(film());
+                      onTop.set(false);
                       row.set(r());
                       cols.set(cols().map((x, i) => (i === r() ? c() : x)));
                     }}
@@ -75,6 +106,7 @@ function App() {
       </Each>
     </View>
     </Scroll>
+    </If>
     </If>
   );
 }

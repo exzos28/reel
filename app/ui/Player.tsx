@@ -8,7 +8,8 @@ import { cleanup, computed, effect, Image, keymap, signal, Text, token, Video, V
 import { t } from "nsh/i18n";
 import { Fmt } from "app/native";
 import { filmText } from "../data";
-import { fileMap, playback, stop, transfer } from "./playback";
+import { fileMap, lowSpace, playback, stop, transfer } from "./playback";
+import { formatSize } from "./preferences";
 import { readyAhead, readyRanges } from "./scrub";
 import { cinema, focusRing, fonts, safe, u } from "./theme";
 import backIcon from "./icons/back.svg";
@@ -108,13 +109,21 @@ export function Player() {
   const status = () => {
     const s = p();
     if (s.phase === "noSource") return t("player.no_source");
+    if (s.phase === "noSpace")
+      return s.free == null
+        ? t("player.no_space_unknown", { needed: formatSize(s.needed) })
+        : t("player.no_space", { needed: formatSize(s.needed), free: formatSize(s.free) });
+    if (lowSpace()) return t("player.low_space");
     if (s.phase === "failed") return t("player.failed", { message: s.message });
     if (s.phase === "resolving") return t("player.resolving");
     if (error()) return t("player.failed", { message: error()! });
     if (buffering() || !loaded()) return t("player.buffering");
     return "";
   };
-  const failed = () => p().phase === "failed" || p().phase === "noSource" || error() != null;
+  const failed = () =>
+    p().phase === "failed" || p().phase === "noSource" || p().phase === "noSpace" || lowSpace() || error() != null;
+  // The device ran out of space while playing: stop where we are, keep the overlay up.
+  effect(() => { if (lowSpace()) { paused.set(true); poke(); } });
   const streaming = () => {
     const tr = transfer();
     if (!tr) return "";

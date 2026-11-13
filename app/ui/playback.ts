@@ -4,12 +4,15 @@
 import { signal } from "nsh";
 import { Engine } from "app/native";
 import type { Film } from "../data";
+import { checkSpace } from "./preferences";
 
 export type Playback =
   | { phase: "idle" }
   | { phase: "noSource"; film: Film }
   | { phase: "resolving"; film: Film }
   | { phase: "failed"; film: Film; message: string }
+  /** Not enough free space to start: the buffer plus a reserve (bytes). */
+  | { phase: "noSpace"; film: Film; needed: number; free: number | null }
   | { phase: "ready"; film: Film; url: string; job: number; file: number };
 
 export interface TransferStats {
@@ -26,8 +29,10 @@ export const transfer = signal<TransferStats | null>(null);
  * fraction of it the engine already has (empty until known). */
 export const fileMap = signal<number[]>([]);
 export const MAP_BUCKETS = 200;
+/** Free space ran out while playing (the engine says so): the player pauses. */
+export const lowSpace = signal(false);
 
-const VIDEO = /\.(mp4|m4v|mov|mkv|webm|avi)$/i;
+let currentJob = 0;
 let poll: ReturnType<typeof setInterval> | undefined;
 /** Bumped by `stop`, so a poll that was waiting on the engine drops its answer. */
 let generation = 0;
@@ -42,6 +47,12 @@ export async function play(film: Film) {
     return;
   }
   playback.set({ phase: "resolving", film });
+  const space = await checkSpace();
+  if (gen !== generation) return;
+  if (!space.ok) {
+    playback.set({ phase: "noSpace", film, needed: space.needed, free: space.free });
+    return;
+  }
   const port = await Engine.start();
   const job = port ? await Engine.add(film.magnet) : 0;
   if (gen !== generation) return;
@@ -49,6 +60,7 @@ export async function play(film: Film) {
     playback.set({ phase: "failed", film, message: "engine" });
     return;
   }
+  currentJob = job;
   let busy = false;
   poll = setInterval(async () => {
     if (busy) return;
@@ -74,9 +86,8 @@ async function tick(film: Film, port: number, job: number, gen: number) {
   if (s.state !== "ready") return;
   let p = playback();
   if (p.phase === "resolving") {
-    const files: { index: number; name: string; length: number }[] = s.files;
-    const video = files.filter((f) => VIDEO.test(f.name)).sort((a, b) => b.length - a.length)[0];
-    if (!video) {
+    // The engine picks the video and says where to open it.
+    if (s.file == null || !s.stream_url) {
       playback.set({ phase: "failed", film, message: "noVideo" });
       clearInterval(poll);
       return;
@@ -85,11 +96,12 @@ async function tick(film: Film, port: number, job: number, gen: number) {
       phase: "ready",
       film,
       job,
-      file: video.index,
-      url: `http://127.0.0.1:${port}/torrents/${s.torrent}/stream/${video.index}`,
+      file: s.file,
+      url: s.stream_url,
     };
     playback.set(p);
   }
+  lowSpace.set(s.low_space === true);
   const live = s.stats?.live;
   transfer.set({
     progress: s.stats?.total_bytes ? s.stats.progress_bytes / s.stats.total_bytes : 0,
@@ -104,6 +116,9 @@ async function tick(film: Film, port: number, job: number, gen: number) {
 
 export function stop() {
   generation++;
+  if (currentJob) Engine.close(currentJob);
+  currentJob = 0;
+  lowSpace.set(false);
   clearInterval(poll);
   poll = undefined;
   playback.set({ phase: "idle" });

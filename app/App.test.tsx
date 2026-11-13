@@ -1,4 +1,5 @@
 import { expect, open, test } from "nsh/test";
+import { ENGINE } from "./testEngine";
 
 test("home starts in English on the open films and moves focus with arrows", async () => {
   const app = await open("./App.tsx");
@@ -21,9 +22,37 @@ test("a film without a source says so instead of playing", async () => {
 test("pressing Watch opens the player", async () => {
   // The engine as it is while it looks for the film's metadata.
   const app = await open("./App.tsx", {
-    modules: { "app/native": { "Engine.start": 8000, "Engine.add": 1, "Engine.status": '{"state":"resolving"}' } },
+    modules: { "app/native": { ...ENGINE, "Engine.status": '{"state":"resolving"}' } },
   });
   await app.press("Watch");
   expect(app.shows("label:Back")).toBe(true);
   expect(app.texts()).toContain("Finding peers…");
+});
+
+test("without room for the buffer, the film does not start and says why", async () => {
+  const app = await open("./App.tsx", {
+    modules: {
+      "app/native": {
+        ...ENGINE,
+        "Engine.checkSpace": JSON.stringify({ ok: false, free: 120 * 1024 ** 2, needed: 306 * 1024 ** 2, buffer: 256 }),
+      },
+    },
+  });
+  await app.press("Watch");
+  expect(app.texts()).toContain(
+    "Not enough space to play: needs 306 MB, 120 MB free. Free up space on this device or lower the buffer size in Settings.",
+  );
+});
+
+test("Settings: up from the first shelf, choose a buffer size, back", async () => {
+  const app = await open("./App.tsx", { modules: { "app/native": ENGINE } });
+  await app.keyboard.press("up");
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("Playback buffer");
+  expect(app.texts()).toContain("10 GB free on this device");
+  await app.keyboard.press("down");
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("✓");
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("Free to watch");
 });

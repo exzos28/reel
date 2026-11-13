@@ -1,5 +1,6 @@
 //! reel's Rust side: what `App.tsx` imports from `app/native`.
 
+mod disk;
 mod engine;
 
 use nsh_core::prelude::*;
@@ -36,6 +37,22 @@ impl Engine {
     /// The job's state as JSON (see `engine::status`).
     pub fn status(job: u32) -> String {
         engine::status(job).to_string()
+    }
+
+    /// Sets the playback buffer size in MiB (clamped to 64..16384).
+    pub fn set_buffer_mb(mb: u32) {
+        engine::set_buffer_mb(mb as u64);
+    }
+
+    /// Whether there is room to start playing, as JSON
+    /// `{"ok":bool,"free":bytes|null,"needed":bytes,"buffer":MiB}`.
+    pub fn check_space() -> String {
+        engine::check_space().to_string()
+    }
+
+    /// Stops the job and deletes what it downloaded (the cache is per film).
+    pub fn close(job: u32) {
+        engine::close(job);
     }
 
     /// Which parts of file `file` of the job's torrent are downloaded, as JSON
