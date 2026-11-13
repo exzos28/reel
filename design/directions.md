@@ -127,3 +127,85 @@ Phone: title 68, section 19, body 15.
   lamp underline on a button, a lighter pill in the nav.
 - Mac uses hover instead of focus for the pointer (lift + play disc on the poster); keyboard focus
   on Mac uses the TV focus ring.
+
+---
+
+# Direction 3: Minimal (movy)
+
+Built from the user's reference movy.sx. **Supersedes Cinematic and Projector where they conflict**
+(palette, type, nav, hero, cards, focus colours); their reel-specific content rules (release line,
+releases sorted by start speed, buffer-aware scrubber, no downloads) still apply. Like Cinematic,
+the user's reference overrides the "refused defaults" in `.claude/skills/ui-design/SKILL.md` for:
+near-neutral black, a hero fading to black, a neo-grotesque UI face. The mockups in
+`design/concept/*.html` now show this direction; shared tokens live in `design/concept/minimal.css`.
+
+One idea: **the film is the only colour on screen.** The UI is black, white and grey; stills and
+posters carry all the colour. Red appears only in the logo, the rating star and "New season" tags.
+
+## Tokens
+
+| Token | Hex | Role |
+|---|---|---|
+| `ink` | `#0F0F0F` | background |
+| `card` | `#1A1A1A` | raised surfaces: episode and release rows, filter chips, panels, icon buttons |
+| `raise` | `#2A2A2A` | selected pill or row, secondary button, outlined badge border, empty tracks |
+| `snow` | `#F5F5F5` | text, the Play button, the focus ring, watched range |
+| `ash` | `#8C8C8C` | secondary text: votes, genres, meta, notes |
+| `red` | `#E5383B` | logo, rating star, "New season" / "New episode" tag; nothing else |
+
+No glow, no blur, no gradient except the backdrop fading into `ink`. People sharing is shown as
+four monochrome signal bars plus the count, never as colour.
+
+Radius: buttons, rows, cards and posters 10 (TV) / 8 (Mac, phone); badges 4; icon buttons round.
+
+## Type
+
+- **Geist** for everything (300–600). Modest sizes and lots of air.
+- The film's title is a logotype: Geist 200, uppercase, tracking 0.22em. Smaller over-image titles
+  on browse cards use the same treatment at 300.
+
+TV: title 76–96, page title 60, section 30, body 26, meta 22–24 (nothing below 20). Mac: title
+52–56, section 18, body 15, meta 13. Phone: title 34, section 16, body 13, meta 11.5–12.5.
+
+## Layout
+
+- **Nav**: logo top-left in `red`; top-right a compact pill group Home, Movies, Shows (icon + label,
+  the selected item gets a lighter pill), then round search and profile buttons. Phone: the same
+  four destinations as a bottom tab bar (Home, Movies, Shows, My list). Detail screens replace the
+  logo with a round back button.
+- **Home**: full-bleed still of the featured film in the top ~70%, fading to `ink`; bottom-left the
+  logotype, meta line (★ rating, votes, year, runtime, outlined badges like `1080p`, `CC`), genres,
+  2-line description, the **release line** (quality bold, size, people sharing, "starts in
+  seconds"), white Play/Resume and grey "My list" buttons. Below: "Continue watching" as 16:9
+  cards with a thin watched bar, title and "1 h 12 min left" or "S3:E4 · 7 min left".
+- **Browse (Movies, Shows)**: page title + grey subtitle; a "Trending" ("Current & upcoming" for
+  shows) row of 2:3 posters with title and "★ 8.3 · 1927 · Movie" (shows: "S3:E5 · Nov 20");
+  then "All movies"/"All shows" with filter chips (Genres, Years, Countries) left and "Sort by:
+  Most popular" right, and a grid of 16:9 backdrop cards with the title over the image, title and
+  "★ rating · year · type/seasons" under it, an optional red "New season"/"New episode" tag.
+- **Film**: hero as on home with a back button; the release line sits next to Play and Add to
+  List. Below: "Releases, N found, fastest to start first", one row per release (quality badge,
+  source, size, tracks, signal bars + count, a plain note: "Starts fastest", "Plays now", "Needs
+  25 Mbit/s", "Few people sharing").
+- **Series**: hero as for a film, meta says "1936–1940 · 3 Seasons", Play says "Resume S3:E4",
+  the release line names the season pack. Below: season tabs ("Season 1 1936" …, selected = lighter
+  pill) with "12 episodes · <season title>" under them; on the right round icon buttons for episode
+  search, sort and list/grid view.
+- **Episodes**: full-width `card` rows: big light-weight grey number, 16:9 thumbnail with "★ 7.2"
+  in its bottom-left and a watched bar, then title (bold), "19 min · Apr 24, 1940", one line of
+  description. The right edge holds torrent info in `ash` ("1080p · plays now") or "✓ Watched".
+  No download button anywhere: reel streams only.
+- **Player**: top-left back + title + "1080p BluRay · resumed from 41:12"; Audio, Subtitles and
+  Release in one dark panel (no blur). Bottom: "**6 min ready ahead** · streaming at 3.4 MB/s from
+  37 people", the scrubber with watched (`snow`), ready (`snow` 45%) and not loaded yet (`snow` 16%)
+  ranges, times, then controls. No legend under the scrubber.
+
+## Focus and selected
+
+- **Focus** (TV remote, Mac keyboard) is a 3 px `snow` ring with 4–5 px offset plus a lift (cards
+  translate −8 px; rows and options scale 1.01–1.03) and a deep shadow. It is the only ring on
+  screen and looks the same everywhere.
+- **Selected** (active nav item, season tab, view toggle, the release Play will use, a chosen track)
+  is a lighter fill (`raise`, `#333` on the nav) plus a check where it is a choice. Never a ring.
+- Mac pointer hover: the row or card gets slightly lighter and a white play disc appears on the
+  thumbnail; no ring.

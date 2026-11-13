@@ -12,7 +12,7 @@ size() {
   esac
 }
 names="$*"
-[ -z "$names" ] && names="tv-home tv-film tv-player phone-home mac-home"
+[ -z "$names" ] && names="tv-home tv-browse-movies tv-browse-shows tv-film tv-series tv-player phone-home mac-home mac-series"
 mkdir -p png
 for n in $names; do
   [ -f "$n.html" ] || { echo "skip $n (no html)"; continue; }
