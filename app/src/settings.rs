@@ -159,6 +159,12 @@ pub fn set_source(url: &str, key: &str) -> Result<Value, String> {
     }))
 }
 
+/// The UI language (a BCP 47 tag), for what the core asks sources for.
+#[cfg_attr(test, allow(dead_code))]
+pub fn language() -> String {
+    with(|s| s.saved.language.clone())
+}
+
 pub fn set_language(tag: &str) {
     with(|s| {
         s.saved.language = tag.to_owned();

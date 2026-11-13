@@ -1,11 +1,11 @@
 // The player's own controls, on a stand-in engine (no real playback: the
 // headless video never loads, so the time stays where seeks put it).
 import { expect, open, test } from "nsh/test";
-import { ENGINE } from "./testEngine";
+import { episode, NATIVE } from "./testEngine";
 
 const status = JSON.stringify({
   phase: "ready",
-  name: "Sintel",
+  name: "Dune.2021.1080p.BluRay",
   stream_url: "http://127.0.0.1:8000/torrents/0/stream/0",
   low_space: false,
   speed: 3.4,
@@ -16,9 +16,9 @@ const timeline = JSON.stringify({ ranges: [[0, 0.3], [0.6, 0.7]], ahead: 0 });
 async function playing() {
   const app = await open("./App.tsx", {
     clock: {},
-    modules: { "app/native": { ...ENGINE, "Engine.status": status, "Engine.timeline": timeline } },
+    modules: { "app/native": { ...NATIVE, "Engine.status": status, "Engine.timeline": timeline } },
   });
-  await app.keyboard.press("down"); // Free to watch: Sintel
+  await app.keyboard.press("down"); // Trending movies: Dune
   await app.press("Play");
   await app.wait(600); // one poll of the engine
   return app;
@@ -27,8 +27,8 @@ async function playing() {
 test("the player shows the stream and its controls", async () => {
   const app = await playing();
   const texts = app.texts();
-  expect(texts).toContain("Sintel");
-  expect(texts).toContain("720p WEB");
+  expect(texts).toContain("Dune");
+  expect(texts).toContain("1080p BluRay");
   expect(texts).toContain("streaming at 3.4 MB/s from 37 people");
   expect(app.shows("label:Pause")).toBe(true);
   expect(app.shows("label:Back 10 seconds")).toBe(true);
@@ -138,39 +138,37 @@ test("hidden, the remote is back on the scrubber", async () => {
   expect(app.texts()).toContain("0:10");
 });
 
-const nextEpisode = JSON.stringify({
-  id: "flash-3-5", show: "flash", season: 3, number: 5, minutes: 20, date: [1940, 5, 1], rating: "6.9",
-  thumb: null, progress: 0, left: null, watched: false, quality: "1080p", playable: false,
-});
+const nextEpisode = JSON.stringify(episode(3, "Old Story"));
 
 async function nearTheEnd() {
   const app = await open("./App.tsx", {
     clock: {},
     // The core offers the next episode (as it does in the last 40 s).
-    modules: { "app/native": { ...ENGINE, "Engine.status": status, "Engine.timeline": timeline, "Catalog.upNext": nextEpisode } },
+    modules: { "app/native": { ...NATIVE, "Engine.status": status, "Engine.timeline": timeline, "Catalog.upNext": nextEpisode } },
   });
-  await app.keyboard.press("right"); // Flash Gordon
-  await app.press("Resume S3:E4");
+  await app.keyboard.press("right"); // Attack on Titan
+  await app.press("Resume S3:E2");
   await app.wait(600);
   return app;
 }
 
 test("near the end of an episode, Up next counts down and plays the next one", async () => {
   const app = await nearTheEnd();
-  expect(app.texts()).toContain("Next episode · S3:E5");
-  expect(app.texts()).toContain("The Palace of Terror");
+  expect(app.texts()).toContain("Next episode · S3:E3");
+  expect(app.texts()).toContain("Old Story");
   expect(app.texts()).toContain("in 6 s");
   expect(app.texts()).not.toContain("streaming at 3.4 MB/s from 37 people");
   await app.wait(6100);
   await app.keyboard.press("escape"); // dismiss the card the next episode shows again
-  expect(app.texts()).toContain("S3:E5 · The Palace of Terror");
+  // (The stand-in names every episode as S3:E2.)
+  expect(app.texts()).toContain("S3:E3 · Pain");
 });
 
 test("Watch credits dismisses Up next and brings the controls back", async () => {
   const app = await nearTheEnd();
   await app.keyboard.press("right");
   await app.keyboard.press("enter");
-  expect(app.texts()).not.toContain("Next episode · S3:E5");
+  expect(app.texts()).not.toContain("Next episode · S3:E3");
   await app.keyboard.press("down");
-  expect(app.texts()).toContain("S3:E4 · The Destroying Ray");
+  expect(app.texts()).toContain("S3:E2 · Pain");
 });

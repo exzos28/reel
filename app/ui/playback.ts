@@ -1,8 +1,10 @@
 // The UI's view of what the core is playing. The core decides everything
-// (`Engine.open`, `Engine.status`, `Engine.timeline`); this only asks it
-// twice a second and keeps the answers in signals for the screens.
+// (`Engine.open`, `Engine.status`, `Engine.timeline`, where to start and
+// what counts as watched: `Catalog.startAt`, `Catalog.saveProgress`); this
+// only asks it twice a second, reports the position every 10 s and on stop,
+// and keeps the answers in signals for the screens.
 import { signal } from "nsh";
-import { Engine } from "app/native";
+import { Catalog, Engine } from "app/native";
 import type { PlayTarget, Summary } from "./catalog";
 
 /** What plays: a film, or an episode of a show (`title` is the show). */
@@ -40,6 +42,18 @@ export const timeline = signal<Timeline>({ ranges: [], ahead: 0 });
 /** Where the player is, for the core's timeline (set by the player). */
 export const position = signal(0);
 export const duration = signal(0);
+/** Where the player seeks once the video loads (where the viewer stopped), seconds. */
+export const startAt = signal(0);
+
+/** How often the position is reported while playing. */
+const SAVE_MS = 10_000;
+let savedAt = 0;
+function saveProgress() {
+  const w = playing();
+  if (!w || duration() <= 0 || position() <= 0) return;
+  savedAt = Date.now();
+  Promise.resolve(Catalog.saveProgress(w.id, position(), duration())).catch((e) => console.warn("saving progress failed", e));
+}
 
 let job = 0;
 let poll: ReturnType<typeof setInterval> | undefined;
@@ -53,6 +67,9 @@ export async function play(what: Playing) {
   const gen = generation;
   playing.set(what);
   status.set({ phase: "resolving" });
+  savedAt = Date.now();
+  startAt.set(Number(await Catalog.startAt(what.id)) || 0);
+  if (gen !== generation) return;
   const opened = await Engine.open(what.id);
   if (gen !== generation) return;
   if (!opened) {
@@ -71,6 +88,7 @@ export async function play(what: Playing) {
       if (s.phase === "ready") {
         const tl: Timeline = JSON.parse(await Engine.timeline(job, position(), duration()));
         if (gen === generation) timeline.set(tl);
+        if (gen === generation && Date.now() - savedAt >= SAVE_MS) saveProgress();
       } else if (s.phase !== "resolving") {
         clearInterval(poll);
       }
@@ -87,6 +105,7 @@ export async function play(what: Playing) {
 }
 
 export function stop() {
+  saveProgress();
   generation++;
   clearInterval(poll);
   poll = undefined;
@@ -97,4 +116,5 @@ export function stop() {
   timeline.set({ ranges: [], ahead: 0 });
   position.set(0);
   duration.set(0);
+  startAt.set(0);
 }

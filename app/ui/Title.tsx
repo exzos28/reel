@@ -7,8 +7,8 @@
 import { computed, Image, keymap, signal, Text, View, type ViewRef } from "nsh";
 import { t } from "nsh/i18n";
 import {
-  chooseRelease, dateText, episodeText, episodes, noteText, playLabel, title as titleOf, toggleList, tracksText,
-  runtime, type Episode, type Release, type Title as TitleData,
+  chooseRelease, dateText, episodes, noteText, playLabel, title as titleOf, toggleList, tracksText,
+  releasesText, runtime, seasonText, type Episode, type Release, type Title as TitleData,
 } from "./catalog";
 import { BackButton, Badge, Button, Hero, Icon, ReleaseText, SignalBars, WatchedBar } from "./components";
 import { back } from "./nav";
@@ -139,6 +139,7 @@ export function Title(props: { id: string }) {
           else={
             <Releases
               releases={() => data().releases}
+              header={() => releasesText(data())}
               focused={(i) => zone() === "list" && item() === i}
               follow={page.follow}
               onPress={(i) => {
@@ -160,7 +161,7 @@ export function Title(props: { id: string }) {
             }}
             sub={() => {
               const s = seasons()[season() - 1];
-              return s ? `${t("series.episodes", { count: s.episodes })} · ${t(`shows.${props.id}.seasons.s${s.number}`)}` : "";
+              return s ? seasonText(s) : "";
             }}
           />
           <View style={{ paddingHorizontal: safe().x, gap: u(12), marginTop: u(26) }}>
@@ -187,14 +188,14 @@ export function Title(props: { id: string }) {
   );
 }
 
-function Releases(props: { releases: () => Release[]; focused: (i: number) => boolean; follow: Follow; onPress: (i: number) => void }) {
+function Releases(props: { releases: () => Release[]; header: () => string; focused: (i: number) => boolean; follow: Follow; onPress: (i: number) => void }) {
   /** Columns on a TV and a Mac; a phone keeps what decides the choice. */
   const wide = density !== "compact";
   return (
     <View style={{ paddingHorizontal: safe().x, marginTop: u(40) }}>
       <View style={{ flexDirection: "row", alignItems: "baseline", gap: u(18) }}>
         <Text style={{ ...type.section(), color: colors.snow() }}>{t("releases.title")}</Text>
-        <Text style={{ ...type.meta(), color: colors.ash() }}>{t("releases.found", { count: props.releases().length })}</Text>
+        <Text style={{ ...type.meta(), color: colors.ash() }}>{props.header()}</Text>
       </View>
       <View style={{ gap: u(12), marginTop: u(20) }}>
         <Each of={props.releases()} key={(r) => r.index}>
@@ -306,7 +307,7 @@ function EpisodeRow(props: { episode: () => Episode; focused: () => boolean; fol
     <View
       ref={props.follow(props.focused)}
       role="button"
-      accessibilityLabel={episodeText(e().show, e().season, e().number, "title")}
+      accessibilityLabel={e().title}
       onPress={props.onPress}
       hoverStyle={{ backgroundColor: colors.raise() }}
       style={{
@@ -339,11 +340,11 @@ function EpisodeRow(props: { episode: () => Episode; focused: () => boolean; fol
       </View>
       <View style={{ flex: 1, gap: u(4) }}>
         <Text style={{ numberOfLines: 1, fontFamily: font, fontSize: u(26), fontWeight: 600, color: e().watched ? colors.ash() : colors.snow() }}>
-          {episodeText(e().show, e().season, e().number, "title")}
+          {e().title}
         </Text>
         <Text style={{ fontFamily: font, fontSize: u(21), color: colors.ash() }}>{meta()}</Text>
         <Text style={{ numberOfLines: 1, fontFamily: font, fontSize: u(22), color: colors.quiet(), marginTop: u(2) }}>
-          {episodeText(e().show, e().season, e().number, "about")}
+          {e().about}
         </Text>
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: u(8) }}>
@@ -351,7 +352,7 @@ function EpisodeRow(props: { episode: () => Episode; focused: () => boolean; fol
           <Icon src={() => checkIcon} size={20} color={colors.ash} />
         </If>
         <Text style={{ fontFamily: font, fontSize: u(21), color: colors.ash() }}>
-          {e().watched ? t("series.watched") : t("series.plays_now", { quality: e().quality ?? "" })}
+          {e().watched ? t("series.watched") : e().quality ? t("series.plays_now", { quality: e().quality }) : ""}
         </Text>
       </View>
     </View>

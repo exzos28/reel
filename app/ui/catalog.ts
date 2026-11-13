@@ -1,15 +1,19 @@
-// The catalog comes from the Rust core (`Catalog.*`); this file only types
-// it and words it (text lives in locales/ under `films.<id>.*`,
-// `shows.<id>.*` and the keys the core names).
+// The catalog comes from the Rust core (`Catalog.*`: TMDB and AniList
+// titles through the metadata layer, releases from the user's search
+// source, watch progress); this file only types it and words it (titles
+// and about come from the core in the app's language; UI text lives in
+// locales/ under the keys the core names).
 import { signal } from "nsh";
 import { t } from "nsh/i18n";
 import { Catalog, Fmt } from "app/native";
 
-/** What Play starts for a title: a film, or an episode of a show. */
+/** What Play starts for a title: a film, or an episode of a show (id
+ * `<show>:s<season>e<episode>`). `start`: where the viewer stopped, seconds. */
 export interface PlayTarget {
   id: string;
   season?: number;
   episode?: number;
+  start?: number;
 }
 
 export interface ReleaseLine {
@@ -23,16 +27,24 @@ export interface ReleaseLine {
   fast: boolean;
 }
 
-/** A title as cards, shelves and heroes show it. */
+/** A title as cards, shelves and heroes show it. Ids are the metadata
+ * ones ("tmdb:movie:603", "tmdb:tv:1399", "anilist:21"). */
 export interface Summary {
   id: string;
   kind: "movie" | "short" | "show";
-  year: number;
+  /** The title and its overview, in the app's language when the source has it. */
+  title: string;
+  about: string;
+  /** A stand-in card that says something instead (key under `empty.*`):
+   * "no_tmdb", "loading", "offline", "unavailable". */
+  notice: string | null;
+  anime: boolean;
+  year: number | null;
   yearEnd: number | null;
   minutes: number;
   rating: string;
   votes: string;
-  /** Keys under `badge.*`, `genre.*`. */
+  /** Keys under `badge.*`; genre names as the source words them. */
   badges: string[];
   genres: string[];
   /** Image URLs, null when there is none (the typographic fallback shows). */
@@ -72,12 +84,19 @@ export interface Release {
   note: string;
   mbit: number;
   selected: boolean;
+  /** A season pack. */
+  pack: boolean;
+  indexer: string | null;
 }
+
+/** Where the search for releases is (key under `releases.state.*` except "done"). */
+export type ReleasesState = "no_source" | "searching" | "failed" | "done" | "none";
 
 export interface Title extends Summary {
   releases: Release[];
+  releasesState: ReleasesState;
   season?: number;
-  seasonList?: { number: number; year: number; episodes: number }[];
+  seasonList?: { number: number; year: number; episodes: number; name: string | null }[];
 }
 
 export interface Episode {
@@ -85,13 +104,17 @@ export interface Episode {
   show: string;
   season: number;
   number: number;
+  title: string;
+  about: string;
   minutes: number;
-  date: [number, number, number];
+  date: [number, number, number] | null;
   rating: string;
   thumb: string | null;
   progress: number;
   left: number | null;
   watched: boolean;
+  /** Where the viewer stopped, seconds (0: from the start). */
+  start: number;
   quality: string | null;
   playable: boolean;
 }
@@ -102,9 +125,19 @@ export interface Shelf {
   items: Summary[];
 }
 
-/** Bumped when the core's catalog state changes (the list, a chosen
- * release), so what reads the catalog reads it again. */
+/** Bumped when the core's catalog changes (data arrived, a search finished,
+ * the list, a chosen release, progress), so what reads the catalog reads it
+ * again. The core counts its changes in `Catalog.revision()`; asked each second. */
 const version = signal(0);
+let seen = -1;
+const check = () => {
+  const r = Number(Catalog.revision());
+  if (r !== seen) {
+    seen = r;
+    version.set(version() + 1);
+  }
+};
+setInterval(check, 1000);
 const read = <T>(json: () => string): T => {
   version();
   return JSON.parse(json());
@@ -127,13 +160,12 @@ export function chooseRelease(id: string, index: number) {
 
 // ---- Words.
 
-const textOf = (s: Pick<Summary, "id" | "kind">, field: string) =>
-  t(`${s.kind === "show" ? "shows" : "films"}.${s.id}.${field}`);
+type Named = Pick<Summary, "title" | "about" | "notice">;
 
-/** The title's name in the app's language. */
-export const titleText = (s: Pick<Summary, "id" | "kind">) => textOf(s, "title");
-export const aboutText = (s: Pick<Summary, "id" | "kind">) => textOf(s, "about");
-export const genresText = (s: Summary) => s.genres.map((g) => t(`genre.${g}`)).join(", ");
+/** The title's name (a notice card: what it says). */
+export const titleText = (s: Named) => (s.notice ? t(`empty.${s.notice}.title`) : s.title);
+export const aboutText = (s: Named) => (s.notice ? t(`empty.${s.notice}.about`) : s.about);
+export const genresText = (s: Summary) => s.genres.join(", ");
 export const badgeText = (b: string) => t(`badge.${b}`);
 
 /** Runtime in the app's language: "2 h 33 min", "48 min" (Rust splits, the UI words it). */
@@ -146,20 +178,22 @@ export function runtime(minutes: number) {
 
 export const episodeCode = (season: number, episode: number) => t("fmt.episode", { season, episode });
 
-/** "1963" or "1936–1940". */
-export const yearsText = (s: Summary) => (s.yearEnd ? t("fmt.years", { from: s.year, to: s.yearEnd }) : String(s.year));
+/** "1963" or "1936–1940" (empty when unknown). */
+export const yearsText = (s: Summary) =>
+  s.year == null ? "" : s.yearEnd ? t("fmt.years", { from: s.year, to: s.yearEnd }) : String(s.year);
 
-/** "Movie", "Short", "3 Seasons". */
+/** "Movie", "Short", "3 Seasons" ("Show" while the seasons are not known). */
 export function kindText(s: Summary) {
   if (s.kind !== "show") return t(`kind.${s.kind}`);
+  if (!s.seasons) return t("kind.show");
   return s.seasons === 1 ? t("kind.season_one") : t("kind.seasons", { count: s.seasons });
 }
 
 /** Runtime of a film, seasons of a show. */
-export const lengthText = (s: Summary) => (s.kind === "show" ? kindText(s) : runtime(s.minutes));
+export const lengthText = (s: Summary) => (s.kind === "show" ? kindText(s) : s.minutes ? runtime(s.minutes) : "");
 
 /** Under a card: "★ 7.9 · 1963 · Movie" without the star (drawn red). */
-export const cardMeta = (s: Summary) => t("card.meta", { rating: s.rating, year: s.year, kind: kindText(s) });
+export const cardMeta = (s: Summary) => t("card.meta", { rating: s.rating, year: s.year ?? "", kind: kindText(s) });
 
 /** Under a Continue watching card: "1 h 12 min left", "S3:E4 · 7 min left". */
 export function leftText(s: Summary) {
@@ -179,8 +213,8 @@ export function playLabel(s: Summary) {
   return t("title.play");
 }
 
-export const dateText = ([year, month, day]: [number, number, number]) =>
-  t("fmt.date", { month: t(`month.${month}`), day, year });
+export const dateText = (date: [number, number, number] | null) =>
+  date ? t("fmt.date", { month: t(`month.${date[1]}`), day: date[2], year: date[0] }) : "";
 
 /** The release line: its name (bold) and the rest. */
 export function releaseLine(r: ReleaseLine, withStart = true) {
@@ -193,5 +227,21 @@ export function releaseLine(r: ReleaseLine, withStart = true) {
 export const tracksText = (r: Release) => r.tracks.map((k) => t(`tracks.${k}`)).join(", ");
 export const noteText = (r: Release) => t(`release.note.${r.note}`, { mbit: r.mbit });
 
-export const episodeText = (show: string, season: number, episode: number, field: "title" | "about") =>
-  t(`shows.${show}.s${season}.e${episode}.${field}`);
+/** An episode's name or overview, from the core (empty while its season is not known). */
+export function episodeText(show: string, season: number, episode: number, field: "title" | "about") {
+  const e = read<Episode | null>(() => Catalog.episode(show, season, episode));
+  return e ? e[field] : "";
+}
+
+/** The line over the release list: how many, or why there are none. */
+export function releasesText(s: Title) {
+  if (s.releasesState === "done" || s.releasesState === "none")
+    return s.releases.length ? t("releases.found", { count: s.releases.length }) : t("releases.state.none");
+  return t(`releases.state.${s.releasesState}`);
+}
+
+/** A season tab's line: "22 episodes · Season 3 name". */
+export function seasonText(s: { episodes: number; name: string | null }) {
+  const count = t("series.episodes", { count: s.episodes });
+  return s.name ? `${count} · ${s.name}` : count;
+}

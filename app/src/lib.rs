@@ -4,6 +4,7 @@ mod catalog;
 mod disk;
 mod engine;
 mod metadata;
+mod progress;
 mod settings;
 mod sources;
 mod timeline;
@@ -16,8 +17,6 @@ pub use metadata::Meta;
 #[native_module("app/native")]
 fn native(registry: &mut Registry) {
     registry.module::<Fmt>().module::<Engine>().module::<Catalog>().module::<Settings>().module::<Sources>().module::<Meta>();
-    // The catalog's stills and posters (`assets/`), named by `catalog`.
-    registry.assets(assets!());
 }
 
 /// The built-in torrent server (librqbit). Results are JSON strings.
@@ -26,10 +25,12 @@ pub struct Engine;
 
 #[module]
 impl Engine {
-    /// Starts playing catalog film `film`: a job id for `status`, 0 when the
-    /// engine could not start (see the log).
-    pub fn open(film: String) -> u32 {
-        engine::open(&film).unwrap_or_else(|e| {
+    /// Starts playing `id` from the catalog (a title, or an episode
+    /// `<title>:s<season>e<episode>`) with the release it picks from the
+    /// user's search source: a job id for `status`, 0 when the engine could
+    /// not start (see the log).
+    pub fn open(id: String) -> u32 {
+        engine::open(&id).unwrap_or_else(|e| {
             eprintln!("reel engine: {e:#}");
             0
         })
@@ -80,7 +81,10 @@ impl Settings {
     /// `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`.
     pub fn load(data_dir: String) -> String {
         let dir = (!data_dir.is_empty()).then(|| std::path::PathBuf::from(data_dir));
-        settings::load(dir.as_deref()).to_string()
+        let loaded = settings::load(dir.as_deref());
+        // Watch progress and the metadata cache live there too.
+        catalog::init(dir.as_deref());
+        loaded.to_string()
     }
 
     /// Saves the playback buffer size (one of the choices); the size in effect.
