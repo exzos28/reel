@@ -1,0 +1,44 @@
+name: Set up nsh and Rust
+description: >
+  Installs the nsh CLI at the version app/Cargo.lock pins (scripts/install-nsh.sh), caching the
+  distribution with its downloaded runtimes and nsh's cache (TypeScript), and caches Cargo.
+inputs:
+  rust-cache-key:
+    description: Extra key for the Cargo cache (one per target/job).
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Resolve nsh version and paths
+      id: nsh
+      shell: bash
+      run: |
+        echo "version=$(scripts/install-nsh.sh --version)" >> "$GITHUB_OUTPUT"
+        case "$RUNNER_OS" in
+          Windows) echo "dirs<<EOF"; echo "~/AppData/Local/nsh"; echo "EOF" ;;
+          macOS)   echo "dirs<<EOF"; echo "~/.nsh"; echo "~/Library/Caches/nsh"; echo "EOF" ;;
+          *)       echo "dirs<<EOF"; echo "~/.nsh"; echo "~/.cache/nsh"; echo "EOF" ;;
+        esac >> "$GITHUB_OUTPUT"
+
+    - name: Cache nsh
+      uses: actions/cache@v6.1.0
+      with:
+        path: ${{ steps.nsh.outputs.dirs }}
+        key: nsh-${{ runner.os }}-${{ runner.arch }}-${{ steps.nsh.outputs.version }}-${{ inputs.rust-cache-key }}
+
+    - name: Install nsh
+      shell: bash
+      run: scripts/install-nsh.sh
+
+    - name: Update Rust
+      shell: bash
+      run: |
+        rustup update stable --no-self-update
+        rustup default stable
+        rustc --version
+
+    - name: Cache Cargo
+      uses: Swatinem/rust-cache@v2.9.3
+      with:
+        workspaces: app -> target
+        key: ${{ inputs.rust-cache-key }}

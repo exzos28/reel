@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  checks:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-nsh
+        with:
+          rust-cache-key: checks
+      # cargo check --all-targets of app/, then the TypeScript check.
+      - run: scripts/build.sh check
+      # cargo test of app/, then App.test.tsx and Player.test.tsx headless.
+      - run: scripts/build.sh test
+      - if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: test-results
+          path: app/.nsh/dist/test/junit.xml
+          if-no-files-found: ignore
+
+  build:
+    needs: checks
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
