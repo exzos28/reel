@@ -5,7 +5,7 @@
 import { effect, mount, setColorScheme, signal, View } from "nsh";
 import { Engine } from "app/native";
 import { Browse, Search } from "./ui/Browse";
-import { Home } from "./ui/Home";
+import { HomeScreen } from "./ui/screens/home/HomeScreen";
 import { back, route } from "./ui/nav";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
@@ -34,7 +34,7 @@ function App() {
     <View style={{ flex: 1, backgroundColor: colors.ink() }}>
       <If when={!playing()} else={<Player />}>
         <If when={r().name === "home"}>
-          <Home />
+          <HomeScreen />
         </If>
         <If when={r().name === "movies"}>
           <Browse page="movies" />
