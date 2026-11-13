@@ -1,4 +1,5 @@
 shelf:
+  open: Free to watch
   continue: Continue watching
   downloading: Downloading
   silent: Silent films
@@ -9,14 +10,31 @@ film:
   resume: Resume
   resume_from: "from %{position}"
   downloaded: "%{percent}% downloaded"
-  opening: "“%{title}” opens here. Esc to close."
 
 fmt:
   minutes: "%{m} min"
   hours: "%{h} h"
   hours_minutes: "%{h} h %{m} min"
 
+player:
+  back: Back
+  resolving: Finding the film among peers…
+  buffering: Buffering
+  downloaded: "%{percent}% downloaded"
+  speed: "%{speed} MB/s"
+  peers: "%{count} peers"
+  no_source: No source for this film yet. Try one from Free to watch.
+  failed: "Could not play: %{message}"
+
 films:
+  sintel:
+    title: Sintel
+    director: Colin Levy
+    about: A girl searches the world for the baby dragon she once rescued. An open film by the Blender Foundation.
+  bunny:
+    title: Big Buck Bunny
+    director: Sacha Goedegebure
+    about: A gentle giant rabbit takes revenge on three bullies of the forest. An open film by the Blender Foundation.
   metropolis:
     title: Metropolis
     director: Fritz Lang

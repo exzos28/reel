@@ -1,11 +1,42 @@
 //! reel's Rust side: what `App.tsx` imports from `app/native`.
-//! For the concept it only formats; the torrent core (librqbit) comes next.
+
+mod engine;
 
 use nsh_core::prelude::*;
 
 #[native_module("app/native")]
 fn native(registry: &mut Registry) {
-    registry.module::<Fmt>();
+    registry.module::<Fmt>().module::<Engine>();
+}
+
+/// The built-in torrent server (librqbit). Results are JSON strings or
+/// numbers; errors come back as `{"state":"failed","message":…}`.
+#[module]
+pub struct Engine;
+
+#[module]
+impl Engine {
+    /// Starts the engine if needed; the port of its stream server on
+    /// 127.0.0.1, 0 when it could not start (see the log).
+    pub fn start() -> u16 {
+        engine::start().unwrap_or_else(|e| {
+            eprintln!("reel engine: {e:#}");
+            0
+        })
+    }
+
+    /// Adds a magnet link or a .torrent URL; a job id for `status`, 0 on failure.
+    pub fn add(url: String) -> u32 {
+        engine::add(&url).unwrap_or_else(|e| {
+            eprintln!("reel engine: {e:#}");
+            0
+        })
+    }
+
+    /// The job's state as JSON (see `engine::status`).
+    pub fn status(job: u32) -> String {
+        engine::status(job).to_string()
+    }
 }
 
 /// Formatting shared by every platform.

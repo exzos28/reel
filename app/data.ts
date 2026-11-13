@@ -13,7 +13,13 @@ export interface Film {
   stoppedAt?: number;
   /** Download progress 0..1 for the "Downloading" shelf. */
   downloaded?: number;
+  /** A magnet link the engine can play; demo films without one show "no source". */
+  magnet?: string;
 }
+
+/** Open films with official torrents (Blender Foundation, CC BY), used to try the engine. */
+const SINTEL = "magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Fexplodie.org%3A6969&xs=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2Fsintel.torrent";
+const BUNNY = "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Fexplodie.org%3A6969&xs=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2Fbig-buck-bunny.torrent";
 
 /** The film's translated text; call where it is shown so it follows the language. */
 export const filmText = (f: Film, field: "title" | "director" | "about") => t(`films.${f.id}.${field}`);
@@ -28,6 +34,8 @@ export function runtime(minutes: number) {
 }
 
 export const films: Film[] = [
+  { id: "sintel", year: 2010, minutes: 15, ink: "#F4E9D8", paper: "#5A2A1F", magnet: SINTEL },
+  { id: "bunny", year: 2008, minutes: 10, ink: "#2B3A12", paper: "#B8D46A", magnet: BUNNY },
   { id: "metropolis", year: 1927, minutes: 153, ink: "#1B1B1B", paper: "#D9B44A", stoppedAt: 4360 },
   { id: "nosferatu", year: 1922, minutes: 94, ink: "#E8E0CF", paper: "#3B4A3F", stoppedAt: 1520 },
   { id: "general", year: 1926, minutes: 78, ink: "#2A1E14", paper: "#C9A27A", stoppedAt: 610 },
@@ -45,6 +53,7 @@ export interface Shelf {
 }
 
 export const shelves: Shelf[] = [
+  { id: "open", items: films.filter((f) => f.magnet != null) },
   { id: "continue", items: films.filter((f) => f.stoppedAt != null) },
   { id: "downloading", items: films.filter((f) => f.downloaded != null) },
   { id: "silent", items: films.filter((f) => f.year < 1930) },

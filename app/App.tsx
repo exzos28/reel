@@ -5,6 +5,8 @@ import { Fmt } from "app/native";
 import { filmText, runtime, shelves, type Film } from "./data";
 import { restoreLanguage } from "./ui/language";
 import { Poster } from "./ui/Poster";
+import { Player } from "./ui/Player";
+import { play, playback, stop } from "./ui/playback";
 import { colors, fonts, safe, type, u } from "./ui/theme";
 
 setColorScheme("dark");
@@ -15,7 +17,7 @@ function App() {
   const row = signal(0);
   const cols = signal(shelves.map(() => 0));
   const focusedFilm = computed<Film>(() => shelves[row()].items[cols()[row()]]);
-  const opened = signal<Film | null>(null);
+  const playing = () => playback().phase !== "idle";
 
   const moveCol = (d: number) => {
     const r = row();
@@ -26,19 +28,20 @@ function App() {
 
   keymap.bind(
     {
-      left: () => moveCol(-1),
-      right: () => moveCol(1),
-      up: () => moveRow(-1),
-      down: () => moveRow(1),
+      left: () => !playing() && moveCol(-1),
+      right: () => !playing() && moveCol(1),
+      up: () => !playing() && moveRow(-1),
+      down: () => !playing() && moveRow(1),
     },
     { repeat: true },
   );
   keymap.bind({
-    enter: () => opened.set(focusedFilm()),
-    escape: () => opened.set(null),
+    enter: () => !playing() && play(focusedFilm()),
+    escape: () => stop(),
   });
 
   return (
+    <If when={!playing()} else={<Player />}>
     <Scroll style={{ flex: 1, backgroundColor: colors.hall() }}>
     <View style={{ paddingHorizontal: safe().x, paddingVertical: safe().y, gap: u(40) }}>
       <FilmHeader film={focusedFilm} />
@@ -69,11 +72,9 @@ function App() {
           </View>
         )}
       </Each>
-      <Text style={{ ...type.caption(), color: colors.beam() }}>
-        {opened() ? t("film.opening", { title: filmText(opened()!, "title") }) : ""}
-      </Text>
     </View>
     </Scroll>
+    </If>
   );
 }
 
