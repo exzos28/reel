@@ -167,7 +167,9 @@ package() {
     have zip || die "zip is required"
     local ver; ver="$(version)"
     local work; work="$(mktemp -d)"
-    trap 'rm -rf "$work"' EXIT
+    # The trap runs after this function returns, when `work` is gone: keep a global copy.
+    REEL_TIZEN_WORK="$work"
+    trap 'rm -rf "${REEL_TIZEN_WORK:-}"' EXIT
 
     build_core "$out"
 
