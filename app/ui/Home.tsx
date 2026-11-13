@@ -1,12 +1,13 @@
 // Home: the nav, a hero for the focused title, then shelves of 16:9 cards.
 // Remote: the focus starts on the first card; Up goes to the hero's
 // buttons, then to the nav. OK on a card opens its title; on Play, plays.
-import { computed, keymap, Scroll, signal, Text, View } from "nsh";
+import { computed, keymap, signal, Text, View, type ViewRef } from "nsh";
 import { t } from "nsh/i18n";
 import { cardMeta as cardMetaOf, home, leftText, playLabel, titleText, toggleList, type Summary } from "./catalog";
-import { Button, CardMeta, Hero, NAV, NavBar, Picture, ReleaseText, revealWhen, WatchedBar } from "./components";
+import { Button, CardMeta, Hero, NAV, NavBar, Picture, ReleaseText, WatchedBar } from "./components";
 import { go, openTitle } from "./nav";
 import { play } from "./playback";
+import { byKeys, Scroller, scroller } from "./Scroller";
 import { colors, focusRing, radius, ringRoom, safe, type, u } from "./theme";
 import playIcon from "./icons/play.svg";
 import plusIcon from "./icons/plus.svg";
@@ -38,8 +39,11 @@ export function Home() {
   const playFocused = () => play({ ...focused().play, title: focused() });
   const heroActions = [playFocused, () => toggleList(focused().id)];
 
+  /** The page puts the focused shelf in its upper third. */
+  const page = scroller({ anchor: (viewport) => viewport / 3 });
+
   keymap.bind(
-    {
+    byKeys({
       left: () => {
         if (zone() === "nav") navAt.set(Math.max(navAt() - 1, 0));
         else if (zone() === "hero") heroAt.set(Math.max(heroAt() - 1, 0));
@@ -59,7 +63,7 @@ export function Home() {
         else if (zone() === "hero") zone.set("shelves");
         else row.set(Math.min(row() + 1, shelves().length - 1));
       },
-    },
+    }),
     { repeat: true },
   );
   keymap.bind({
@@ -71,7 +75,7 @@ export function Home() {
   });
 
   return (
-    <Scroll style={{ flex: 1, backgroundColor: colors.ink() }}>
+    <Scroller ctl={page} style={{ flex: 1, backgroundColor: colors.ink() }}>
       <View style={{ paddingBottom: safe().y }}>
         <View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 3 }}>
           <NavBar
@@ -80,6 +84,7 @@ export function Home() {
             onPick={(i) => go(NAV[i].id)}
           />
         </View>
+        <View ref={page.follow(() => zone() !== "shelves", "start")}>
         <Hero item={focused} height={780} titleSize={96} top={236}>
           <ReleaseText item={focused} />
           <View style={{ flexDirection: "row", gap: u(16), marginTop: u(12) }}>
@@ -99,12 +104,19 @@ export function Home() {
             />
           </View>
         </Hero>
+        </View>
         <View style={{ gap: u(40), marginTop: u(40) }}>
           <Each of={shelves()} key={(s) => s.id}>
-            {(shelf, r) => (
-              <View style={{ gap: u(22) }}>
+            {(shelf, r) => {
+              /** The shelf puts the focused card at the left edge of its inset. */
+              const line = scroller({ horizontal: true, anchor: () => safe().x });
+              return (
+              <View
+                ref={page.follow(() => zone() === "shelves" && row() === r(), r() === 0 ? "nearest" : "anchor")}
+                style={{ gap: u(22) }}
+              >
                 <Text style={{ ...type.section(), color: colors.snow(), paddingHorizontal: safe().x }}>{t(`shelf.${shelf().id}`)}</Text>
-                <Scroll horizontal>
+                <Scroller ctl={line}>
                   <View style={{ flexDirection: "row", gap: u(24), paddingHorizontal: safe().x, paddingTop: ringRoom(), paddingBottom: Math.max(u(24), ringRoom()) }}>
                     <Each of={shelf().items} key={(f) => f.id}>
                       {(item, c) => (
@@ -112,6 +124,7 @@ export function Home() {
                           item={item}
                           continuing={shelf().id === "continue"}
                           focused={() => zone() === "shelves" && row() === r() && col(r()) === c()}
+                          follow={line.follow}
                           onPress={() => {
                             zone.set("shelves");
                             row.set(r());
@@ -122,23 +135,30 @@ export function Home() {
                       )}
                     </Each>
                   </View>
-                </Scroll>
+                </Scroller>
               </View>
-            )}
+              );
+            }}
           </Each>
         </View>
       </View>
-    </Scroll>
+    </Scroller>
   );
 }
 
 /** A 16:9 card: the still with a watched bar, the title, what is left (or
  * its rating, year and kind). */
-function WideCard(props: { item: () => Summary; continuing: boolean; focused: () => boolean; onPress: () => void }) {
+function WideCard(props: {
+  item: () => Summary;
+  continuing: boolean;
+  focused: () => boolean;
+  follow: (when: () => boolean) => (r: ViewRef) => void;
+  onPress: () => void;
+}) {
   const s = props.item;
   return (
     <View
-      ref={revealWhen(props.focused)}
+      ref={props.follow(props.focused)}
       role="button"
       accessibilityLabel={titleText(s())}
       onPress={props.onPress}

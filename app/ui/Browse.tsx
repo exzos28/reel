@@ -2,10 +2,11 @@
 // pills (static for now) and a grid of 16:9 cards. Remote: the focus starts
 // on the first poster; Up from the row goes to the nav; the grid moves by
 // rows and columns. OK opens the title. Back goes Home.
-import { computed, keymap, Scroll, signal, Text, View, windowSize } from "nsh";
+import { computed, keymap, signal, Text, View, windowSize, type ViewRef } from "nsh";
 import { t } from "nsh/i18n";
 import { airsText, browse, cardMeta, titleText, type Summary } from "./catalog";
-import { BackButton, CardMeta, Icon, NAV, NavBar, Picture, revealWhen } from "./components";
+import { BackButton, CardMeta, Icon, NAV, NavBar, Picture } from "./components";
+import { byKeys, Scroller, scroller } from "./Scroller";
 import { back, go, openTitle } from "./nav";
 import { alpha, colors, focusRing, font, radius, ringRoom, safe, type, u } from "./theme";
 import chevronIcon from "./icons/chevron.svg";
@@ -36,8 +37,13 @@ export function Browse(props: { page: Page }) {
   });
   const clamp = (v: number, max: number) => Math.min(Math.max(v, 0), max);
 
+  /** The page puts the focused grid row in its upper third; the trending
+   * row puts the focused poster at the left edge of its inset. */
+  const page = scroller({ anchor: (viewport) => viewport / 3 });
+  const line = scroller({ horizontal: true, anchor: () => safe().x });
+
   keymap.bind(
-    {
+    byKeys({
       left: () => {
         if (zone() === "nav") nav.set(clamp(nav() - 1, NAV.length - 1));
         else if (zone() === "trending") trend.set(clamp(trend() - 1, data().trending.length - 1));
@@ -59,7 +65,7 @@ export function Browse(props: { page: Page }) {
           cell.set(clamp(cell() % columns(), data().all.length - 1));
         } else if (cell() + columns() < data().all.length) cell.set(cell() + columns());
       },
-    },
+    }),
     { repeat: true },
   );
   keymap.bind({
@@ -72,15 +78,18 @@ export function Browse(props: { page: Page }) {
   });
 
   return (
-    <Scroll style={{ flex: 1, backgroundColor: colors.ink() }}>
+    <Scroller ctl={page} style={{ flex: 1, backgroundColor: colors.ink() }}>
       <View style={{ paddingBottom: safe().y }}>
-        <NavBar current={props.page} focused={() => (zone() === "nav" ? nav() : null)} onPick={(i) => go(NAV[i].id)} />
+        <View ref={page.follow(() => zone() === "nav", "start")}>
+          <NavBar current={props.page} focused={() => (zone() === "nav" ? nav() : null)} onPick={(i) => go(NAV[i].id)} />
+        </View>
         <View style={{ paddingHorizontal: safe().x, marginTop: u(24) }}>
           <Text style={{ ...type.page(), color: colors.snow() }}>{t(`browse.${props.page}.title`)}</Text>
           <Text style={{ ...type.body(), color: colors.ash(), marginTop: u(8) }}>{t(`browse.${props.page}.lead`)}</Text>
           <Text style={{ ...type.section(), color: colors.snow(), marginTop: u(34) }}>{t(`browse.${props.page}.trending`)}</Text>
         </View>
-        <Scroll horizontal>
+        <View ref={page.follow(() => zone() === "trending", "nearest")}>
+        <Scroller ctl={line}>
           <View style={{ flexDirection: "row", gap: u(20), paddingHorizontal: safe().x, paddingTop: Math.max(u(26), ringRoom()), paddingBottom: Math.max(u(16), ringRoom()) }}>
             <Each of={data().trending} key={(s) => s.id}>
               {(item, i) => (
@@ -88,6 +97,7 @@ export function Browse(props: { page: Page }) {
                   item={item}
                   sub={() => (props.page === "shows" ? airsText(item()) : null)}
                   focused={() => zone() === "trending" && trend() === i()}
+                  follow={line.follow}
                   onPress={() => {
                     zone.set("trending");
                     trend.set(i());
@@ -97,7 +107,8 @@ export function Browse(props: { page: Page }) {
               )}
             </Each>
           </View>
-        </Scroll>
+        </Scroller>
+        </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: u(12), paddingHorizontal: safe().x, marginTop: u(26) }}>
           <Text style={{ ...type.section(), color: colors.snow(), marginRight: u(22) }}>{t(`browse.${props.page}.all`)}</Text>
           <Each of={["genres", "years", "countries"]} key="index">
@@ -117,7 +128,10 @@ export function Browse(props: { page: Page }) {
         <View style={{ paddingHorizontal: safe().x, marginTop: u(20), gap: u(28) }}>
           <Each of={rows()} key={(r) => r.at}>
             {(r) => (
-              <View style={{ flexDirection: "row", gap: u(24) }}>
+              <View
+                ref={page.follow(() => zone() === "grid" && cell() >= r().at && cell() < r().at + r().items.length)}
+                style={{ flexDirection: "row", gap: u(24) }}
+              >
                 <Each of={r().items} key={(s) => s.id}>
                   {(item, c) => (
                     <GridCard
@@ -137,16 +151,22 @@ export function Browse(props: { page: Page }) {
           </Each>
         </View>
       </View>
-    </Scroll>
+    </Scroller>
   );
 }
 
 /** A 2:3 poster with the title and a line under it. */
-function PosterCard(props: { item: () => Summary; sub: () => string | null; focused: () => boolean; onPress: () => void }) {
+function PosterCard(props: {
+  item: () => Summary;
+  sub: () => string | null;
+  focused: () => boolean;
+  follow: (when: () => boolean) => (r: ViewRef) => void;
+  onPress: () => void;
+}) {
   const s = props.item;
   return (
     <View
-      ref={revealWhen(props.focused)}
+      ref={props.follow(props.focused)}
       role="button"
       accessibilityLabel={titleText(s())}
       onPress={props.onPress}
@@ -171,7 +191,6 @@ function GridCard(props: { item: () => Summary; width: () => number; focused: ()
   const s = props.item;
   return (
     <View
-      ref={revealWhen(props.focused)}
       role="button"
       accessibilityLabel={titleText(s())}
       onPress={props.onPress}
