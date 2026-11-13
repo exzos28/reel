@@ -21,7 +21,7 @@ use bytes::Bytes;
 use futures::FutureExt;
 use futures::future::BoxFuture;
 use librqbit_core::hash_id::Id20;
-use librqbit_core::lengths::Lengths;
+use librqbit_core::lengths::{Lengths, ValidPieceIndex};
 
 use librqbit_core::spawn_utils::spawn_with_cancel;
 use librqbit_core::torrent_metainfo::ValidatedTorrentMetaV1Info;
@@ -611,6 +611,46 @@ impl ManagedTorrent {
             Ok(())
         }
         .boxed()
+    }
+
+    /// Forget pieces we have because their data is gone from the storage, e.g. a
+    /// storage that keeps only a window of the torrent (a streaming cache) evicted
+    /// them. Each forgotten piece is no longer "have": streams wait for it again
+    /// and download it with priority, it is queued again if its file is selected,
+    /// stats and per-file progress drop by its size, and peers asking for it (they
+    /// saw our "have") are ignored instead of disconnected. Pieces we don't have
+    /// are skipped. Returns how many pieces were forgotten.
+    ///
+    /// Call it before the data is actually removed, so nothing reads it after.
+    pub fn forget_pieces(
+        &self,
+        pieces: impl IntoIterator<Item = ValidPieceIndex>,
+    ) -> anyhow::Result<u32> {
+        // Live is the common case, and a read lock is enough to find it.
+        if let Some(live) = self.live() {
+            // With the torrent lock released, as the live state takes its own.
+            return live.forget_pieces(pieces);
+        }
+        let live = {
+            let mut g = self.locked.write();
+            match &mut g.state {
+                ManagedTorrentState::Live(l) => l.clone(),
+                ManagedTorrentState::Paused(p) => {
+                    let metadata = p.metadata.clone();
+                    let mut count = 0;
+                    for piece in pieces {
+                        count += p
+                            .chunk_tracker
+                            .mark_piece_forgotten(piece, &metadata.file_infos)
+                            as u32;
+                    }
+                    return Ok(count);
+                }
+                s => bail!("forget_pieces: invalid state: {}", s.name()),
+            }
+        };
+        // It went live in between.
+        live.forget_pieces(pieces)
     }
 
     // Returns true if needed to unpause torrent.

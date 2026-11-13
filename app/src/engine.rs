@@ -12,7 +12,7 @@ use std::{
     },
 };
 
-use crate::{catalog, disk, sources, timeline};
+use crate::{buffer, catalog, disk, sources, timeline};
 
 use anyhow::Context;
 use librqbit::{
@@ -40,7 +40,8 @@ enum Job {
     NoSpace { needed: u64, free: Option<u64> },
     /// Fetching the metadata (magnet links need peers for it).
     Resolving,
-    Ready(Arc<librqbit::ManagedTorrent>),
+    /// Playing; the link reaches the torrent's ring-buffer cache.
+    Ready(Arc<librqbit::ManagedTorrent>, buffer::Link),
     Failed(String),
 }
 
@@ -54,8 +55,9 @@ fn episode_of(job: u32) -> Option<(u16, u16)> {
 }
 
 /// The playback buffer the user chose (Settings), MiB. The UI keeps it across
-/// launches and sets it at start. Until the ring buffer exists it is the free
-/// space needed to start a film; the cache itself is wiped after each film.
+/// launches and sets it at start. It is the most a film keeps in the cache
+/// (`buffer::Ring`, read when the film starts), so with the reserve it is
+/// the free space needed to start one; the cache is wiped after each film.
 static BUFFER_MB: AtomicU64 = AtomicU64::new(DEFAULT_BUFFER_MB);
 pub const DEFAULT_BUFFER_MB: u64 = 256;
 /// Kept free on top of the buffer so the device itself never runs out.
@@ -135,7 +137,7 @@ pub fn cache_dir() -> PathBuf {
 pub fn close(job: u32) {
     let Some(core) = CORE.get() else { return };
     let Some(state) = core.jobs.lock().unwrap().remove(&job) else { return };
-    if let Job::Ready(handle) = state {
+    if let Job::Ready(handle, _) = state {
         let session = core.session.clone();
         core.rt.spawn(async move {
             if let Err(e) = session.delete(handle.id().into(), true).await {
@@ -206,16 +208,32 @@ pub fn add(url: &str) -> anyhow::Result<u32> {
     let job = core.next_job.fetch_add(1, Ordering::Relaxed);
     core.jobs.lock().unwrap().insert(job, Job::Resolving);
     let (session, jobs, url) = (core.session.clone(), core.jobs.clone(), url.to_owned());
+    // The film's cache: at most the buffer, around where the player reads.
+    let link = buffer::Link::default();
+    let storage = buffer::RingFactory::new(cache_dir().join("ring"), buffer_mb() * MIB, link.clone());
     core.rt.spawn(async move {
-        let result = session
-            .add_torrent(
-                AddTorrent::from_url(&url),
-                Some(AddTorrentOptions { overwrite: true, ..Default::default() }),
-            )
-            .await;
+        let options = AddTorrentOptions {
+            overwrite: true,
+            // No file is downloaded whole: only what the streams read ahead
+            // (sized by the ring to fit the buffer) is fetched.
+            only_files: Some(Vec::new()),
+            storage_factory: Some(storage.boxed()),
+            ..Default::default()
+        };
+        let result = session.add_torrent(AddTorrent::from_url(&url), Some(options)).await;
         let state = match result {
             Ok(response) => match response.into_handle() {
-                Some(handle) => Job::Ready(handle),
+                Some(handle) => {
+                    link.attach(&handle);
+                    // Streams exist once it is initialized: size their readahead.
+                    let (h, l) = (handle.clone(), link.clone());
+                    tokio::spawn(async move {
+                        if h.wait_until_initialized().await.is_ok() {
+                            l.sync();
+                        }
+                    });
+                    Job::Ready(handle, link)
+                }
                 None => Job::Failed("the torrent was only listed".into()),
             },
             Err(e) => Job::Failed(format!("{e:#}")),
@@ -230,7 +248,8 @@ pub fn add(url: &str) -> anyhow::Result<u32> {
 ///   `"resolving"`, `"failed"` (`message`);
 /// - `"ready"`: `stream_url` (where the player opens the video), `file`,
 ///   `name`, `low_space` (the device ran out of room while playing),
-///   `speed` (MiB/s), `peers` (null when unknown), `progress` (0..1 of the torrent).
+///   `speed` (MiB/s), `peers` (null when unknown), `progress` (0..1 of the
+///   video in the cache now: the buffer holds only a window of it).
 pub fn status(job: u32) -> Value {
     let Some(core) = CORE.get() else {
         return json!({ "phase": "failed", "message": "the engine is not started" });
@@ -243,11 +262,15 @@ pub fn status(job: u32) -> Value {
         Job::NoSpace { needed, free } => json!({ "phase": "no_space", "needed": needed, "free": free }),
         Job::Resolving => json!({ "phase": "resolving" }),
         Job::Failed(message) => json!({ "phase": "failed", "message": message }),
-        Job::Ready(handle) => {
+        Job::Ready(handle, link) => {
             let Some(file) = video_file(&handle, job) else {
                 return json!({ "phase": "failed", "message": "no video in this torrent" });
             };
+            // The player polls this: keep the cache's idea of the readers fresh.
+            link.sync();
             let stats = handle.stats();
+            let file_len = handle.with_metadata(|m| m.file_infos.get(file).map(|f| f.len)).ok().flatten();
+            let cached = stats.file_progress.get(file).copied().unwrap_or(0);
             let live = stats.live.as_ref();
             let peers = live.map(|l| l.snapshot.peer_stats.live);
             json!({
@@ -258,7 +281,7 @@ pub fn status(job: u32) -> Value {
                 "low_space": low_space(),
                 "speed": live.map(|l| l.download_speed.mbps).unwrap_or(0.0),
                 "peers": peers,
-                "progress": if stats.total_bytes > 0 { stats.progress_bytes as f64 / stats.total_bytes as f64 } else { 0.0 },
+                "progress": match file_len { Some(len) if len > 0 => cached as f64 / len as f64, _ => 0.0 },
             })
         }
     }
@@ -286,7 +309,7 @@ const TIMELINE_BUCKETS: usize = 200;
 pub fn timeline(job: u32, position: f64, duration: f64) -> Value {
     let empty = json!({ "ranges": [], "ahead": 0 });
     let Some(core) = CORE.get() else { return empty };
-    let Some(Job::Ready(handle)) = core.jobs.lock().unwrap().get(&job).cloned() else { return empty };
+    let Some(Job::Ready(handle, _)) = core.jobs.lock().unwrap().get(&job).cloned() else { return empty };
     let Some(file) = video_file(&handle, job) else { return empty };
     let Some(buckets) = file_buckets(core, &handle, file, TIMELINE_BUCKETS) else { return empty };
     let ranges: Vec<[f64; 2]> = timeline::ready_ranges(&buckets).into_iter().map(|(a, b)| [a, b]).collect();
@@ -294,7 +317,8 @@ pub fn timeline(job: u32, position: f64, duration: f64) -> Value {
 }
 
 /// File `file` of the torrent cut into `n` equal byte ranges, each the
-/// fraction downloaded (whole verified pieces only). None when unknown.
+/// fraction in the cache (whole verified pieces only: evicted ones are not).
+/// None when unknown.
 fn file_buckets(core: &Core, handle: &Arc<librqbit::ManagedTorrent>, file: usize, n: usize) -> Option<Vec<f64>> {
     let layout = handle
         .with_metadata(|m| {
@@ -358,6 +382,10 @@ impl Layout {
 #[cfg(test)]
 mod tests {
     use std::io::{Read, Write};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, AtomicU64, Ordering},
+    };
     use std::time::{Duration, Instant};
 
     use super::Layout;
@@ -437,5 +465,114 @@ mod tests {
         println!("first MiB in {:?}; {} bytes; head:\n{}", t.elapsed(), body.len(), head.lines().take(6).collect::<Vec<_>>().join("\n"));
         assert!(head.starts_with("HTTP/1.1 206"), "{head}");
         assert!(body.len() > 1_000_000);
+    }
+
+    /// One Range request on the stream server: the body (status must be 206)
+    /// and the whole file's length from Content-Range.
+    fn get_range(port: u16, path: &str, from: u64, to: u64) -> (Vec<u8>, u64) {
+        let mut conn = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
+        conn.set_read_timeout(Some(Duration::from_secs(300))).unwrap();
+        write!(conn, "GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nRange: bytes={from}-{to}\r\nConnection: close\r\n\r\n").unwrap();
+        let mut raw = Vec::new();
+        conn.read_to_end(&mut raw).unwrap();
+        let split = raw.windows(4).position(|w| w == b"\r\n\r\n").expect("headers") + 4;
+        let head = String::from_utf8_lossy(&raw[..split]).into_owned();
+        assert!(head.starts_with("HTTP/1.1 206"), "{head}");
+        let total = head
+            .lines()
+            .find_map(|l| l.to_ascii_lowercase().strip_prefix("content-range: bytes ").map(str::to_owned))
+            .and_then(|r| r.rsplit('/').next()?.trim().parse().ok())
+            .expect("content-range");
+        (raw[split..].to_vec(), total)
+    }
+
+    fn tree_bytes(dir: &std::path::Path) -> u64 {
+        let Ok(entries) = std::fs::read_dir(dir) else { return 0 };
+        entries
+            .flatten()
+            .map(|e| match e.metadata() {
+                Ok(m) if m.is_dir() => tree_bytes(&e.path()),
+                Ok(m) => m.len(),
+                Err(_) => 0,
+            })
+            .sum()
+    }
+
+    /// Whether the scrubber shows `at` (0..1 of the film) as ready.
+    fn ready_at(job: u32, at: f64) -> bool {
+        let t = super::timeline(job, 0.0, 100.0);
+        t["ranges"].as_array().unwrap().iter().any(|r| r[0].as_f64().unwrap() <= at && at < r[1].as_f64().unwrap())
+    }
+
+    /// The ring buffer on a real torrent (needs the network, downloads ~80 MB):
+    /// `cargo test -- --ignored ring_buffer --nocapture`. With a 64 MiB buffer:
+    /// read 48 MiB from the start, seek to 80% and read to the end (the start
+    /// is evicted), seek back to 5% (downloaded again, same bytes). The cache
+    /// never holds more than the buffer and one piece.
+    #[test]
+    #[ignore]
+    fn ring_buffer_streams_sintel_in_64_mib() {
+        const MIB: u64 = super::MIB;
+        super::set_buffer_mb(64);
+        let budget = 64 * MIB;
+        let port = super::start().expect("engine starts");
+        let job = super::add(SINTEL).expect("added");
+        let started = Instant::now();
+        let status = loop {
+            let s = super::status(job);
+            if s["phase"] == "ready" || s["phase"] == "failed" || started.elapsed() > Duration::from_secs(120) {
+                break s;
+            }
+            std::thread::sleep(Duration::from_millis(500));
+        };
+        assert_eq!(status["phase"], "ready", "{status}");
+        let url = status["stream_url"].as_str().unwrap().to_owned();
+        let path = url[url.find("/torrents").unwrap()..].to_owned();
+        let piece_len = {
+            let core = super::CORE.get().unwrap();
+            let Some(super::Job::Ready(h, _)) = core.jobs.lock().unwrap().get(&job).cloned() else { panic!() };
+            h.with_metadata(|m| m.lengths().default_piece_length() as u64).unwrap()
+        };
+
+        // Watch the cache's size the whole time.
+        let done = Arc::new(AtomicBool::new(false));
+        let peak = Arc::new(AtomicU64::new(0));
+        let watcher = {
+            let (done, peak) = (done.clone(), peak.clone());
+            std::thread::spawn(move || {
+                while !done.load(Ordering::Relaxed) {
+                    peak.fetch_max(tree_bytes(&super::cache_dir().join("ring")), Ordering::Relaxed);
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+            })
+        };
+
+        let t = Instant::now();
+        let (start, len) = get_range(port, &path, 0, 48 * MIB - 1);
+        assert_eq!(start.len() as u64, 48 * MIB);
+        let five = len / 20;
+        let probe = start[five as usize..(five + 2 * MIB) as usize].to_vec();
+        println!("{len} B file, {piece_len} B pieces; 48 MiB from the start in {:?}", t.elapsed());
+
+        let t = Instant::now();
+        let eighty = len * 8 / 10;
+        let (tail, _) = get_range(port, &path, eighty, len - 1);
+        assert_eq!(tail.len() as u64, len - eighty);
+        println!("80%..end in {:?}; cache {} MiB", t.elapsed(), tree_bytes(&super::cache_dir().join("ring")) / MIB);
+        assert!(!ready_at(job, 0.05), "5% should be evicted by now");
+
+        let t = Instant::now();
+        let (again, _) = get_range(port, &path, five, five + 2 * MIB - 1);
+        println!("back to 5% in {:?}", t.elapsed());
+        assert!(again == probe, "the bytes downloaded again differ");
+        assert!(ready_at(job, 0.05));
+
+        done.store(true, Ordering::Relaxed);
+        watcher.join().unwrap();
+        let peak = peak.load(Ordering::Relaxed);
+        println!("peak cache {:.1} MiB (budget 64 MiB + a piece of {} KiB)", peak as f64 / MIB as f64, piece_len / 1024);
+        assert!(peak <= budget + piece_len, "cache peaked at {peak} B");
+        super::close(job);
+        super::set_buffer_mb(super::DEFAULT_BUFFER_MB);
     }
 }

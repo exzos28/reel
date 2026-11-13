@@ -823,6 +823,35 @@ impl TorrentStateLive {
         Ok(())
     }
 
+    /// Forget pieces we have: see [`crate::ManagedTorrent::forget_pieces`].
+    pub(crate) fn forget_pieces(
+        &self,
+        pieces: impl IntoIterator<Item = ValidPieceIndex>,
+    ) -> anyhow::Result<u32> {
+        let (count, bytes, requeued) = {
+            let mut g = self.lock_write("forget_pieces");
+            let locked = &mut **g;
+            let tracker = locked.get_pieces_mut()?;
+            let (mut count, mut bytes, mut requeued) = (0u32, 0u64, false);
+            for piece in pieces {
+                if tracker.forget_piece(piece, &self.metadata.file_infos) {
+                    count += 1;
+                    bytes += self.lengths.piece_length(piece) as u64;
+                    requeued |= tracker.chunks().get_selected_pieces()[piece.get_usize()];
+                }
+            }
+            locked.unflushed_bitv_bytes += bytes;
+            (count, bytes, requeued)
+        };
+        self.stats.have_bytes.fetch_sub(bytes, Ordering::Relaxed);
+        // As in update_only_files(): with the state lock released.
+        if requeued {
+            self.new_pieces_notify.notify_waiters();
+            self.reconnect_all_not_needed_peers();
+        }
+        Ok(count)
+    }
+
     // If we have all selected pieces but not necessarily all pieces.
     pub(crate) fn is_finished(&self) -> bool {
         self.get_hns().map(|h| h.finished()).unwrap_or_default()
@@ -1514,16 +1543,20 @@ impl PeerHandler {
             }
         };
 
-        if !self
-            .state
-            .lock_read("is_chunk_ready_to_upload")
-            .get_chunks()?
-            .is_chunk_ready_to_upload(&chunk_info)
         {
-            anyhow::bail!(
-                "got request for a chunk that is not ready to upload. chunk {:?}",
-                chunk_info
-            );
+            let g = self.state.lock_read("is_chunk_ready_to_upload");
+            let chunks = g.get_chunks()?;
+            if !chunks.is_chunk_ready_to_upload(&chunk_info) {
+                // We told the peer we had it, then forgot it: not the peer's fault.
+                if chunks.is_piece_forgotten(piece_index) {
+                    debug!(?chunk_info, "ignoring a request for a forgotten piece");
+                    return Ok(());
+                }
+                anyhow::bail!(
+                    "got request for a chunk that is not ready to upload. chunk {:?}",
+                    chunk_info
+                );
+            }
         }
 
         self.state

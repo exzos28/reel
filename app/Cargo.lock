@@ -2774,6 +2774,7 @@ dependencies = [
  "anyhow",
  "libc",
  "librqbit",
+ "librqbit-core",
  "librqbit-dualstack-sockets",
  "nsh-core",
  "quick-xml",

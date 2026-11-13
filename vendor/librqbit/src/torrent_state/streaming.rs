@@ -3,7 +3,7 @@ use std::{
     io::SeekFrom,
     sync::{
         Arc,
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicU64, AtomicUsize, Ordering},
     },
     task::{Poll, Waker},
     time::Instant,
@@ -41,9 +41,13 @@ impl StreamState {
         lengths.compute_current_piece(self.position, self.file_abs_offset)
     }
 
-    fn queue<'a>(&self, lengths: &'a Lengths) -> impl Iterator<Item = ValidPieceIndex> + use<'a> {
+    fn queue<'a>(
+        &self,
+        lengths: &'a Lengths,
+        readahead: u64,
+    ) -> impl Iterator<Item = ValidPieceIndex> + use<'a> {
         let start = self.file_abs_offset + self.position;
-        let end = (start + PER_STREAM_BUF_DEFAULT).min(self.file_abs_offset + self.file_len);
+        let end = (start + readahead).min(self.file_abs_offset + self.file_len);
         let dpl = lengths.default_piece_length();
         let start_id = (start / dpl as u64).try_into().unwrap();
         let end_id = end.div_ceil(dpl as u64).try_into().unwrap();
@@ -55,11 +59,21 @@ impl StreamState {
 pub(crate) struct TorrentStreams {
     next_stream_id: AtomicUsize,
     streams: DashMap<StreamId, StreamState>,
+    // Bytes to download ahead of each stream's position; 0 is the default
+    // (PER_STREAM_BUF_DEFAULT).
+    readahead: AtomicU64,
 }
 
 impl TorrentStreams {
     fn next_id(&self) -> usize {
         self.next_stream_id.fetch_add(1, Ordering::Relaxed)
+    }
+
+    fn readahead(&self) -> u64 {
+        match self.readahead.load(Ordering::Relaxed) {
+            0 => PER_STREAM_BUF_DEFAULT,
+            r => r,
+        }
     }
 
     fn register_waker(&self, stream_id: StreamId, waker: Waker) {
@@ -92,7 +106,12 @@ impl TorrentStreams {
             }
         }
 
-        let mut all: Vec<_> = self.streams.iter().map(|s| s.queue(lengths)).collect();
+        let readahead = self.readahead();
+        let mut all: Vec<_> = self
+            .streams
+            .iter()
+            .map(|s| s.queue(lengths, readahead))
+            .collect();
 
         // Shuffle to decrease determinism and make queueing fairer.
         use rand::seq::SliceRandom;
@@ -334,6 +353,28 @@ impl ManagedTorrent {
             .unwrap_or(false)
     }
 
+    /// How many bytes ahead of each stream's position to download first
+    /// (32 MiB by default; 0 restores the default). Needs the torrent
+    /// initialized (paused or live).
+    pub fn set_stream_readahead(&self, bytes: u64) -> anyhow::Result<()> {
+        self.streams()?.readahead.store(bytes, Ordering::Relaxed);
+        Ok(())
+    }
+
+    /// The open streams as `(file_id, position in the file)`: where readers
+    /// are, e.g. for a storage that keeps only the data around them. Empty
+    /// when the torrent is not initialized.
+    pub fn stream_positions(&self) -> Vec<(usize, u64)> {
+        self.streams()
+            .map(|s| {
+                s.streams
+                    .iter()
+                    .map(|s| (s.value().file_id, s.value().position))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     pub async fn stream(self: Arc<Self>, file_id: usize) -> anyhow::Result<FileStream> {
         // Streams need live or paused state, so wait out the initial check
         // of existing data instead of failing while it runs.
@@ -400,5 +441,44 @@ impl FileStream {
 
     pub fn len(&self) -> u64 {
         self.file_len
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::Ordering;
+
+    use librqbit_core::lengths::Lengths;
+
+    use super::{PER_STREAM_BUF_DEFAULT, StreamState, TorrentStreams};
+
+    // The pieces streams fetch first span the readahead from their position.
+    #[test]
+    fn test_stream_readahead() {
+        let mib = 1024 * 1024;
+        let l = Lengths::new(1024 * mib, mib as u32).unwrap();
+        let streams = TorrentStreams::default();
+        streams.streams.insert(
+            0,
+            StreamState {
+                file_id: 0,
+                file_len: 1024 * mib,
+                file_abs_offset: 0,
+                position: 10 * mib,
+                waker: None,
+            },
+        );
+        let pieces =
+            |s: &TorrentStreams| s.iter_next_pieces(&l).map(|p| p.get()).collect::<Vec<_>>();
+
+        let default = (PER_STREAM_BUF_DEFAULT / mib) as u32;
+        assert_eq!(pieces(&streams), (10..10 + default).collect::<Vec<_>>());
+
+        streams.readahead.store(100 * mib, Ordering::Relaxed);
+        assert_eq!(pieces(&streams), (10..110).collect::<Vec<_>>());
+
+        // Not past the end of the file.
+        streams.streams.get_mut(&0).unwrap().position = 1000 * mib;
+        assert_eq!(pieces(&streams), (1000..1024).collect::<Vec<_>>());
     }
 }

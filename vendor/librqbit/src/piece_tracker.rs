@@ -234,6 +234,12 @@ impl PieceTracker {
         self.chunks.mark_piece_downloaded(piece);
     }
 
+    /// Forget a piece we have (its data is gone from the storage). See
+    /// [`ChunkTracker::mark_piece_forgotten`]. A piece we have is never in-flight.
+    pub fn forget_piece(&mut self, piece: ValidPieceIndex, file_infos: &FileInfos) -> bool {
+        self.chunks.mark_piece_forgotten(piece, file_infos)
+    }
+
     /// Mark piece as failed after hash verification failure - requeues the piece.
     pub fn mark_piece_hash_failed(&mut self, piece: ValidPieceIndex) {
         self.chunks.mark_piece_broken_if_not_have(piece);
