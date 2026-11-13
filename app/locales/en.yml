@@ -11,9 +11,27 @@ nav:
 
 shelf:
   continue: Continue watching
-  open: Free to watch
-  noir: Film noir
-  silent: Silent films
+  trending_movies: Trending movies
+  trending_shows: Trending shows
+  popular: Popular
+  anime: Anime trending
+  no_tmdb: Movies and shows
+  loading: Loading
+  offline: Nothing here yet
+
+empty:
+  no_tmdb:
+    title: Movies and shows need a TMDB key
+    about: This build of reel has no TMDB key, so only anime from AniList is listed. Add your own key to see films and series.
+  loading:
+    title: Loading…
+    about: Getting titles from TMDB and AniList.
+  offline:
+    title: Could not load titles
+    about: TMDB and AniList did not answer. Check the connection; reel tries again on its own.
+  unavailable:
+    title: This title is not available
+    about: Its details could not be loaded. Try again later.
 
 title:
   play: Play
@@ -56,23 +74,6 @@ month:
   "11": Nov
   "12": Dec
 
-genre:
-  action: Action
-  adventure: Adventure
-  animation: Animation
-  comedy: Comedy
-  crime: Crime
-  drama: Drama
-  fantasy: Fantasy
-  horror: Horror
-  mystery: Mystery
-  noir: Film noir
-  romance: Romance
-  scifi: Sci-fi
-  serial: Serial
-  thriller: Thriller
-  war: War
-  western: Western
 
 badge:
   sd: SD
@@ -101,19 +102,13 @@ release:
 releases:
   title: Releases
   found: "%{count} found, fastest to start first"
+  state:
+    no_source: Add a search source in Settings to find releases.
+    searching: Searching your source…
+    failed: Your search source did not answer. Check it in Settings.
+    none: Nothing found on your search source.
 
 tracks:
-  audio_en: English audio
-  audio_en_mono: English, mono
-  audio_en_fr: English, French
-  audio_none: No dialogue
-  subs_en: EN subs
-  subs_en_de: EN, DE subs
-  subs_many: 10 subtitle languages
-  score_piano: Piano score
-  score_orchestral: Orchestral score
-  score_electronic: Electronic score
-  no_score: No score
   audio:
     original: Original
   subtitles:
@@ -171,7 +166,7 @@ player:
   play_now: Play now
   in_seconds: "in %{seconds} s"
   watch_credits: Watch credits
-  no_source: No source for this yet. Try one from Free to watch.
+  no_source: No release to play. Add a search source in Settings, or pick another release.
   failed: "Could not play: %{message}"
   no_space: "Not enough space to play: needs %{needed}, %{free} free. Free up space on this device or lower the buffer size in Settings."
   no_space_unknown: "Not enough space to play: needs %{needed}. Free up space on this device or lower the buffer size in Settings."
@@ -181,236 +176,24 @@ settings:
   title: Settings
   hint: "OK chooses, Back closes."
   selected: Selected
+  source:
+    title: Search source
+    about: Where reel looks for releases of a film or an episode. Enter the Torznab address of your own Jackett (or Prowlarr, JacRed…) and its API key. reel comes with no source of its own.
+    url: Address
+    url_placeholder: "http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api"
+    key: API key
+    key_placeholder: The key from your Jackett dashboard (if it has one)
+    key_saved: Key saved. Type a new one to replace it
+    save: Save and check
+    saving: Saving…
+    checking: Checking the source…
+    removed: Search source removed.
+    ok_imdb: Connected. It searches by IMDb id.
+    ok_text: Connected. It searches by title.
+    failed: "Could not reach the source: %{message}"
   buffer:
     title: Playback buffer
     about: How much of the film reel keeps on this device while it plays. A bigger buffer survives slow peers and long seeks better. reel needs this much free space to start a film.
     free: "%{free} free on this device"
     default: (default)
 
-films:
-  sintel:
-    title: Sintel
-    about: A girl searches the world for the baby dragon she once rescued. An open film by the Blender Foundation, directed by Colin Levy.
-  bunny:
-    title: Big Buck Bunny
-    about: A gentle giant rabbit takes revenge on three bullies of the forest. An open film by the Blender Foundation, directed by Sacha Goedegebure.
-  metropolis:
-    title: Metropolis
-    about: A city of the future is split between the masters above and the workers below. The ruler's son goes down and sees what his city stands on. Directed by Fritz Lang.
-  nosferatu:
-    title: Nosferatu
-    about: An estate agent travels to Transylvania to meet Count Orlok, who is buying a house in his home town. Directed by F. W. Murnau, with Max Schreck.
-  general:
-    title: The General
-    about: A locomotive engineer chases his stolen train across the front line of the Civil War. Directed by and starring Buster Keaton.
-  sherlock:
-    title: Sherlock Jr.
-    about: A projectionist falls asleep at work and walks into the film he is showing. Directed by and starring Buster Keaton.
-  detour:
-    title: Detour
-    about: A pianist hitchhikes across America to the woman he loves, and one accident changes everything. Directed by Edgar G. Ulmer.
-  charade:
-    title: Charade
-    about: A widow in Paris learns that three men are after her late husband's money, and the man helping her keeps changing his name.
-  friday:
-    title: His Girl Friday
-    about: A newspaper editor tries to win back his ex-wife and best reporter before she remarries. Directed by Howard Hawks.
-  night:
-    title: Night of the Living Dead
-    about: A few strangers barricade themselves in a farmhouse while the dead gather outside. Directed by George A. Romero.
-  caligari:
-    title: The Cabinet of Dr. Caligari
-    about: A fairground hypnotist and the sleepwalker he shows in a box are blamed for a string of murders in a crooked mountain town.
-  moon:
-    title: A Trip to the Moon
-    about: Astronomers fire themselves at the Moon in a shell from a giant cannon. Georges Méliès's fourteen-minute fantasy.
-
-shows:
-  flash:
-    title: Flash Gordon
-    about: Flash Gordon, Dale Arden and Dr. Zarkov fly to the planet Mongo and fight its emperor, Ming the Merciless. Three Universal serials, forty chapters.
-    seasons:
-      s1: Flash Gordon
-      s2: Flash Gordon's Trip to Mars
-      s3: Flash Gordon Conquers the Universe
-    s1:
-      e1:
-        title: The Planet of Peril
-        about: A runaway planet races toward Earth, and Flash, Dale and Zarkov fly to meet it.
-      e2:
-        title: The Tunnel of Terror
-        about: Flash fights for his life in Ming's arena while Dale is held in the palace.
-      e3:
-        title: Captured by Shark Men
-        about: Flash and Dale are taken to the underwater city of King Kala.
-      e4:
-        title: Battling the Sea Beast
-        about: Flash goes into the water against the octosac to save his friends.
-      e5:
-        title: The Destroying Ray
-        about: Zarkov is forced to build a weapon for Ming, and Flash looks for a way out of the sea.
-      e6:
-        title: Flaming Torture
-        about: Prince Barin hides Dale, and Flash is caught in the palace.
-      e7:
-        title: Shattering Doom
-        about: Flash and his friends cross into the kingdom of the Hawkmen.
-      e8:
-        title: Tournament of Death
-        about: Flash must win a tournament to save Dale and himself.
-      e9:
-        title: Fighting the Fire Dragon
-        about: In the arena, Flash faces a beast that breathes fire.
-      e10:
-        title: The Unseen Peril
-        about: Zarkov builds a way to walk unseen through Ming's guards.
-      e11:
-        title: In the Claws of the Tigron
-        about: An invisible Flash fights in the arena, and Ming lets loose the tigron.
-      e12:
-        title: Trapped in the Turret
-        about: The rebels close in on Ming, and Flash is cornered in the tower.
-      e13:
-        title: Rocketing to Earth
-        about: Ming falls, and Flash, Dale and Zarkov fly home.
-    s2:
-      e1:
-        title: New Worlds to Conquer
-        about: A ray from space drains the air of Earth, and Flash follows it to Mars.
-      e2:
-        title: The Living Dead
-        about: On Mars, Flash and his friends meet the Clay People in their caves.
-      e3:
-        title: Queen of Magic
-        about: Queen Azura of Mars has allied with Ming against the Clay People.
-      e4:
-        title: Ancient Enemies
-        about: Flash goes after the queen's magic to free the Clay People.
-      e5:
-        title: The Boomerang
-        about: Ming's ray turns back on those who use it.
-      e6:
-        title: Tree-Men of Mars
-        about: In the forest Flash and Dale meet the Tree People and their king.
-      e7:
-        title: The Prisoner of Mongo
-        about: Flash is taken prisoner and has to win back his freedom.
-      e8:
-        title: The Black Sapphire of Kalu
-        about: Whoever holds the black sapphire is safe from Azura's magic.
-      e9:
-        title: Symbol of Death
-        about: A sign on the queen's palace marks who will die next.
-      e10:
-        title: Incense of Forgetfulness
-        about: A smoke takes Dale's memory, and she forgets who her friends are.
-      e11:
-        title: Human Bait
-        about: Flash lets himself be caught to get into Ming's stronghold.
-      e12:
-        title: Ming the Merciless
-        about: Ming shows his hand, and Azura sees whom she has trusted.
-      e13:
-        title: The Miracle of Magic
-        about: Azura turns against Ming, and the Clay People are close to being free.
-      e14:
-        title: A Beast at Bay
-        about: Ming is cornered and fights with all he has left.
-      e15:
-        title: An Eye for an Eye
-        about: The air of Earth is saved, and Ming meets his end on Mars.
-    s3:
-      e1:
-        title: The Purple Death
-        about: A plague of purple dust strikes Earth, and Flash flies back to Mongo to stop it.
-      e2:
-        title: Freezing Torture
-        about: In the frozen kingdom of Frigia, Flash looks for the cure.
-      e3:
-        title: Walking Bombs
-        about: Ming's men march on the rebel camp with bombs strapped to their chests.
-      e4:
-        title: The Destroying Ray
-        about: Flash races to stop the ray Ming has aimed at the rebels' mountain stronghold.
-      e5:
-        title: The Palace of Terror
-        about: Dale is held in Ming's palace, and Zarkov builds a way in through the walls.
-      e6:
-        title: Flaming Death
-        about: Flash is trapped as fire sweeps through Ming's dungeons.
-      e7:
-        title: The Land of the Dead
-        about: The rebels cross a land of rock men on their way to Ming.
-      e8:
-        title: The Fiery Abyss
-        about: A bridge over a burning chasm is the only way forward.
-      e9:
-        title: The Pool of Peril
-        about: Flash and Dale are caught in a trap of rising water.
-      e10:
-        title: The Death Mist
-        about: Ming fills the air with a mist that kills, and Zarkov looks for an answer.
-      e11:
-        title: Stark Treachery
-        about: A traitor in the rebel camp sells Flash out to Ming.
-      e12:
-        title: Doom of the Dictator
-        about: Flash flies a rocket into Ming's tower to end his rule.
-  vampires:
-    title: Les Vampires
-    about: A Paris reporter goes after a gang called the Vampires and its queen, Irma Vep. Louis Feuillade's ten-part serial.
-    seasons:
-      s1: Les Vampires
-  fantomas:
-    title: Fantômas
-    about: Inspector Juve hunts the master criminal Fantômas through Paris. Louis Feuillade's five films.
-    seasons:
-      s1: Fantômas
-  judex:
-    title: Judex
-    about: A masked avenger punishes a crooked banker and protects his daughter. Louis Feuillade's twelve-part serial.
-    seasons:
-      s1: Judex
-  pauline:
-    title: The Perils of Pauline
-    about: An heiress goes looking for adventure while her guardian's secretary tries to get rid of her.
-    seasons:
-      s1: The Perils of Pauline
-  undersea:
-    title: Undersea Kingdom
-    about: A navy officer dives to the lost city of Atlantis and stops a war machine aimed at the surface.
-    seasons:
-      s1: Undersea Kingdom
-  zorro:
-    title: Zorro's Fighting Legion
-    about: Zorro and his riders protect a Mexican gold shipment from a masked idol and its followers.
-    seasons:
-      s1: Zorro's Fighting Legion
-  lone_ranger:
-    title: The Lone Ranger
-    about: A masked rider and his friend Tonto stand against a gang that has taken over Texas.
-    seasons:
-      s1: The Lone Ranger
-  bonanza:
-    title: Bonanza
-    about: Ben Cartwright and his three sons run the Ponderosa ranch near Virginia City, Nevada.
-    seasons:
-      s1: Season 1
-      s2: Season 2
-      s3: Season 3
-      s4: Season 4
-      s5: Season 5
-      s6: Season 6
-      s7: Season 7
-      s8: Season 8
-      s9: Season 9
-      s10: Season 10
-      s11: Season 11
-      s12: Season 12
-      s13: Season 13
-      s14: Season 14
-  phantom_creeps:
-    title: The Phantom Creeps
-    about: Bela Lugosi as a scientist with a giant robot, a ray that stops armies and a plan to rule the world.
-    seasons:
-      s1: The Phantom Creeps

@@ -154,19 +154,54 @@ pub fn start() -> anyhow::Result<u16> {
     Ok(core()?.port)
 }
 
-/// Starts playing a catalog film: checks the free space, starts the engine
-/// and adds the film's torrent. A job id to poll with `status` (which says
-/// when there is no source or no room).
-pub fn open(film_id: &str) -> anyhow::Result<u32> {
-    let Some(magnet) = catalog::film(film_id).and_then(|f| f.magnet) else {
-        return Ok(new_job(Job::NoSource));
-    };
+/// Starts playing what `key` names in the catalog (a title or an episode,
+/// see `catalog::play_source`): the release the user chose or the catalog
+/// picked. While the catalog still searches, the job stays `resolving` and
+/// starts when a release is found (`no_source` when none is). A job id to
+/// poll with `status` (which says when there is no source or no room).
+pub fn open(key: &str) -> anyhow::Result<u32> {
     let space = check_space();
     if space["ok"] == false {
         let needed = space["needed"].as_u64().unwrap_or_default();
         return Ok(new_job(Job::NoSpace { needed, free: space["free"].as_u64() }));
     }
-    add(magnet)
+    match catalog::play_source(key) {
+        catalog::PlaySource::None => Ok(new_job(Job::NoSource)),
+        catalog::PlaySource::Ready(source, episode) => open_release(&source, episode),
+        catalog::PlaySource::Searching => {
+            let job = new_job(Job::Resolving);
+            if job == 0 {
+                return Ok(0);
+            }
+            let key = key.to_owned();
+            std::thread::spawn(move || {
+                let started = std::time::Instant::now();
+                loop {
+                    std::thread::sleep(std::time::Duration::from_millis(300));
+                    let Some(core) = CORE.get() else { return };
+                    // Closed meanwhile (the viewer went back).
+                    if !core.jobs.lock().unwrap().contains_key(&job) {
+                        return;
+                    }
+                    match catalog::play_source(&key) {
+                        catalog::PlaySource::Searching if started.elapsed() < std::time::Duration::from_secs(150) => {}
+                        catalog::PlaySource::Ready(source, episode) => {
+                            if let Some(ep) = episode {
+                                EPISODES.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, ep);
+                            }
+                            add_to(core, job, &source);
+                            return;
+                        }
+                        _ => {
+                            core.jobs.lock().unwrap().insert(job, Job::NoSource);
+                            return;
+                        }
+                    }
+                }
+            });
+            Ok(job)
+        }
+    }
 }
 
 /// A job that is already settled (no engine needed).
@@ -206,6 +241,12 @@ pub fn open_release(source: &str, episode: Option<(u16, u16)>) -> anyhow::Result
 pub fn add(url: &str) -> anyhow::Result<u32> {
     let core = core()?;
     let job = core.next_job.fetch_add(1, Ordering::Relaxed);
+    add_to(core, job, url);
+    Ok(job)
+}
+
+/// Adds a magnet link or torrent URL as job `job` (resolving until it is in).
+fn add_to(core: &Core, job: u32, url: &str) {
     core.jobs.lock().unwrap().insert(job, Job::Resolving);
     let (session, jobs, url) = (core.session.clone(), core.jobs.clone(), url.to_owned());
     // The film's cache: at most the buffer, around where the player reads.
@@ -238,9 +279,20 @@ pub fn add(url: &str) -> anyhow::Result<u32> {
             },
             Err(e) => Job::Failed(format!("{e:#}")),
         };
-        jobs.lock().unwrap().insert(job, state);
+        // Closed while it was being added: let it go.
+        let orphan = {
+            let mut jobs = jobs.lock().unwrap();
+            if jobs.contains_key(&job) {
+                jobs.insert(job, state);
+                None
+            } else {
+                Some(state)
+            }
+        };
+        if let Some(Job::Ready(handle)) = orphan {
+            let _ = session.delete(handle.id().into(), true).await;
+        }
     });
-    Ok(job)
 }
 
 /// What the player shows for the job, as JSON with a `phase`:

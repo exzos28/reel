@@ -1,47 +1,45 @@
 import { expect, open, test } from "nsh/test";
-import { ENGINE } from "./testEngine";
+import { AOT_S3, ENGINE, INCEPTION_NO_SOURCE, NATIVE, SHOW } from "./testEngine";
+
+type Native = Record<string, {} | null>;
+const app_ = (native: Native = NATIVE, options: Record<string, unknown> = {}) =>
+  open("./App.tsx", { ...options, modules: { "app/native": native } });
 
 test("home starts on Continue watching and the hero follows the focus", async () => {
-  const app = await open("./App.tsx");
-  expect(app.texts()).toContain("1 h 53 min");
+  const app = await app_();
+  expect(app.texts()).toContain("2 h 28 min");
   expect(app.texts()).toContain("Resume 41:12");
+  expect(app.texts()).toContain("Action, Science Fiction");
   await app.keyboard.press("right");
-  expect(app.texts()).toContain("1936–1940");
-  expect(app.texts()).toContain("Resume S3:E4");
+  expect(app.texts()).toContain("2013–2023");
+  expect(app.texts()).toContain("Resume S3:E2");
   await app.keyboard.press("down");
-  expect(app.texts()).toContain("15 min");
+  expect(app.texts()).toContain("Trending movies");
+  expect(app.texts()).toContain("2 h 35 min");
   expect(app.texts()).toContain("Play");
 });
 
-test("a title without a source says so instead of playing", async () => {
-  const app = await open("./App.tsx", {
-    modules: { "app/native": { ...ENGINE, "Engine.status": JSON.stringify({ phase: "no_source" }) } },
-  });
+test("a title without a release says so instead of playing", async () => {
+  const app = await app_({ ...NATIVE, "Engine.status": JSON.stringify({ phase: "no_source" }) });
   await app.keyboard.press("up"); // the hero's Resume
   await app.keyboard.press("enter");
-  expect(app.texts()).toContain("No source for this yet. Try one from Free to watch.");
+  expect(app.texts()).toContain("No release to play. Add a search source in Settings, or pick another release.");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });
 
 test("pressing Play opens the player", async () => {
   // The engine as it is while it looks for the film's metadata.
-  const app = await open("./App.tsx", {
-    modules: { "app/native": { ...ENGINE, "Engine.status": '{"phase":"resolving"}' } },
-  });
+  const app = await app_({ ...NATIVE, "Engine.status": '{"phase":"resolving"}' });
   await app.press("Resume 41:12");
   expect(app.shows("label:Back")).toBe(true);
   expect(app.texts()).toContain("Finding peers…");
 });
 
 test("without room for the buffer, the film does not start and says why", async () => {
-  const app = await open("./App.tsx", {
-    modules: {
-      "app/native": {
-        ...ENGINE,
-        "Engine.status": JSON.stringify({ phase: "no_space", needed: 306 * 1024 ** 2, free: 120 * 1024 ** 2 }),
-      },
-    },
+  const app = await app_({
+    ...NATIVE,
+    "Engine.status": JSON.stringify({ phase: "no_space", needed: 306 * 1024 ** 2, free: 120 * 1024 ** 2 }),
   });
   await app.press("Resume 41:12");
   expect(app.texts()).toContain(
@@ -50,7 +48,7 @@ test("without room for the buffer, the film does not start and says why", async 
 });
 
 test("Settings: from the nav, choose a buffer size, back", async () => {
-  const app = await open("./App.tsx", { modules: { "app/native": ENGINE } });
+  const app = await app_();
   await app.keyboard.press("up"); // hero
   await app.keyboard.press("up"); // nav, on Home
   for (let i = 0; i < 4; i++) await app.keyboard.press("right"); // Movies, Shows, Search, Settings
@@ -64,106 +62,111 @@ test("Settings: from the nav, choose a buffer size, back", async () => {
   expect(app.texts()).toContain("Continue watching");
 });
 
-test("the nav opens Movies; a poster opens its film; Back comes back", async () => {
-  const app = await open("./App.tsx");
+test("the nav opens Movies; a poster opens its film with the releases found; Back comes back", async () => {
+  const app = await app_();
   await app.keyboard.press("up");
   await app.keyboard.press("up");
   await app.keyboard.press("right"); // Movies
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Discover the latest and greatest films");
   expect(app.texts()).toContain("All movies");
-  await app.keyboard.press("right"); // Nosferatu in Trending
+  await app.keyboard.press("right");
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Releases");
-  expect(app.texts()).toContain("5 found, fastest to start first");
+  expect(app.texts()).toContain("3 found, fastest to start first");
   expect(app.texts()).toContain("Starts fastest");
-  expect(app.texts()).toContain("Needs 25 Mbit/s");
+  expect(app.texts()).toContain("Needs 58 Mbit/s");
+  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("All movies");
-  await app.keyboard.press("down"); // the grid: Detour
+  await app.keyboard.press("down"); // the grid
   await app.keyboard.press("enter");
-  expect(app.texts()).toContain("1 h 8 min");
+  expect(app.texts()).toContain("2 h 28 min");
   await app.keyboard.press("escape");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });
 
-test("a release chosen on the film screen is the one Play uses", async () => {
-  const app = await open("./App.tsx");
-  await app.keyboard.press("enter"); // Charade
-  expect(app.texts()).toContain("1080p BluRay · 2.1 GB · 412 people sharing");
-  await app.keyboard.press("down"); // releases, fastest first: 720p WEB
-  await app.keyboard.press("enter");
-  expect(app.texts()).toContain("720p WEB · 920 MB · 655 people sharing");
-  expect(app.texts()).toContain("WEB");
+test("without a search source the film screen says where to add one", async () => {
+  const app = await app_({ ...NATIVE, "Catalog.title": JSON.stringify(INCEPTION_NO_SOURCE) });
+  await app.keyboard.press("enter"); // Inception
+  expect(app.texts()).toContain("Add a search source in Settings to find releases.");
 });
 
-async function flashGordon(options = {}) {
-  const app = await open("./App.tsx", options);
+test("without a TMDB key home shows anime and says what is missing", async () => {
+  const notice = {
+    id: "reel:notice:no_tmdb", kind: "movie", title: "", about: "", notice: "no_tmdb", anime: false, year: null,
+    yearEnd: null, minutes: 0, rating: "", votes: "", badges: [], genres: [], still: null, card: null, poster: null,
+    ink: "#F5F5F5", paper: "#1A1A1A", stoppedAt: null, progress: 0, left: null, resume: null, seasons: 0, airs: null,
+    tag: null, playable: false, inList: false, release: null, play: { id: "reel:notice:no_tmdb", start: 0 },
+  };
+  const app = await app_({ ...NATIVE, "Catalog.home": JSON.stringify([{ id: "no_tmdb", items: [notice] }]) });
+  expect(app.texts()).toContain("Movies and shows need a TMDB key");
+  expect(app.texts()).toContain("Movies and shows");
+});
+
+async function series(native: Native = { ...ENGINE, ...SHOW }) {
+  const app = await app_(native);
   await app.keyboard.press("up");
   await app.keyboard.press("up");
   await app.keyboard.press("right");
   await app.keyboard.press("right"); // Shows
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Current & upcoming");
-  await app.keyboard.press("enter"); // Flash Gordon, first in the row
+  await app.keyboard.press("enter"); // the first in the row
   return app;
 }
 
 test("a series opens on the season the viewer is in", async () => {
-  const app = await flashGordon();
-  expect(app.texts()).toContain("Resume S3:E4");
-  expect(app.texts()).toContain("12 episodes · Flash Gordon Conquers the Universe");
-  expect(app.texts()).toContain("The Destroying Ray");
-  expect(app.texts()).toContain("19 min · Apr 24, 1940 · 7 min left");
+  const app = await series();
+  expect(app.texts()).toContain("Resume S3:E2");
+  expect(app.texts()).toContain("22 episodes · Season 3");
+  expect(app.texts()).toContain("Pain");
+  expect(app.texts()).toContain("Old Story");
+  expect(app.texts()).toContain("24 min · Jul 30, 2018 · 14 min left");
   expect(app.texts()).toContain("Watched");
 });
 
 test("left and right on the season tabs switch the season; down lands on its first episode", async () => {
-  const app = await flashGordon({
-    modules: { "app/native": { ...ENGINE, "Engine.status": '{"phase":"resolving"}' } },
+  const app = await series({
+    ...NATIVE, ...SHOW, "Engine.status": '{"phase":"resolving"}', "Catalog.episode": JSON.stringify(AOT_S3[0]),
   });
   await app.keyboard.press("down"); // tabs, Season 3
   await app.keyboard.press("left"); // Season 2
-  expect(app.texts()).toContain("15 episodes · Flash Gordon's Trip to Mars");
-  expect(app.texts()).toContain("New Worlds to Conquer");
+  expect(app.texts()).toContain("12 episodes · Season 2");
   await app.keyboard.press("down");
   await app.keyboard.press("enter");
-  expect(app.texts()).toContain("S2:E1 · New Worlds to Conquer");
+  expect(app.texts()).toContain("S3:E1 · Smoke Signal");
 });
 
 test("in the season the viewer is in, the focus lands on their episode", async () => {
-  const app = await flashGordon({
-    modules: { "app/native": { ...ENGINE, "Engine.status": '{"phase":"resolving"}' } },
+  const app = await series({
+    ...NATIVE, ...SHOW, "Engine.status": '{"phase":"resolving"}', "Catalog.episode": JSON.stringify(AOT_S3[0]),
   });
   await app.keyboard.press("down"); // tabs
-  await app.keyboard.press("down"); // S3:E4
-  await app.keyboard.press("up"); // S3:E3
+  await app.keyboard.press("down"); // S3:E2
+  await app.keyboard.press("up"); // S3:E1
   await app.keyboard.press("enter");
-  expect(app.texts()).toContain("S3:E3 · Walking Bombs");
+  expect(app.texts()).toContain("S3:E1 · Smoke Signal");
   await app.keyboard.press("escape");
-  expect(app.texts()).toContain("12 episodes · Flash Gordon Conquers the Universe");
+  expect(app.texts()).toContain("22 episodes · Season 3");
 });
 
-test("a show without listed episodes says so", async () => {
-  const app = await flashGordon();
-  await app.keyboard.press("escape");
-  await app.keyboard.press("right"); // Les Vampires
-  await app.keyboard.press("enter");
+test("a season not known yet lists no episodes", async () => {
+  const app = await series({ ...ENGINE, ...SHOW, "Catalog.episodes": "[]" });
   expect(app.texts()).toContain("The episodes of this show are not listed yet.");
 });
 
 test("in a Mac window the screens lay out with all their columns", async () => {
-  const app = await open("./App.tsx", { platform: "macos", width: 1440, height: 900 });
+  const app = await app_(NATIVE, { platform: "macos", width: 1440, height: 900 });
   expect(app.texts()).toContain("Home"); // nav labels show beside the icons
   await app.press("label:Movies");
   expect(app.texts()).toContain("All movies");
-  await app.press("label:Nosferatu >> nth=0");
-  expect(app.texts()).toContain("Piano score, EN subs");
-  expect(app.texts()).toContain("1.9 GB");
+  await app.press("label:Dune >> nth=0");
+  expect(app.texts()).toContain("8 GB");
+  expect(app.texts()).toContain("60 GB");
   await app.keyboard.press("escape");
   await app.press("label:Shows");
-  await app.press("label:Bonanza >> nth=0");
-  expect(app.texts()).toContain("14 Seasons");
-  expect(app.texts()).toContain("The episodes of this show are not listed yet.");
+  expect(app.texts()).toContain("All shows");
 });
+

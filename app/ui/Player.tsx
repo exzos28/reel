@@ -11,7 +11,7 @@ import { t } from "nsh/i18n";
 import { Catalog, Fmt } from "app/native";
 import { episodeCode, episodeText, runtime, titleText, type Episode, type Release } from "./catalog";
 import { BACK_SIZE, BackButton, Icon } from "./components";
-import { duration, playing as what, play, position, status as core, stop, timeline } from "./playback";
+import { duration, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
 import { alpha, colors, focusRing, font, radius, safe, type, u } from "./theme";
 import playIcon from "./icons/play.svg";
 import pauseIcon from "./icons/pause.svg";
@@ -255,7 +255,12 @@ export function Player() {
           controls={false}
           paused={paused()}
           progressUpdateInterval={250}
-          onLoad={(e) => { loaded.set(true); duration.set(e.duration); }}
+          onLoad={(e) => {
+            loaded.set(true);
+            duration.set(e.duration);
+            // Resume: once, where the viewer stopped.
+            if (startAt() > 0) { seekTo(startAt()); startAt.set(0); }
+          }}
           onProgress={(e) => { position.set(e.currentTime); if (e.duration > 0) duration.set(e.duration); }}
           onBuffer={(e) => buffering.set(e.isBuffering)}
           onEnd={() => { paused.set(true); poke(); }}
@@ -561,7 +566,7 @@ function UpNext(props: {
             {t("player.next_episode", { code: episodeCode(e().season, e().number) })}
           </Text>
           <Text style={{ numberOfLines: 2, fontFamily: font, fontSize: u(28), fontWeight: 600, color: colors.snow() }}>
-            {episodeText(e().show, e().season, e().number, "title")}
+            {e().title}
           </Text>
           <Text style={{ fontFamily: font, fontSize: u(21), color: colors.ash() }}>{runtime(e().minutes)}</Text>
         </View>

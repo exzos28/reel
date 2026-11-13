@@ -4,15 +4,19 @@
 // from the actions reaches the back button; on the season tabs Left and
 // Right switch the season; OK on a release makes it the one Play uses, on
 // an episode plays it. Back goes one level up.
-import { computed, Image, keymap, Scroll, signal, Text, View } from "nsh";
+import { computed, Image, keymap, signal, Text, View, type ViewRef } from "nsh";
 import { t } from "nsh/i18n";
 import {
-  chooseRelease, dateText, episodeText, episodes, noteText, playLabel, title as titleOf, toggleList, tracksText,
-  runtime, type Episode, type Release, type Title as TitleData,
+  chooseRelease, dateText, episodes, noteText, playLabel, title as titleOf, toggleList, tracksText,
+  releasesText, runtime, seasonText, type Episode, type Release, type Title as TitleData,
 } from "./catalog";
-import { BackButton, Badge, Button, Hero, Icon, ReleaseText, revealWhen, SignalBars, WatchedBar } from "./components";
+import { BackButton, Badge, Button, Hero, Icon, ReleaseText, SignalBars, WatchedBar } from "./components";
 import { back } from "./nav";
 import { play } from "./playback";
+import { byKeys, Scroller, scroller } from "./Scroller";
+
+/** A block's ref that a scroll view follows while `when` holds (`ScrollCtl.follow`). */
+type Follow = (when: () => boolean) => (r: ViewRef) => void;
 import { colors, density, focusRing, font, radius, ringRoom, safe, selectedFill, type, u } from "./theme";
 import playIcon from "./icons/play.svg";
 import plusIcon from "./icons/plus.svg";
@@ -50,8 +54,11 @@ export function Title(props: { id: string }) {
     return r && r.season === season() ? r.episode - 1 : 0;
   };
 
+  /** The page puts the focused row (or the season tabs) in its upper third. */
+  const page = scroller({ anchor: (viewport) => viewport / 3 });
+
   keymap.bind(
-    {
+    byKeys({
       left: () => {
         if (zone() === "actions") action.set(Math.max(action() - 1, 0));
         else if (zone() === "tabs") season.set(Math.max(season() - 1, 1));
@@ -83,7 +90,7 @@ export function Title(props: { id: string }) {
           }
         } else if (zone() === "list") item.set(Math.min(item() + 1, listLength() - 1));
       },
-    },
+    }),
     { repeat: true },
   );
   keymap.bind({
@@ -99,11 +106,12 @@ export function Title(props: { id: string }) {
   });
 
   return (
-    <Scroll style={{ flex: 1, backgroundColor: colors.ink() }}>
+    <Scroller ctl={page} style={{ flex: 1, backgroundColor: colors.ink() }}>
       <View style={{ paddingBottom: safe().y + u(40) }}>
         <View style={{ position: "absolute", top: safe().y, left: safe().x, zIndex: 3 }}>
           <BackButton focused={() => zone() === "back"} onPress={back} />
         </View>
+        <View ref={page.follow(() => zone() === "back" || zone() === "actions", "start")}>
         <Hero item={data} height={isShow() ? 640 : 700} backdropLeft={isShow() ? 520 : 560} titleSize={isShow() ? 76 : 88} top={isShow() ? 150 : 176}>
           <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: u(16), marginTop: u(12) }}>
             <Button
@@ -125,12 +133,15 @@ export function Title(props: { id: string }) {
             </View>
           </View>
         </Hero>
+        </View>
         <If
           when={isShow()}
           else={
             <Releases
               releases={() => data().releases}
+              header={() => releasesText(data())}
               focused={(i) => zone() === "list" && item() === i}
+              follow={page.follow}
               onPress={(i) => {
                 zone.set("list");
                 item.set(i);
@@ -143,13 +154,14 @@ export function Title(props: { id: string }) {
             seasons={seasons}
             season={season}
             focused={() => zone() === "tabs"}
+            follow={page.follow}
             onPick={(n) => {
               zone.set("tabs");
               season.set(n);
             }}
             sub={() => {
               const s = seasons()[season() - 1];
-              return s ? `${t("series.episodes", { count: s.episodes })} · ${t(`shows.${props.id}.seasons.s${s.number}`)}` : "";
+              return s ? seasonText(s) : "";
             }}
           />
           <View style={{ paddingHorizontal: safe().x, gap: u(12), marginTop: u(26) }}>
@@ -159,6 +171,7 @@ export function Title(props: { id: string }) {
                   <EpisodeRow
                     episode={e}
                     focused={() => zone() === "list" && item() === i()}
+                    follow={page.follow}
                     onPress={() => {
                       zone.set("list");
                       item.set(i());
@@ -171,24 +184,24 @@ export function Title(props: { id: string }) {
           </View>
         </If>
       </View>
-    </Scroll>
+    </Scroller>
   );
 }
 
-function Releases(props: { releases: () => Release[]; focused: (i: number) => boolean; onPress: (i: number) => void }) {
+function Releases(props: { releases: () => Release[]; header: () => string; focused: (i: number) => boolean; follow: Follow; onPress: (i: number) => void }) {
   /** Columns on a TV and a Mac; a phone keeps what decides the choice. */
   const wide = density !== "compact";
   return (
     <View style={{ paddingHorizontal: safe().x, marginTop: u(40) }}>
       <View style={{ flexDirection: "row", alignItems: "baseline", gap: u(18) }}>
         <Text style={{ ...type.section(), color: colors.snow() }}>{t("releases.title")}</Text>
-        <Text style={{ ...type.meta(), color: colors.ash() }}>{t("releases.found", { count: props.releases().length })}</Text>
+        <Text style={{ ...type.meta(), color: colors.ash() }}>{props.header()}</Text>
       </View>
       <View style={{ gap: u(12), marginTop: u(20) }}>
         <Each of={props.releases()} key={(r) => r.index}>
           {(r, i) => (
             <View
-              ref={revealWhen(() => props.focused(i()))}
+              ref={props.follow(() => props.focused(i()))}
               role="button"
               accessibilityLabel={`${r().quality} ${r().source}`}
               accessibilityState={{ selected: r().selected }}
@@ -239,17 +252,20 @@ function Seasons(props: {
   seasons: () => { number: number; year: number; episodes: number }[];
   season: () => number;
   focused: () => boolean;
+  follow: Follow;
   onPick: (n: number) => void;
   sub: () => string;
 }) {
+  /** The tabs put the focused season at the left edge of their inset. */
+  const tabs = scroller({ horizontal: true, anchor: () => ringRoom() });
   return (
-    <View style={{ paddingHorizontal: safe().x - u(12) - ringRoom(), marginTop: u(36) - ringRoom() }}>
-      <Scroll horizontal>
+    <View ref={props.follow(props.focused)} style={{ paddingHorizontal: safe().x - u(12) - ringRoom(), marginTop: u(36) - ringRoom() }}>
+      <Scroller ctl={tabs}>
         <View style={{ flexDirection: "row", gap: u(6), paddingHorizontal: ringRoom(), paddingVertical: ringRoom() }}>
           <Each of={props.seasons()} key={(s) => s.number}>
             {(s) => (
               <View
-                ref={revealWhen(() => props.focused() && props.season() === s().number)}
+                ref={tabs.follow(() => props.focused() && props.season() === s().number)}
                 role="tab"
                 accessibilityLabel={t("series.season", { number: s().number })}
                 accessibilityState={{ selected: props.season() === s().number }}
@@ -274,13 +290,13 @@ function Seasons(props: {
             )}
           </Each>
         </View>
-      </Scroll>
+      </Scroller>
       <Text style={{ ...type.meta(), color: colors.ash(), marginLeft: u(32), marginTop: u(4) }}>{props.sub()}</Text>
     </View>
   );
 }
 
-function EpisodeRow(props: { episode: () => Episode; focused: () => boolean; onPress: () => void }) {
+function EpisodeRow(props: { episode: () => Episode; focused: () => boolean; follow: Follow; onPress: () => void }) {
   const e = props.episode;
   const meta = () => {
     const parts = [runtime(e().minutes), dateText(e().date)];
@@ -289,9 +305,9 @@ function EpisodeRow(props: { episode: () => Episode; focused: () => boolean; onP
   };
   return (
     <View
-      ref={revealWhen(props.focused)}
+      ref={props.follow(props.focused)}
       role="button"
-      accessibilityLabel={episodeText(e().show, e().season, e().number, "title")}
+      accessibilityLabel={e().title}
       onPress={props.onPress}
       hoverStyle={{ backgroundColor: colors.raise() }}
       style={{
@@ -324,11 +340,11 @@ function EpisodeRow(props: { episode: () => Episode; focused: () => boolean; onP
       </View>
       <View style={{ flex: 1, gap: u(4) }}>
         <Text style={{ numberOfLines: 1, fontFamily: font, fontSize: u(26), fontWeight: 600, color: e().watched ? colors.ash() : colors.snow() }}>
-          {episodeText(e().show, e().season, e().number, "title")}
+          {e().title}
         </Text>
         <Text style={{ fontFamily: font, fontSize: u(21), color: colors.ash() }}>{meta()}</Text>
         <Text style={{ numberOfLines: 1, fontFamily: font, fontSize: u(22), color: colors.quiet(), marginTop: u(2) }}>
-          {episodeText(e().show, e().season, e().number, "about")}
+          {e().about}
         </Text>
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: u(8) }}>
@@ -336,7 +352,7 @@ function EpisodeRow(props: { episode: () => Episode; focused: () => boolean; onP
           <Icon src={() => checkIcon} size={20} color={colors.ash} />
         </If>
         <Text style={{ fontFamily: font, fontSize: u(21), color: colors.ash() }}>
-          {e().watched ? t("series.watched") : t("series.plays_now", { quality: e().quality ?? "" })}
+          {e().watched ? t("series.watched") : e().quality ? t("series.plays_now", { quality: e().quality }) : ""}
         </Text>
       </View>
     </View>

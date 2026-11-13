@@ -1,0 +1,33 @@
+# On a v* tag: build every platform and attach the packages to a draft GitHub Release
+# (for users and for Apps2Samsung). Publishing the draft stays manual.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets: inherit
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: reel-*
+          path: dist
+          merge-multiple: true
+      - run: scripts/release.sh "$GITHUB_REF_NAME" dist
+        env:
+          GH_TOKEN: ${{ github.token }}

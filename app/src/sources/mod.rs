@@ -198,6 +198,9 @@ fn fit(info: &release::ReleaseInfo, query: &Query) -> u8 {
 /// Deduplicated (by infohash, else link), what does not fit dropped, best first:
 /// people sharing, then how well it fits, then picture quality, then more people.
 fn rank(items: &[Item], query: &Query) -> Vec<Value> {
+    // Some indexers report 0 seeders for everything (they don't parse it):
+    // then 0 means "unknown", not "nobody sharing".
+    let seeders_known = items.iter().any(|it| it.seeders.unwrap_or(0) > 0);
     let mut seen = HashSet::new();
     let mut rows: Vec<(u8, u8, u32, u32, Value)> = Vec::new();
     for it in items {
@@ -210,7 +213,7 @@ fn rank(items: &[Item], query: &Query) -> Vec<Value> {
         if fit == 0 || !seen.insert(key.clone()) {
             continue;
         }
-        let seeders = it.seeders.unwrap_or(0);
+        let seeders = if seeders_known { it.seeders.unwrap_or(0) } else { 1 };
         let quality = release::quality_score(&info);
         rows.push((
             (seeders > 0) as u8,
@@ -224,7 +227,7 @@ fn rank(items: &[Item], query: &Query) -> Vec<Value> {
                 "source": it.magnet.clone().or_else(|| it.link.clone()),
                 "infohash": it.infohash,
                 "size": it.size,
-                "seeders": it.seeders,
+                "seeders": if seeders_known { it.seeders } else { None },
                 "peers": it.peers,
                 "indexer": it.indexer,
                 "info": info,
@@ -252,6 +255,34 @@ mod tests {
         assert!(r[0]["source"].as_str().unwrap().starts_with("magnet:"));
         assert_eq!(r[1]["source"], "https://indexer.example/dl/2.torrent");
         assert_eq!(r[2]["seeders"], 0);
+    }
+
+    #[test]
+    fn zero_seeders_everywhere_means_unknown() {
+        let q = Query::Movie { imdb: None, title: "Sintel".into(), year: None };
+        let items = vec![
+            Item { title: "Sintel 720p".into(), link: Some("https://indexer.example/a".into()), seeders: Some(0), ..Default::default() },
+            Item { title: "Sintel 1080p".into(), link: Some("https://indexer.example/b".into()), seeders: Some(0), ..Default::default() },
+        ];
+        let r = rank(&items, &q);
+        assert_eq!(r[0]["title"], "Sintel 1080p", "ordered by quality, not as dead");
+        assert!(r[0]["seeders"].is_null());
+    }
+
+    /// Searches the developer's own Torznab source (REEL_TORZNAB_URL, REEL_TORZNAB_KEY in ../.env):
+    /// `set -a; . ../.env; set +a; cargo test -- --ignored live_source --nocapture`.
+    #[test]
+    #[ignore]
+    fn live_source() {
+        let (Ok(url), key) = (std::env::var("REEL_TORZNAB_URL"), std::env::var("REEL_TORZNAB_KEY").ok()) else {
+            panic!("REEL_TORZNAB_URL is not set");
+        };
+        let source = Source { url, key };
+        let request = Request { imdb: Some("tt0013442".into()), title: "Носферату".into(), year: Some(1922), season: None, episode: None };
+        let r = runtime().block_on(search(&source, &request)).expect("the source answers");
+        println!("{} releases; best: {:?} {:?}", r.len(), r.first().map(|v| &v["info"]), r.first().map(|v| &v["seeders"]));
+        assert!(!r.is_empty());
+        assert!(r[0]["source"].as_str().is_some_and(|s| s.starts_with("magnet:") || s.starts_with("http")));
     }
 
     #[test]

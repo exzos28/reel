@@ -1,377 +1,275 @@
-//! The demo catalog: public-domain films and serials plus two open films with
-//! official torrents. Text (titles, about, genres, notes) is the UI's, in
-//! `locales/` under `films.<id>.*`, `shows.<id>.*` and the keys this file
-//! names; here only data and the decisions on it (which release plays, how
-//! fast each starts, what is left to watch, what plays next). The metadata
-//! layer (docs/research-metadata.md) will replace the data.
+//! The catalog the UI shows, made from the metadata layer (`metadata`, the
+//! `Meta` module): TMDB films and series, AniList anime. Releases come from
+//! the user's own search source (`sources`), where they stopped from
+//! `progress`. Here are the data and the decisions on it (which release
+//! plays, how fast each starts, what is left to watch, what plays next); the
+//! UI's words for it live in `locales/`.
+//!
+//! **Sync calls on async data.** The UI reads the catalog synchronously
+//! (`Catalog.home()` returns the JSON), while `Meta` answers with Promises.
+//! So the catalog keeps the last answer of each `Meta` call in memory and
+//! returns that; a call it has no answer for yet is started on the
+//! catalog's own runtime (the first one waits a moment, so what the SQLite
+//! cache holds shows on the first paint). When an answer lands, when `Meta`
+//! refreshed something (`metadata::revision`), when a search finishes or
+//! progress is saved, `revision()` goes up and the UI reads again.
+//!
+//! Ids are the metadata ones ("tmdb:movie:603", "tmdb:tv:1399",
+//! "anilist:21"); an episode is `<title>:s<season>e<episode>`
+//! ("tmdb:tv:1399:s1e2"), which is also what the player plays and reports.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::{LazyLock, Mutex};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Condvar, LazyLock, Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 use nsh_core::prelude::*;
 use serde_json::{Value, json};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Kind {
-    Movie,
-    Short,
-    Show,
+use crate::{metadata, progress, settings, sources};
+
+// ---- Ids.
+
+/// What plays: a title, or an episode of one.
+pub fn episode_key(show: &str, season: u32, episode: u32) -> String {
+    format!("{show}:s{season}e{episode}")
 }
 
-impl Kind {
-    fn key(self) -> &'static str {
+/// `tmdb:tv:1399:s1e2` → ("tmdb:tv:1399", Some((1, 2))); a title id → (id, None).
+pub fn parse_key(key: &str) -> (&str, Option<(u32, u32)>) {
+    if let Some((show, ep)) = key.rsplit_once(':')
+        && let Some(rest) = ep.strip_prefix('s')
+        && let Some((s, e)) = rest.split_once('e')
+        && let (Ok(s), Ok(e)) = (s.parse(), e.parse())
+    {
+        return (show, Some((s, e)));
+    }
+    (key, None)
+}
+
+// ---- Meta answers, kept in memory for the sync calls.
+
+#[derive(Clone, Debug, PartialEq)]
+enum Call {
+    /// A `Meta.trending` kind: "movie", "tv", "movie-popular", "tv-popular", "anime", "anime-popular".
+    Trending(&'static str),
+    Title(String),
+    Season(String, u32),
+}
+
+impl Call {
+    fn key(&self) -> String {
         match self {
-            Kind::Movie => "movie",
-            Kind::Short => "short",
-            Kind::Show => "show",
+            Call::Trending(k) => format!("trending/{k}"),
+            Call::Title(id) => format!("title/{id}"),
+            Call::Season(id, n) => format!("season/{id}/{n}"),
         }
     }
 }
 
-/// A release of a film (or a season pack of a show), as a tracker lists it.
-pub struct Release {
-    /// "1080p", "4K".
-    pub quality: &'static str,
-    /// The release's own name for its source ("BluRay restoration"): the
-    /// torrent's words, not the UI's.
-    pub source: &'static str,
-    /// Who made it, as the release names itself (may be empty).
-    pub group: &'static str,
-    pub mb: u32,
-    /// Keys under `tracks.*`.
-    pub tracks: &'static [&'static str],
-    pub peers: u32,
-    /// The bitrate it needs to play without waiting, Mbit/s.
-    pub mbit: u32,
+#[derive(Default)]
+struct Slot {
+    /// The envelope's `data` (the last one that had data).
+    data: Option<Value>,
+    /// Answered at least once.
+    loaded: bool,
+    loading: bool,
+    /// `metadata::revision()` when it was asked: newer data may be there after.
+    meta_rev: u64,
+    /// When the last answer had no data: retried after a while.
+    failed_at: Option<Instant>,
 }
 
-pub struct Film {
-    pub id: &'static str,
-    pub kind: Kind,
-    pub year: u16,
-    /// Last year of a show's run.
-    pub year_end: Option<u16>,
-    pub minutes: u16,
-    /// Rating ×10 and votes (demo).
-    pub rating: u8,
-    pub votes: u32,
-    /// Keys under `badge.*` and `genre.*`.
-    pub badges: &'static [&'static str],
-    pub genres: &'static [&'static str],
-    /// Backdrop still, a 16:9 card still (when it differs) and a 2:3 poster.
-    pub still: Option<ImageAsset>,
-    pub card: Option<ImageAsset>,
-    pub poster: Option<ImageAsset>,
-    /// The two colours of its typographic fallback (no still, no poster).
-    pub ink: &'static str,
-    pub paper: &'static str,
-    /// Where the viewer stopped, seconds (demo data).
-    pub stopped_at: Option<u32>,
-    /// A magnet the engine can play; demo films without one have no source.
-    pub magnet: Option<&'static str>,
-    pub releases: Vec<Release>,
-    /// Shows: episodes per season.
-    pub seasons: &'static [u8],
-    /// Shows: where the viewer is, (season, episode, minutes into it).
-    pub resume: Option<(u8, u8, u16)>,
-    /// Shows: the next episode airing, (season, episode, month, day).
-    pub airs: Option<(u8, u8, u8, u8)>,
-    /// Key under `tag.*`: "new_season", "new_episode".
-    pub tag: Option<&'static str>,
+/// Waiting for a first answer on the UI thread, at most.
+const FIRST_WAIT: Duration = Duration::from_millis(1500);
+/// A call that failed is asked again after this.
+const RETRY: Duration = Duration::from_secs(30);
+
+static SLOTS: LazyLock<(Mutex<HashMap<String, Slot>>, Condvar)> = LazyLock::new(Default::default);
+/// Goes up with every change the UI should read again for.
+static REV: AtomicU64 = AtomicU64::new(0);
+
+fn bump() {
+    REV.fetch_add(1, Ordering::Relaxed);
 }
 
-/// Sintel and Big Buck Bunny (Blender Foundation, CC BY): official torrents.
-const SINTEL: &str = "magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Fexplodie.org%3A6969&xs=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2Fsintel.torrent";
-const BUNNY: &str = "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Fexplodie.org%3A6969&xs=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2Fbig-buck-bunny.torrent";
+/// What the UI polls: changes of the catalog's own and of `Meta`.
+pub fn revision() -> u64 {
+    REV.load(Ordering::Relaxed) + metadata::revision()
+}
 
-fn base(id: &'static str, kind: Kind, year: u16, minutes: u16, rating: u8, votes: u32) -> Film {
-    Film {
-        id,
-        kind,
-        year,
-        year_end: None,
-        minutes,
-        rating,
-        votes,
-        badges: &[],
-        genres: &[],
-        still: None,
-        card: None,
-        poster: None,
-        ink: "#F5F5F5",
-        paper: "#1A1A1A",
-        stopped_at: None,
-        magnet: None,
-        releases: Vec::new(),
-        seasons: &[],
-        resume: None,
-        airs: None,
-        tag: None,
+fn runtime() -> &'static tokio::runtime::Runtime {
+    static RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+    RT.get_or_init(|| {
+        tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .enable_all()
+            .thread_name("reel-catalog")
+            .build()
+            .expect("the catalog runtime starts")
+    })
+}
+
+static DATA_DIR: Mutex<Option<std::path::PathBuf>> = Mutex::new(None);
+static META_STARTED: AtomicBool = AtomicBool::new(false);
+
+/// The app's data directory (from `Settings.load`): progress is read from
+/// it, and the metadata cache opens there (now, or with the first call).
+pub fn init(data_dir: Option<&std::path::Path>) {
+    *DATA_DIR.lock().unwrap() = data_dir.map(ToOwned::to_owned);
+    progress::init(data_dir);
+    if META_STARTED.load(Ordering::Acquire) && data_dir.is_some() {
+        metadata::init(data_dir);
+    }
+    bump();
+}
+
+/// Opens the metadata cache once, before the first `Meta` call.
+fn start_meta() {
+    if !META_STARTED.swap(true, Ordering::AcqRel) {
+        let dir = DATA_DIR.lock().unwrap().clone();
+        metadata::init(dir.as_deref());
     }
 }
 
-fn show(id: &'static str, year: u16, rating: u8, votes: u32, seasons: &'static [u8]) -> Film {
-    Film { seasons, ..base(id, Kind::Show, year, 0, rating, votes) }
-}
-
-const fn rel(quality: &'static str, source: &'static str, group: &'static str, mb: u32, tracks: &'static [&'static str], peers: u32, mbit: u32) -> Release {
-    Release { quality, source, group, mb, tracks, peers, mbit }
-}
-
-/// Releases of a film the demo data lists none for: a BluRay, a WEB rip
-/// and a DVD print, sized by its runtime, shared by about as many as rate it.
-fn default_releases(f: &Film) -> Vec<Release> {
-    let m = f.minutes as u32;
-    let score: &'static [&'static str] = if f.badges.contains(&"silent") { &["score_piano", "subs_en"] } else { &["audio_en_mono", "subs_en"] };
-    vec![
-        rel("1080p", "BluRay", "", m * 45, score, f.votes / 400, 8),
-        rel("720p", "WEB", "", m * 15, score, f.votes / 250, 4),
-        rel("480p", "DVD", "public-domain print", m * 8, &["no_score"], f.votes / 9000, 2),
-    ]
-}
-
-pub static FILMS: LazyLock<Vec<Film>> = LazyLock::new(|| {
-    let mut films = films();
-    for f in films.iter_mut().filter(|f| f.kind != Kind::Show && f.releases.is_empty()) {
-        f.releases = default_releases(f);
+/// The data of `call` as far as known. Starts asking when there is no
+/// answer yet, when `Meta` has refreshed something since, or a while after a failure.
+fn meta(call: &Call) -> Option<Value> {
+    let rev = metadata::revision();
+    let mut slots = SLOTS.0.lock().unwrap();
+    let slot = slots.entry(call.key()).or_default();
+    let due = !slot.loading
+        && (!slot.loaded || slot.meta_rev < rev || slot.failed_at.is_some_and(|t| t.elapsed() > RETRY));
+    if due {
+        slot.loading = true;
+        ask(call.clone(), rev);
     }
-    films
-});
-
-fn films() -> Vec<Film> {
-    vec![
-        Film {
-            badges: &["cc"],
-            genres: &["animation", "fantasy"],
-            ink: "#F4E9D8",
-            paper: "#5A2A1F",
-            magnet: Some(SINTEL),
-            releases: vec![rel("720p", "WEB", "Blender Foundation", 129, &["audio_en", "subs_many"], 64, 3)],
-            ..base("sintel", Kind::Short, 2010, 15, 74, 51_000)
-        },
-        Film {
-            genres: &["animation", "comedy"],
-            ink: "#2B3A12",
-            paper: "#B8D46A",
-            magnet: Some(BUNNY),
-            releases: vec![rel("480p", "WEB", "Blender Foundation", 263, &["audio_none"], 52, 2)],
-            ..base("bunny", Kind::Short, 2008, 10, 64, 46_000)
-        },
-        Film {
-            badges: &["hd", "cc"],
-            genres: &["thriller", "comedy", "romance"],
-            still: Some(asset!("still-charade.jpg")),
-            card: Some(asset!("still-charade-2.jpg")),
-            poster: Some(asset!("poster-charade.jpg")),
-            stopped_at: Some(2472),
-            releases: vec![
-                rel("1080p", "BluRay", "Criterion, 2014", 2150, &["audio_en_mono", "subs_en"], 412, 8),
-                rel("720p", "WEB", "", 920, &["audio_en_mono"], 655, 4),
-                rel("4K", "UHD remaster", "2023", 22_500, &["audio_en_fr", "subs_en"], 38, 25),
-            ],
-            ..base("charade", Kind::Movie, 1963, 113, 79, 82_000)
-        },
-        Film {
-            badges: &["uhd", "silent"],
-            genres: &["scifi", "drama"],
-            still: Some(asset!("still-metropolis.jpg")),
-            poster: Some(asset!("poster-metropolis.jpg")),
-            stopped_at: Some(4360),
-            ..base("metropolis", Kind::Movie, 1927, 153, 83, 190_000)
-        },
-        Film {
-            badges: &["uhd", "silent"],
-            genres: &["horror", "fantasy"],
-            still: Some(asset!("still-nosferatu.jpg")),
-            poster: Some(asset!("poster-nosferatu.jpg")),
-            stopped_at: Some(1520),
-            releases: vec![
-                rel("720p", "WEB", "Kino Lorber", 1950, &["score_piano", "subs_en"], 940, 4),
-                rel("1080p", "BluRay restoration", "Murnau Foundation, 2013", 6550, &["score_orchestral", "subs_en"], 286, 10),
-                rel("4K", "UHD remaster HDR", "2024", 39_100, &["score_orchestral", "subs_en_de"], 41, 25),
-                rel("1080p", "BluRay", "alternate score", 7270, &["score_electronic"], 12, 10),
-                rel("480p", "DVD", "public-domain print", 1130, &["no_score"], 3, 2),
-            ],
-            ..base("nosferatu", Kind::Movie, 1922, 94, 78, 112_000)
-        },
-        Film {
-            badges: &["hd", "silent"],
-            genres: &["comedy", "action", "war"],
-            still: Some(asset!("still-general.jpg")),
-            poster: Some(asset!("poster-general.jpg")),
-            stopped_at: Some(610),
-            ..base("general", Kind::Movie, 1926, 78, 81, 98_000)
-        },
-        Film {
-            badges: &["hd", "silent"],
-            genres: &["comedy", "fantasy"],
-            still: Some(asset!("still-sherlock.jpg")),
-            poster: Some(asset!("poster-sherlock.jpg")),
-            ..base("sherlock", Kind::Movie, 1924, 45, 82, 57_000)
-        },
-        Film {
-            badges: &["hd"],
-            genres: &["noir", "crime"],
-            still: Some(asset!("still-detour.jpg")),
-            poster: Some(asset!("poster-detour.jpg")),
-            ..base("detour", Kind::Movie, 1945, 68, 72, 22_000)
-        },
-        Film {
-            badges: &["hd", "cc"],
-            genres: &["comedy", "romance"],
-            still: Some(asset!("still-friday.jpg")),
-            poster: Some(asset!("poster-friday.jpg")),
-            ..base("friday", Kind::Movie, 1940, 92, 78, 67_000)
-        },
-        Film {
-            badges: &["hd", "cc"],
-            genres: &["horror", "thriller"],
-            still: Some(asset!("still-night.jpg")),
-            poster: Some(asset!("poster-night.jpg")),
-            ..base("night", Kind::Movie, 1968, 96, 78, 140_000)
-        },
-        Film {
-            badges: &["hd", "silent"],
-            genres: &["horror", "mystery"],
-            still: Some(asset!("still-caligari.jpg")),
-            ..base("caligari", Kind::Movie, 1920, 76, 80, 70_000)
-        },
-        Film {
-            badges: &["hd", "silent"],
-            genres: &["scifi", "fantasy"],
-            still: Some(asset!("still-moon.jpg")),
-            ..base("moon", Kind::Short, 1902, 13, 81, 61_000)
-        },
-        // Shows.
-        Film {
-            year_end: Some(1940),
-            badges: &["hd", "tv_pg"],
-            genres: &["scifi", "adventure", "serial"],
-            still: Some(asset!("still-flash-2.jpg")),
-            card: Some(asset!("still-flash-hawkmen.jpg")),
-            poster: Some(asset!("poster-flash.jpg")),
-            releases: vec![rel("1080p", "restoration", "season pack", 4900, &["audio_en_mono"], 128, 6)],
-            resume: Some((3, 4, 12)),
-            airs: Some((3, 5, 11, 20)),
-            tag: Some("new_season"),
-            ..show("flash", 1936, 71, 6_400, &[13, 15, 12])
-        },
-        Film {
-            badges: &["hd", "silent"],
-            genres: &["crime", "serial"],
-            still: Some(asset!("still-vampires-2.jpg")),
-            card: Some(asset!("still-vampires.jpg")),
-            poster: Some(asset!("poster-vampires.jpg")),
-            releases: vec![rel("1080p", "restoration", "season pack", 9800, &["score_piano", "subs_en"], 74, 6)],
-            resume: Some((1, 2, 6)),
-            airs: Some((1, 7, 11, 18)),
-            tag: Some("new_episode"),
-            ..show("vampires", 1915, 73, 5_100, &[10])
-        },
-        Film {
-            badges: &["hd", "silent"],
-            genres: &["crime", "serial"],
-            poster: Some(asset!("poster-fantomas.jpg")),
-            airs: Some((1, 4, 11, 21)),
-            ..show("fantomas", 1913, 70, 3_200, &[5])
-        },
-        Film {
-            badges: &["hd", "silent"],
-            genres: &["adventure", "serial"],
-            poster: Some(asset!("poster-judex.jpg")),
-            airs: Some((1, 9, 11, 22)),
-            ..show("judex", 1916, 69, 2_100, &[12])
-        },
-        Film {
-            badges: &["sd", "silent"],
-            genres: &["adventure", "serial"],
-            still: Some(asset!("still-pauline.jpg")),
-            poster: Some(asset!("poster-pauline.jpg")),
-            airs: Some((1, 12, 11, 25)),
-            ..show("pauline", 1914, 66, 1_900, &[20])
-        },
-        Film {
-            badges: &["sd"],
-            genres: &["scifi", "serial"],
-            poster: Some(asset!("poster-undersea.jpg")),
-            airs: Some((1, 6, 11, 27)),
-            ..show("undersea", 1936, 62, 1_100, &[12])
-        },
-        Film {
-            badges: &["sd"],
-            genres: &["western", "serial"],
-            poster: Some(asset!("poster-zorro.jpg")),
-            airs: Some((1, 3, 11, 29)),
-            ..show("zorro", 1939, 70, 1_600, &[12])
-        },
-        Film {
-            badges: &["sd"],
-            genres: &["western", "serial"],
-            poster: Some(asset!("poster-lone-ranger.jpg")),
-            airs: Some((1, 10, 12, 2)),
-            ..show("lone_ranger", 1938, 71, 1_300, &[15])
-        },
-        Film {
-            year_end: Some(1973),
-            badges: &["hd", "cc"],
-            genres: &["western", "drama"],
-            still: Some(asset!("still-bonanza.jpg")),
-            tag: Some("new_season"),
-            ..show("bonanza", 1959, 74, 31_000, &[34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 16])
-        },
-        Film {
-            badges: &["sd"],
-            genres: &["scifi", "horror", "serial"],
-            still: Some(asset!("still-phantom-creeps.jpg")),
-            ..show("phantom_creeps", 1939, 60, 1_000, &[12])
-        },
-    ]
+    slot.data.clone()
 }
 
-/// Flash Gordon's chapters: (minutes, rating ×10, thumbnail) per season;
-/// titles and descriptions in `shows.flash.s<season>.e<n>`.
-type Chapter = (u16, u8, Option<ImageAsset>);
-
-static FLASH: LazyLock<[Vec<Chapter>; 3]> = LazyLock::new(|| {
-    let plain = |m: &[(u16, u8)]| m.iter().map(|&(min, r)| (min, r, None)).collect::<Vec<Chapter>>();
-    let mut s1 = plain(&[(20, 74), (19, 71), (20, 70), (20, 72), (20, 70), (20, 69), (20, 71), (20, 73), (20, 72), (20, 70), (20, 71), (20, 70), (18, 74)]);
-    s1[0].2 = Some(asset!("still-flash-hawkmen.jpg"));
-    let mut s2 = plain(&[(29, 70), (20, 69), (20, 70), (20, 68), (20, 67), (20, 70), (20, 68), (20, 71), (20, 67), (20, 66), (20, 68), (20, 69), (20, 67), (20, 68), (20, 71)]);
-    s2[7].2 = Some(asset!("still-flash-mars.jpg"));
-    let mut s3 = plain(&[(20, 71), (19, 70), (19, 70), (19, 72), (20, 69), (19, 68), (19, 70), (19, 69), (19, 68), (19, 69), (19, 70), (19, 72)]);
-    s3[0].2 = Some(asset!("still-flash-2.jpg"));
-    s3[2].2 = Some(asset!("still-flash-lobby.jpg"));
-    s3[3].2 = Some(asset!("still-flash-1.jpg"));
-    s3[4].2 = Some(asset!("still-flash-shannon.jpg"));
-    [s1, s2, s3]
-});
-
-/// The first chapter's release date of each Flash Gordon serial; chapters
-/// came out weekly.
-const FLASH_PREMIERES: [(i32, u32, u32); 3] = [(1936, 4, 6), (1938, 3, 21), (1940, 4, 3)];
-
-/// The catalog the engine plays from: a film by id.
-pub fn film(id: &str) -> Option<&'static Film> {
-    FILMS.iter().find(|f| f.id == id)
+/// What is known of `call`, without asking.
+fn peek(call: &Call) -> Option<Value> {
+    SLOTS.0.lock().unwrap().get(&call.key()).and_then(|s| s.data.clone())
 }
 
-/// The user's list and release choices, while the app runs (demo: not saved).
-static LIST: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(|| Mutex::new(HashSet::from(["nosferatu".to_string()])));
-static CHOSEN: LazyLock<Mutex<HashMap<String, usize>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
-
-fn in_list(id: &str) -> bool {
-    LIST.lock().unwrap().contains(id)
+/// Whether `call` has been answered (with data or not).
+fn answered(call: &Call) -> bool {
+    SLOTS.0.lock().unwrap().get(&call.key()).is_some_and(|s| s.loaded)
 }
 
-// ---- Formatting of numbers the UI shows as they are.
+/// `meta` for several calls; the ones never answered get up to
+/// `FIRST_WAIT` together (a cache hit takes milliseconds).
+fn meta_all(calls: &[Call]) -> Vec<Option<Value>> {
+    let first: Vec<String> = calls.iter().filter(|c| !answered(c)).map(Call::key).collect();
+    let mut out: Vec<Option<Value>> = calls.iter().map(meta).collect();
+    if !first.is_empty() && cfg!(not(test)) {
+        let deadline = Instant::now() + FIRST_WAIT;
+        let (lock, cv) = &*SLOTS;
+        let mut slots = lock.lock().unwrap();
+        while first.iter().any(|k| slots.get(k).is_some_and(|s| !s.loaded)) {
+            let left = deadline.saturating_duration_since(Instant::now());
+            if left.is_zero() {
+                break;
+            }
+            slots = cv.wait_timeout(slots, left).unwrap().0;
+        }
+        drop(slots);
+        out = calls.iter().map(peek).collect();
+    }
+    out
+}
 
-/// 7.9
-fn rating(r: u8) -> String {
-    format!("{}.{}", r / 10, r % 10)
+#[cfg(not(test))]
+fn ask(call: Call, rev: u64) {
+    start_meta();
+    runtime().spawn(async move {
+        let lang = settings::language();
+        let text = match &call {
+            Call::Trending(kind) => metadata::trending(kind.to_string(), lang).await,
+            Call::Title(id) => metadata::title(id.clone(), lang).await,
+            Call::Season(id, n) => metadata::season(id.clone(), *n, lang).await,
+        };
+        let envelope: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
+        if !envelope["error"].is_null() {
+            eprintln!("reel catalog: {}: {}", call.key(), envelope["error"]);
+        }
+        land(&call, &envelope, rev);
+    });
+}
+
+/// Tests answer by `seed`; nothing goes to the network.
+#[cfg(test)]
+fn ask(_call: Call, _rev: u64) {
+    let _ = (runtime, start_meta);
+}
+
+/// Stores an answer (`{"data",…}` as `Meta` resolves it).
+fn land(call: &Call, envelope: &Value, rev: u64) {
+    let data = Some(&envelope["data"]).filter(|d| !d.is_null()).cloned();
+    let (lock, cv) = &*SLOTS;
+    let changed = {
+        let mut slots = lock.lock().unwrap();
+        let slot = slots.entry(call.key()).or_default();
+        let changed = !slot.loaded || (data.is_some() && slot.data != data);
+        slot.failed_at = if data.is_none() { Some(Instant::now()) } else { None };
+        if data.is_some() {
+            slot.data = data;
+        }
+        slot.loaded = true;
+        slot.loading = false;
+        slot.meta_rev = rev;
+        changed
+    };
+    cv.notify_all();
+    if changed {
+        bump();
+    }
+}
+
+/// Whether TMDB can be asked (a key, the project's or the user's).
+fn tmdb_on() -> bool {
+    #[cfg(test)]
+    if let Some(on) = *TEST_TMDB.lock().unwrap() {
+        return on;
+    }
+    metadata::status()["tmdb"]["configured"].as_bool().unwrap_or(false)
+}
+
+// ---- Reading the metadata model (`metadata::model`, camelCase JSON).
+
+fn text(v: &Value) -> Option<String> {
+    v.as_str().filter(|s| !s.is_empty()).map(str::to_owned)
+}
+
+/// The URL of the smallest size at least `width` wide, else the largest.
+fn image_url(image: &Value, width: u32) -> Option<String> {
+    let variants = image["variants"].as_array()?;
+    variants
+        .iter()
+        .find(|v| v["width"].as_u64().is_none_or(|w| w >= width as u64))
+        .or(variants.last())
+        .and_then(|v| text(&v["url"]))
+}
+
+/// The score shown: TMDB's, else AniList's (out of 100), else MAL's; "7.9" and votes.
+fn rating(ratings: &Value) -> (String, String) {
+    let list = ratings.as_array().map(Vec::as_slice).unwrap_or_default();
+    for source in ["tmdb", "anilist", "mal"] {
+        if let Some(r) = list.iter().find(|r| r["source"] == source) {
+            let value = r["value"].as_f64().unwrap_or(0.0);
+            let scale = r["scale"].as_f64().unwrap_or(10.0);
+            if value <= 0.0 {
+                continue;
+            }
+            let ten = value * 10.0 / scale;
+            return (format!("{ten:.1}"), r["votes"].as_u64().map(votes).unwrap_or_default());
+        }
+    }
+    (String::new(), String::new())
 }
 
 /// 950, 6.4K, 82K, 1.2M
-fn votes(n: u32) -> String {
+fn votes(n: u64) -> String {
     match n {
         0..1_000 => n.to_string(),
         1_000..10_000 => format!("{:.1}K", n as f64 / 1_000.0),
@@ -380,70 +278,310 @@ fn votes(n: u32) -> String {
     }
 }
 
-fn size(mb: u32) -> String {
-    crate::Fmt::size(mb as f64 * 1024.0 * 1024.0)
+fn year(date: &Value) -> Option<u16> {
+    date.as_str()?.get(..4)?.parse().ok()
 }
 
-fn url(a: Option<ImageAsset>) -> Value {
-    a.map_or(Value::Null, |a| json!(a.url))
+/// "2024-11-20" → [2024, 11, 20].
+fn ymd(date: &Value) -> Option<[u32; 3]> {
+    let mut it = date.as_str()?.splitn(3, '-').map(|p| p.parse::<u32>().ok());
+    Some([it.next()??, it.next()??, it.next()??])
 }
 
-/// Days since 1970-01-01 of a civil date, and back (Howard Hinnant's algorithms).
-fn days(y: i32, m: u32, d: u32) -> i64 {
-    let y = if m <= 2 { y - 1 } else { y } as i64;
-    let era = y.div_euclid(400);
-    let yoe = y - era * 400;
-    let mp = (m as i64 + 9) % 12;
-    let doy = (153 * mp + 2) / 5 + d as i64 - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    era * 146_097 + doe - 719_468
+/// What the catalog needs of a title, from a card or a full title.
+#[derive(Clone, Debug, Default)]
+struct Info {
+    id: String,
+    show: bool,
+    title: String,
+    about: String,
+    original_title: Option<String>,
+    original_language: Option<String>,
+    year: Option<u16>,
+    year_end: Option<u16>,
+    minutes: u32,
+    rating: String,
+    votes: String,
+    genres: Vec<String>,
+    still: Option<String>,
+    card: Option<String>,
+    poster: Option<String>,
+    paper: Option<String>,
+    /// Regular seasons: (number, year, episodes, name).
+    seasons: Vec<(u32, Option<u16>, u32, Option<String>)>,
+    season_count: u32,
+    airs: Option<[u32; 4]>,
+    anime: bool,
+    imdb: Option<String>,
 }
 
-fn civil(z: i64) -> (i32, u32, u32) {
-    let z = z + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z - era * 146_097;
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
-    let y = (yoe + era * 400 + if m <= 2 { 1 } else { 0 }) as i32;
-    (y, m, d)
+/// Backdrop sizes: the hero's and a 16:9 card's; posters (2:3).
+const STILL_W: u32 = 1280;
+const CARD_W: u32 = 780;
+const POSTER_W: u32 = 342;
+const THUMB_W: u32 = 300;
+
+fn images(info: &mut Info, v: &Value) {
+    info.still = image_url(&v["backdrop"], STILL_W);
+    info.card = image_url(&v["backdrop"], CARD_W);
+    info.poster = image_url(&v["poster"], POSTER_W);
+    info.paper = text(&v["poster"]["color"]).or_else(|| text(&v["backdrop"]["color"]));
 }
 
-// ---- Releases: which plays, how fast each starts.
+/// A `TitleCard` (shelves, search).
+fn from_card(card: &Value) -> Info {
+    let (rating, votes) = rating(&card["ratings"]);
+    let mut info = Info {
+        id: text(&card["id"]).unwrap_or_default(),
+        show: card["kind"] == "series",
+        title: text(&card["title"]).unwrap_or_default(),
+        about: text(&card["overview"]).unwrap_or_default(),
+        original_title: text(&card["originalTitle"]),
+        year: card["year"].as_u64().map(|y| y as u16),
+        rating,
+        votes,
+        anime: card["anime"].as_bool().unwrap_or(false),
+        ..Default::default()
+    };
+    images(&mut info, card);
+    info
+}
 
-const QUALITY: [&str; 5] = ["SD", "480p", "720p", "1080p", "4K"];
+/// A full `Title` (the title screen).
+fn from_title(t: &Value) -> Info {
+    let (rating, votes) = rating(&t["ratings"]);
+    let show = t["kind"] == "series";
+    let first = year(&t["release"]["date"]).or(t["release"]["year"].as_u64().map(|y| y as u16));
+    let last = year(&t["release"]["lastDate"]);
+    let ended = matches!(t["status"].as_str(), Some("ended" | "canceled"));
+    let mut seasons: Vec<_> = t["seasons"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|s| {
+            let n = s["number"].as_u64()? as u32;
+            (n >= 1).then(|| (n, year(&s["airDate"]), s["episodeCount"].as_u64().unwrap_or(0) as u32, text(&s["name"])))
+        })
+        .collect();
+    seasons.sort_by_key(|s| s.0);
+    let next = &t["nextEpisode"];
+    let airs = match (next["season"].as_u64(), next["number"].as_u64(), ymd(&next["airDate"])) {
+        (Some(s), Some(e), Some([_, m, d])) => Some([s as u32, e as u32, m, d]),
+        _ => None,
+    };
+    let mut info = Info {
+        id: text(&t["id"]).unwrap_or_default(),
+        show,
+        title: text(&t["title"]).unwrap_or_default(),
+        about: text(&t["overview"]).unwrap_or_default(),
+        original_title: text(&t["originalTitle"]),
+        original_language: text(&t["originalLanguage"]),
+        year: first,
+        year_end: if show && ended { last.filter(|l| Some(*l) != first) } else { None },
+        minutes: t["runtimeMinutes"].as_u64().unwrap_or(0) as u32,
+        rating,
+        votes,
+        genres: t["genres"]
+            .as_array()
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|g| text(&g["name"]))
+            .collect(),
+        season_count: t["seasonCount"].as_u64().map(|n| n as u32).unwrap_or(seasons.len() as u32),
+        seasons,
+        airs,
+        anime: !t["anime"].is_null(),
+        imdb: text(&t["ids"]["imdb"]),
+        ..Default::default()
+    };
+    images(&mut info, t);
+    info
+}
 
-fn quality_rank(q: &str) -> usize {
-    QUALITY.iter().position(|x| *x == q).unwrap_or(0)
+/// A card with what its full title adds, when the catalog has it already.
+fn card_info(card: &Value) -> Info {
+    let info = from_card(card);
+    match peek(&Call::Title(info.id.clone())) {
+        Some(t) => Info { id: info.id.clone(), ..from_title(&t) },
+        None => info,
+    }
+}
+
+// ---- Releases: the user's search, which plays, how fast each starts.
+
+/// A search for what plays (a film or an episode), while the app runs.
+#[derive(Clone, Debug, Default)]
+struct Search {
+    /// Ranked as `sources` ranks them; None while it runs.
+    releases: Option<Vec<Value>>,
+    failed: Option<String>,
+}
+
+static SEARCHES: LazyLock<Mutex<HashMap<String, Search>>> = LazyLock::new(Default::default);
+/// The user's choice of release per what plays: an index into its releases.
+static CHOSEN: LazyLock<Mutex<HashMap<String, usize>>> = LazyLock::new(Default::default);
+
+fn has_source() -> bool {
+    #[cfg(test)]
+    if let Some(on) = *TEST_SOURCE.lock().unwrap() {
+        return on;
+    }
+    settings::source().is_some()
+}
+
+/// The name a source is searched by: the original when it is English,
+/// else the title in the UI's language.
+fn search_title(info: &Info) -> String {
+    match (&info.original_title, info.original_language.as_deref()) {
+        (Some(o), Some("en")) => o.clone(),
+        _ => info.title.clone(),
+    }
+}
+
+/// Starts the search for `key` (once per run) when there is a source.
+fn ensure_search(key: &str, info: &Info) {
+    if !has_source() || SEARCHES.lock().unwrap().contains_key(key) {
+        return;
+    }
+    let (_, ep) = parse_key(key);
+    let request = json!({
+        "imdb": info.imdb,
+        "title": search_title(info),
+        "year": if ep.is_none() { info.year } else { None },
+        "season": ep.map(|e| e.0),
+        "episode": ep.map(|e| e.1),
+    });
+    SEARCHES.lock().unwrap().insert(key.to_owned(), Search::default());
+    start_search(key.to_owned(), request);
+}
+
+#[cfg(not(test))]
+fn start_search(key: String, request: Value) {
+    let finish = move |search: Search| {
+        SEARCHES.lock().unwrap().insert(key.clone(), search);
+        bump();
+    };
+    let Some(source) = settings::source() else { return };
+    let request: sources::Request = match serde_json::from_value(request) {
+        Ok(r) => r,
+        Err(e) => return finish(Search { releases: None, failed: Some(e.to_string()) }),
+    };
+    let job = sources::start_search(source, request);
+    std::thread::spawn(move || {
+        let started = Instant::now();
+        loop {
+            std::thread::sleep(Duration::from_millis(300));
+            let r = sources::result(job);
+            match r["state"].as_str() {
+                Some("pending") if started.elapsed() < Duration::from_secs(120) => continue,
+                Some("done") => {
+                    let releases = r["releases"].as_array().cloned().unwrap_or_default();
+                    break finish(Search { releases: Some(releases), failed: None });
+                }
+                _ => {
+                    let message = text(&r["message"]).unwrap_or_else(|| "timed out".into());
+                    eprintln!("reel catalog: search failed: {message}");
+                    break finish(Search { releases: None, failed: Some(message) });
+                }
+            }
+        }
+    });
+}
+
+#[cfg(test)]
+fn start_search(_key: String, _request: Value) {
+    let _ = sources::result;
+}
+
+fn search_of(key: &str) -> Option<Search> {
+    SEARCHES.lock().unwrap().get(key).cloned()
+}
+
+fn releases_of(key: &str) -> Vec<Value> {
+    search_of(key).and_then(|s| s.releases).unwrap_or_default()
+}
+
+/// "4K", "1080p", "720p", "SD".
+fn quality(r: &Value) -> String {
+    match r["info"]["resolution"].as_u64() {
+        Some(2160) => "4K".into(),
+        Some(n) => format!("{n}p"),
+        None => "SD".into(),
+    }
+}
+
+fn quality_rank(r: &Value) -> u64 {
+    r["info"]["resolution"].as_u64().unwrap_or(0)
+}
+
+/// The release's own words for where it comes from: "BluRay", "WEB HDR".
+fn source_label(r: &Value) -> String {
+    let info = &r["info"];
+    let mut parts: Vec<&str> = Vec::new();
+    parts.push(match info["source"].as_str() {
+        Some("remux") => "Remux",
+        Some("bluray") => "BluRay",
+        Some("web") => "WEB",
+        Some("hdtv") => "HDTV",
+        Some("dvd") => "DVD",
+        _ => "",
+    });
+    if info["dolby_vision"] == true {
+        parts.push("DV");
+    } else if info["hdr"] == true {
+        parts.push("HDR");
+    }
+    parts.retain(|p| !p.is_empty());
+    parts.join(" ")
+}
+
+fn peers(r: &Value) -> u64 {
+    r["seeders"].as_u64().unwrap_or(0)
+}
+
+/// The bitrate it needs to play without waiting, Mbit/s (0: unknown).
+/// A pack is shared out over `episodes`.
+fn mbit(r: &Value, minutes: u32, episodes: u32) -> u64 {
+    let bytes = r["size"].as_f64().unwrap_or(0.0);
+    let share = if r["seasonPack"] == true { episodes.max(1) as f64 } else { 1.0 };
+    if bytes <= 0.0 || minutes == 0 {
+        return 0;
+    }
+    (bytes / share * 8.0 / (minutes as f64 * 60.0) / 1e6).ceil() as u64
+}
+
+fn size(r: &Value) -> String {
+    r["size"].as_f64().filter(|b| *b > 0.0).map(crate::Fmt::size).unwrap_or_default()
 }
 
 /// Starts without waiting: enough people sharing for its bitrate.
-fn plays_now(r: &Release) -> bool {
-    r.peers >= 50 && r.mbit <= 15
+fn plays_now(peers: u64, mbit: u64) -> bool {
+    peers >= 50 && mbit <= 15
 }
 
 /// The release Play uses: the user's choice, else the best quality that
-/// plays now, else the one most people share. An index into `f.releases`.
-fn chosen(f: &Film) -> Option<usize> {
-    if f.releases.is_empty() {
+/// plays now, else the one most people share. An index into `releases`.
+fn chosen(key: &str, releases: &[Value], minutes: u32, episodes: u32) -> Option<usize> {
+    if releases.is_empty() {
         return None;
     }
-    if let Some(&i) = CHOSEN.lock().unwrap().get(f.id) {
+    if let Some(&i) = CHOSEN.lock().unwrap().get(key)
+        && i < releases.len()
+    {
         return Some(i);
     }
-    let rs = f.releases.iter().enumerate();
+    let rs = releases.iter().enumerate();
     rs.clone()
-        .filter(|(_, r)| plays_now(r))
-        .max_by_key(|(_, r)| (quality_rank(r.quality), r.peers))
-        .or_else(|| rs.max_by_key(|(_, r)| r.peers))
+        .filter(|(_, r)| plays_now(peers(r), mbit(r, minutes, episodes)))
+        .max_by_key(|(i, r)| (quality_rank(r), peers(r), std::cmp::Reverse(*i)))
+        .or_else(|| rs.max_by_key(|(i, r)| (peers(r), std::cmp::Reverse(*i))))
         .map(|(i, _)| i)
 }
 
 /// Four signal bars for the people sharing.
-fn bars(peers: u32) -> u8 {
+fn bars(peers: u64) -> u8 {
     match peers {
         200.. => 4,
         30..200 => 3,
@@ -452,288 +590,536 @@ fn bars(peers: u32) -> u8 {
     }
 }
 
-/// The releases fastest to start first, each with a plain note
-/// (`note` a key under `release.note.*`, `mbit` for "needs").
-fn releases(f: &Film) -> Vec<Value> {
-    let pick = chosen(f);
-    let mut order: Vec<usize> = (0..f.releases.len()).collect();
-    order.sort_by_key(|&i| std::cmp::Reverse(f.releases[i].peers));
+/// How long one of `key` runs and how many episodes a pack of its season holds.
+fn length_of(key: &str, info: &Info) -> (u32, u32) {
+    let (show, ep) = parse_key(key);
+    let Some((s, e)) = ep else { return (info.minutes, 1) };
+    let episodes = info.seasons.iter().find(|x| x.0 == s).map_or(1, |x| x.2);
+    let minutes = peek(&Call::Season(show.to_owned(), s))
+        .and_then(|season| find_episode(&season, e).and_then(|x| x["runtimeMinutes"].as_u64()))
+        .map_or(info.minutes, |m| m as u32);
+    (minutes, episodes)
+}
+
+/// The releases of `key`, those starting fastest first, each with a plain
+/// note (`note` a key under `release.note.*`, `mbit` for "needs").
+fn releases_json(key: &str, info: &Info) -> Vec<Value> {
+    let releases = releases_of(key);
+    let (minutes, episodes) = length_of(key, info);
+    let pick = chosen(key, &releases, minutes, episodes);
+    let mut order: Vec<usize> = (0..releases.len()).collect();
+    order.sort_by_key(|&i| std::cmp::Reverse(peers(&releases[i])));
     order
         .iter()
         .enumerate()
         .map(|(rank, &i)| {
-            let r = &f.releases[i];
+            let r = &releases[i];
+            let (p, m) = (peers(r), mbit(r, minutes, episodes));
             let note = if Some(i) == pick {
                 "plays_now"
-            } else if r.mbit > 15 {
+            } else if m > 15 {
                 "needs"
-            } else if r.peers < 10 {
+            } else if p < 10 {
                 "few_sharing"
             } else if rank == 0 {
                 "starts_fastest"
-            } else if r.peers < 30 {
+            } else if p < 30 {
                 "slow_start"
             } else {
                 "plays_now"
             };
             json!({
                 "index": i,
-                "quality": r.quality,
-                "source": r.source,
-                "group": r.group,
-                "size": size(r.mb),
-                "tracks": r.tracks,
-                "peers": r.peers,
-                "bars": bars(r.peers),
+                "quality": quality(r),
+                "source": source_label(r),
+                // The release's full name.
+                "group": r["title"],
+                "size": size(r),
+                "tracks": [],
+                "peers": p,
+                "bars": bars(p),
                 "note": note,
-                "mbit": r.mbit,
+                "mbit": m,
                 "selected": Some(i) == pick,
+                "pack": r["seasonPack"] == true,
+                "indexer": r["indexer"],
             })
         })
         .collect()
 }
 
 /// The release line: the one Play uses, `fast` when it starts in seconds.
-fn release_line(f: &Film) -> Value {
-    let Some(r) = chosen(f).map(|i| &f.releases[i]) else { return Value::Null };
+fn release_line(key: &str, info: &Info) -> Value {
+    let releases = releases_of(key);
+    let (minutes, episodes) = length_of(key, info);
+    let Some(r) = chosen(key, &releases, minutes, episodes).map(|i| &releases[i]) else { return Value::Null };
     json!({
-        "quality": r.quality,
-        "source": r.source,
-        "pack": f.kind == Kind::Show,
-        "size": size(r.mb),
-        "peers": r.peers,
-        "fast": r.peers >= 100 && r.mbit <= 15,
+        "quality": quality(r),
+        "source": source_label(r),
+        "pack": r["seasonPack"] == true,
+        "size": size(r),
+        "peers": peers(r),
+        "fast": peers(r) >= 100 && mbit(r, minutes, episodes) <= 15,
     })
 }
 
-// ---- Episodes (Flash Gordon has them; the other shows list none yet).
-
-fn episode_id(show: &str, season: u8, n: u8) -> String {
-    format!("{show}-{season}-{n}")
-}
-
-/// `flash-3-4` → ("flash", 3, 4).
-fn parse_episode(id: &str) -> Option<(&str, u8, u8)> {
-    let mut it = id.rsplitn(3, '-');
-    let n = it.next()?.parse().ok()?;
-    let s = it.next()?.parse().ok()?;
-    Some((it.next()?, s, n))
-}
-
-fn chapters(show: &str, season: u8) -> Option<&'static Vec<Chapter>> {
-    (show == "flash").then(|| FLASH.get(season as usize - 1)).flatten()
-}
-
-/// How far the viewer is into an episode: (minutes watched, watched to the end).
-fn episode_progress(f: &Film, season: u8, n: u8) -> (u16, bool) {
-    match f.resume {
-        Some((s, e, m)) if (s, e) == (season, n) => (m, false),
-        Some((s, e, _)) => (0, (season, n) < (s, e)),
-        None => (0, false),
+/// Where the search for `key` is: "no_source" (none set in Settings),
+/// "searching", "failed", "done".
+fn releases_state(key: &str) -> &'static str {
+    if !has_source() {
+        return "no_source";
+    }
+    match search_of(key) {
+        None => "searching",
+        Some(Search { failed: Some(_), .. }) => "failed",
+        Some(Search { releases: None, .. }) => "searching",
+        Some(_) => "done",
     }
 }
 
-fn episode_json(f: &Film, season: u8, n: u8, ch: &Chapter) -> Value {
-    let (min, r, thumb) = *ch;
-    let (watched_min, watched) = episode_progress(f, season, n);
-    let (py, pm, pd) = FLASH_PREMIERES[season as usize - 1];
-    let (y, m, d) = civil(days(py, pm, pd) + 7 * (n as i64 - 1));
-    let quality = chosen(f).map(|i| f.releases[i].quality);
-    json!({
-        "id": episode_id(f.id, season, n),
-        "show": f.id,
-        "season": season,
-        "number": n,
-        "minutes": min,
-        "date": [y, m, d],
-        "rating": rating(r),
-        "thumb": url(thumb),
-        "progress": if watched { 1.0 } else { watched_min as f64 / min as f64 },
-        "left": if watched_min > 0 { Some(min - watched_min) } else { None },
-        "watched": watched,
-        "quality": quality,
-        "playable": false,
-    })
+/// What the engine opens for `key`.
+pub enum PlaySource {
+    /// No source set, no release found, or no such title.
+    None,
+    /// Still finding out (the title or the search): ask again.
+    Searching,
+    /// A magnet or .torrent URL, and the episode to pick in a pack.
+    Ready(String, Option<(u16, u16)>),
 }
 
-// ---- Cards and title screens.
-
-/// What a card, a shelf and a hero show of a title.
-fn summary(f: &Film) -> Value {
-    let (progress, left, resume) = match (f.kind, f.stopped_at, f.resume) {
-        (Kind::Show, _, Some((s, e, m))) => {
-            let total = chapters(f.id, s).and_then(|c| c.get(e as usize - 1)).map_or(30, |c| c.0).max(m + 1);
-            (m as f64 / total as f64, Some(total - m), json!({ "season": s, "episode": e }))
-        }
-        (_, Some(at), _) => {
-            let watched = (at / 60) as u16;
-            (at as f64 / (f.minutes as f64 * 60.0), Some(f.minutes.saturating_sub(watched)), Value::Null)
-        }
-        _ => (0.0, None, Value::Null),
+/// The release `key` plays, starting what is needed to know it.
+pub fn play_source(key: &str) -> PlaySource {
+    if !has_source() {
+        return PlaySource::None;
+    }
+    let (title, ep) = parse_key(key);
+    let call = Call::Title(title.to_owned());
+    let Some(t) = meta(&call) else {
+        return if answered(&call) { PlaySource::None } else { PlaySource::Searching };
     };
+    let info = from_title(&t);
+    ensure_search(key, &info);
+    match search_of(key) {
+        Some(Search { releases: Some(releases), .. }) => {
+            let (minutes, episodes) = length_of(key, &info);
+            match chosen(key, &releases, minutes, episodes).and_then(|i| text(&releases[i]["source"])) {
+                Some(source) => PlaySource::Ready(source, ep.map(|(s, e)| (s as u16, e as u16))),
+                None => PlaySource::None,
+            }
+        }
+        Some(Search { failed: Some(_), .. }) | None => PlaySource::None,
+        Some(_) => PlaySource::Searching,
+    }
+}
+
+// ---- Episodes.
+
+fn find_episode(season: &Value, number: u32) -> Option<&Value> {
+    season["episodes"].as_array()?.iter().find(|e| e["number"].as_u64() == Some(number as u64))
+}
+
+/// The episode after (season, episode) of `show`, from what the catalog
+/// knows (asking for the season it needs); None after the last one.
+fn next_episode(show: &str, info: &Info, season: u32, episode: u32) -> Option<(u32, u32)> {
+    let count = match meta(&Call::Season(show.to_owned(), season)) {
+        Some(s) => s["episodes"].as_array().map_or(0, |e| {
+            e.iter().filter_map(|x| x["number"].as_u64()).max().unwrap_or(0) as u32
+        }),
+        None => info.seasons.iter().find(|s| s.0 == season).map_or(u32::MAX, |s| s.2),
+    };
+    if episode < count {
+        return Some((season, episode + 1));
+    }
+    info.seasons.iter().find(|s| s.0 > season && s.2 > 0).map(|s| (s.0, 1))
+}
+
+fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
+    let season = ep["season"].as_u64().unwrap_or(0) as u32;
+    let number = ep["number"].as_u64().unwrap_or(0) as u32;
+    let key = episode_key(show, season, number);
+    let minutes = ep["runtimeMinutes"].as_u64().map_or(fallback_minutes, |m| m as u32);
+    let seen = progress::get(&key);
+    let watched = seen.as_ref().is_some_and(|e| e.watched);
+    let quality = search_of(&key).and_then(|s| s.releases).and_then(|rs| {
+        let pick = chosen(&key, &rs, minutes, 1)?;
+        Some(quality(&rs[pick]))
+    });
     json!({
-        "id": f.id,
-        "kind": f.kind.key(),
-        "year": f.year,
-        "yearEnd": f.year_end,
-        "minutes": f.minutes,
-        "rating": rating(f.rating),
-        "votes": votes(f.votes),
-        "badges": f.badges,
-        "genres": f.genres,
-        "still": url(f.still),
-        "card": url(f.card.or(f.still)),
-        "poster": url(f.poster),
-        "ink": f.ink,
-        "paper": f.paper,
-        "stoppedAt": f.stopped_at,
-        "progress": progress,
-        "left": left,
-        "resume": resume,
-        "seasons": f.seasons.len(),
-        "airs": f.airs.map(|(s, e, m, d)| json!({ "season": s, "episode": e, "month": m, "day": d })),
-        "tag": f.tag,
-        "playable": f.magnet.is_some(),
-        "inList": in_list(f.id),
-        "release": release_line(f),
-        "play": play_target(f),
+        "id": key,
+        "show": show,
+        "season": season,
+        "number": number,
+        "title": text(&ep["name"]).unwrap_or_default(),
+        "about": text(&ep["overview"]).unwrap_or_default(),
+        "minutes": minutes,
+        "date": ymd(&ep["airDate"]),
+        "rating": rating(&ep["ratings"]).0,
+        "thumb": image_url(&ep["still"], THUMB_W),
+        "progress": seen.as_ref().map_or(0.0, |e| e.fraction()),
+        "left": seen.as_ref().filter(|e| !e.watched && e.position > 0.0).map(|e| e.minutes_left()),
+        "watched": watched,
+        "start": seen.as_ref().filter(|e| !e.watched).map_or(0.0, |e| e.position),
+        "quality": quality,
+        "playable": has_source(),
     })
 }
 
-fn by_ids(ids: &[&str]) -> Vec<Value> {
-    ids.iter().filter_map(|id| film(id)).map(summary).collect()
+/// The episodes of a season: `[{"id","show","season","number","title","about",
+/// "minutes","date":[y,m,d]|null,"rating","thumb","progress","left","watched",
+/// "start","quality","playable"}]`; empty until the season is known.
+pub fn episodes(show: &str, season: u32) -> Value {
+    let got = meta_all(&[Call::Season(show.to_owned(), season), Call::Title(show.to_owned())]);
+    let Some(s) = &got[0] else { return json!([]) };
+    let fallback = got[1].as_ref().map_or(0, |t| from_title(t).minutes);
+    s["episodes"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+        .iter()
+        .map(|e| episode_json(show, e, fallback))
+        .collect()
 }
 
-/// The home shelves: `[{"id", "items": [summary…]}]`; the hero shows the focused one.
-pub fn home() -> Value {
-    json!([
-        { "id": "continue", "items": by_ids(&["charade", "flash", "metropolis", "vampires", "general"]) },
-        { "id": "open", "items": by_ids(&["sintel", "bunny"]) },
-        { "id": "noir", "items": by_ids(&["detour", "friday", "night", "charade"]) },
-        { "id": "silent", "items": by_ids(&["metropolis", "nosferatu", "general", "sherlock", "caligari", "moon"]) },
-    ])
-}
-
-/// A browse page: `{"trending": [summary…], "all": [summary…]}` for
-/// `"movies"` or `"shows"`.
-pub fn browse(page: &str) -> Value {
-    if page == "shows" {
-        json!({
-            "trending": by_ids(&["flash", "vampires", "fantomas", "judex", "pauline", "undersea", "zorro", "lone_ranger"]),
-            "all": by_ids(&["bonanza", "vampires", "pauline", "phantom_creeps", "flash", "fantomas", "judex", "undersea", "zorro", "lone_ranger"]),
-        })
-    } else {
-        json!({
-            "trending": by_ids(&["metropolis", "nosferatu", "charade", "general", "sherlock", "friday", "detour", "night"]),
-            "all": by_ids(&["detour", "friday", "caligari", "moon", "sherlock", "sintel", "bunny", "metropolis", "nosferatu", "general", "charade", "night"]),
-        })
-    }
-}
-
-/// A title screen: the summary plus `releases` and, for shows, `season`
-/// (the one to show first) and `seasonList` (`[{"number","year","episodes"}]`).
-pub fn title(id: &str) -> Value {
-    let Some(f) = film(id) else { return Value::Null };
-    let mut v = summary(f);
-    v["releases"] = json!(releases(f));
-    if f.kind == Kind::Show {
-        let s = f.resume.map_or(1, |(s, _, _)| s);
-        v["season"] = json!(s);
-        v["seasonList"] = f
-            .seasons
-            .iter()
-            .enumerate()
-            .map(|(i, &n)| {
-                let year = match f.id {
-                    "flash" => FLASH_PREMIERES[i].0 as u16,
-                    _ => f.year + i as u16,
-                };
-                json!({ "number": i + 1, "year": year, "episodes": n })
-            })
-            .collect();
-    }
-    v
-}
-
-/// What Play starts for a title: `{"id"}` for a film, plus `season` and
-/// `episode` for a show (where the viewer is, else the first episode).
-fn play_target(f: &Film) -> Value {
-    if f.kind == Kind::Show {
-        let (s, e) = f.resume.map_or((1, 1), |(s, e, _)| (s, e));
-        json!({ "id": episode_id(f.id, s, e), "season": s, "episode": e })
-    } else {
-        json!({ "id": f.id })
-    }
-}
-
-/// The episodes of a season: `[{"id","show","season","number","minutes",
-/// "date":[y,m,d],"rating","thumb","progress","left","watched","quality","playable"}]`;
-/// empty for shows whose episodes are not listed yet.
-pub fn episodes(show: &str, season: u8) -> Value {
-    let (Some(f), Some(chs)) = (film(show), chapters(show, season)) else { return json!([]) };
-    chs.iter().enumerate().map(|(i, ch)| episode_json(f, season, i as u8 + 1, ch)).collect()
+/// One episode (null until its season is known).
+pub fn episode(show: &str, season: u32, number: u32) -> Value {
+    let Some(s) = meta(&Call::Season(show.to_owned(), season)) else { return Value::Null };
+    let fallback = peek(&Call::Title(show.to_owned())).map_or(0, |t| from_title(&t).minutes);
+    find_episode(&s, number).map_or(Value::Null, |e| episode_json(show, e, fallback))
 }
 
 /// How long before the end of an episode the next one is offered.
 const UP_NEXT_S: f64 = 40.0;
 
-/// The episode after `id`, once `position` is within the last 40 s of
+/// The episode after `key`, once `position` is within the last 40 s of
 /// `duration`; null for a film, the last episode, or earlier.
-pub fn up_next(id: &str, position: f64, duration: f64) -> Value {
+pub fn up_next(key: &str, position: f64, duration: f64) -> Value {
     if duration <= 0.0 || duration - position > UP_NEXT_S {
         return Value::Null;
     }
-    let Some((show, s, n)) = parse_episode(id) else { return Value::Null };
-    let Some(f) = film(show) else { return Value::Null };
-    let next = if chapters(show, s).is_some_and(|c| (n as usize) < c.len()) { (s, n + 1) } else { (s + 1, 1) };
-    match chapters(show, next.0).and_then(|c| c.get(next.1 as usize - 1)) {
-        Some(ch) => episode_json(f, next.0, next.1, ch),
+    let (show, Some((s, e))) = parse_key(key) else { return Value::Null };
+    let info = peek(&Call::Title(show.to_owned())).map(|t| from_title(&t)).unwrap_or_default();
+    match next_episode(show, &info, s, e) {
+        Some((ns, ne)) => episode(show, ns, ne),
         None => Value::Null,
     }
 }
 
-/// The demo tracks of what plays: audio and subtitle options (keys under
-/// `tracks.*`) with the one in use, and the releases.
-pub fn tracks(id: &str) -> Value {
-    let f = parse_episode(id).and_then(|(show, _, _)| film(show)).or_else(|| film(id));
-    let Some(f) = f else { return json!({ "audio": [], "subtitles": [], "releases": [] }) };
-    let has_subs = f.releases.iter().any(|r| r.tracks.iter().any(|t| t.starts_with("subs")));
+// ---- Cards and title screens.
+
+/// Where the viewer is in a title: what Play starts and what it says.
+struct Where {
+    /// What plays (a title or an episode key).
+    key: String,
+    episode: Option<(u32, u32)>,
+    /// Seconds into it; watched part; minutes left (None: not started).
+    start: f64,
+    progress: f64,
+    left: Option<u32>,
+    /// A show the viewer is in (or onto the next episode of).
+    resume: bool,
+}
+
+fn where_in(info: &Info) -> Where {
+    if !info.show {
+        let seen = progress::get(&info.id).filter(|e| !e.watched);
+        return Where {
+            key: info.id.clone(),
+            episode: None,
+            start: seen.as_ref().map_or(0.0, |e| e.position),
+            progress: seen.as_ref().map_or(0.0, |e| e.fraction()),
+            left: seen.as_ref().map(|e| e.minutes_left()),
+            resume: false,
+        };
+    }
+    let first = (info.seasons.first().map_or(1, |s| s.0), 1);
+    let at = |(s, e): (u32, u32), resume: bool| {
+        let key = episode_key(&info.id, s, e);
+        let seen = progress::get(&key).filter(|x| !x.watched);
+        Where {
+            start: seen.as_ref().map_or(0.0, |x| x.position),
+            progress: seen.as_ref().map_or(0.0, |x| x.fraction()),
+            left: seen.as_ref().map(|x| x.minutes_left()),
+            key,
+            episode: Some((s, e)),
+            resume,
+        }
+    };
+    match progress::latest(&info.id) {
+        Some((_, e)) if !e.watched => at((e.season.unwrap_or(1), e.episode.unwrap_or(1)), true),
+        Some((_, e)) => match next_episode(&info.id, info, e.season.unwrap_or(1), e.episode.unwrap_or(1)) {
+            Some(next) => at(next, true),
+            None => at(first, false),
+        },
+        None => at(first, false),
+    }
+}
+
+/// What a card, a shelf and a hero show of a title.
+fn summary(info: &Info) -> Value {
+    let w = where_in(info);
+    let play = match w.episode {
+        Some((s, e)) => json!({ "id": w.key, "season": s, "episode": e, "start": w.start }),
+        None => json!({ "id": w.key, "start": w.start }),
+    };
+    json!({
+        "id": info.id,
+        "kind": if info.show { "show" } else { "movie" },
+        "title": info.title,
+        "about": info.about,
+        "notice": null,
+        "anime": info.anime,
+        "year": info.year,
+        "yearEnd": info.year_end,
+        "minutes": info.minutes,
+        "rating": info.rating,
+        "votes": info.votes,
+        "badges": [],
+        "genres": info.genres,
+        "still": info.still,
+        "card": info.card.as_ref().or(info.still.as_ref()),
+        "poster": info.poster,
+        "ink": "#F5F5F5",
+        "paper": info.paper.as_deref().unwrap_or("#1A1A1A"),
+        "stoppedAt": (!info.show && w.start > 0.0).then_some(w.start as u32),
+        "progress": w.progress,
+        "left": w.left,
+        "resume": match (w.resume, w.episode) {
+            (true, Some((s, e))) => json!({ "season": s, "episode": e }),
+            _ => Value::Null,
+        },
+        "seasons": info.season_count,
+        "airs": info.airs.map(|[s, e, m, d]| json!({ "season": s, "episode": e, "month": m, "day": d })),
+        "tag": null,
+        "playable": has_source(),
+        "inList": in_list(&info.id),
+        "release": release_line(&w.key, info),
+        "play": play,
+    })
+}
+
+/// A stand-in card that says something instead of a title (`notice`, a key
+/// under `empty.*`): no TMDB key, still loading, nothing came.
+fn notice(key: &str) -> Value {
+    let info = Info { id: format!("reel:notice:{key}"), ..Default::default() };
+    let mut v = summary(&info);
+    v["notice"] = json!(key);
+    v
+}
+
+fn notice_title(key: &str) -> Value {
+    let mut v = notice(key);
+    v["releases"] = json!([]);
+    v["releasesState"] = json!("none");
+    v
+}
+
+/// Shelf items of a `Meta.trending` answer.
+fn cards(data: &Option<Value>) -> Vec<Value> {
+    data.as_ref().and_then(|d| d["items"].as_array().cloned()).unwrap_or_default()
+}
+
+/// Full titles asked for ahead, per shelf, so the hero has the runtime and
+/// the genres of what the remote reaches first. Not for anime: AniList
+/// allows few calls a minute.
+const PREFETCH: usize = 8;
+
+fn shelf_items(cards: &[Value]) -> Vec<Value> {
+    let mut seen = HashSet::new();
+    cards
+        .iter()
+        .filter(|c| c["id"].as_str().is_some_and(|id| seen.insert(id.to_owned())))
+        .enumerate()
+        .map(|(i, c)| {
+            let id = c["id"].as_str().unwrap_or_default();
+            if i < PREFETCH && id.starts_with("tmdb:") && c["anime"] != true {
+                meta(&Call::Title(id.to_owned()));
+            }
+            summary(&card_info(c))
+        })
+        .collect()
+}
+
+/// `a`, `b`, `a`, `b`…
+fn interleave(a: Vec<Value>, b: Vec<Value>) -> Vec<Value> {
+    let mut out = Vec::with_capacity(a.len() + b.len());
+    let (mut a, mut b) = (a.into_iter(), b.into_iter());
+    loop {
+        match (a.next(), b.next()) {
+            (None, None) => break out,
+            (x, y) => out.extend(x.into_iter().chain(y)),
+        }
+    }
+}
+
+/// Continue watching: the titles the viewer is in, latest first; a film
+/// they finished drops out, a show stays while it has a next episode.
+fn continuing() -> Vec<Value> {
+    let mut out = Vec::new();
+    for (_, e) in progress::recent().into_iter().take(20) {
+        let Some(t) = meta(&Call::Title(e.title.clone())) else { continue };
+        let info = Info { id: e.title.clone(), ..from_title(&t) };
+        if !info.show && e.watched {
+            continue;
+        }
+        let s = summary(&info);
+        if info.show && s["resume"].is_null() {
+            continue;
+        }
+        out.push(s);
+    }
+    out
+}
+
+/// The home shelves: `[{"id","items":[summary…]}]`, ids are keys under
+/// `shelf.*`. Never empty: a shelf with one notice card (`notice` set) says
+/// why when there is nothing to show.
+pub fn home() -> Value {
+    let tmdb = tmdb_on();
+    let kinds: &[&'static str] =
+        if tmdb { &["movie", "tv", "movie-popular", "tv-popular", "anime"] } else { &["anime"] };
+    let calls: Vec<Call> = kinds.iter().map(|k| Call::Trending(k)).collect();
+    let got = meta_all(&calls);
+    let by = |k: &str| kinds.iter().position(|x| *x == k).map(|i| cards(&got[i])).unwrap_or_default();
+    let mut shelves = vec![("continue", continuing())];
+    if tmdb {
+        shelves.push(("trending_movies", shelf_items(&by("movie"))));
+        shelves.push(("trending_shows", shelf_items(&by("tv"))));
+        shelves.push(("popular", shelf_items(&interleave(by("movie-popular"), by("tv-popular")))));
+    }
+    shelves.push(("anime", shelf_items(&by("anime"))));
+    let mut out: Vec<Value> =
+        shelves.into_iter().filter(|(_, items)| !items.is_empty()).map(|(id, items)| json!({ "id": id, "items": items })).collect();
+    let pending = calls.iter().any(|c| !answered(c));
+    if !tmdb {
+        out.push(json!({ "id": "no_tmdb", "items": [notice("no_tmdb")] }));
+    } else if out.is_empty() {
+        let key = if pending { "loading" } else { "offline" };
+        out.push(json!({ "id": key, "items": [notice(key)] }));
+    }
+    json!(out)
+}
+
+/// A browse page: `{"trending":[summary…],"all":[summary…]}` for `"movies"`
+/// or `"shows"`. Without TMDB, Shows lists anime and Movies a notice card.
+pub fn browse(page: &str) -> Value {
+    let shows = page == "shows";
+    let tmdb = tmdb_on();
+    let (trending, all) = match (tmdb, shows) {
+        (true, false) => ("movie", "movie-popular"),
+        (true, true) => ("tv", "tv-popular"),
+        (false, true) => ("anime", "anime-popular"),
+        (false, false) => return json!({ "trending": [notice("no_tmdb")], "all": [] }),
+    };
+    let got = meta_all(&[Call::Trending(trending), Call::Trending(all)]);
+    let (t, a) = (shelf_items(&cards(&got[0])), shelf_items(&cards(&got[1])));
+    if t.is_empty() && a.is_empty() {
+        let key = if answered(&Call::Trending(trending)) { "offline" } else { "loading" };
+        return json!({ "trending": [notice(key)], "all": [] });
+    }
+    json!({ "trending": t, "all": a })
+}
+
+/// A title screen: the summary plus `releases` (of what Play starts: the
+/// film, or the show's episode) and `releasesState` (see `releases_state`),
+/// and for shows `season` (the one to show first) and `seasonList`
+/// (`[{"number","year","episodes","name"}]`, regular seasons). A notice
+/// title while it is not known yet.
+pub fn title(id: &str) -> Value {
+    let call = Call::Title(id.to_owned());
+    let Some(t) = meta_all(std::slice::from_ref(&call)).remove(0) else {
+        return notice_title(if answered(&call) { "unavailable" } else { "loading" });
+    };
+    let info = Info { id: id.to_owned(), ..from_title(&t) };
+    let w = where_in(&info);
+    ensure_search(&w.key, &info);
+    let mut v = summary(&info);
+    v["releases"] = json!(releases_json(&w.key, &info));
+    v["releasesState"] = json!(releases_state(&w.key));
+    if info.show {
+        v["season"] = json!(w.episode.map_or(1, |e| e.0));
+        v["seasonList"] = info
+            .seasons
+            .iter()
+            .map(|(n, y, eps, name)| json!({ "number": n, "year": y.or(info.year).unwrap_or(0), "episodes": eps, "name": name }))
+            .collect();
+    }
+    v
+}
+
+/// The tracks of what plays: audio and subtitle options (keys under
+/// `tracks.*`; the engine does not list a file's tracks yet) and the releases.
+pub fn tracks(key: &str) -> Value {
+    let (title, _) = parse_key(key);
+    let info = peek(&Call::Title(title.to_owned())).map(|t| Info { id: title.to_owned(), ..from_title(&t) });
     json!({
         "audio": [{ "key": "original", "selected": true }],
-        "subtitles": if has_subs {
-            json!([{ "key": "off", "selected": false }, { "key": "en", "selected": true }])
-        } else {
-            json!([{ "key": "off", "selected": true }])
-        },
-        "releases": releases(f),
+        "subtitles": [{ "key": "off", "selected": true }],
+        "releases": info.map(|i| releases_json(key, &i)).unwrap_or_default(),
     })
+}
+
+/// The user's list while the app runs.
+static LIST: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(Default::default);
+
+fn in_list(id: &str) -> bool {
+    LIST.lock().unwrap().contains(id)
 }
 
 /// Adds the title to the user's list or takes it off; whether it is on it now.
 pub fn toggle_list(id: &str) -> bool {
     let mut list = LIST.lock().unwrap();
-    if !list.remove(id) {
+    let on = if list.remove(id) {
+        false
+    } else {
         list.insert(id.to_string());
-        return true;
-    }
-    false
+        true
+    };
+    bump();
+    on
 }
 
-/// Makes release `index` (of `title(id).releases[].index`) the one Play uses.
+/// Makes release `index` (of `title(id).releases[].index`) the one Play
+/// uses for what `id` plays (a title: its Play target; or an episode key).
 pub fn choose_release(id: &str, index: usize) -> bool {
-    let ok = film(id).is_some_and(|f| index < f.releases.len());
+    let (title, ep) = parse_key(id);
+    let key = match (ep, peek(&Call::Title(title.to_owned()))) {
+        (None, Some(t)) => where_in(&Info { id: title.to_owned(), ..from_title(&t) }).key,
+        _ => id.to_owned(),
+    };
+    let ok = index < releases_of(&key).len();
     if ok {
-        CHOSEN.lock().unwrap().insert(id.to_string(), index);
+        CHOSEN.lock().unwrap().insert(key, index);
+        bump();
     }
     ok
 }
 
-/// The catalog the UI shows. Results are JSON strings.
+/// Records where the player is in `key`; whether it now counts as watched.
+pub fn save_progress(key: &str, position: f64, duration: f64) -> bool {
+    let (title, ep) = parse_key(key);
+    if title.starts_with("reel:") {
+        return false;
+    }
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64);
+    let watched = progress::save(key, title, ep, position, duration, now);
+    bump();
+    watched
+}
+
+/// The catalog the UI shows: TMDB and AniList titles through `Meta`,
+/// releases from the user's search source, watch progress. Results are JSON
+/// strings; poll `revision()` and read again when it changes.
 #[module]
 pub struct Catalog;
 
 #[module]
 impl Catalog {
+    /// Goes up when anything the catalog shows changed (an answer landed, a
+    /// search finished, progress was saved): read again.
+    pub fn revision() -> f64 {
+        revision() as f64
+    }
+
     /// The home shelves: `[{"id","items":[summary…]}]` (see `catalog::summary`).
     pub fn home() -> String {
         home().to_string()
@@ -744,14 +1130,19 @@ impl Catalog {
         browse(&page).to_string()
     }
 
-    /// A film or show screen (null for an unknown id).
+    /// A film or show screen (a notice title while it is not known yet).
     pub fn title(id: String) -> String {
         title(&id).to_string()
     }
 
-    /// The episodes of `season` of `show` (1-based).
+    /// The episodes of `season` of `show`.
     pub fn episodes(show: String, season: u32) -> String {
-        episodes(&show, season.min(255) as u8).to_string()
+        episodes(&show, season).to_string()
+    }
+
+    /// Episode `number` of `season` of `show`, or null while it is not known.
+    pub fn episode(show: String, season: u32, number: u32) -> String {
+        episode(&show, season, number).to_string()
     }
 
     /// The episode to offer next at `position` of `duration` seconds of `id`, or null.
@@ -759,7 +1150,7 @@ impl Catalog {
         up_next(&id, position, duration).to_string()
     }
 
-    /// The audio, subtitle and release options of what plays (demo).
+    /// The audio, subtitle and release options of what plays.
     pub fn tracks(id: String) -> String {
         tracks(&id).to_string()
     }
@@ -773,88 +1164,28 @@ impl Catalog {
     pub fn choose_release(id: String, index: u32) -> bool {
         choose_release(&id, index as usize)
     }
+
+    /// Where the player should start `id` (what plays), seconds: where the
+    /// viewer stopped, 0 when new or watched.
+    pub fn start_at(id: String) -> f64 {
+        progress::start_at(&id)
+    }
+
+    /// The player's report: `position` of `duration` seconds into `id`.
+    /// Whether it counts as watched now (90%).
+    pub fn save_progress(id: String, position: f64, duration: f64) -> bool {
+        save_progress(&id, position, duration)
+    }
 }
+
+/// The catalog's and progress's stores are process-wide: tests that use
+/// them take this lock.
+#[cfg(test)]
+pub(crate) static TEST_LOCK: Mutex<()> = Mutex::new(());
+#[cfg(test)]
+static TEST_TMDB: Mutex<Option<bool>> = Mutex::new(None);
+#[cfg(test)]
+static TEST_SOURCE: Mutex<Option<bool>> = Mutex::new(None);
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn home_holds_the_titles() {
-        let s = home();
-        assert_eq!(s[0]["id"], "continue");
-        assert_eq!(s[0]["items"][0]["id"], "charade");
-        assert_eq!(s[0]["items"][0]["left"], 72);
-        assert_eq!(s[0]["items"][1]["resume"]["season"], 3);
-        assert_eq!(s[0]["items"][1]["left"], 7);
-        assert_eq!(s[1]["items"][0]["playable"], true);
-        assert!(film("sintel").unwrap().magnet.is_some());
-        assert!(film("nope").is_none());
-    }
-
-    #[test]
-    fn numbers() {
-        assert_eq!(rating(79), "7.9");
-        assert_eq!(votes(82_000), "82K");
-        assert_eq!(votes(6_400), "6.4K");
-        assert_eq!(votes(950), "950");
-        assert_eq!(civil(days(1940, 4, 3) + 14), (1940, 4, 17));
-        assert_eq!(civil(days(1936, 12, 28) + 7), (1937, 1, 4));
-    }
-
-    #[test]
-    fn releases_fastest_first_and_play_uses_the_best_that_plays_now() {
-        let t = title("nosferatu");
-        let r = t["releases"].as_array().unwrap();
-        assert_eq!(r.len(), 5);
-        assert_eq!(r[0]["quality"], "720p");
-        assert_eq!(r[0]["note"], "starts_fastest");
-        assert_eq!(r[1]["selected"], true);
-        assert_eq!(r[1]["note"], "plays_now");
-        assert_eq!(r[2]["note"], "needs");
-        assert_eq!(r[3]["note"], "slow_start");
-        assert_eq!(r[4]["note"], "few_sharing");
-        assert_eq!(r[4]["bars"], 1);
-        assert_eq!(t["release"]["quality"], "1080p");
-        assert_eq!(t["play"]["id"], "nosferatu");
-    }
-
-    #[test]
-    fn choosing_a_release() {
-        assert!(choose_release("charade", 1));
-        assert_eq!(title("charade")["release"]["quality"], "720p");
-        assert!(!choose_release("charade", 9));
-        CHOSEN.lock().unwrap().remove("charade");
-    }
-
-    #[test]
-    fn flash_gordon_has_three_seasons_of_chapters() {
-        let t = title("flash");
-        assert_eq!(t["seasonList"].as_array().unwrap().len(), 3);
-        assert_eq!(t["seasonList"][2]["year"], 1940);
-        assert_eq!(t["play"], json!({ "id": "flash-3-4", "season": 3, "episode": 4 }));
-        let e = episodes("flash", 3);
-        assert_eq!(e.as_array().unwrap().len(), 12);
-        assert_eq!(e[2]["watched"], true);
-        assert_eq!(e[3]["left"], 7);
-        assert_eq!(e[3]["date"], json!([1940, 4, 24]));
-        assert_eq!(episodes("flash", 2).as_array().unwrap().len(), 15);
-        assert_eq!(episodes("vampires", 1), json!([]));
-    }
-
-    #[test]
-    fn up_next_near_the_end_of_an_episode() {
-        assert!(up_next("flash-3-4", 100.0, 1140.0).is_null());
-        assert_eq!(up_next("flash-3-4", 1110.0, 1140.0)["number"], 5);
-        assert_eq!(up_next("flash-1-13", 1070.0, 1080.0)["season"], 2);
-        assert!(up_next("flash-3-12", 1130.0, 1140.0).is_null());
-        assert!(up_next("sintel", 880.0, 888.0).is_null());
-    }
-
-    #[test]
-    fn list() {
-        assert!(in_list("nosferatu"));
-        assert!(toggle_list("detour"));
-        assert!(!toggle_list("detour"));
-    }
-}
+mod tests;
