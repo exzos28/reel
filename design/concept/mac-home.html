@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>reel — macOS home</title>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --night: #0A0F1C; --deck: #141B2D; --rule: #26304A; --paper: #F2F4F8; --mist: #8B94A9; --lamp: #F5B83D; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { position: relative; }
+  html, body { width: 1440px; height: 900px; overflow: hidden; background: var(--night); color: var(--paper); font-family: "Onest", sans-serif; }
+
+  .lights { position: absolute; top: 20px; left: 20px; display: flex; gap: 8px; z-index: 6; }
+  .lights i { width: 12px; height: 12px; border-radius: 50%; }
+  .nav { position: absolute; top: 12px; left: 0; right: 0; margin: 0 auto; width: max-content; z-index: 6; display: flex; align-items: center; gap: 2px;
+    padding: 5px; border-radius: 999px; background: rgba(20,27,45,.72); border: 1px solid rgba(255,255,255,.08); backdrop-filter: blur(18px); }
+  .nav .logo { font-family: "Big Shoulders Display", sans-serif; font-weight: 900; font-size: 22px; color: var(--lamp); padding: 0 12px 0 10px; }
+  .nav .item { font-size: 14px; font-weight: 600; color: var(--mist); padding: 8px 14px; border-radius: 999px; display: flex; align-items: center; gap: 6px; }
+  .nav .item.selected { color: var(--paper); background: rgba(255,255,255,.1); }
+  .nav .count { font-size: 11px; font-weight: 700; color: var(--night); background: var(--lamp); border-radius: 999px; padding: 1px 6px; }
+  .nav svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .nav .sep { width: 1px; height: 20px; background: var(--rule); margin: 0 4px; }
+
+  .hero { position: absolute; left: 0; right: 0; top: 0; height: 520px; overflow: hidden; }
+  .hero .img { position: absolute; right: -20px; top: -70px; width: 1300px; height: 800px; background: url(img/still-general.jpg) center/cover; filter: grayscale(1) contrast(1.1) brightness(.85); }
+  .hero .tint { position: absolute; inset: 0; background: linear-gradient(120deg, rgba(40,70,140,.55), rgba(10,15,28,.1)); mix-blend-mode: color; }
+  .hero .glow { position: absolute; right: 260px; top: 60px; width: 520px; height: 520px; border-radius: 50%; background: radial-gradient(circle, rgba(245,184,61,.22), rgba(245,184,61,0) 65%); mix-blend-mode: screen; }
+  .hero::after { content: ""; position: absolute; inset: 0;
+    background: linear-gradient(90deg, var(--night) 22%, rgba(10,15,28,.7) 42%, rgba(10,15,28,0) 66%), linear-gradient(0deg, var(--night) 2%, rgba(10,15,28,0) 40%); }
+  .info { position: absolute; left: 64px; top: 120px; width: 560px; z-index: 3; }
+  .title { font-family: "Big Shoulders Display", sans-serif; font-weight: 900; font-size: 104px; line-height: .88; letter-spacing: 2px; text-transform: uppercase; color: var(--paper); }
+  .title span { display: block; font-size: 34px; letter-spacing: 10px; color: var(--lamp); margin-bottom: 6px; }
+  .meta { display: flex; align-items: center; gap: 12px; margin-top: 16px; font-size: 15px; font-weight: 500; }
+  .meta .star { color: var(--lamp); font-weight: 700; } .meta i { width: 4px; height: 4px; border-radius: 50%; background: var(--mist); }
+  .about { margin-top: 12px; font-size: 16px; line-height: 1.5; color: rgba(242,244,248,.82); }
+  .release { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13.5px; color: var(--mist); }
+  .release b { color: var(--paper); } .release i { width: 8px; height: 8px; border-radius: 50%; background: #4ADE80; }
+  .actions { display: flex; gap: 10px; margin-top: 20px; }
+  .play { height: 46px; padding: 0 24px 0 20px; border-radius: 999px; background: var(--paper); color: var(--night); display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+  .play svg { width: 15px; height: 15px; fill: var(--night); }
+  .round { width: 46px; height: 46px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.28); display: grid; place-items: center; }
+  .round svg { width: 19px; height: 19px; stroke: var(--paper); fill: none; stroke-width: 2; }
+
+  .shelf { position: absolute; left: 64px; right: 0; z-index: 3; }
+  .shelf h2 { font-size: 20px; font-weight: 700; display: flex; align-items: baseline; gap: 10px; }
+  .shelf h2 span { font-size: 13px; color: var(--mist); font-weight: 500; }
+  .row { display: flex; gap: 18px; margin-top: 14px; }
+  .p { width: 148px; flex: none; }
+  .poster { position: relative; width: 148px; height: 219px; border-radius: 16px; overflow: hidden; }
+  .poster img { width: 100%; height: 100%; object-fit: cover; }
+  .badge { position: absolute; top: 8px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: rgba(10,15,28,.8); }
+  .badge.l { left: 8px; } .badge.r { right: 8px; color: var(--lamp); }
+  .track { height: 4px; border-radius: 2px; background: var(--rule); margin-top: 9px; overflow: hidden; } .track i { display: block; height: 100%; background: var(--paper); }
+  .p.hover { transform: translateY(-6px); } .p.hover .poster { box-shadow: 0 18px 40px rgba(0,0,0,.6); }
+  .p.hover .poster::after { content: ""; position: absolute; inset: 0; display: grid; background: rgba(10,15,28,.35); }
+  .p.hover .pp { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px; border-radius: 50%; background: var(--paper); display: grid; place-items: center; z-index: 2; }
+  .p.hover .pp svg { width: 20px; height: 20px; fill: var(--night); margin-left: 3px; }
+  .dl { display: flex; gap: 14px; width: 330px; flex: none; padding: 12px; border-radius: 18px; background: var(--deck); align-items: center; }
+  .dl img { width: 52px; height: 76px; border-radius: 10px; object-fit: cover; }
+  .dl .d { flex: 1; } .dl .t { font-size: 14px; font-weight: 600; } .dl .s { font-size: 12px; color: var(--mist); margin-top: 3px; }
+  .dl .track i { background: var(--lamp); }
+</style>
+</head>
+<body>
+  <div class="lights"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i></div>
+  <nav class="nav">
+    <div class="logo">reel</div>
+    <div class="item selected"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</div>
+    <div class="item">Movies</div>
+    <div class="item">Series</div>
+    <div class="item">Downloads <span class="count">3</span></div>
+    <div class="sep"></div>
+    <div class="item"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>
+  </nav>
+
+  <section class="hero"><div class="img"></div><div class="tint"></div><div class="glow"></div></section>
+  <section class="info">
+    <div class="title"><span>Buster Keaton in</span>The General</div>
+    <div class="meta"><span class="star">★ 8.1</span><i></i>1926<i></i>Comedy, Action<i></i>1 h 18 min<i></i>Silent</div>
+    <p class="about">A locomotive engineer chases his stolen train across the front line of the Civil War, and then has to bring it back.</p>
+    <div class="release"><i></i><b>1080p restoration</b> 3.0 GB, 518 people sharing</div>
+    <div class="actions">
+      <div class="play"><svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg>Resume from 10:10</div>
+      <div class="round"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+      <div class="round"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></div>
+    </div>
+  </section>
+
+  <section class="shelf" style="top:500px">
+    <h2>Continue watching <span>7 films</span></h2>
+    <div class="row">
+      <div class="p hover"><div class="poster"><img src="img/poster-general.jpg" alt="" style="object-position:30% center"><span class="badge l">1080p</span><span class="badge r">★ 8.1</span><span class="pp"><svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></span></div><div class="track"><i style="width:13%"></i></div></div>
+      <div class="p"><div class="poster"><img src="img/poster-charade.jpg" alt=""><span class="badge l">1080p</span><span class="badge r">★ 7.9</span></div><div class="track"><i style="width:36%"></i></div></div>
+      <div class="p"><div class="poster"><img src="img/poster-metropolis.jpg" alt=""><span class="badge l">4K</span><span class="badge r">★ 8.3</span></div><div class="track"><i style="width:48%"></i></div></div>
+      <div class="p"><div class="poster"><img src="img/poster-nosferatu.jpg" alt=""><span class="badge l">1080p</span><span class="badge r">★ 7.8</span></div><div class="track"><i style="width:27%"></i></div></div>
+      <div class="p"><div class="poster"><img src="img/poster-detour.jpg" alt=""><span class="badge l">1080p</span><span class="badge r">★ 7.2</span></div><div class="track"><i style="width:71%"></i></div></div>
+      <div class="p"><div class="poster"><img src="img/poster-sherlock.jpg" alt=""><span class="badge l">720p</span><span class="badge r">★ 8.2</span></div><div class="track"><i style="width:55%"></i></div></div>
+      <div class="p"><div class="poster"><img src="img/poster-friday.jpg" alt=""><span class="badge l">1080p</span><span class="badge r">★ 7.8</span></div><div class="track"><i style="width:8%"></i></div></div>
+      <div class="p"><div class="poster"><img src="img/poster-night.jpg" alt=""><span class="badge l">720p</span><span class="badge r">★ 7.8</span></div><div class="track"><i style="width:4%"></i></div></div>
+    </div>
+  </section>
+
+  <section class="shelf" style="top:788px">
+    <h2>Downloading <span>3 films, 5.2 MB/s</span></h2>
+    <div class="row">
+      <div class="dl"><img src="img/poster-friday.jpg" alt=""><div class="d"><div class="t">His Girl Friday</div><div class="s">81%, 2 min left</div><div class="track"><i style="width:81%"></i></div></div></div>
+      <div class="dl"><img src="img/poster-charade.jpg" alt=""><div class="d"><div class="t">Charade</div><div class="s">34%, ready to watch</div><div class="track"><i style="width:34%"></i></div></div></div>
+      <div class="dl"><img src="img/poster-night.jpg" alt=""><div class="d"><div class="t">Night of the Living Dead</div><div class="s">7%, waiting for people</div><div class="track"><i style="width:7%"></i></div></div></div>
+    </div>
+  </section>
+</body>
+</html>
