@@ -181,6 +181,21 @@ settings:
   title: Settings
   hint: "OK chooses, Back closes."
   selected: Selected
+  source:
+    title: Search source
+    about: Where reel looks for releases of a film or an episode. Enter the Torznab address of your own Jackett (or Prowlarr, JacRed…) and its API key. reel comes with no source of its own.
+    url: Address
+    url_placeholder: "http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api"
+    key: API key
+    key_placeholder: The key from your Jackett dashboard (if it has one)
+    key_saved: Key saved. Type a new one to replace it
+    save: Save and check
+    saving: Saving…
+    checking: Checking the source…
+    removed: Search source removed.
+    ok_imdb: Connected. It searches by IMDb id.
+    ok_text: Connected. It searches by title.
+    failed: "Could not reach the source: %{message}"
   buffer:
     title: Playback buffer
     about: How much of the film reel keeps on this device while it plays. A bigger buffer survives slow peers and long seeks better. reel needs this much free space to start a film.

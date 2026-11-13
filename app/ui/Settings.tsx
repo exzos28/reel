@@ -1,10 +1,13 @@
-// Settings: for now one section, Playback, with the buffer size.
-// Up/down move the focus, OK chooses, Back closes. A click chooses too.
+// Settings: Playback (buffer size) and Search source (the user's Jackett).
+// Up/down move the focus in the buffer list, OK chooses, Back closes. A click
+// chooses too; the source fields take text (on a TV, entering it from a phone
+// comes later).
+import { Input } from "nsh/base";
 import { keymap, Scroll, signal, Text, View } from "nsh";
 import { t } from "nsh/i18n";
 import { Fmt } from "app/native";
 import { BackButton, Icon } from "./components";
-import { bufferChoices, bufferMB, chooseBuffer } from "./preferences";
+import { bufferChoices, bufferMB, checkSource, chooseBuffer, saveSource, source, type CheckResult } from "./preferences";
 import { colors, focusRing, radius, safe, type, u } from "./theme";
 import checkIcon from "./icons/check.svg";
 
@@ -68,8 +71,92 @@ export function Settings(props: { freeBytes: () => number | null; onClose: () =>
             )}
           </Each>
         </View>
+        <SourceSection />
         <Text style={{ ...type.meta(), color: colors.ash() }}>{t("settings.hint")}</Text>
       </View>
     </Scroll>
+  );
+}
+
+/** The search source: the address of the user's Jackett (Torznab) and its key. */
+function SourceSection() {
+  const url = signal(source().url);
+  const key = signal("");
+  const state = signal<"idle" | "saving" | "saved" | "checking">("idle");
+  const error = signal<string | null>(null);
+  const check = signal<CheckResult | null>(null);
+
+  const save = async () => {
+    state.set("saving");
+    error.set(null);
+    check.set(null);
+    const message = await saveSource(url(), key());
+    if (message != null) {
+      error.set(message);
+      state.set("idle");
+      return;
+    }
+    key.set("");
+    if (!source().url) {
+      state.set("saved");
+      return;
+    }
+    state.set("checking");
+    check.set(await checkSource());
+    state.set("saved");
+  };
+
+  const result = () => {
+    const c = check();
+    if (error()) return { text: error()!, bad: true };
+    if (state() === "saving") return { text: t("settings.source.saving"), bad: false };
+    if (state() === "checking") return { text: t("settings.source.checking"), bad: false };
+    if (!c) return state() === "saved" && !source().url ? { text: t("settings.source.removed"), bad: false } : null;
+    if (c.state === "failed") return { text: t("settings.source.failed", { message: c.message }), bad: true };
+    return { text: c.movieImdb ? t("settings.source.ok_imdb") : t("settings.source.ok_text"), bad: false };
+  };
+
+  const field = { height: u(64), paddingHorizontal: u(22), borderRadius: radius(), borderCurve: "continuous" as const, backgroundColor: colors.card(), color: colors.snow(), ...type.body() };
+
+  return (
+    <View style={{ gap: u(14), maxWidth: u(980) }}>
+      <Text style={{ ...type.section(), color: colors.snow() }}>{t("settings.source.title")}</Text>
+      <Text style={{ ...type.body(), color: colors.soft() }}>{t("settings.source.about")}</Text>
+      <Text style={{ ...type.meta(), color: colors.ash() }}>{t("settings.source.url")}</Text>
+      <Input
+        value={url()}
+        onChange={(e) => url.set(e.value)}
+        onSubmit={save}
+        placeholder={t("settings.source.url_placeholder")}
+        keyboardType="url"
+        autoCapitalize="none"
+        autoCorrect={false}
+        style={field}
+      />
+      <Text style={{ ...type.meta(), color: colors.ash() }}>{t("settings.source.key")}</Text>
+      <Input
+        value={key()}
+        onChange={(e) => key.set(e.value)}
+        onSubmit={save}
+        masked
+        placeholder={source().hasKey ? t("settings.source.key_saved") : t("settings.source.key_placeholder")}
+        autoCapitalize="none"
+        autoCorrect={false}
+        style={field}
+      />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: u(20), marginTop: u(6) }}>
+        <View
+          role="button"
+          onPress={save}
+          hoverStyle={{ backgroundColor: colors.dim() }}
+          style={{ height: u(60), paddingHorizontal: u(30), justifyContent: "center", borderRadius: radius(), borderCurve: "continuous", backgroundColor: colors.snow() }}
+        >
+          <Text style={{ ...type.label(), color: colors.ink() }}>{t("settings.source.save")}</Text>
+        </View>
+        <If when={result()}>
+          {(r) => <Text style={{ ...type.meta(), color: r().bad ? colors.red() : colors.ash(), flexShrink: 1 }}>{r().text}</Text>}
+        </If>
+      </View>
+    </View>
   );
 }
