@@ -50,7 +50,7 @@ export type Density = "ten-foot" | "regular" | "compact";
 export const density: Density =
   platform.idiom === "tv" ? "ten-foot" : platform.idiom === "phone" ? "compact" : "regular";
 
-const FIXED = { regular: 0.55, compact: 0.45 } as const;
+const FIXED = { regular: 0.825, compact: 0.45 } as const;
 const scale = computed(() => (density === "ten-foot" ? windowSize().width / 1920 : FIXED[density]));
 export const u = (px: number) => px * scale();
 
