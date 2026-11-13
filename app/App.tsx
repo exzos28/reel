@@ -7,11 +7,11 @@ import { Engine } from "app/native";
 import { BrowseScreen } from "./ui/screens/browse/BrowseScreen";
 import { HomeScreen } from "./ui/screens/home/HomeScreen";
 import { SearchScreen } from "./ui/screens/search/SearchScreen";
+import { SettingsScreen } from "./ui/screens/settings/SettingsScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { back, route } from "./ui/nav";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
-import { Settings } from "./ui/Settings";
 import { loadSettings } from "./ui/preferences";
 import { colors } from "./ui/theme";
 
@@ -47,7 +47,7 @@ function App() {
           <SearchScreen />
         </If>
         <If when={r().name === "settings"}>
-          <Settings freeBytes={freeBytes} onClose={back} />
+          <SettingsScreen freeBytes={freeBytes} onClose={back} />
         </If>
         <If when={r().name === "title" ? (r() as { id: string }).id : null}>
           {(id) => <TitleScreen id={id()} />}
