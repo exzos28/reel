@@ -289,7 +289,7 @@ fn add_to(core: &Core, job: u32, url: &str) {
                 Some(state)
             }
         };
-        if let Some(Job::Ready(handle)) = orphan {
+        if let Some(Job::Ready(handle, _)) = orphan {
             let _ = session.delete(handle.id().into(), true).await;
         }
     });
