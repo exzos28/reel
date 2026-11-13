@@ -3,34 +3,14 @@
 // to the upper third), shown whole with room for the focus ring, in a short
 // ease-out (a jump when the viewer asks for less motion). Only arrow keys
 // move them this way: a pointer press that moves the focus, the wheel and
-// the trackpad leave the offset to the viewer. On a Mac a thin bar of our
-// own replaces the system's; a TV and a phone show none.
-import { effect, reduceMotion, Scroll, signal, View, type JSX, type ScrollRef, type ViewRef, type ViewStyle } from "nsh";
-import { Scrollbar } from "nsh/base";
+// the trackpad leave the offset to the viewer.
+import { effect, reduceMotion, signal, type ScrollRef, type ViewRef } from "nsh";
+import { keyed } from "../focus/keys";
+import { ringRoom } from "../theme";
 import { anchorOffset, easeOut, nearestOffset } from "./anchor";
-import { alpha, colors, density, ringRoom, u } from "./theme";
 
 /** How long a keyed scroll takes, ms. */
 const DURATION = 200;
-/** How long the bar stays after the last scroll or pointer move, ms. */
-const BAR_IDLE = 1000;
-
-/** When an arrow key last moved the focus (`byKeys`). */
-let keyedAt = -Infinity;
-const keyed = () => performance.now() - keyedAt < 250;
-
-/** Arrow-key bindings that mark their moves as keyed, so the scroll views
- * follow the focus they move (and not one a pointer press moved). */
-export function byKeys(bindings: Record<string, (e: { keystroke: string }) => void>) {
-  const out: typeof bindings = {};
-  for (const [key, run] of Object.entries(bindings)) {
-    out[key] = (e) => {
-      keyedAt = performance.now();
-      run(e);
-    };
-  }
-  return out;
-}
 
 /** Where a followed block goes: to the anchor, only as far as needed to show
  * it whole, or to the start of the content. */
@@ -38,7 +18,7 @@ export type Placement = "anchor" | "nearest" | "start";
 
 const running = new Set<() => void>();
 /** The viewer took over (wheel, trackpad, drag): every keyed scroll stops. */
-const stopAll = () => running.forEach((stop) => stop());
+export const stopAll = () => running.forEach((stop) => stop());
 
 export interface ScrollCtl {
   horizontal: boolean;
@@ -121,70 +101,4 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     },
   };
   return ctl;
-}
-
-/** The scroll view of a `scroller`: hides the system's indicator, draws our
- * own bar on a Mac. `style` is the outer view's (size, background). */
-export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; children: JSX.Element }) {
-  const c = props.ctl;
-  const bar = density === "regular";
-  const shown = signal(false);
-  let hide = 0;
-  const poke = () => {
-    if (!bar) return;
-    shown.set(true);
-    clearTimeout(hide);
-    hide = setTimeout(() => shown.set(false), BAR_IDLE);
-  };
-  const thickness = Math.max(10, u(18));
-  return (
-    <View style={props.style} onMouseMove={poke} onWheel={stopAll}>
-      <Scroll
-        ref={(r: ScrollRef) => c.scroll.set(r)}
-        horizontal={c.horizontal}
-        scrollbar={false}
-        scrollEventThrottle={16}
-        onScroll={poke}
-        onScrollDragStart={stopAll}
-        style={c.horizontal ? undefined : { flex: 1 }}
-      >
-        <View ref={(r: ViewRef) => (c.content = r)}>{props.children}</View>
-      </Scroll>
-      <If when={bar}>
-        <View
-          style={{
-            position: "absolute",
-            ...(c.horizontal ? { left: 0, right: 0, bottom: 0, height: thickness } : { top: 0, bottom: 0, right: 0, width: thickness }),
-            opacity: shown() ? 1 : 0,
-            pointerEvents: shown() ? "box-none" : "none",
-            transitionProperty: "opacity",
-            transitionDuration: shown() ? 120 : 300,
-            transitionTimingFunction: "ease-out",
-          }}
-        >
-          <Scrollbar
-            scroll={c.scroll()}
-            axis={c.horizontal ? "horizontal" : "vertical"}
-            mode="always"
-            minThumbLength={u(64)}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              padding: Math.max(3, u(5)),
-              alignItems: c.horizontal ? "stretch" : "flex-end",
-              justifyContent: c.horizontal ? "flex-end" : "flex-start",
-            }}
-            thumbStyle={{
-              ...(c.horizontal ? { height: Math.max(4, u(6)) } : { width: Math.max(4, u(6)) }),
-              borderRadius: 999,
-              backgroundColor: alpha(colors.ash(), 0.55),
-            }}
-          />
-        </View>
-      </If>
-    </View>
-  );
 }

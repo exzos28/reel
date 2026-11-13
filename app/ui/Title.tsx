@@ -10,10 +10,18 @@ import {
   chooseRelease, dateText, episodes, noteText, playLabel, title as titleOf, toggleList, tracksText,
   releasesText, runtime, seasonText, type Episode, type Release, type Title as TitleData,
 } from "./catalog";
-import { BackButton, Badge, Button, Hero, Icon, ReleaseText, SignalBars, WatchedBar } from "./components";
+import { Badge } from "./kit/Badge";
+import { Button } from "./kit/Button";
+import { Icon } from "./kit/Icon";
+import { WatchedBar } from "./kit/Picture";
+import { SignalBars } from "./kit/SignalBars";
+import { BackButton } from "./layout/BackButton";
+import { Hero } from "./layout/Hero";
+import { ReleaseText } from "./layout/HeroMeta";
 import { back } from "./nav";
 import { play } from "./playback";
-import { byKeys, Scroller, scroller } from "./Scroller";
+import { byKeys } from "./focus/keys";
+import { Scroller, scroller } from "./layout/Scroller";
 
 /** A block's ref that a scroll view follows while `when` holds (`ScrollCtl.follow`). */
 type Follow = (when: () => boolean) => (r: ViewRef) => void;

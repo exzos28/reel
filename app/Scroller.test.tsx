@@ -1,7 +1,7 @@
 // Scroll views that follow the remote: the offset math, and the screens
 // moving with the arrow keys.
 import { expect, open, test } from "nsh/test";
-import { anchorOffset, nearestOffset } from "./ui/anchor";
+import { anchorOffset, nearestOffset } from "./ui/layout/anchor";
 import { NATIVE } from "./testEngine";
 
 // A shelf on a 1920-wide TV: 96 px inset, 352 px cards 24 px apart.

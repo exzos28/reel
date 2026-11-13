@@ -5,8 +5,14 @@
 import { computed, keymap, signal, Text, View, windowSize, type ViewRef } from "nsh";
 import { t } from "nsh/i18n";
 import { airsText, browse, cardMeta, titleText, type Summary } from "./catalog";
-import { BackButton, CardMeta, Icon, NAV, NavBar, Picture } from "./components";
-import { byKeys, Scroller, scroller } from "./Scroller";
+import { Icon } from "./kit/Icon";
+import { Picture } from "./kit/Picture";
+import { CardMeta } from "./kit/Rating";
+import { BackButton } from "./layout/BackButton";
+import { NavBar } from "./layout/NavBar";
+import { NAV } from "./layout/navItems";
+import { byKeys } from "./focus/keys";
+import { Scroller, scroller } from "./layout/Scroller";
 import { back, go, openTitle } from "./nav";
 import { alpha, colors, focusRing, font, radius, ringRoom, safe, type, u } from "./theme";
 import chevronIcon from "./icons/chevron.svg";
