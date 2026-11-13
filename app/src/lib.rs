@@ -1,5 +1,6 @@
 //! reel's Rust side: what `App.tsx` imports from `app/native`.
 
+mod buffer;
 mod catalog;
 mod disk;
 mod engine;

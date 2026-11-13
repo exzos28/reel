@@ -12,6 +12,8 @@ librqbit = { version = "9.1.0", features = ["http-api", "tracing-subscriber-util
 serde_json = "1"
 anyhow = "1"
 librqbit-dualstack-sockets = "0.7"
+# Piece indices for the ring-buffer storage (the version librqbit uses).
+librqbit-core = { version = "9.1.0", default-features = false }
 tokio = { version = "1", features = ["rt-multi-thread", "time", "sync"] }
 libc = "0.2"
 serde = { version = "1", features = ["derive"] }
