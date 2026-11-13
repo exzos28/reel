@@ -1,0 +1,22 @@
+# csproj file path
+csproj_file: ReelCore.csproj
+
+# Default profile, Tizen API version
+profile: tizen
+api_version: "9.0"
+
+# Build type [Debug/ Release/ Test]
+build_type: Release
+
+# Signing profile: "" = active profile, "." = the SDK's default (Apps2Samsung re-signs anyway)
+signing_profile: ""
+
+# files monitored for dirty/modified status
+files:
+  - ReelCore.csproj
+  - ReelCore_App.cs
+  - tizen-manifest.xml
+  - lib/libreel_tizen_core.so
+
+# project dependencies
+deps: []

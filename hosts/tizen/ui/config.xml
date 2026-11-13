@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The reel TV app: shell.js starts the core service (../service, same package), then loads the
+     NSH web build (web/, put here by ../build.sh) or, without one, a diagnostics screen. Video
+     plays in AVPlay on the TV's video plane, under the web layer. -->
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="http://reel.app/tizen" version="0.1.0" viewmodes="maximized">
+   <name>reel</name>
+   <content src="index.html"></content>
+   <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"></feature>
+   <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"></tizen:setting>
+   <tizen:application id="ReelTizen1.ui" package="ReelTizen1" required_version="2.3"></tizen:application>
+   <!-- Starts the core service with an AppControl. -->
+   <tizen:privilege name="http://tizen.org/privilege/application.launch"></tizen:privilege>
+   <!-- HTTP to the core on 127.0.0.1 (RPC and the video stream). -->
+   <tizen:privilege name="http://tizen.org/privilege/internet"></tizen:privilege>
+   <!-- Media keys of the remote (play/pause, rewind, fast-forward). -->
+   <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"></tizen:privilege>
+   <access origin="*" subdomains="true"></access>
+   <tizen:metadata key="http://tizen.org/metadata/app_ui_type/base_screen_resolution" value="extensive"></tizen:metadata>
+   <tizen:profile name="tv-samsung"></tizen:profile>
+</widget>

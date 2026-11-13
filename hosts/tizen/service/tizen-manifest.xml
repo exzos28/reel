@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- No on-boot / auto-restart: Tizen honours them only for Partner-signed apps (Apps2Samsung
+     then asks for Partner signing), and the core is only needed while the TV app is open; the
+     app starts it with an AppControl. -->
+<manifest xmlns="http://tizen.org/ns/packages" api-version="9.0" package="ReelTizen1" version="0.1.0">
+  <profile name="common" />
+  <service-application appid="ReelTizen1.Core"
+                       exec="ReelCore.dll"
+                       type="dotnet"
+                       multiple="false"
+                       taskmanage="false"
+                       nodisplay="true"
+                       api-version="12">
+    <label>reel core</label>
+  </service-application>
+  <privileges>
+    <!-- Sockets: the torrent engine (peers, trackers, DHT), metadata APIs, the 127.0.0.1 server. -->
+    <privilege>http://tizen.org/privilege/internet</privilege>
+  </privileges>
+</manifest>

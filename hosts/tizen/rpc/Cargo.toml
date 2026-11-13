@@ -1,0 +1,13 @@
+[package]
+name = "reel-rpc"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "NSH native modules as a JSON RPC over HTTP on 127.0.0.1"
+
+[dependencies]
+axum.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tower-http.workspace = true
