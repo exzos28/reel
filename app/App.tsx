@@ -1,26 +1,24 @@
 // Concept: the home screen, driven by arrow keys like a remote (TV density on a TV, regular on a Mac).
 import { computed, keymap, mount, Scroll, setColorScheme, signal, Text, View } from "nsh";
 import { t } from "nsh/i18n";
-import { Fmt } from "app/native";
+import { Engine, Fmt } from "app/native";
 import { filmText, runtime, shelves, type Film } from "./data";
-import { restoreLanguage } from "./ui/language";
 import { Poster } from "./ui/Poster";
 import { Player } from "./ui/Player";
-import { play, playback, stop } from "./ui/playback";
+import { play, status, stop } from "./ui/playback";
 import { Settings } from "./ui/Settings";
-import { checkSpace, restoreSettings } from "./ui/preferences";
+import { loadSettings } from "./ui/preferences";
 import { colors, focusRing, fonts, safe, type, u } from "./ui/theme";
 
 setColorScheme("dark");
-restoreLanguage();
-restoreSettings().catch((e) => console.warn("could not restore settings", e));
+loadSettings().catch((e) => console.warn("could not load settings", e));
 
 function App() {
   // Focus as (shelf, item); each shelf remembers the item it was left on.
   const row = signal(0);
   const cols = signal(shelves.map(() => 0));
   const focusedFilm = computed<Film>(() => shelves[row()].items[cols()[row()]]);
-  const playing = () => playback().phase !== "idle";
+  const playing = () => status().phase !== "idle";
   const screen = signal<"home" | "settings">("home");
   /** The remote is on the top bar (Settings) instead of a shelf. */
   const onTop = signal(false);
@@ -29,7 +27,9 @@ function App() {
   const home = () => !playing() && screen() === "home";
   const openSettings = () => {
     screen.set("settings");
-    checkSpace().then((s) => freeBytes.set(s.free)).catch(() => freeBytes.set(null));
+    Promise.resolve(Engine.checkSpace())
+      .then((s) => freeBytes.set(JSON.parse(s).free))
+      .catch(() => freeBytes.set(null));
   };
 
   const moveCol = (d: number) => {

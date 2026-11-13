@@ -17,29 +17,6 @@ pub fn free_bytes(path: &Path) -> std::io::Result<u64> {
     Ok(st.f_bavail as u64 * st.f_frsize as u64)
 }
 
-/// Total size of the files under `dir` (the cache), 0 if it does not exist.
-pub fn used_bytes(dir: &Path) -> u64 {
-    fn walk(p: &Path) -> u64 {
-        let Ok(entries) = std::fs::read_dir(p) else { return 0 };
-        entries
-            .flatten()
-            .map(|e| match e.file_type() {
-                Ok(t) if t.is_dir() => walk(&e.path()),
-                // Sparse files: count what is on disk, not the logical length.
-                Ok(_) => e.metadata().map(|m| on_disk(&m)).unwrap_or(0),
-                Err(_) => 0,
-            })
-            .sum()
-    }
-    walk(dir)
-}
-
-#[cfg(unix)]
-fn on_disk(m: &std::fs::Metadata) -> u64 {
-    use std::os::unix::fs::MetadataExt;
-    m.blocks() * 512
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,16 +29,5 @@ mod tests {
     #[test]
     fn missing_path_is_an_error() {
         assert!(free_bytes(Path::new("/definitely/not/here")).is_err());
-    }
-
-    #[test]
-    fn used_counts_written_bytes() {
-        let dir = std::env::temp_dir().join(format!("reel-disk-test-{}", std::process::id()));
-        std::fs::create_dir_all(dir.join("a")).unwrap();
-        std::fs::write(dir.join("a/f"), vec![1u8; 64 * 1024]).unwrap();
-        let used = used_bytes(&dir);
-        std::fs::remove_dir_all(&dir).unwrap();
-        assert!(used >= 64 * 1024, "{used}");
-        assert_eq!(used_bytes(&dir), 0);
     }
 }

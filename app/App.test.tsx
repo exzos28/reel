@@ -11,7 +11,9 @@ test("home starts in English on the open films and moves focus with arrows", asy
 });
 
 test("a film without a source says so instead of playing", async () => {
-  const app = await open("./App.tsx");
+  const app = await open("./App.tsx", {
+    modules: { "app/native": { ...ENGINE, "Engine.status": JSON.stringify({ phase: "no_source" }) } },
+  });
   await app.keyboard.press("down");
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("No source for this film yet. Try one from Free to watch.");
@@ -22,7 +24,7 @@ test("a film without a source says so instead of playing", async () => {
 test("pressing Watch opens the player", async () => {
   // The engine as it is while it looks for the film's metadata.
   const app = await open("./App.tsx", {
-    modules: { "app/native": { ...ENGINE, "Engine.status": '{"state":"resolving"}' } },
+    modules: { "app/native": { ...ENGINE, "Engine.status": '{"phase":"resolving"}' } },
   });
   await app.press("Watch");
   expect(app.shows("label:Back")).toBe(true);
@@ -34,7 +36,7 @@ test("without room for the buffer, the film does not start and says why", async 
     modules: {
       "app/native": {
         ...ENGINE,
-        "Engine.checkSpace": JSON.stringify({ ok: false, free: 120 * 1024 ** 2, needed: 306 * 1024 ** 2, buffer: 256 }),
+        "Engine.status": JSON.stringify({ phase: "no_space", needed: 306 * 1024 ** 2, free: 120 * 1024 ** 2 }),
       },
     },
   });

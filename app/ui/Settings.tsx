@@ -2,16 +2,17 @@
 // Up/down move the focus, OK chooses, Back closes. A click chooses too.
 import { keymap, signal, Text, View } from "nsh";
 import { t } from "nsh/i18n";
-import { BUFFER_CHOICES, bufferMB, formatSize, setBufferMB } from "./preferences";
+import { Fmt } from "app/native";
+import { bufferChoices, bufferMB, chooseBuffer } from "./preferences";
 import { colors, fonts, safe, type, u } from "./theme";
 
 export function Settings(props: { freeBytes: () => number | null; onClose: () => void }) {
-  const focus = signal(Math.max(0, BUFFER_CHOICES.indexOf(bufferMB() as never)));
-  const move = (d: number) => focus.set(Math.min(Math.max(focus() + d, 0), BUFFER_CHOICES.length - 1));
+  const focus = signal(Math.max(0, bufferChoices().findIndex((c) => c.mb === bufferMB())));
+  const move = (d: number) => focus.set(Math.min(Math.max(focus() + d, 0), bufferChoices().length - 1));
 
   keymap.bind({ up: () => move(-1), down: () => move(1) }, { repeat: true });
   keymap.bind({
-    enter: () => setBufferMB(BUFFER_CHOICES[focus()]),
+    enter: () => chooseBuffer(bufferChoices()[focus()].mb),
     escape: props.onClose,
   });
 
@@ -22,17 +23,17 @@ export function Settings(props: { freeBytes: () => number | null; onClose: () =>
         <Text style={{ ...type.subtitle(), color: colors.screen() }}>{t("settings.buffer.title")}</Text>
         <Text style={{ ...type.caption(), color: colors.dim() }}>{t("settings.buffer.about")}</Text>
         <Text style={{ ...type.caption(), color: colors.dim() }}>
-          {props.freeBytes() == null ? "" : t("settings.buffer.free", { free: formatSize(props.freeBytes()!) })}
+          {props.freeBytes() == null ? "" : t("settings.buffer.free", { free: Fmt.size(props.freeBytes()!) })}
         </Text>
       </View>
       <View style={{ gap: u(10), maxWidth: u(700) }}>
-        <Each of={[...BUFFER_CHOICES]}>
+        <Each of={bufferChoices()} key={(c) => c.mb}>
           {(mb, i) => (
             <View
               role="button"
               onPress={() => {
                 focus.set(i());
-                setBufferMB(mb());
+                chooseBuffer(mb().mb);
               }}
               style={{
                 flexDirection: "row",
@@ -45,11 +46,11 @@ export function Settings(props: { freeBytes: () => number | null; onClose: () =>
               }}
             >
               <Text style={{ fontFamily: fonts.body, fontSize: u(32), color: focus() === i() ? colors.hall() : colors.screen() }}>
-                {formatSize(mb() * 1024 * 1024)}
-                {mb() === 256 ? `  ${t("settings.buffer.default")}` : ""}
+                {Fmt.size(mb().mb * 1024 * 1024)}
+                {mb().default ? `  ${t("settings.buffer.default")}` : ""}
               </Text>
               {/* Selected is the lamp check, never the focus fill. */}
-              <Text style={{ fontFamily: fonts.body, fontSize: u(32), color: colors.beam() }}>{bufferMB() === mb() ? "✓" : ""}</Text>
+              <Text style={{ fontFamily: fonts.body, fontSize: u(32), color: colors.beam() }}>{bufferMB() === mb().mb ? "✓" : ""}</Text>
             </View>
           )}
         </Each>

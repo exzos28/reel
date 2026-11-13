@@ -1,127 +1,95 @@
-// Playback: hands a film's magnet to the built-in engine, waits for its
-// metadata, picks the video file and gives the player a local stream URL.
-// While it plays, polls what the engine has of that file (`fileMap`).
+// The UI's view of what the core is playing. The core decides everything
+// (`Engine.open`, `Engine.status`, `Engine.timeline`); this only asks it
+// twice a second and keeps the answers in signals for the screens.
 import { signal } from "nsh";
 import { Engine } from "app/native";
 import type { Film } from "../data";
-import { checkSpace } from "./preferences";
 
-export type Playback =
+/** What the core says about the film being played (see `engine::status`). */
+export type Status =
   | { phase: "idle" }
-  | { phase: "noSource"; film: Film }
-  | { phase: "resolving"; film: Film }
-  | { phase: "failed"; film: Film; message: string }
-  /** Not enough free space to start: the buffer plus a reserve (bytes). */
-  | { phase: "noSpace"; film: Film; needed: number; free: number | null }
-  | { phase: "ready"; film: Film; url: string; job: number; file: number };
+  | { phase: "no_source" }
+  | { phase: "no_space"; needed: number; free: number | null }
+  | { phase: "resolving" }
+  | { phase: "failed"; message: string }
+  | {
+      phase: "ready";
+      stream_url: string;
+      name: string | null;
+      low_space: boolean;
+      /** MiB/s. */
+      speed: number;
+      peers: number | null;
+    };
 
-export interface TransferStats {
-  /** 0..1 of the whole torrent. */
-  progress: number;
-  /** MiB/s. */
-  speed: number;
-  peers: number | null;
+export interface Timeline {
+  /** Ready stretches of the film, [from, to] in 0..1. */
+  ranges: [number, number][];
+  /** Seconds ready without a gap from the position. */
+  ahead: number;
 }
 
-export const playback = signal<Playback>({ phase: "idle" });
-export const transfer = signal<TransferStats | null>(null);
-/** The playing file cut into `MAP_BUCKETS` equal byte ranges, each the
- * fraction of it the engine already has (empty until known). */
-export const fileMap = signal<number[]>([]);
-export const MAP_BUCKETS = 200;
-/** Free space ran out while playing (the engine says so): the player pauses. */
-export const lowSpace = signal(false);
+export const film = signal<Film | null>(null);
+export const status = signal<Status>({ phase: "idle" });
+export const timeline = signal<Timeline>({ ranges: [], ahead: 0 });
+/** Where the player is, for the core's timeline (set by the player). */
+export const position = signal(0);
+export const duration = signal(0);
 
-let currentJob = 0;
+let job = 0;
 let poll: ReturnType<typeof setInterval> | undefined;
-/** Bumped by `stop`, so a poll that was waiting on the engine drops its answer. */
+/** Bumped by `stop`, so an answer for an older film is dropped. */
 let generation = 0;
 
 // Engine calls are awaited: the native module answers at once, a test's
 // stand-in (`open`'s `modules`) with a promise.
-export async function play(film: Film) {
+export async function play(f: Film) {
   stop();
   const gen = generation;
-  if (!film.magnet) {
-    playback.set({ phase: "noSource", film });
-    return;
-  }
-  playback.set({ phase: "resolving", film });
-  const space = await checkSpace();
+  film.set(f);
+  status.set({ phase: "resolving" });
+  const opened = await Engine.open(f.id);
   if (gen !== generation) return;
-  if (!space.ok) {
-    playback.set({ phase: "noSpace", film, needed: space.needed, free: space.free });
+  if (!opened) {
+    status.set({ phase: "failed", message: "engine" });
     return;
   }
-  const port = await Engine.start();
-  const job = port ? await Engine.add(film.magnet) : 0;
-  if (gen !== generation) return;
-  if (!job) {
-    playback.set({ phase: "failed", film, message: "engine" });
-    return;
-  }
-  currentJob = job;
+  job = opened;
   let busy = false;
-  poll = setInterval(async () => {
+  const tick = async () => {
     if (busy) return;
     busy = true;
     try {
-      await tick(film, port, job, gen);
+      const s: Status = JSON.parse(await Engine.status(job));
+      if (gen !== generation) return;
+      status.set(s);
+      if (s.phase === "ready") {
+        const tl: Timeline = JSON.parse(await Engine.timeline(job, position(), duration()));
+        if (gen === generation) timeline.set(tl);
+      } else if (s.phase !== "resolving") {
+        clearInterval(poll);
+      }
     } catch (e) {
       console.warn("engine poll failed", e);
     } finally {
       busy = false;
     }
-  }, 500);
-}
-
-async function tick(film: Film, port: number, job: number, gen: number) {
-  const s = JSON.parse(await Engine.status(job));
-  if (gen !== generation) return;
-  if (s.state === "failed") {
-    playback.set({ phase: "failed", film, message: s.message });
-    clearInterval(poll);
-    return;
+  };
+  await tick();
+  if (gen === generation && (status().phase === "resolving" || status().phase === "ready")) {
+    poll = setInterval(tick, 500);
   }
-  if (s.state !== "ready") return;
-  let p = playback();
-  if (p.phase === "resolving") {
-    // The engine picks the video and says where to open it.
-    if (s.file == null || !s.stream_url) {
-      playback.set({ phase: "failed", film, message: "noVideo" });
-      clearInterval(poll);
-      return;
-    }
-    p = {
-      phase: "ready",
-      film,
-      job,
-      file: s.file,
-      url: s.stream_url,
-    };
-    playback.set(p);
-  }
-  lowSpace.set(s.low_space === true);
-  const live = s.stats?.live;
-  transfer.set({
-    progress: s.stats?.total_bytes ? s.stats.progress_bytes / s.stats.total_bytes : 0,
-    speed: live?.download_speed?.mbps ?? 0,
-    peers: live?.snapshot?.peer_stats?.live ?? null,
-  });
-  if (p.phase !== "ready") return;
-  const map = JSON.parse(await Engine.fileMap(job, p.file, MAP_BUCKETS));
-  if (gen !== generation) return;
-  if (map.state === "ready") fileMap.set(map.buckets);
 }
 
 export function stop() {
   generation++;
-  if (currentJob) Engine.close(currentJob);
-  currentJob = 0;
-  lowSpace.set(false);
   clearInterval(poll);
   poll = undefined;
-  playback.set({ phase: "idle" });
-  transfer.set(null);
-  fileMap.set([]);
+  if (job) Engine.close(job);
+  job = 0;
+  film.set(null);
+  status.set({ phase: "idle" });
+  timeline.set({ ranges: [], ahead: 0 });
+  position.set(0);
+  duration.set(0);
 }

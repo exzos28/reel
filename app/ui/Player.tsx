@@ -8,9 +8,7 @@ import { cleanup, computed, effect, Image, keymap, signal, Text, token, Video, V
 import { t } from "nsh/i18n";
 import { Fmt } from "app/native";
 import { filmText } from "../data";
-import { fileMap, lowSpace, playback, stop, transfer } from "./playback";
-import { formatSize } from "./preferences";
-import { readyAhead, readyRanges } from "./scrub";
+import { duration, film, position, status as core, stop, timeline } from "./playback";
 import { cinema, focusRing, fonts, safe, u } from "./theme";
 import backIcon from "./icons/back.svg";
 import playIcon from "./icons/play.svg";
@@ -27,10 +25,11 @@ const BUTTONS = ["play", "back", "forward"] as const;
 type ButtonId = (typeof BUTTONS)[number];
 
 export function Player() {
-  const p = playback;
-  const ready = () => p().phase === "ready";
-  const url = () => { const s = p(); return s.phase === "ready" ? s.url : ""; };
-  const film = () => { const s = p(); return s.phase === "idle" ? null : s.film; };
+  // Computed, so the twice-a-second status from the core wakes only what changed
+  // (a fresh status object must not restart the overlay's hide timer).
+  const ready = computed(() => core().phase === "ready");
+  const url = computed(() => { const s = core(); return s.phase === "ready" ? s.stream_url : ""; });
+  const lowSpace = computed(() => { const s = core(); return s.phase === "ready" && s.low_space; });
 
   let video: VideoRef | undefined;
   const paused = signal(false);
@@ -38,8 +37,6 @@ export function Player() {
   /** What `onBuffer` last said. */
   const buffering = signal(false);
   const error = signal<string | null>(null);
-  const position = signal(0);
-  const duration = signal(0);
 
   const overlay = signal(true);
   const row = signal<Row>("scrubber");
@@ -107,33 +104,34 @@ export function Player() {
   });
 
   const status = () => {
-    const s = p();
-    if (s.phase === "noSource") return t("player.no_source");
-    if (s.phase === "noSpace")
+    const s = core();
+    if (s.phase === "no_source") return t("player.no_source");
+    if (s.phase === "no_space")
       return s.free == null
-        ? t("player.no_space_unknown", { needed: formatSize(s.needed) })
-        : t("player.no_space", { needed: formatSize(s.needed), free: formatSize(s.free) });
-    if (lowSpace()) return t("player.low_space");
+        ? t("player.no_space_unknown", { needed: Fmt.size(s.needed) })
+        : t("player.no_space", { needed: Fmt.size(s.needed), free: Fmt.size(s.free) });
     if (s.phase === "failed") return t("player.failed", { message: s.message });
     if (s.phase === "resolving") return t("player.resolving");
+    if (lowSpace()) return t("player.low_space");
     if (error()) return t("player.failed", { message: error()! });
     if (buffering() || !loaded()) return t("player.buffering");
     return "";
   };
-  const failed = () =>
-    p().phase === "failed" || p().phase === "noSource" || p().phase === "noSpace" || lowSpace() || error() != null;
+  const failed = () => {
+    const phase = core().phase;
+    return phase === "failed" || phase === "no_source" || phase === "no_space" || lowSpace() || error() != null;
+  };
   // The device ran out of space while playing: stop where we are, keep the overlay up.
   effect(() => { if (lowSpace()) { paused.set(true); poke(); } });
   const streaming = () => {
-    const tr = transfer();
-    if (!tr) return "";
-    const speed = t("player.speed", { speed: tr.speed.toFixed(1) });
-    return tr.peers != null ? `${speed} ${t("player.peers", { count: tr.peers })}` : speed;
+    const s = core();
+    if (s.phase !== "ready") return "";
+    const speed = t("player.speed", { speed: s.speed.toFixed(1) });
+    return s.peers != null ? `${speed} ${t("player.peers", { count: s.peers })}` : speed;
   };
-  const ahead = computed(() => readyAhead(fileMap(), position(), duration()));
   const aheadText = () => {
-    if (!fileMap().length || duration() <= 0) return "";
-    const m = Math.floor(ahead() / 60);
+    if (!timeline().ranges.length || duration() <= 0) return "";
+    const m = Math.floor(timeline().ahead / 60);
     return m >= 1 ? t("player.ready_ahead", { minutes: m }) : t("player.ready_ahead_short");
   };
 
@@ -221,7 +219,7 @@ export function Player() {
               focused={() => row() === "scrubber"}
               position={position}
               duration={duration}
-              buckets={fileMap}
+              ranges={() => timeline().ranges}
               onSeek={(s) => { poke(); seekTo(s); }}
             />
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: u(18) }}>
@@ -231,11 +229,6 @@ export function Player() {
               <Text style={{ fontFamily: fonts.body, fontSize: u(26), fontWeight: "600", color: cinema.mist }}>
                 {duration() > 0 ? t("player.left", { time: Fmt.position(Math.ceil(Math.max(duration() - position(), 0))) }) : ""}
               </Text>
-            </View>
-            <View style={{ flexDirection: "row", gap: u(28), marginTop: u(6) }}>
-              <Legend color={cinema.paper} label={t("player.watched")} />
-              <Legend color={cinema.ready} label={t("player.ready")} />
-              <Legend color={cinema.track} label={t("player.not_loaded")} />
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: u(20), marginTop: u(26) }}>
               <RoundButton
@@ -270,12 +263,13 @@ function Scrubber(props: {
   focused: () => boolean;
   position: () => number;
   duration: () => number;
-  buckets: () => number[];
+  /** Ready stretches from the core, [from, to] in 0..1. */
+  ranges: () => [number, number][];
   onSeek: (seconds: number) => void;
 }) {
   const width = signal(0);
   const at = () => (props.duration() > 0 ? Math.min(props.position() / props.duration(), 1) : 0);
-  const ranges = computed(() => readyRanges(props.buckets()));
+  const ranges = computed(() => props.ranges().map(([from, to]) => ({ from, to })));
   const bar = u(10);
   return (
     <View
@@ -312,15 +306,6 @@ function Scrubber(props: {
           ...focusRing(props.focused()),
         }}
       />
-    </View>
-  );
-}
-
-function Legend(props: { color: string; label: string }) {
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: u(10) }}>
-      <View style={{ width: u(26), height: u(8), borderRadius: 999, backgroundColor: props.color }} />
-      <Text style={{ fontFamily: fonts.body, fontSize: u(21), color: cinema.mist }}>{props.label}</Text>
     </View>
   );
 }

@@ -12,7 +12,7 @@ use std::{
     },
 };
 
-use crate::disk;
+use crate::{catalog, disk, timeline};
 
 use anyhow::Context;
 use librqbit::{
@@ -34,6 +34,10 @@ struct Core {
 
 #[derive(Clone)]
 enum Job {
+    /// The film has no source to play.
+    NoSource,
+    /// Not enough free space to start: the buffer plus the reserve (bytes).
+    NoSpace { needed: u64, free: Option<u64> },
     /// Fetching the metadata (magnet links need peers for it).
     Resolving,
     Ready(Arc<librqbit::ManagedTorrent>),
@@ -147,8 +151,41 @@ fn pick_video(files: &[(usize, String, u64)]) -> Option<usize> {
 }
 
 /// Starts the engine if needed; the port of its stream server.
+#[cfg(test)]
 pub fn start() -> anyhow::Result<u16> {
     Ok(core()?.port)
+}
+
+/// Starts playing a catalog film: checks the free space, starts the engine
+/// and adds the film's torrent. A job id to poll with `status` (which says
+/// when there is no source or no room).
+pub fn open(film_id: &str) -> anyhow::Result<u32> {
+    let Some(magnet) = catalog::film(film_id).and_then(|f| f.magnet) else {
+        return Ok(new_job(Job::NoSource));
+    };
+    let space = check_space();
+    if space["ok"] == false {
+        let needed = space["needed"].as_u64().unwrap_or_default();
+        return Ok(new_job(Job::NoSpace { needed, free: space["free"].as_u64() }));
+    }
+    add(magnet)
+}
+
+/// A job that is already settled (no engine needed).
+fn new_job(state: Job) -> u32 {
+    // Settled jobs live in the same table, so the engine is started for them
+    // too: it is cheap and the next film needs it anyway.
+    match core() {
+        Ok(core) => {
+            let job = core.next_job.fetch_add(1, Ordering::Relaxed);
+            core.jobs.lock().unwrap().insert(job, state);
+            job
+        }
+        Err(e) => {
+            eprintln!("reel engine: {e:#}");
+            0
+        }
+    }
 }
 
 /// Adds a magnet link or torrent URL; returns a job id to poll with `status`.
@@ -176,86 +213,93 @@ pub fn add(url: &str) -> anyhow::Result<u32> {
     Ok(job)
 }
 
-/// The job's state as JSON:
-/// `{"state":"resolving"}`, `{"state":"failed","message":…}`, or
-/// `{"state":"ready","torrent":id,"name":…,"files":[{"index","name","length"}],
-/// "file":index|null,"stream_url":…|null,"low_space":bool,"stats":{…}}`;
-/// `file` is the video to play and `stream_url` where the player opens it.
+/// What the player shows for the job, as JSON with a `phase`:
+/// - `"no_source"`, `"no_space"` (`needed`, `free` bytes, `free` may be null),
+///   `"resolving"`, `"failed"` (`message`);
+/// - `"ready"`: `stream_url` (where the player opens the video), `file`,
+///   `name`, `low_space` (the device ran out of room while playing),
+///   `speed` (MiB/s), `peers` (null when unknown), `progress` (0..1 of the torrent).
 pub fn status(job: u32) -> Value {
     let Some(core) = CORE.get() else {
-        return json!({ "state": "failed", "message": "the engine is not started" });
+        return json!({ "phase": "failed", "message": "the engine is not started" });
     };
     let Some(state) = core.jobs.lock().unwrap().get(&job).cloned() else {
-        return json!({ "state": "failed", "message": format!("no job {job}") });
+        return json!({ "phase": "failed", "message": format!("no job {job}") });
     };
     match state {
-        Job::Resolving => json!({ "state": "resolving" }),
-        Job::Failed(message) => json!({ "state": "failed", "message": message }),
+        Job::NoSource => json!({ "phase": "no_source" }),
+        Job::NoSpace { needed, free } => json!({ "phase": "no_space", "needed": needed, "free": free }),
+        Job::Resolving => json!({ "phase": "resolving" }),
+        Job::Failed(message) => json!({ "phase": "failed", "message": message }),
         Job::Ready(handle) => {
-            let files: Vec<(usize, String, u64)> = handle
-                .with_metadata(|m| {
-                    m.file_infos
-                        .iter()
-                        .enumerate()
-                        .map(|(index, f)| (index, f.relative_filename.to_string_lossy().into_owned(), f.len))
-                        .collect()
-                })
-                .unwrap_or_default();
-            let file = pick_video(&files);
-            let stream_url = file.map(|f| format!("http://127.0.0.1:{}/torrents/{}/stream/{f}", core.port, handle.id()));
-            let files: Vec<Value> = files
-                .into_iter()
-                .map(|(index, name, length)| json!({ "index": index, "name": name, "length": length }))
-                .collect();
+            let Some(file) = video_file(&handle) else {
+                return json!({ "phase": "failed", "message": "no video in this torrent" });
+            };
+            let stats = handle.stats();
+            let live = stats.live.as_ref();
+            let peers = live.map(|l| l.snapshot.peer_stats.live);
             json!({
-                "state": "ready",
-                "torrent": handle.id(),
+                "phase": "ready",
                 "name": handle.name(),
-                "files": files,
                 "file": file,
-                "stream_url": stream_url,
+                "stream_url": format!("http://127.0.0.1:{}/torrents/{}/stream/{file}", core.port, handle.id()),
                 "low_space": low_space(),
-                "stats": handle.stats(),
+                "speed": live.map(|l| l.download_speed.mbps).unwrap_or(0.0),
+                "peers": peers,
+                "progress": if stats.total_bytes > 0 { stats.progress_bytes as f64 / stats.total_bytes as f64 } else { 0.0 },
             })
         }
     }
 }
 
-/// Which parts of file `file` of the job's torrent the engine already has:
-/// `{"state":"ready","length":bytes,"buckets":[0..1, …]}`, the file cut into
-/// `buckets` equal byte ranges, each the fraction of its bytes downloaded
-/// (whole verified pieces only). Other states as `status`.
-pub fn file_map(job: u32, file: usize, buckets: usize) -> Value {
-    let Some(core) = CORE.get() else {
-        return json!({ "state": "failed", "message": "the engine is not started" });
-    };
-    let Some(state) = core.jobs.lock().unwrap().get(&job).cloned() else {
-        return json!({ "state": "failed", "message": format!("no job {job}") });
-    };
-    let handle = match state {
-        Job::Resolving => return json!({ "state": "resolving" }),
-        Job::Failed(message) => return json!({ "state": "failed", "message": message }),
-        Job::Ready(handle) => handle,
-    };
-    let layout = handle.with_metadata(|m| {
-        let l = m.lengths();
-        m.file_infos.get(file).map(|f| Layout {
-            piece_length: l.default_piece_length() as u64,
-            total_length: l.total_length(),
-            file_offset: f.offset_in_torrent,
-            file_length: f.len,
+fn video_file(handle: &librqbit::ManagedTorrent) -> Option<usize> {
+    let files: Vec<(usize, String, u64)> = handle
+        .with_metadata(|m| {
+            m.file_infos
+                .iter()
+                .enumerate()
+                .map(|(index, f)| (index, f.relative_filename.to_string_lossy().into_owned(), f.len))
+                .collect()
         })
-    });
-    let Ok(Some(layout)) = layout else {
-        return json!({ "state": "failed", "message": format!("no file {file}") });
-    };
-    // Not live yet (still checking the files on disk): nothing to show.
+        .ok()?;
+    pick_video(&files)
+}
+
+/// Buckets the scrubber is cut into.
+const TIMELINE_BUCKETS: usize = 200;
+
+/// What the scrubber draws for the job's video at `position` of `duration`
+/// seconds: `{"ranges": [[from, to], …] (0..1 of the film, ready), "ahead":
+/// seconds ready without a gap from the position}`; empty until known.
+pub fn timeline(job: u32, position: f64, duration: f64) -> Value {
+    let empty = json!({ "ranges": [], "ahead": 0 });
+    let Some(core) = CORE.get() else { return empty };
+    let Some(Job::Ready(handle)) = core.jobs.lock().unwrap().get(&job).cloned() else { return empty };
+    let Some(file) = video_file(&handle) else { return empty };
+    let Some(buckets) = file_buckets(core, &handle, file, TIMELINE_BUCKETS) else { return empty };
+    let ranges: Vec<[f64; 2]> = timeline::ready_ranges(&buckets).into_iter().map(|(a, b)| [a, b]).collect();
+    json!({ "ranges": ranges, "ahead": timeline::ready_ahead(&buckets, position, duration) })
+}
+
+/// File `file` of the torrent cut into `n` equal byte ranges, each the
+/// fraction downloaded (whole verified pieces only). None when unknown.
+fn file_buckets(core: &Core, handle: &Arc<librqbit::ManagedTorrent>, file: usize, n: usize) -> Option<Vec<f64>> {
+    let layout = handle
+        .with_metadata(|m| {
+            let l = m.lengths();
+            m.file_infos.get(file).map(|f| Layout {
+                piece_length: l.default_piece_length() as u64,
+                total_length: l.total_length(),
+                file_offset: f.offset_in_torrent,
+                file_length: f.len,
+            })
+        })
+        .ok()??;
+    // Not live yet (still checking the files on disk): nothing downloaded.
     let Ok((have, _)) = core.api.api_dump_haves(handle.id().into()) else {
-        return json!({ "state": "ready", "length": layout.file_length, "buckets": vec![0; buckets.max(1)] });
+        return Some(vec![0.0; n.max(1)]);
     };
-    let fractions = layout.buckets(|piece| have.get(piece as usize).is_some_and(|b| *b), buckets);
-    let rounded: Vec<f64> = fractions.iter().map(|f| (f * 1000.0).round() / 1000.0).collect();
-    json!({ "state": "ready", "length": layout.file_length, "buckets": rounded })
+    Some(layout.buckets(|piece| have.get(piece as usize).is_some_and(|b| *b), n))
 }
 
 /// Where a file lies in its torrent's pieces.
@@ -373,21 +417,20 @@ mod tests {
         let started = Instant::now();
         let status = loop {
             let s = super::status(job);
-            if s["state"] == "ready" || s["state"] == "failed" || started.elapsed() > Duration::from_secs(120) {
+            if s["phase"] == "ready" || s["phase"] == "failed" || started.elapsed() > Duration::from_secs(120) {
                 break s;
             }
             std::thread::sleep(Duration::from_millis(500));
         };
         println!("metadata after {:?}: {}", started.elapsed(), status["name"]);
-        assert_eq!(status["state"], "ready", "{status}");
-        let files = status["files"].as_array().unwrap();
-        let video = files.iter().find(|f| f["name"].as_str().unwrap().ends_with(".mp4")).expect("an mp4");
-        let (torrent, index) = (&status["torrent"], &video["index"]);
+        assert_eq!(status["phase"], "ready", "{status}");
+        let url = status["stream_url"].as_str().unwrap();
+        let path = &url[url.find("/torrents").unwrap()..];
 
         let t = Instant::now();
         let mut conn = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
         conn.set_read_timeout(Some(Duration::from_secs(120))).unwrap();
-        write!(conn, "GET /torrents/{torrent}/stream/{index} HTTP/1.1\r\nHost: 127.0.0.1\r\nRange: bytes=0-1048575\r\nConnection: close\r\n\r\n").unwrap();
+        write!(conn, "GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nRange: bytes=0-1048575\r\nConnection: close\r\n\r\n").unwrap();
         let mut body = Vec::new();
         conn.read_to_end(&mut body).unwrap();
         let head = String::from_utf8_lossy(&body[..body.len().min(300)]);

@@ -24,9 +24,6 @@ player:
   speed: "streaming at %{speed} MB/s"
   peers: "from %{count} people"
   left: "%{time} left"
-  watched: Watched
-  ready: Ready, plays instantly
-  not_loaded: Not loaded yet
   play: Play
   pause: Pause
   back_10: Back 10 seconds

@@ -1,46 +1,27 @@
-// App settings, kept on the device across launches. The engine owns what they
-// mean (Rust: `Engine.setBufferMB`, `Engine.checkSpace`); this keeps the choice.
-import { signal, Storage } from "nsh";
-import { Engine } from "app/native";
+// The UI's mirror of the user's settings. The core keeps and applies them
+// (`Settings.load`, `Settings.setBufferMb`); this holds them in signals for
+// the screens.
+import { signal } from "nsh";
+import { setLocale } from "nsh/i18n";
+import process from "process";
+import { Settings } from "app/native";
 
-/** Choices for the playback buffer, in MiB. */
-export const BUFFER_CHOICES = [128, 256, 512, 1024, 2048] as const;
-export const DEFAULT_BUFFER_MB = 256;
-
-const KEY = "settings.bufferMB";
-
-/** How much the engine may keep while a film plays, MiB. */
-export const bufferMB = signal<number>(DEFAULT_BUFFER_MB);
-
-/** Restores the saved choice and hands it to the engine. */
-export async function restoreSettings() {
-  const saved = Number(await Storage.getItem(KEY).catch(() => null));
-  if ((BUFFER_CHOICES as readonly number[]).includes(saved)) bufferMB.set(saved);
-  await Engine.setBufferMb(bufferMB());
+export interface BufferChoice {
+  mb: number;
+  default: boolean;
 }
 
-export function setBufferMB(mb: number) {
-  bufferMB.set(mb);
-  Engine.setBufferMb(mb);
-  Storage.setItem(KEY, String(mb)).catch((e) => console.warn("could not save the buffer size", e));
+export const bufferMB = signal(0);
+export const bufferChoices = signal<BufferChoice[]>([]);
+
+/** Loads the settings from the core and applies the language. */
+export async function loadSettings() {
+  const s = JSON.parse(await Settings.load(process.dataDir ?? ""));
+  bufferMB.set(s.bufferMB);
+  bufferChoices.set(s.bufferChoices);
+  setLocale(s.language);
 }
 
-export interface Space {
-  ok: boolean;
-  /** Bytes free where the engine keeps its cache; null when unknown. */
-  free: number | null;
-  /** Bytes needed to start: the buffer plus a reserve. */
-  needed: number;
-}
-
-export async function checkSpace(): Promise<Space> {
-  return JSON.parse(await Engine.checkSpace());
-}
-
-/** "256 MB", "1 GB", "1.4 GB". */
-export function formatSize(bytes: number) {
-  const mb = bytes / (1024 * 1024);
-  if (mb < 1024) return `${Math.round(mb)} MB`;
-  const gb = mb / 1024;
-  return `${gb >= 10 || Number.isInteger(gb) ? Math.round(gb) : gb.toFixed(1)} GB`;
+export async function chooseBuffer(mb: number) {
+  bufferMB.set(await Settings.setBufferMb(mb));
 }
