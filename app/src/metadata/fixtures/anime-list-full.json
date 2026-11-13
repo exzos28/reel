@@ -1,0 +1,22 @@
+[ {
+  "type" : "TV", "anidb_id" : 9541, "anilist_id" : 16498, "anime-planet_id" : "attack-on-titan", "imdb_id" : [ "tt2560140" ],
+  "kitsu_id" : 7442, "mal_id" : 16498, "themoviedb_id" : { "tv" : 1429 }, "tvdb_id" : 267440, "season" : { "tvdb" : 1, "tmdb" : 1 }
+}, {
+  "type" : "TV", "anidb_id" : 10944, "anilist_id" : 20958, "imdb_id" : [ "tt2560140" ], "kitsu_id" : 8671, "mal_id" : 25777,
+  "themoviedb_id" : { "tv" : 1429 }, "tvdb_id" : 267440, "season" : { "tvdb" : 2, "tmdb" : 2 }
+}, {
+  "type" : "TV", "anidb_id" : 13241, "anilist_id" : 99147, "imdb_id" : [ "tt2560140" ], "kitsu_id" : 13569, "mal_id" : 35760,
+  "themoviedb_id" : { "tv" : 1429 }, "tvdb_id" : 267440, "season" : { "tvdb" : 3, "tmdb" : 3 }
+}, {
+  "type" : "TV", "anidb_id" : 14444, "anilist_id" : 104578, "imdb_id" : [ "tt2560140" ], "kitsu_id" : 41982, "mal_id" : 38524,
+  "themoviedb_id" : { "tv" : 1429 }, "tvdb_id" : 267440, "season" : { "tvdb" : 3, "tmdb" : 3 },
+  "episode_offset" : { "tvdb" : 12, "tmdb" : 12 }
+}, {
+  "type" : "MOVIE", "anidb_id" : 7, "anilist_id" : 164, "imdb_id" : [ "tt0119698" ], "kitsu_id" : 142, "mal_id" : 164,
+  "themoviedb_id" : { "movie" : [ 128 ] }
+}, {
+  "type" : "MOVIE", "anidb_id" : 99999, "anilist_id" : 9999, "imdb_id" : [ "tt0000001", "tt0000002" ], "mal_id" : 9999,
+  "themoviedb_id" : { "movie" : [ 1001, 1002 ] }
+}, {
+  "type" : "SPECIAL", "anidb_id" : 123456, "anime-planet_id" : "only-anidb"
+} ]

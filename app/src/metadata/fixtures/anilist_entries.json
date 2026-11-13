@@ -1,0 +1,36 @@
+{
+ "data": {
+  "Page": {
+   "media": [
+    {
+     "id": 16498,
+     "idMal": 16498,
+     "format": "TV",
+     "episodes": 25,
+     "averageScore": 85
+    },
+    {
+     "id": 20958,
+     "idMal": 25777,
+     "format": "TV",
+     "episodes": 12,
+     "averageScore": 85
+    },
+    {
+     "id": 99147,
+     "idMal": 35760,
+     "format": "TV",
+     "episodes": 12,
+     "averageScore": 86
+    },
+    {
+     "id": 104578,
+     "idMal": 38524,
+     "format": "TV",
+     "episodes": 10,
+     "averageScore": 89
+    }
+   ]
+  }
+ }
+}

@@ -12,6 +12,8 @@ librqbit = { version = "9.1.0", features = ["http-api", "tracing-subscriber-util
 serde_json = "1"
 anyhow = "1"
 librqbit-dualstack-sockets = "0.7"
-tokio = { version = "1", features = ["rt-multi-thread"] }
+tokio = { version = "1", features = ["rt-multi-thread", "time", "sync"] }
 libc = "0.2"
 serde = { version = "1", features = ["derive"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "query", "default-tls"] }
+rusqlite = { version = "0.42", features = ["bundled"] }

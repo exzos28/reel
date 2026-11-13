@@ -1,0 +1,432 @@
+{
+ "adult": false,
+ "backdrop_path": "/rqbCbjB19amtOtFQbb3K2lgm2zv.jpg",
+ "created_by": [],
+ "episode_run_time": [],
+ "first_air_date": "2013-04-07",
+ "genres": [
+  {
+   "id": 16,
+   "name": "Animacja"
+  },
+  {
+   "id": 10765,
+   "name": "Sci-Fi & Fantasy"
+  },
+  {
+   "id": 10759,
+   "name": "Akcja i Przygoda"
+  }
+ ],
+ "homepage": "https://shingeki.tv/",
+ "id": 1429,
+ "in_production": false,
+ "languages": [
+  "ja"
+ ],
+ "last_air_date": "2022-04-04",
+ "last_episode_to_air": {
+  "id": 3508327,
+  "name": "Świt ludzkości",
+  "overview": "Eren nie cofnie się przed zagładą, którą rozpoczął podczas pierwszej wizyty zwiadowców na kontynencie. Mikasa zastanawia się, czy można było to zatrzymać.",
+  "vote_average": 9.0,
+  "vote_count": 54,
+  "air_date": "2022-04-04",
+  "episode_number": 28,
+  "episode_type": "finale",
+  "production_code": "",
+  "runtime": 23,
+  "season_number": 4,
+  "show_id": 1429,
+  "still_path": "/9IT29LxBTDd610r2XzzGZXeca0b.jpg"
+ },
+ "name": "Atak Tytanów",
+ "next_episode_to_air": null,
+ "networks": [
+  {
+   "id": 94,
+   "logo_path": "/7RNXnyiMbjgqtPAjja13wchcrGI.png",
+   "name": "MBS",
+   "origin_country": "JP"
+  },
+  {
+   "id": 469,
+   "logo_path": "/3E5bxm9VfOU9LkAX545jtpKAe6Z.png",
+   "name": "NHK G",
+   "origin_country": "JP"
+  },
+  {
+   "id": 614,
+   "logo_path": "/hSdroyVthq3CynxTIIY7lnS8w1.png",
+   "name": "TOKYO MX",
+   "origin_country": "JP"
+  }
+ ],
+ "number_of_episodes": 87,
+ "number_of_seasons": 4,
+ "origin_country": [
+  "JP"
+ ],
+ "original_language": "ja",
+ "original_name": "進撃の巨人",
+ "overview": "W otoczonym wysokim murem mieście ostatni ocaleni starają się przetrwać ataki olbrzymów, które od wieków nękają ludzkość. Gdy pewnego razu potwory wdzierają się do miasta, jedną z wielu ofiar jest matka nastoletniego Erena. Chłopak poprzysięga zemstę i wraz z najbliższymi przyjaciółmi, Mikasą i Arminem dołącza do oddziałów obronnych. Kilka lat później młodzi żołnierze kończą szkolenie i właśnie mają dołączyć do jednej z jednostek specjalnych, gdy niespodziewanie olbrzymy ponownie atakują.",
+ "popularity": 43.0192,
+ "poster_path": "/qlbcGr0EYKRICD0MTrIwnIztQna.jpg",
+ "production_companies": [
+  {
+   "id": 529,
+   "logo_path": "/rwB6w2aPENQbx756pBWSw44Ouk.png",
+   "name": "Production I.G",
+   "origin_country": "JP"
+  },
+  {
+   "id": 21444,
+   "logo_path": "/wSejGn3lAZdQ5muByxvzigwyDY6.png",
+   "name": "MAPPA",
+   "origin_country": "JP"
+  },
+  {
+   "id": 31058,
+   "logo_path": "/1vwZPG0zMVRvThCY8Lljh0ppxQo.png",
+   "name": "WIT STUDIO",
+   "origin_country": "JP"
+  }
+ ],
+ "production_countries": [
+  {
+   "iso_3166_1": "JP",
+   "name": "Japan"
+  }
+ ],
+ "seasons": [
+  {
+   "air_date": "2013-07-07",
+   "episode_count": 37,
+   "id": 3789,
+   "name": "Odcinki specjalne",
+   "overview": "",
+   "poster_path": "/6riX34mS6iYGw21zLlEd2aeY6Te.jpg",
+   "season_number": 0,
+   "vote_average": 0.0
+  },
+  {
+   "air_date": "2013-04-07",
+   "episode_count": 25,
+   "id": 3788,
+   "name": "Sezon 1",
+   "overview": "Gdy kolosalny tytan niszczy zewnętrzny mur miasta Shiganshina, Eren Jaeger i jego przyjaciele zostają brutalnie wyrwani z dzieciństwa i zmuszeni do stawienia czoła potworom, które pożerają ludzi. Wstępując do wojska, Eren przysięga zemstę, lecz los szykuje dla niego coś znacznie większego niż pole bitwy - odkrycie przerażającej prawdy o tytanach i o sobie samym.",
+   "poster_path": "/sl3EiPfLEQ4Ngfg6B1NmOhzc8GH.jpg",
+   "season_number": 1,
+   "vote_average": 8.4
+  },
+  {
+   "air_date": "2017-04-01",
+   "episode_count": 12,
+   "id": 84756,
+   "name": "Sezon 2",
+   "overview": "Gdy mur przestaje być gwarantem bezpieczeństwa, a sojusznicy ujawniają swoje prawdziwe oblicza, nic nie jest już oczywiste. Zwiadowcy próbują powstrzymać inwazję tytanów wewnątrz Muru Rose, lecz z każdym krokiem odkrywają kolejne szokujące sekrety o przeszłości towarzyszy i prawdziwej naturze zagrożenia.",
+   "poster_path": "/7njv8RTUrI2Y4Zw5gn1jb3Pp9hb.jpg",
+   "season_number": 2,
+   "vote_average": 8.6
+  },
+  {
+   "air_date": "2018-07-23",
+   "episode_count": 22,
+   "id": 98013,
+   "name": "Sezon 3",
+   "overview": "Gdy tytani przestają być jedynym zagrożeniem, a największy wróg czai się wewnątrz murów, ludzkość musi stawić czoła prawdzie. Eren i jego towarzysze walczą nie tylko o przetrwanie, lecz także o wolność od skorumpowanego rządu i tajemnic skrywanych od pokoleń. W obliczu politycznych spisków, rodzinnych sekretów i krwawej wojny, stawką staje się przyszłość całej cywilizacji.",
+   "poster_path": "/eTqlVZklWLBnjJwG3YCa0cbSqh9.jpg",
+   "season_number": 3,
+   "vote_average": 8.8
+  },
+  {
+   "air_date": "2020-12-07",
+   "episode_count": 28,
+   "id": 126952,
+   "name": "Sezon 4",
+   "overview": "Czwarty sezon przynosi wstrząsające odkrycia i brutalne konfrontacje między światem za murami a resztą ludzkości. Gdy Eren i jego towarzysze poznają prawdę o świecie, zaczynają kwestionować wszystko, w co wierzyli. Kolejne bitwy pokazują, że granica między ofiarą a oprawcą potrafi się niebezpiecznie zacierać. Paradis kontra Marley - to już nie tylko walka o przetrwanie, ale o to, kto zdefiniuje przyszłość całej ludzkości.",
+   "poster_path": "/8ovM6DsX6KoWqWIK8tzwRXLamGy.jpg",
+   "season_number": 4,
+   "vote_average": 8.6
+  }
+ ],
+ "softcore": false,
+ "spoken_languages": [
+  {
+   "english_name": "Japanese",
+   "iso_639_1": "ja",
+   "name": "日本語"
+  }
+ ],
+ "status": "Ended",
+ "tagline": "",
+ "type": "Scripted",
+ "vote_average": 8.691,
+ "vote_count": 7826,
+ "external_ids": {
+  "imdb_id": "tt2560140",
+  "freebase_mid": "/m/0vsphz0",
+  "freebase_id": null,
+  "tvdb_id": 267440,
+  "tvrage_id": null,
+  "wikidata_id": "Q22126305",
+  "facebook_id": "AttackOnTitan",
+  "instagram_id": "anime_shingeki_official",
+  "twitter_id": "anime_shingeki"
+ },
+ "images": {
+  "backdrops": [
+   {
+    "aspect_ratio": 1.778,
+    "height": 2160,
+    "iso_3166_1": null,
+    "iso_639_1": null,
+    "file_path": "/rqbCbjB19amtOtFQbb3K2lgm2zv.jpg",
+    "vote_average": 5.404,
+    "vote_count": 32,
+    "width": 3840
+   },
+   {
+    "aspect_ratio": 1.778,
+    "height": 1080,
+    "iso_3166_1": null,
+    "iso_639_1": null,
+    "file_path": "/2b0s0iMNl9CgrCMz0VGKlMw3vZw.jpg",
+    "vote_average": 5.25,
+    "vote_count": 16,
+    "width": 1920
+   },
+   {
+    "aspect_ratio": 1.778,
+    "height": 2160,
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "file_path": "/kAPsxKEAaCYKPOVmrBzhGpLMQLh.jpg",
+    "vote_average": 3.334,
+    "vote_count": 2,
+    "width": 3840
+   },
+   {
+    "aspect_ratio": 1.778,
+    "height": 1080,
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "file_path": "/4oWjojulSzJezj5SwpbQiZhBB3U.jpg",
+    "vote_average": 3.334,
+    "vote_count": 1,
+    "width": 1920
+   }
+  ],
+  "logos": [
+   {
+    "aspect_ratio": 3.458,
+    "height": 1247,
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "file_path": "/eHMfVTIwen9anB4HuvQlFRGZFms.png",
+    "vote_average": 3.334,
+    "vote_count": 2,
+    "width": 4312
+   },
+   {
+    "aspect_ratio": 4.871,
+    "height": 403,
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "file_path": "/7q79Pv7aDjEsqy3fXZ4T1bkifJo.png",
+    "vote_average": 2.278,
+    "vote_count": 3,
+    "width": 1963
+   },
+   {
+    "aspect_ratio": 3.371,
+    "height": 178,
+    "iso_3166_1": null,
+    "iso_639_1": null,
+    "file_path": "/tcQTVzxw3V5VRWQjJGsRGIFKyUt.png",
+    "vote_average": 0.166,
+    "vote_count": 2,
+    "width": 600
+   }
+  ],
+  "posters": [
+   {
+    "aspect_ratio": 0.706,
+    "height": 2126,
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "file_path": "/hTP1DtLGFamjfu8WqjnuQdP1n4i.jpg",
+    "vote_average": 8.1,
+    "vote_count": 91,
+    "width": 1500
+   },
+   {
+    "aspect_ratio": 0.741,
+    "height": 1400,
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "file_path": "/sHim6U0ANsbzxcmNRYuIubBVQaz.jpg",
+    "vote_average": 7.44,
+    "vote_count": 141,
+    "width": 1037
+   },
+   {
+    "aspect_ratio": 0.667,
+    "height": 1500,
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "file_path": "/hqRb1wyIVsaMukZElPBUXoJPqrR.jpg",
+    "vote_average": 7.41,
+    "vote_count": 44,
+    "width": 1000
+   },
+   {
+    "aspect_ratio": 0.667,
+    "height": 1500,
+    "iso_3166_1": null,
+    "iso_639_1": null,
+    "file_path": "/reRiGNLEhiiTHdAq5si67CmcFQL.jpg",
+    "vote_average": 6.722,
+    "vote_count": 6,
+    "width": 1000
+   }
+  ]
+ },
+ "credits": {
+  "cast": [
+   {
+    "adult": false,
+    "gender": 1,
+    "id": 90135,
+    "known_for_department": "Acting",
+    "name": "井上麻里奈",
+    "original_name": "井上麻里奈",
+    "popularity": 4.0818,
+    "profile_path": "/f7PuEx1h2g4FLgMzk9wCrWuS9Eu.jpg",
+    "character": "Armin Arlert (voice)",
+    "credit_id": "5d5fa849924ce50015154a9e",
+    "order": 0
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 119145,
+    "known_for_department": "Acting",
+    "name": "下野紘",
+    "original_name": "下野紘",
+    "popularity": 3.5953,
+    "profile_path": "/yrSDcgFefHtWkFmLnTrcw2t0MV.jpg",
+    "character": "Connie Springer (voice)",
+    "credit_id": "5d5fa95da894d63c769ba40d",
+    "order": 1
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 149894,
+    "known_for_department": "Acting",
+    "name": "梶裕貴",
+    "original_name": "梶裕貴",
+    "popularity": 5.0415,
+    "profile_path": "/8wKdPV11IwowfwoqGqMMNt9hmp6.jpg",
+    "character": "Eren Yeager (voice)",
+    "credit_id": "547c859b9251411f4e001e9a",
+    "order": 3
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 1256603,
+    "known_for_department": "Acting",
+    "name": "花江夏樹",
+    "original_name": "花江夏樹",
+    "popularity": 5.7718,
+    "profile_path": "/alTb0DlcPIbcwM08WSmxFai58sd.jpg",
+    "character": "Falco Grice (voice)",
+    "credit_id": "620a6a3a297338132edc8d18",
+    "order": 3
+   }
+  ],
+  "crew": [
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 2659300,
+    "known_for_department": "Sound",
+    "name": "KOHTA YAMAMOTO",
+    "original_name": "KOHTA YAMAMOTO",
+    "popularity": 0.6425,
+    "profile_path": "/83Iu3Ey3ym9ZwewSmUjOvimpTMd.jpg",
+    "credit_id": "5f74f0f319675700379a5119",
+    "department": "Sound",
+    "job": "Original Music Composer"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 1208426,
+    "known_for_department": "Sound",
+    "name": "澤野弘之",
+    "original_name": "澤野弘之",
+    "popularity": 1.6285,
+    "profile_path": "/gV1lO7MjMso31nQ9NiLGtsdSYgZ.jpg",
+    "credit_id": "5f74f091fea0d700350eb0a6",
+    "department": "Sound",
+    "job": "Original Music Composer"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 1777147,
+    "known_for_department": "Production",
+    "name": "木村誠",
+    "original_name": "木村誠",
+    "popularity": 0.337,
+    "profile_path": "/5hTJCOaLiXYHoil6DGJQmQLK6AX.jpg",
+    "credit_id": "61796f49e9da69002b9f5285",
+    "department": "Production",
+    "job": "Producer"
+   }
+  ]
+ },
+ "translations": {
+  "translations": [
+   {
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "name": "English",
+    "english_name": "English",
+    "data": {
+     "name": "Attack on Titan",
+     "overview": "100 years ago, the last remnants of humanity were forced to retreat behind the towering walls of a fortified city to escape the massive, man-eating Titans that roamed the land outside their fortress. Only the members of the Scouting Legion dared to stray beyond the safety of the walls – but even those brave warriors seldom returned alive. Those within the city clung to the illusion of a peaceful existence until the day that dream was shattered, and their slim chance at survival was reduced to one horrifying choice: kill – or be devoured!",
+     "homepage": "",
+     "tagline": "Home was a pen. Humanity, cattle."
+    }
+   },
+   {
+    "iso_3166_1": "DE",
+    "iso_639_1": "de",
+    "name": "Deutsch",
+    "english_name": "German",
+    "data": {
+     "name": "Attack on Titan",
+     "overview": "In 2000 Jahren lebt die Menschheit – oder das, was davon übrig ist – hinter 50 Meter hohen, gewaltigen Mauern. Diese Festung verspricht Sicherheit, doch wer sich nach draußen wagt, kehrt selten unversehrt zurück. Denn die Welt wird von riesigen Titanen beherrscht, die anscheinend nur ein Ziel haben: Menschen zu fressen! Als eines Tages ein Exemplar von ungeheuren Ausmaßen über die Mauer blickt, ahnen die Einwohner von Shiganshina schnell, dass ihrem Dorf nach hundert Jahren des Friedens erneut eine Katastrophe bevorsteht. Doch während sich die meisten hilflos ihrem Schicksal ergeben, schwört der junge Eren Jäger Rache. Eines Tages wird er die Welt jenseits der Mauern entdecken und die Titanen allesamt vernichten!",
+     "homepage": "",
+     "tagline": "Sie sind das Essen! Wir sind die Jäger!"
+    }
+   },
+   {
+    "iso_3166_1": "PL",
+    "iso_639_1": "pl",
+    "name": "Polski",
+    "english_name": "Polish",
+    "data": {
+     "name": "Atak Tytanów",
+     "overview": "W otoczonym wysokim murem mieście ostatni ocaleni starają się przetrwać ataki olbrzymów, które od wieków nękają ludzkość. Gdy pewnego razu potwory wdzierają się do miasta, jedną z wielu ofiar jest matka nastoletniego Erena. Chłopak poprzysięga zemstę i wraz z najbliższymi przyjaciółmi, Mikasą i Arminem dołącza do oddziałów obronnych. Kilka lat później młodzi żołnierze kończą szkolenie i właśnie mają dołączyć do jednej z jednostek specjalnych, gdy niespodziewanie olbrzymy ponownie atakują.",
+     "homepage": "",
+     "tagline": ""
+    }
+   }
+  ]
+ }
+}

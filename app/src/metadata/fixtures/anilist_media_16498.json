@@ -1,0 +1,583 @@
+{
+ "data": {
+  "Media": {
+   "id": 16498,
+   "idMal": 16498,
+   "format": "TV",
+   "status": "FINISHED",
+   "episodes": 25,
+   "duration": 24,
+   "season": "SPRING",
+   "seasonYear": 2013,
+   "averageScore": 85,
+   "title": {
+    "romaji": "Shingeki no Kyojin",
+    "english": "Attack on Titan",
+    "native": "進撃の巨人"
+   },
+   "synonyms": [
+    "SnK",
+    "AoT",
+    "Ataque a los Titanes",
+    "Ataque dos Titãs",
+    "L'Attacco dei Giganti",
+    "מתקפת הטיטאנים",
+    "进击的巨人",
+    "L’Attaque des Titans",
+    "الهجوم على العمالقة",
+    "ผ่าพิภพไททัน",
+    "حمله به تایتان",
+    "Ataque de Titãs",
+    "Atak Tytanów",
+    "Атака титанов",
+    "Đại Chiến Titan"
+   ],
+   "description": "Several hundred years ago, humans were nearly exterminated by titans. Titans are typically several stories tall, seem to have no intelligence, devour human beings and, worst of all, seem to do it for the pleasure rather than as a food source. A small percentage of humanity survived by walling themselves in a city protected by extremely high walls, even taller than the biggest of titans.<br><br>\r\nFlash forward to the present and the city has not seen a titan in over 100 years. Teenage boy Eren and his foster sister Mikasa witness something horrific as the city walls are destroyed by a colossal titan that appears out of thin air. As the smaller titans flood the city, the two kids watch in horror as their mother is eaten alive. Eren vows that he will murder every single titan and take revenge for all of mankind.<br><br>\r\n(Source: MangaHelpers)",
+   "coverImage": {
+    "extraLarge": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx16498-buvcRTBx4NSm.jpg",
+    "large": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx16498-buvcRTBx4NSm.jpg",
+    "medium": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx16498-buvcRTBx4NSm.jpg",
+    "color": "#f1a143"
+   },
+   "bannerImage": "https://s4.anilist.co/file/anilistcdn/media/anime/banner/16498-8jpFCOcDmneX.jpg",
+   "startDate": {
+    "year": 2013,
+    "month": 4,
+    "day": 7
+   },
+   "endDate": {
+    "year": 2013,
+    "month": 9,
+    "day": 28
+   },
+   "genres": [
+    "Action",
+    "Drama",
+    "Fantasy",
+    "Mystery"
+   ],
+   "isAdult": false,
+   "countryOfOrigin": "JP",
+   "siteUrl": "https://anilist.co/anime/16498",
+   "tags": [
+    {
+     "name": "Kaiju",
+     "rank": 93,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Revenge",
+     "rank": 93,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Tragedy",
+     "rank": 89,
+     "isMediaSpoiler": true
+    },
+    {
+     "name": "Military",
+     "rank": 88,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Henshin",
+     "rank": 88,
+     "isMediaSpoiler": true
+    },
+    {
+     "name": "Male Protagonist",
+     "rank": 86,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Primarily Teen Cast",
+     "rank": 86,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Post-Apocalyptic",
+     "rank": 84,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Survival",
+     "rank": 84,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Super Power",
+     "rank": 81,
+     "isMediaSpoiler": true
+    },
+    {
+     "name": "Memory Manipulation",
+     "rank": 77,
+     "isMediaSpoiler": true
+    },
+    {
+     "name": "Gore",
+     "rank": 77,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Steampunk",
+     "rank": 77,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Dystopian",
+     "rank": 77,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Swordplay",
+     "rank": 74,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Ensemble Cast",
+     "rank": 74,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Cannibalism",
+     "rank": 69,
+     "isMediaSpoiler": true
+    },
+    {
+     "name": "Espionage",
+     "rank": 68,
+     "isMediaSpoiler": true
+    },
+    {
+     "name": "Orphan",
+     "rank": 67,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Shounen",
+     "rank": 63,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Kuudere",
+     "rank": 62,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Medieval",
+     "rank": 60,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Coming of Age",
+     "rank": 60,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Amnesia",
+     "rank": 60,
+     "isMediaSpoiler": true
+    },
+    {
+     "name": "Time Skip",
+     "rank": 60,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Suicide",
+     "rank": 55,
+     "isMediaSpoiler": true
+    },
+    {
+     "name": "Rural",
+     "rank": 50,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Primarily Male Cast",
+     "rank": 33,
+     "isMediaSpoiler": false
+    },
+    {
+     "name": "Adoption",
+     "rank": 31,
+     "isMediaSpoiler": false
+    }
+   ],
+   "studios": {
+    "nodes": [
+     {
+      "name": "WIT STUDIO"
+     }
+    ]
+   },
+   "nextAiringEpisode": null,
+   "characters": {
+    "edges": [
+     {
+      "role": "MAIN",
+      "node": {
+       "id": 40882,
+       "name": {
+        "full": "Eren Yeager"
+       }
+      },
+      "voiceActors": [
+       {
+        "id": 95672,
+        "name": {
+         "full": "Yuuki Kaji"
+        },
+        "image": {
+         "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n95672-T33YV7yCDKnL.png",
+         "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n95672-T33YV7yCDKnL.png"
+        }
+       }
+      ]
+     },
+     {
+      "role": "MAIN",
+      "node": {
+       "id": 40881,
+       "name": {
+        "full": "Mikasa Ackerman"
+       }
+      },
+      "voiceActors": [
+       {
+        "id": 100142,
+        "name": {
+         "full": "Yui Ishikawa"
+        },
+        "image": {
+         "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n100142-k6RP0HzXffUG.png",
+         "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n100142-k6RP0HzXffUG.png"
+        }
+       }
+      ]
+     },
+     {
+      "role": "MAIN",
+      "node": {
+       "id": 46494,
+       "name": {
+        "full": "Armin Arlert"
+       }
+      },
+      "voiceActors": [
+       {
+        "id": 95158,
+        "name": {
+         "full": "Marina Inoue"
+        },
+        "image": {
+         "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n95158-OLhgs8zv5xsp.jpg",
+         "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n95158-OLhgs8zv5xsp.jpg"
+        }
+       }
+      ]
+     },
+     {
+      "role": "SUPPORTING",
+      "node": {
+       "id": 45627,
+       "name": {
+        "full": "Levi"
+       }
+      },
+      "voiceActors": [
+       {
+        "id": 95118,
+        "name": {
+         "full": "Hiroshi Kamiya"
+        },
+        "image": {
+         "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n95118-oOElrn1aSaiC.png",
+         "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n95118-oOElrn1aSaiC.png"
+        }
+       }
+      ]
+     },
+     {
+      "role": "SUPPORTING",
+      "node": {
+       "id": 45887,
+       "name": {
+        "full": "Sasha Blouse"
+       }
+      },
+      "voiceActors": [
+       {
+        "id": 95034,
+        "name": {
+         "full": "Yuu Kobayashi"
+        },
+        "image": {
+         "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n95034-AwobjrcmkMi9.png",
+         "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n95034-AwobjrcmkMi9.png"
+        }
+       }
+      ]
+     },
+     {
+      "role": "SUPPORTING",
+      "node": {
+       "id": 46484,
+       "name": {
+        "full": "Reiner Braun"
+       }
+      },
+      "voiceActors": [
+       {
+        "id": 100626,
+        "name": {
+         "full": "Yoshimasa Hosoya"
+        },
+        "image": {
+         "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n100626-bH8eZ0wv3HYX.jpg",
+         "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n100626-bH8eZ0wv3HYX.jpg"
+        }
+       }
+      ]
+     },
+     {
+      "role": "SUPPORTING",
+      "node": {
+       "id": 46486,
+       "name": {
+        "full": "Connie Springer"
+       }
+      },
+      "voiceActors": [
+       {
+        "id": 95356,
+        "name": {
+         "full": "Hiro Shimono"
+        },
+        "image": {
+         "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n95356-PFaZRlI9oJ56.png",
+         "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n95356-PFaZRlI9oJ56.png"
+        }
+       }
+      ]
+     },
+     {
+      "role": "SUPPORTING",
+      "node": {
+       "id": 46488,
+       "name": {
+        "full": "Bertolt Hoover"
+       }
+      },
+      "voiceActors": [
+       {
+        "id": 110005,
+        "name": {
+         "full": "Tomohisa Hashizume"
+        },
+        "image": {
+         "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n110005-65qAMtTf7qOb.png",
+         "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n110005-65qAMtTf7qOb.png"
+        }
+       }
+      ]
+     },
+     {
+      "role": "SUPPORTING",
+      "node": {
+       "id": 46490,
+       "name": {
+        "full": "Annie Leonhart"
+       }
+      },
+      "voiceActors": [
+       {
+        "id": 100295,
+        "name": {
+         "full": "Yuu Shimamura"
+        },
+        "image": {
+         "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n100295-SLfRq3RqJEoF.jpg",
+         "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n100295-SLfRq3RqJEoF.jpg"
+        }
+       }
+      ]
+     },
+     {
+      "role": "SUPPORTING",
+      "node": {
+       "id": 46492,
+       "name": {
+        "full": "Hannes"
+       }
+      },
+      "voiceActors": [
+       {
+        "id": 95063,
+        "name": {
+         "full": "Keiji Fujiwara"
+        },
+        "image": {
+         "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n95063-xAsEUzspuLMG.jpg",
+         "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n95063-xAsEUzspuLMG.jpg"
+        }
+       }
+      ]
+     },
+     {
+      "role": "SUPPORTING",
+      "node": {
+       "id": 46496,
+       "name": {
+        "full": "Erwin Smith"
+       }
+      },
+      "voiceActors": [
+       {
+        "id": 95212,
+        "name": {
+         "full": "Daisuke Ono"
+        },
+        "image": {
+         "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n95212-wX1M4LJN96q2.png",
+         "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n95212-wX1M4LJN96q2.png"
+        }
+       }
+      ]
+     },
+     {
+      "role": "SUPPORTING",
+      "node": {
+       "id": 46498,
+       "name": {
+        "full": "Jean Kirstein"
+       }
+      },
+      "voiceActors": [
+       {
+        "id": 95196,
+        "name": {
+         "full": "Kishou Taniyama"
+        },
+        "image": {
+         "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n95196-t2vbxQMee0ci.png",
+         "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n95196-t2vbxQMee0ci.png"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "staff": {
+    "edges": [
+     {
+      "role": "Original Creator",
+      "node": {
+       "id": 106705,
+       "name": {
+        "full": "Hajime Isayama"
+       },
+       "image": {
+        "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n106705-ttS2qZpF2FTZ.jpg",
+        "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n106705-ttS2qZpF2FTZ.jpg"
+       }
+      }
+     },
+     {
+      "role": "Director",
+      "node": {
+       "id": 100088,
+       "name": {
+        "full": "Tetsurou Araki"
+       },
+       "image": {
+        "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n100088-tFWlDxGJEPlk.png",
+        "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n100088-tFWlDxGJEPlk.png"
+       }
+      }
+     },
+     {
+      "role": "Assistant Director",
+      "node": {
+       "id": 118905,
+       "name": {
+        "full": "Masashi Koizuka"
+       },
+       "image": {
+        "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n118905-RnlqBIuWYZ7g.jpg",
+        "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n118905-RnlqBIuWYZ7g.jpg"
+       }
+      }
+     },
+     {
+      "role": "Assistant Director",
+      "node": {
+       "id": 117045,
+       "name": {
+        "full": "Hiroyuki Tanaka"
+       },
+       "image": {
+        "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n117045-p5be4XEkV3xK.jpg",
+        "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n117045-p5be4XEkV3xK.jpg"
+       }
+      }
+     },
+     {
+      "role": "Series Composition",
+      "node": {
+       "id": 102071,
+       "name": {
+        "full": "Yasuko Kobayashi"
+       },
+       "image": {
+        "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n102071-gPeWt6xwz2Dr.png",
+        "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n102071-gPeWt6xwz2Dr.png"
+       }
+      }
+     },
+     {
+      "role": "Character Design",
+      "node": {
+       "id": 113599,
+       "name": {
+        "full": "Kyouji Asano"
+       },
+       "image": {
+        "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n113599-xvzHwiudAfdP.png",
+        "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n113599-xvzHwiudAfdP.png"
+       }
+      }
+     },
+     {
+      "role": "Sub Character Design",
+      "node": {
+       "id": 132652,
+       "name": {
+        "full": "Ayumi Yamada"
+       },
+       "image": {
+        "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n132652-PBSBU3OldB2S.png",
+        "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n132652-PBSBU3OldB2S.png"
+       }
+      }
+     },
+     {
+      "role": "Sub Character Design",
+      "node": {
+       "id": 103083,
+       "name": {
+        "full": "Satoshi Kadowaki"
+       },
+       "image": {
+        "large": "https://s4.anilist.co/file/anilistcdn/staff/large/n103083-ISBLVu8AlYPp.png",
+        "medium": "https://s4.anilist.co/file/anilistcdn/staff/medium/n103083-ISBLVu8AlYPp.png"
+       }
+      }
+     }
+    ]
+   }
+  }
+ }
+}

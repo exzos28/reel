@@ -1,0 +1,370 @@
+{
+ "adult": false,
+ "backdrop_path": "/tlm8UkiQsitc8rSuIAscQDCnP8d.jpg",
+ "belongs_to_collection": {
+  "id": 2344,
+  "name": "Matrix - Kolekcja",
+  "poster_path": "/fRtLeO36LzIaaMVKY88jx8ZTRa6.jpg",
+  "backdrop_path": "/bRm2DEgUiYciDw3myHuYFInD7la.jpg"
+ },
+ "budget": 63000000,
+ "genres": [
+  {
+   "id": 28,
+   "name": "Akcja"
+  },
+  {
+   "id": 878,
+   "name": "Sci-Fi"
+  }
+ ],
+ "homepage": "",
+ "id": 603,
+ "imdb_id": "tt0133093",
+ "origin_country": [
+  "US"
+ ],
+ "original_language": "en",
+ "original_title": "The Matrix",
+ "overview": "Thomas Anderson wiedzie podwójne życie - na co dzień pracuje w koncernie Meta Cortechs jako programista, prywatnie jest genialnym hackerem, działającym pod nickiem Neo. Pewnego dnia nawiązuje z nim kontakt tajemniczy Morfeusz - człowiek, który obiecuje mu odkryć prawdę o rzeczywistości, w jakiej żyją. Prawdę o Matriksie. Prawdę o dwóch światach: prawdziwym i wygenerowanym, który ma tylko \"udawać\" rzeczywistość. Neo początkowo wbrew sobie przystaje do grupy kierowanej przez Morfeusza, stopniowo jednak sam zaczyna dostrzegać, że ze światem, w którym żył dotychczas, jest coś nie tak. Że jego życiem cały czas ktoś kierował. Kolejne stopnie wtajemniczenia stawiają przed Neo nowe pytania. Który ze światów jest prawdziwy? Czym jest Matrix i komu służy? I jaką rolę w planie Morfeusza ma do spełnienia sam Neo?",
+ "popularity": 35.8571,
+ "poster_path": "/xiCMLkZOVlxFbvWJMHuf4FJvnuX.jpg",
+ "production_companies": [
+  {
+   "id": 79,
+   "logo_path": "/at4uYdwAAgNRKhZuuFX8ShKSybw.png",
+   "name": "Village Roadshow Pictures",
+   "origin_country": "US"
+  },
+  {
+   "id": 372,
+   "logo_path": null,
+   "name": "Groucho II Film Partnership",
+   "origin_country": ""
+  },
+  {
+   "id": 1885,
+   "logo_path": "/xlvoOZr4s1PygosrwZyolIFe5xs.png",
+   "name": "Silver Pictures",
+   "origin_country": "US"
+  }
+ ],
+ "production_countries": [
+  {
+   "iso_3166_1": "US",
+   "name": "United States of America"
+  }
+ ],
+ "release_date": "1999-03-31",
+ "revenue": 463517383,
+ "runtime": 136,
+ "softcore": false,
+ "spoken_languages": [
+  {
+   "english_name": "English",
+   "iso_639_1": "en",
+   "name": "English"
+  }
+ ],
+ "status": "Released",
+ "tagline": "Wizja świata, w którym maszyny kierują ziemią, a ludzie są ich zabawkami.",
+ "title": "Matrix",
+ "video": false,
+ "vote_average": 8.263,
+ "vote_count": 29235,
+ "external_ids": {
+  "imdb_id": "tt0133093",
+  "wikidata_id": "Q83495",
+  "facebook_id": "TheMatrixMovie",
+  "instagram_id": "thematrixmovie",
+  "twitter_id": "thematrixmovie"
+ },
+ "images": {
+  "backdrops": [
+   {
+    "aspect_ratio": 1.778,
+    "height": 2160,
+    "iso_3166_1": null,
+    "iso_639_1": null,
+    "file_path": "/tlm8UkiQsitc8rSuIAscQDCnP8d.jpg",
+    "vote_average": 6.042,
+    "vote_count": 12,
+    "width": 3840
+   },
+   {
+    "aspect_ratio": 1.778,
+    "height": 1440,
+    "iso_3166_1": null,
+    "iso_639_1": null,
+    "file_path": "/lrtSb1skJayPydZk0OSMAKjBOVe.jpg",
+    "vote_average": 5.786,
+    "vote_count": 7,
+    "width": 2560
+   },
+   {
+    "aspect_ratio": 1.778,
+    "height": 1080,
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "file_path": "/cAZrhjWM6wcDASWH8GeEshoe1u2.jpg",
+    "vote_average": 3.334,
+    "vote_count": 1,
+    "width": 1920
+   },
+   {
+    "aspect_ratio": 1.775,
+    "height": 721,
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "file_path": "/ll4HTrUVuELq7wixDB36uzI1VHN.jpg",
+    "vote_average": 2.278,
+    "vote_count": 4,
+    "width": 1280
+   }
+  ],
+  "logos": [
+   {
+    "aspect_ratio": 9.861,
+    "height": 79,
+    "iso_3166_1": "PL",
+    "iso_639_1": "pl",
+    "file_path": "/u7izaS4ASXTA1FD0AhvUjEeEWqk.png",
+    "vote_average": 0.0,
+    "vote_count": 0,
+    "width": 779
+   },
+   {
+    "aspect_ratio": 5.958,
+    "height": 24,
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "file_path": "/xslT5YyQOaqcVKAZxcoq2YbcbEf.svg",
+    "vote_average": 3.334,
+    "vote_count": 1,
+    "width": 143
+   },
+   {
+    "aspect_ratio": 6.435,
+    "height": 124,
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "file_path": "/iWxxHjuJ1vCLQcg3iiOMucvbrF1.png",
+    "vote_average": 2.066,
+    "vote_count": 5,
+    "width": 798
+   }
+  ],
+  "posters": [
+   {
+    "aspect_ratio": 0.697,
+    "height": 750,
+    "iso_3166_1": "PL",
+    "iso_639_1": "pl",
+    "file_path": "/xiCMLkZOVlxFbvWJMHuf4FJvnuX.jpg",
+    "vote_average": 0.0,
+    "vote_count": 0,
+    "width": 523
+   },
+   {
+    "aspect_ratio": 0.667,
+    "height": 2250,
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "file_path": "/dXNAPwY7VrqMAo51EKhhCJfaGb5.jpg",
+    "vote_average": 6.368,
+    "vote_count": 34,
+    "width": 1500
+   },
+   {
+    "aspect_ratio": 0.667,
+    "height": 3000,
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "file_path": "/aOIuZAjPaRIE6CMzbazvcHuHXDc.jpg",
+    "vote_average": 6.0,
+    "vote_count": 38,
+    "width": 2000
+   },
+   {
+    "aspect_ratio": 0.667,
+    "height": 3000,
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "file_path": "/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg",
+    "vote_average": 5.898,
+    "vote_count": 45,
+    "width": 2000
+   }
+  ]
+ },
+ "credits": {
+  "cast": [
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 6384,
+    "known_for_department": "Acting",
+    "name": "Keanu Reeves",
+    "original_name": "Keanu Reeves",
+    "popularity": 7.5198,
+    "profile_path": "/8RZLOyYGsoRe9p44q3xin9QkMHv.jpg",
+    "cast_id": 34,
+    "character": "Neo",
+    "credit_id": "52fe425bc3a36847f80181c1",
+    "order": 0
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 2975,
+    "known_for_department": "Acting",
+    "name": "Laurence Fishburne",
+    "original_name": "Laurence Fishburne",
+    "popularity": 3.2296,
+    "profile_path": "/2GbXERENPpl5MmlqOLlPVaVtifD.jpg",
+    "cast_id": 21,
+    "character": "Morpheus",
+    "credit_id": "52fe425bc3a36847f801818d",
+    "order": 1
+   },
+   {
+    "adult": false,
+    "gender": 1,
+    "id": 530,
+    "known_for_department": "Acting",
+    "name": "Carrie-Anne Moss",
+    "original_name": "Carrie-Anne Moss",
+    "popularity": 3.1569,
+    "profile_path": "/9zya72vRZYBQILfetACsnmCBgdj.jpg",
+    "cast_id": 22,
+    "character": "Trinity",
+    "credit_id": "52fe425bc3a36847f8018191",
+    "order": 2
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 1331,
+    "known_for_department": "Acting",
+    "name": "Hugo Weaving",
+    "original_name": "Hugo Weaving",
+    "popularity": 4.3726,
+    "profile_path": "/lSC8Et0PYi5zeQb3IpPkFje7hgR.jpg",
+    "cast_id": 23,
+    "character": "Agent Smith",
+    "credit_id": "52fe425bc3a36847f8018195",
+    "order": 3
+   }
+  ],
+  "crew": [
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 4949,
+    "known_for_department": "Sound",
+    "name": "Don Davis",
+    "original_name": "Don Davis",
+    "popularity": 0.4741,
+    "profile_path": "/39dDBsvnw05JCw1Qft9h6wMgVB2.jpg",
+    "credit_id": "52fe425bc3a36847f8018135",
+    "department": "Sound",
+    "job": "Original Music Composer"
+   },
+   {
+    "adult": false,
+    "gender": 1,
+    "id": 9340,
+    "known_for_department": "Directing",
+    "name": "Lana Wachowski",
+    "original_name": "Lana Wachowski",
+    "popularity": 1.3537,
+    "profile_path": "/4nE4ttPQBuw1virOz0LYT08c1Vm.jpg",
+    "credit_id": "6969712e4643f373c87f1c5f",
+    "department": "Directing",
+    "job": "Director"
+   },
+   {
+    "adult": false,
+    "gender": 1,
+    "id": 9340,
+    "known_for_department": "Directing",
+    "name": "Lana Wachowski",
+    "original_name": "Lana Wachowski",
+    "popularity": 1.3537,
+    "profile_path": "/4nE4ttPQBuw1virOz0LYT08c1Vm.jpg",
+    "credit_id": "6969718ca1d897ce25d6657e",
+    "department": "Writing",
+    "job": "Writer"
+   },
+   {
+    "adult": false,
+    "gender": 1,
+    "id": 9339,
+    "known_for_department": "Directing",
+    "name": "Lilly Wachowski",
+    "original_name": "Lilly Wachowski",
+    "popularity": 1.3986,
+    "profile_path": "/rCScAjSpeKA19BLNR07MqNNeeTT.jpg",
+    "credit_id": "696ab513963c17f6a3094d04",
+    "department": "Writing",
+    "job": "Writer"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 1091,
+    "known_for_department": "Production",
+    "name": "Joel Silver",
+    "original_name": "Joel Silver",
+    "popularity": 1.1136,
+    "profile_path": null,
+    "credit_id": "52fe425bc3a36847f801812f",
+    "department": "Production",
+    "job": "Producer"
+   }
+  ]
+ },
+ "translations": {
+  "translations": [
+   {
+    "iso_3166_1": "US",
+    "iso_639_1": "en",
+    "name": "English",
+    "english_name": "English",
+    "data": {
+     "homepage": "http://www.warnerbros.com/matrix",
+     "overview": "Set in the 22nd century, The Matrix tells the story of a computer hacker who joins a group of underground insurgents fighting the vast and powerful computers who now rule the earth.",
+     "runtime": 136,
+     "tagline": "Believe the unbelievable.",
+     "title": ""
+    }
+   },
+   {
+    "iso_3166_1": "DE",
+    "iso_639_1": "de",
+    "name": "Deutsch",
+    "english_name": "German",
+    "data": {
+     "homepage": "",
+     "overview": "Der Hacker Neo wird übers Internet von einer geheimnisvollen Untergrund-Organisation kontaktiert. Der Kopf der Gruppe – der gesuchte Terrorist Morpheus – weiht ihn in ein entsetzliches Geheimnis ein: Die Realität, wie wir sie erleben, ist nur eine Scheinwelt. In Wahrheit werden die Menschen längst von einer unheimlichen virtuellen Macht beherrscht – der „Matrix“, deren Agenten Neo bereits im Visier haben …",
+     "runtime": 136,
+     "tagline": "Glaube das Unglaubliche.",
+     "title": "Matrix"
+    }
+   },
+   {
+    "iso_3166_1": "PL",
+    "iso_639_1": "pl",
+    "name": "Polski",
+    "english_name": "Polish",
+    "data": {
+     "homepage": "",
+     "overview": "Thomas Anderson wiedzie podwójne życie - na co dzień pracuje w koncernie Meta Cortechs jako programista, prywatnie jest genialnym hackerem, działającym pod nickiem Neo. Pewnego dnia nawiązuje z nim kontakt tajemniczy Morfeusz - człowiek, który obiecuje mu odkryć prawdę o rzeczywistości, w jakiej żyją. Prawdę o Matriksie. Prawdę o dwóch światach: prawdziwym i wygenerowanym, który ma tylko \"udawać\" rzeczywistość. Neo początkowo wbrew sobie przystaje do grupy kierowanej przez Morfeusza, stopniowo jednak sam zaczyna dostrzegać, że ze światem, w którym żył dotychczas, jest coś nie tak. Że jego życiem cały czas ktoś kierował. Kolejne stopnie wtajemniczenia stawiają przed Neo nowe pytania. Który ze światów jest prawdziwy? Czym jest Matrix i komu służy? I jaką rolę w planie Morfeusza ma do spełnienia sam Neo?",
+     "runtime": 136,
+     "tagline": "Wizja świata, w którym maszyny kierują ziemią, a ludzie są ich zabawkami.",
+     "title": "Matrix"
+    }
+   }
+  ]
+ }
+}

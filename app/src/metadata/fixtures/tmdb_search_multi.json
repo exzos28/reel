@@ -1,0 +1,81 @@
+{
+ "page": 1,
+ "results": [
+  {
+   "adult": false,
+   "backdrop_path": "/tlm8UkiQsitc8rSuIAscQDCnP8d.jpg",
+   "id": 603,
+   "title": "Matrix",
+   "original_title": "The Matrix",
+   "overview": "Thomas Anderson wiedzie podwójne życie - na co dzień pracuje w koncernie Meta Cortechs jako programista, prywatnie jest genialnym hackerem, działającym pod nickiem Neo. Pewnego dnia nawiązuje z nim kontakt tajemniczy Morfeusz - człowiek, który obiecuje mu odkryć prawdę o rzeczywistości, w jakiej żyją. Prawdę o Matriksie. Prawdę o dwóch światach: prawdziwym i wygenerowanym, który ma tylko \"udawać\" rzeczywistość. Neo początkowo wbrew sobie przystaje do grupy kierowanej przez Morfeusza, stopniowo jednak sam zaczyna dostrzegać, że ze światem, w którym żył dotychczas, jest coś nie tak. Że jego życiem cały czas ktoś kierował. Kolejne stopnie wtajemniczenia stawiają przed Neo nowe pytania. Który ze światów jest prawdziwy? Czym jest Matrix i komu służy? I jaką rolę w planie Morfeusza ma do spełnienia sam Neo?",
+   "poster_path": "/xiCMLkZOVlxFbvWJMHuf4FJvnuX.jpg",
+   "media_type": "movie",
+   "original_language": "en",
+   "genre_ids": [
+    28,
+    878
+   ],
+   "popularity": 35.8571,
+   "release_date": "1999-03-31",
+   "softcore": false,
+   "video": false,
+   "vote_average": 8.263,
+   "vote_count": 29234
+  },
+  {
+   "adult": false,
+   "backdrop_path": "/ihOJcrorpDQtHTzIOrobbOhpJsj.jpg",
+   "id": 604,
+   "title": "Matrix Reaktywacja",
+   "original_title": "The Matrix Reloaded",
+   "overview": "Kontynuacja kultowego \"Matrixa\". \"Matrix Reaktywacja\" zaczyna się w momencie, w którym kończyła się pierwsza część. Maszyny dokonały brzemiennego w skutkach odkrycia: poznały lokalizację Zion, ostatniego miasta ludzi, ukrytego w pobliżu jądra Ziemi. Za 72 godziny tysiące Strażników - kałamarnicowatych maszyn znanych z pierwszej części - przebiją się do miasta. Jedyną nadzieją ludzi jest odnalezienie tajemniczej postaci, znanej jako Twórca Kluczy, chronionej przez parę uzbrojonych w noże Bliźniaków, nienaturalnie białych zabójców, potrafiących znikać i pojawiać się jak duchy.",
+   "poster_path": "/yCJHQznJDDWcf4jv2atttgBXrYa.jpg",
+   "media_type": "movie",
+   "original_language": "en",
+   "genre_ids": [
+    28,
+    53,
+    878
+   ],
+   "popularity": 13.9356,
+   "release_date": "2003-05-15",
+   "softcore": false,
+   "video": false,
+   "vote_average": 7.086,
+   "vote_count": 12535
+  },
+  {
+   "adult": false,
+   "backdrop_path": "/eNI7PtK6DEYgZmHWP9gQNuff8pv.jpg",
+   "id": 624860,
+   "title": "Matrix Zmartwychwstania",
+   "original_title": "The Matrix Resurrections",
+   "overview": "Podążaj za Neo, który prowadzi zwyczajne życie w San Francisco, gdzie jego terapeuta przepisuje mu niebieskie pigułki. Jednak Morfeusz oferuje mu czerwoną pigułkę i ponownie otwiera jego umysł na świat Matrix.",
+   "poster_path": "/cS1Ka0C7cnVjfLIWv1JUeJlXUDd.jpg",
+   "media_type": "movie",
+   "original_language": "en",
+   "genre_ids": [
+    878,
+    28,
+    12
+   ],
+   "popularity": 10.3028,
+   "release_date": "2021-12-16",
+   "softcore": false,
+   "video": false,
+   "vote_average": 6.293,
+   "vote_count": 6859
+  },
+  {
+   "adult": false,
+   "id": 6384,
+   "name": "Keanu Reeves",
+   "media_type": "person",
+   "known_for_department": "Acting",
+   "popularity": 30.1,
+   "profile_path": "/4D0PpNI0kmP58hgrwGC3wCjxhnm.jpg"
+  }
+ ],
+ "total_pages": 7,
+ "total_results": 126
+}

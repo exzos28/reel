@@ -1,0 +1,71 @@
+{
+ "page": 1,
+ "results": [
+  {
+   "adult": false,
+   "backdrop_path": "/twiVn9oFXOVR0uoYgawyEBlnFu8.jpg",
+   "genre_ids": [
+    12,
+    28,
+    14
+   ],
+   "id": 1368337,
+   "title": "Odyseja",
+   "original_language": "en",
+   "original_title": "The Odyssey",
+   "overview": "Odyseusz, legendarny grecki król Itaki, po wojnie trojańskiej wyrusza w długą i niebezpieczną podróż do domu, opisując swoje spotkania z mitycznymi istotami, takimi jak cyklop Polifem, syreny i czarownica-bogini Circe.",
+   "popularity": 452.6652,
+   "poster_path": "/1g2v4Gg8kVe6P1p5Tz5IA69BPBN.jpg",
+   "release_date": "2026-07-15",
+   "softcore": false,
+   "video": false,
+   "vote_average": 8.0,
+   "vote_count": 4760,
+   "media_type": "movie"
+  },
+  {
+   "adult": false,
+   "backdrop_path": "/ncm7djsVTHQQMX2HEbEVxMUFchG.jpg",
+   "genre_ids": [
+    27
+   ],
+   "id": 1400837,
+   "title": "Inna mamusia",
+   "original_language": "en",
+   "original_title": "Other Mommy",
+   "overview": "Dorastająca pośród małżeńskich konfliktów rodziców ośmioletnia Bela staje twarzą w twarz ze złowrogą istotą wychodzącą z jej szafy.",
+   "popularity": 253.1723,
+   "poster_path": "/tppJP0lxImTmHD8wNXtPqUsg4Ah.jpg",
+   "release_date": "2026-10-07",
+   "softcore": false,
+   "video": false,
+   "vote_average": 6.2,
+   "vote_count": 346,
+   "media_type": "movie"
+  },
+  {
+   "adult": false,
+   "backdrop_path": "/rObL4of4eFA8yWaN9pRFo9aOVNi.jpg",
+   "genre_ids": [
+    878,
+    28,
+    12
+   ],
+   "id": 1003596,
+   "title": "Avengers: Doomsday",
+   "original_language": "en",
+   "original_title": "Avengers: Doomsday",
+   "overview": "Bohaterowie z trzech różnych wszechświatów zmierzają ku śmiertelnie niebezpiecznej konfrontacji i stają w obliczu egzystencjalnego zagrożenia, z jakim nigdy wcześniej się nie spotkali.",
+   "popularity": 118.0001,
+   "poster_path": "/5pOEr3ypuPhrXACdeesHj01VAM8.jpg",
+   "release_date": "2026-12-16",
+   "softcore": false,
+   "video": false,
+   "vote_average": 0.0,
+   "vote_count": 0,
+   "media_type": "movie"
+  }
+ ],
+ "total_pages": 500,
+ "total_results": 10000
+}

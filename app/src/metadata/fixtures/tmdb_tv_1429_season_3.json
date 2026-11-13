@@ -1,0 +1,95 @@
+{
+ "id": 98013,
+ "_id": "5a5e4bd60e0a261a680024e7",
+ "air_date": "2018-07-23",
+ "episodes": [
+  {
+   "air_date": "2018-07-23",
+   "episode_number": 1,
+   "episode_type": "standard",
+   "id": 1518847,
+   "name": "Sygnał dymny",
+   "overview": "Ledwo odzyskawszy Erena, zwiadowcy stają wobec nowego zagrożenia czającego się w cieniu. Tym razem wróg nie nosi twarzy tytana.",
+   "production_code": "",
+   "runtime": 24,
+   "season_number": 3,
+   "show_id": 1429,
+   "still_path": "/g5gdbz4MUxHYAakgFeHfAOQMIvs.jpg",
+   "vote_average": 8.538,
+   "vote_count": 80
+  },
+  {
+   "air_date": "2018-07-30",
+   "episode_number": 2,
+   "episode_type": "standard",
+   "id": 1528757,
+   "name": "Ból",
+   "overview": "Zwiadowcy stawiają czoła ludziom, którzy pragną ich zguby. Bitwa przenosi się z pól bitewnych do mrocznych zaułków polityki.",
+   "production_code": "",
+   "runtime": 24,
+   "season_number": 3,
+   "show_id": 1429,
+   "still_path": "/5qFlHCtb82MWuMf72NgXltjnq96.jpg",
+   "vote_average": 8.676,
+   "vote_count": 71
+  },
+  {
+   "air_date": "2018-08-06",
+   "episode_number": 3,
+   "episode_type": "standard",
+   "id": 1530238,
+   "name": "Stara opowieść",
+   "overview": "Historia i Erwin ujawniają tajemnice swojej przeszłości. Rząd okazuje się mieć więcej do ukrycia, niż ktokolwiek przypuszczał.",
+   "production_code": "",
+   "runtime": 24,
+   "season_number": 3,
+   "show_id": 1429,
+   "still_path": "/40NoDcR6HqiUlMmuO84cC3BfW56.jpg",
+   "vote_average": 8.231,
+   "vote_count": 65
+  },
+  {
+   "air_date": "2019-04-29",
+   "episode_number": 13,
+   "episode_type": "standard",
+   "id": 1595358,
+   "name": "Miasto, w którym wszystko się zaczęło",
+   "overview": "Rozpoczyna się operacja odbicia Shiganshiny. Coś jednak wyraźnie nie gra...",
+   "production_code": "",
+   "runtime": 24,
+   "season_number": 3,
+   "show_id": 1429,
+   "still_path": "/uI0Aazy8kUgT7LKu4UGascoPw7i.jpg",
+   "vote_average": 9.123,
+   "vote_count": 65
+  },
+  {
+   "air_date": "2019-05-06",
+   "episode_number": 14,
+   "episode_type": "standard",
+   "id": 1762610,
+   "name": "Włócznie grzmotu",
+   "overview": "Zwiadowcy walczą o ochronę koni. Ich sekretną bronią stają się potężne włócznie przeciw Opancerzonemu Tytanowi.",
+   "production_code": "",
+   "runtime": 24,
+   "season_number": 3,
+   "show_id": 1429,
+   "still_path": "/2XX3Oq8VLE2khmISIvOtJgCOL19.jpg",
+   "vote_average": 9.016,
+   "vote_count": 63
+  }
+ ],
+ "name": "Sezon 3",
+ "networks": [
+  {
+   "id": 469,
+   "logo_path": "/3E5bxm9VfOU9LkAX545jtpKAe6Z.png",
+   "name": "NHK G",
+   "origin_country": "JP"
+  }
+ ],
+ "overview": "Gdy tytani przestają być jedynym zagrożeniem, a największy wróg czai się wewnątrz murów, ludzkość musi stawić czoła prawdzie. Eren i jego towarzysze walczą nie tylko o przetrwanie, lecz także o wolność od skorumpowanego rządu i tajemnic skrywanych od pokoleń. W obliczu politycznych spisków, rodzinnych sekretów i krwawej wojny, stawką staje się przyszłość całej cywilizacji.",
+ "poster_path": "/eTqlVZklWLBnjJwG3YCa0cbSqh9.jpg",
+ "season_number": 3,
+ "vote_average": 8.8
+}

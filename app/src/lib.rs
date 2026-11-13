@@ -3,14 +3,17 @@
 mod catalog;
 mod disk;
 mod engine;
+mod metadata;
 mod settings;
 mod timeline;
 
 use nsh_core::prelude::*;
 
+pub use metadata::Meta;
+
 #[native_module("app/native")]
 fn native(registry: &mut Registry) {
-    registry.module::<Fmt>().module::<Engine>().module::<Catalog>().module::<Settings>();
+    registry.module::<Fmt>().module::<Engine>().module::<Catalog>().module::<Settings>().module::<Meta>();
 }
 
 /// The built-in torrent server (librqbit). Results are JSON strings.
