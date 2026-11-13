@@ -7,7 +7,7 @@ import { t } from "nsh/i18n";
 import { airsText, browse, cardMeta, titleText, type Summary } from "./catalog";
 import { BackButton, CardMeta, Icon, NAV, NavBar, Picture, revealWhen } from "./components";
 import { back, go, openTitle } from "./nav";
-import { alpha, colors, focusRing, font, radius, safe, type, u } from "./theme";
+import { alpha, colors, focusRing, font, radius, ringRoom, safe, type, u } from "./theme";
 import chevronIcon from "./icons/chevron.svg";
 
 type Page = "movies" | "shows";
@@ -81,7 +81,7 @@ export function Browse(props: { page: Page }) {
           <Text style={{ ...type.section(), color: colors.snow(), marginTop: u(34) }}>{t(`browse.${props.page}.trending`)}</Text>
         </View>
         <Scroll horizontal>
-          <View style={{ flexDirection: "row", gap: u(20), paddingHorizontal: safe().x, paddingTop: u(26), paddingBottom: u(16) }}>
+          <View style={{ flexDirection: "row", gap: u(20), paddingHorizontal: safe().x, paddingTop: Math.max(u(26), ringRoom()), paddingBottom: Math.max(u(16), ringRoom()) }}>
             <Each of={data().trending} key={(s) => s.id}>
               {(item, i) => (
                 <PosterCard

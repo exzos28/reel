@@ -50,7 +50,7 @@ export type Density = "ten-foot" | "regular" | "compact";
 export const density: Density =
   platform.idiom === "tv" ? "ten-foot" : platform.idiom === "phone" ? "compact" : "regular";
 
-const FIXED = { regular: 0.825, compact: 0.45 } as const;
+const FIXED = { regular: 0.66, compact: 0.45 } as const;
 const scale = computed(() => (density === "ten-foot" ? windowSize().width / 1920 : FIXED[density]));
 export const u = (px: number) => px * scale();
 
@@ -83,6 +83,10 @@ export const type = {
 /** Remote and keyboard focus, the same everywhere: a 3 px `snow` ring with
  * offset, a lift and a deep shadow. `lift` says how: cards rise, rows and
  * buttons grow a little. */
+/** Room a scroll view must leave around its items so the focus ring (offset,
+ * width) and the card lift are not cut off by its edges. */
+export const ringRoom = () => u(8 + 5 + 4) + Math.max(2, u(3));
+
 export function focusRing(focused: boolean, lift: "card" | "row" | "button" = "button"): ViewStyle {
   const moved = lift === "card" ? `translateY(${-u(8)}px)` : lift === "row" ? "scale(1.01)" : "scale(1.03)";
   return {

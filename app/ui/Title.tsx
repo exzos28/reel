@@ -13,7 +13,7 @@ import {
 import { BackButton, Badge, Button, Hero, Icon, ReleaseText, revealWhen, SignalBars, WatchedBar } from "./components";
 import { back } from "./nav";
 import { play } from "./playback";
-import { colors, density, focusRing, font, radius, safe, selectedFill, type, u } from "./theme";
+import { colors, density, focusRing, font, radius, ringRoom, safe, selectedFill, type, u } from "./theme";
 import playIcon from "./icons/play.svg";
 import plusIcon from "./icons/plus.svg";
 import checkIcon from "./icons/check.svg";
@@ -243,9 +243,9 @@ function Seasons(props: {
   sub: () => string;
 }) {
   return (
-    <View style={{ paddingHorizontal: safe().x - u(22), marginTop: u(36) }}>
+    <View style={{ paddingHorizontal: safe().x - u(12) - ringRoom(), marginTop: u(36) - ringRoom() }}>
       <Scroll horizontal>
-        <View style={{ flexDirection: "row", gap: u(6), paddingHorizontal: u(10), paddingVertical: u(10) }}>
+        <View style={{ flexDirection: "row", gap: u(6), paddingHorizontal: ringRoom(), paddingVertical: ringRoom() }}>
           <Each of={props.seasons()} key={(s) => s.number}>
             {(s) => (
               <View

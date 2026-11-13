@@ -7,7 +7,7 @@ import { cardMeta as cardMetaOf, home, leftText, playLabel, titleText, toggleLis
 import { Button, CardMeta, Hero, NAV, NavBar, Picture, ReleaseText, revealWhen, WatchedBar } from "./components";
 import { go, openTitle } from "./nav";
 import { play } from "./playback";
-import { colors, focusRing, radius, safe, type, u } from "./theme";
+import { colors, focusRing, radius, ringRoom, safe, type, u } from "./theme";
 import playIcon from "./icons/play.svg";
 import plusIcon from "./icons/plus.svg";
 import checkIcon from "./icons/check.svg";
@@ -105,7 +105,7 @@ export function Home() {
               <View style={{ gap: u(22) }}>
                 <Text style={{ ...type.section(), color: colors.snow(), paddingHorizontal: safe().x }}>{t(`shelf.${shelf().id}`)}</Text>
                 <Scroll horizontal>
-                  <View style={{ flexDirection: "row", gap: u(24), paddingHorizontal: safe().x, paddingTop: u(12), paddingBottom: u(24) }}>
+                  <View style={{ flexDirection: "row", gap: u(24), paddingHorizontal: safe().x, paddingTop: ringRoom(), paddingBottom: Math.max(u(24), ringRoom()) }}>
                     <Each of={shelf().items} key={(f) => f.id}>
                       {(item, c) => (
                         <WideCard
