@@ -1,0 +1,51 @@
+shelf:
+  continue: Continue watching
+  downloading: Downloading
+  silent: Silent films
+
+film:
+  meta: "%{year}, %{runtime}, directed by %{director}"
+  watch: Watch
+  resume: Resume
+  resume_from: "from %{position}"
+  downloaded: "%{percent}% downloaded"
+  opening: "“%{title}” opens here. Esc to close."
+
+fmt:
+  minutes: "%{m} min"
+  hours: "%{h} h"
+  hours_minutes: "%{h} h %{m} min"
+
+films:
+  metropolis:
+    title: Metropolis
+    director: Fritz Lang
+    about: A city of the future is split between the masters above and the workers below. The ruler's son goes down and sees what his city stands on.
+  nosferatu:
+    title: Nosferatu
+    director: F. W. Murnau
+    about: An estate agent travels to Transylvania to meet Count Orlok, who is buying a house in his home town.
+  general:
+    title: The General
+    director: Buster Keaton
+    about: A locomotive engineer chases his stolen train across the front line of the Civil War.
+  sherlock:
+    title: Sherlock Jr.
+    director: Buster Keaton
+    about: A projectionist falls asleep at work and walks into the film he is showing.
+  detour:
+    title: Detour
+    director: Edgar G. Ulmer
+    about: A pianist hitchhikes across America to the woman he loves, and one accident changes everything.
+  charade:
+    title: Charade
+    director: Stanley Donen
+    about: A widow in Paris learns that three men are after her husband's money, and the man helping her keeps changing his name.
+  friday:
+    title: His Girl Friday
+    director: Howard Hawks
+    about: A newspaper editor tries to win back his ex-wife and best reporter before she remarries.
+  night:
+    title: Night of the Living Dead
+    director: George A. Romero
+    about: A few strangers barricade themselves in a farmhouse while the dead gather outside.

@@ -1,0 +1,38 @@
+{
+  "name": "reel",
+  "id": "app.reel.concept",
+  "version": "0.1.0",
+  "build": 1,
+  "rust": ".",
+  "theme": {
+    "cssVars": {
+      "theme": {
+        "radius": 10
+      },
+      "light": {
+        "background": "#221A20",
+        "foreground": "#EDE4D8",
+        "card": "#33262E",
+        "card-foreground": "#EDE4D8",
+        "border": "#4A3A43",
+        "muted-foreground": "#A8998F",
+        "primary": "#F3C766",
+        "primary-foreground": "#221A20",
+        "ring": "#F3C766",
+        "destructive": "#E5684F"
+      },
+      "dark": {
+        "background": "#221A20",
+        "foreground": "#EDE4D8",
+        "card": "#33262E",
+        "card-foreground": "#EDE4D8",
+        "border": "#4A3A43",
+        "muted-foreground": "#A8998F",
+        "primary": "#F3C766",
+        "primary-foreground": "#221A20",
+        "ring": "#F3C766",
+        "destructive": "#E5684F"
+      }
+    }
+  }
+}
