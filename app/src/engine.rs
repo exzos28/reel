@@ -24,6 +24,7 @@ use tokio::runtime::Runtime;
 struct Core {
     rt: Runtime,
     session: Arc<Session>,
+    api: Api,
     port: u16,
     next_job: AtomicU32,
     jobs: Arc<Mutex<HashMap<u32, Job>>>,
@@ -51,18 +52,19 @@ fn core() -> anyhow::Result<&'static Core> {
         .context("starting the engine runtime")?;
     let dir = download_dir();
     std::fs::create_dir_all(&dir).with_context(|| format!("creating {}", dir.display()))?;
-    let (session, port) = rt.block_on(async {
+    let (session, port, api) = rt.block_on(async {
         let session = Session::new(dir).await.context("creating the torrent session")?;
         let listener = TcpListener::bind_tcp(SocketAddr::from(([127, 0, 0, 1], 0)), BindOpts::default())
             .context("binding the stream server")?;
         let port = listener.bind_addr().port();
         let api = Api::new(session.clone(), None, None);
-        tokio::spawn(HttpApi::new(api, None).make_http_api_and_run(listener, None));
-        anyhow::Ok((session, port))
+        tokio::spawn(HttpApi::new(api.clone(), None).make_http_api_and_run(listener, None));
+        anyhow::Ok((session, port, api))
     })?;
     let _ = CORE.set(Core {
         rt,
         session,
+        api,
         port,
         next_job: AtomicU32::new(1),
         jobs: Default::default(),
@@ -145,10 +147,117 @@ pub fn status(job: u32) -> Value {
     }
 }
 
+/// Which parts of file `file` of the job's torrent the engine already has:
+/// `{"state":"ready","length":bytes,"buckets":[0..1, …]}`, the file cut into
+/// `buckets` equal byte ranges, each the fraction of its bytes downloaded
+/// (whole verified pieces only). Other states as `status`.
+pub fn file_map(job: u32, file: usize, buckets: usize) -> Value {
+    let Some(core) = CORE.get() else {
+        return json!({ "state": "failed", "message": "the engine is not started" });
+    };
+    let Some(state) = core.jobs.lock().unwrap().get(&job).cloned() else {
+        return json!({ "state": "failed", "message": format!("no job {job}") });
+    };
+    let handle = match state {
+        Job::Resolving => return json!({ "state": "resolving" }),
+        Job::Failed(message) => return json!({ "state": "failed", "message": message }),
+        Job::Ready(handle) => handle,
+    };
+    let layout = handle.with_metadata(|m| {
+        let l = m.lengths();
+        m.file_infos.get(file).map(|f| Layout {
+            piece_length: l.default_piece_length() as u64,
+            total_length: l.total_length(),
+            file_offset: f.offset_in_torrent,
+            file_length: f.len,
+        })
+    });
+    let Ok(Some(layout)) = layout else {
+        return json!({ "state": "failed", "message": format!("no file {file}") });
+    };
+    // Not live yet (still checking the files on disk): nothing to show.
+    let Ok((have, _)) = core.api.api_dump_haves(handle.id().into()) else {
+        return json!({ "state": "ready", "length": layout.file_length, "buckets": vec![0; buckets.max(1)] });
+    };
+    let fractions = layout.buckets(|piece| have.get(piece as usize).is_some_and(|b| *b), buckets);
+    let rounded: Vec<f64> = fractions.iter().map(|f| (f * 1000.0).round() / 1000.0).collect();
+    json!({ "state": "ready", "length": layout.file_length, "buckets": rounded })
+}
+
+/// Where a file lies in its torrent's pieces.
+#[derive(Clone, Copy)]
+struct Layout {
+    piece_length: u64,
+    total_length: u64,
+    file_offset: u64,
+    file_length: u64,
+}
+
+impl Layout {
+    /// The file cut into `n` equal byte ranges (at least 1), each the fraction
+    /// of its bytes that lie in pieces `have` says are downloaded.
+    fn buckets(&self, have: impl Fn(u32) -> bool, n: usize) -> Vec<f64> {
+        let n = n.max(1);
+        if self.file_length == 0 || self.piece_length == 0 {
+            return vec![0.0; n];
+        }
+        (0..n)
+            .map(|i| {
+                let start = self.file_offset + self.file_length * i as u64 / n as u64;
+                let end = self.file_offset + self.file_length * (i as u64 + 1) / n as u64;
+                if end <= start {
+                    // More buckets than bytes: the bucket is as full as the piece its byte is in.
+                    return if have((start / self.piece_length) as u32) { 1.0 } else { 0.0 };
+                }
+                let mut got = 0;
+                let mut piece = start / self.piece_length;
+                while piece * self.piece_length < end {
+                    let p_start = piece * self.piece_length;
+                    let p_end = (p_start + self.piece_length).min(self.total_length);
+                    if have(piece as u32) {
+                        got += p_end.min(end).saturating_sub(p_start.max(start));
+                    }
+                    piece += 1;
+                }
+                got as f64 / (end - start) as f64
+            })
+            .collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::io::{Read, Write};
     use std::time::{Duration, Instant};
+
+    use super::Layout;
+
+    #[test]
+    fn buckets_of_a_file_inside_the_torrent() {
+        // Pieces of 100 bytes; the file is bytes 50..450 (pieces 0..=4).
+        let l = Layout { piece_length: 100, total_length: 500, file_offset: 50, file_length: 400 };
+        // Pieces 1 and 2 (bytes 100..300) downloaded.
+        let b = l.buckets(|p| p == 1 || p == 2, 4);
+        // Buckets: 50..150 (half), 150..250 (full), 250..350 (half), 350..450 (none).
+        assert_eq!(b, vec![0.5, 1.0, 0.5, 0.0]);
+    }
+
+    #[test]
+    fn buckets_all_and_nothing() {
+        let l = Layout { piece_length: 16, total_length: 1000, file_offset: 0, file_length: 1000 };
+        assert!(l.buckets(|_| true, 200).iter().all(|f| (*f - 1.0).abs() < 1e-9));
+        assert!(l.buckets(|_| false, 200).iter().all(|f| *f == 0.0));
+        assert_eq!(l.buckets(|_| true, 0).len(), 1);
+    }
+
+    #[test]
+    fn buckets_short_last_piece_and_more_buckets_than_bytes() {
+        // The last piece (bytes 200..250) is shorter than the others.
+        let l = Layout { piece_length: 100, total_length: 250, file_offset: 0, file_length: 250 };
+        assert_eq!(l.buckets(|p| p == 2, 5), vec![0.0, 0.0, 0.0, 0.0, 1.0]);
+        let tiny = Layout { piece_length: 1, total_length: 2, file_offset: 0, file_length: 2 };
+        assert_eq!(tiny.buckets(|p| p == 1, 4), vec![0.0, 0.0, 1.0, 1.0]);
+    }
 
     /// Sintel (Blender Foundation, CC BY 3.0): the open test torrent WebTorrent uses.
     pub const SINTEL: &str = "magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969&xs=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2Fsintel.torrent";

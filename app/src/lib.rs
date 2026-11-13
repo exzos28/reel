@@ -37,6 +37,13 @@ impl Engine {
     pub fn status(job: u32) -> String {
         engine::status(job).to_string()
     }
+
+    /// Which parts of file `file` of the job's torrent are downloaded, as JSON
+    /// `{"state":"ready","length":bytes,"buckets":[0..1, …]}`: the file cut into
+    /// `buckets` equal byte ranges (see `engine::file_map`).
+    pub fn file_map(job: u32, file: u32, buckets: u32) -> String {
+        engine::file_map(job, file as usize, buckets.min(10_000) as usize).to_string()
+    }
 }
 
 /// Formatting shared by every platform.

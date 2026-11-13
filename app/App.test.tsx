@@ -19,7 +19,11 @@ test("a film without a source says so instead of playing", async () => {
 });
 
 test("pressing Watch opens the player", async () => {
-  const app = await open("./App.tsx");
+  // The engine as it is while it looks for the film's metadata.
+  const app = await open("./App.tsx", {
+    modules: { "app/native": { "Engine.start": 8000, "Engine.add": 1, "Engine.status": '{"state":"resolving"}' } },
+  });
   await app.press("Watch");
-  expect(app.texts()).toContain("Back");
+  expect(app.shows("label:Back")).toBe(true);
+  expect(app.texts()).toContain("Finding peers…");
 });

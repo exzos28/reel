@@ -17,10 +17,21 @@ fmt:
 
 player:
   back: Back
-  resolving: Finding the film among peers…
+  resolving: Finding peers…
   buffering: Buffering
+  ready_ahead: "%{minutes} min ready ahead"
+  ready_ahead_short: Less than a minute ready ahead
   speed: "streaming at %{speed} MB/s"
   peers: "from %{count} people"
+  left: "%{time} left"
+  watched: Watched
+  ready: Ready, plays instantly
+  not_loaded: Not loaded yet
+  play: Play
+  pause: Pause
+  back_10: Back 10 seconds
+  forward_10: Forward 10 seconds
+  position: Position
   no_source: No source for this film yet. Try one from Free to watch.
   failed: "Could not play: %{message}"
 
