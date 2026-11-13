@@ -1,0 +1,15 @@
+# A local Jackett for developing reel's search (Torznab source).
+# Run: docker compose -f dev/jackett/compose.yml up -d   → http://localhost:9117
+# Config (indexers, accounts, API key) lives in dev/jackett/config, never committed.
+services:
+  jackett:
+    image: lscr.io/linuxserver/jackett:latest
+    container_name: reel-jackett
+    environment:
+      - TZ=Europe/Warsaw
+      - AUTO_UPDATE=true
+    volumes:
+      - ./config:/config
+    ports:
+      - "127.0.0.1:9117:9117"
+    restart: unless-stopped
