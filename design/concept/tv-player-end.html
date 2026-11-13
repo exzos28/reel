@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>reel — TV player, up next</title>
+<link rel="stylesheet" href="minimal.css">
+<style>
+  html, body { width: 1920px; height: 1080px; background: #000; }
+  .frame { position: absolute; inset: 0; background: url(img/still-flash-2.jpg) center 35%/cover; }
+  .shade { position: absolute; inset: 0; background: linear-gradient(270deg, rgba(0,0,0,.6), rgba(0,0,0,0) 45%), linear-gradient(0deg, rgba(0,0,0,.55), rgba(0,0,0,0) 35%); }
+
+  /* the card appears ~40 s before the end (or when the credits start); controls stay hidden */
+  .next { position: absolute; right: 96px; bottom: 96px; width: 720px; padding: 22px; border-radius: 14px; background: rgba(20,20,20,.95); box-shadow: 0 24px 60px rgba(0,0,0,.6); }
+  .next .row { display: flex; gap: 22px; }
+  .next .th { position: relative; width: 256px; height: 144px; border-radius: 8px; overflow: hidden; flex: none; }
+  .next .th img { width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
+  .next .k { font-size: 21px; color: var(--ash); }
+  .next .t { margin-top: 6px; font-size: 28px; font-weight: 600; line-height: 1.2; }
+  .next .m { margin-top: 8px; font-size: 21px; color: var(--ash); }
+  .next .m b { color: var(--snow); font-weight: 500; }
+  .next .acts { display: flex; gap: 14px; margin-top: 22px; }
+  .next .btn { height: 60px; padding: 0 26px; border-radius: 10px; font-size: 23px; gap: 12px; }
+  .next .btn svg { width: 22px; height: 22px; }
+  /* countdown: a thin bar runs along the bottom of Play now; when it is full the next episode plays */
+  .next .primary { position: relative; overflow: hidden; flex: 1; }
+  .next .primary::before { content: ""; position: absolute; left: 0; bottom: 0; height: 5px; width: 64%; background: var(--ink); opacity: .55; }
+  .next .primary span, .next .primary svg { position: relative; }
+  .next .primary small { position: relative; font-size: 20px; font-weight: 500; color: #555; margin-left: 4px; }
+  .next .focused { transform: scale(1.03); outline-offset: 4px; }
+
+  .progress { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(245,245,245,.16); }
+  .progress i { display: block; height: 100%; width: 97%; background: var(--snow); }
+</style>
+</head>
+<body>
+  <div class="frame"></div><div class="shade"></div>
+
+  <section class="next">
+    <div class="row">
+      <div class="th"><img src="img/still-flash-shannon.jpg" alt=""></div>
+      <div>
+        <div class="k">Next episode · S3:E5</div>
+        <div class="t">The Palace of Terror</div>
+        <div class="m">20 min · <b>first 3 min ready</b>, plays instantly</div>
+      </div>
+    </div>
+    <div class="acts">
+      <div class="btn primary focused"><svg class="f" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg><span>Play now</span><small>in 6 s</small></div>
+      <div class="btn secondary">Watch credits</div>
+    </div>
+  </section>
+
+  <div class="progress"><i></i></div>
+</body>
+</html>

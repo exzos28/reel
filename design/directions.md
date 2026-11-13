@@ -198,7 +198,18 @@ TV: title 76–96, page title 60, section 30, body 26, meta 22–24 (nothing bel
 - **Player**: top-left back + title + "1080p BluRay · resumed from 41:12"; Audio, Subtitles and
   Release in one dark panel (no blur). Bottom: "**6 min ready ahead** · streaming at 3.4 MB/s from
   37 people", the scrubber with watched (`snow`), ready (`snow` 45%) and not loaded yet (`snow` 16%)
-  ranges, times, then controls. No legend under the scrubber.
+  ranges, times, then one control row of round icon buttons: −10 s, play/pause, +10 s and,
+  after a gap, Audio and subtitles. Icon buttons have no visible labels; the focused one shows a
+  small tooltip-style label above it ("Audio and subtitles"). While its panel is open the button
+  stays in the lighter selected fill and focus moves into the panel. No legend under the scrubber,
+  no permanent "Up next" button.
+- **Up next** (`tv-player-end`): for an episode, a card appears bottom-right about 40 s before the
+  end or when the credits start; the rest of the controls stay hidden. It shows the next episode's
+  thumbnail, "Next episode · S3:E5", its title, "20 min · first 3 min ready, plays instantly"
+  (the engine starts fetching it while the card is up), a focused white "Play now · in 6 s" whose
+  countdown runs as a thin bar along its bottom, and "Watch credits", which dismisses the card. Back
+  also dismisses it. For a single film reel recommends nothing: at the credits the player just
+  ends and returns to the film screen.
 
 ## Focus and selected
 
