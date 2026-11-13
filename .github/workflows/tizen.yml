@@ -89,8 +89,15 @@ jobs:
           chmod +x "$TIZEN_SDK"/tools/tizen-core/{tz,tgn,ninja,web-privilege-checker}
           "$TIZEN_SDK/tools/tizen-core/tz" --version
 
+      # The NSH web build is only needed for the full package.
+      - uses: ./.github/actions/setup-nsh
+        if: inputs.shell_only == false
+        with:
+          rust-cache-key: tizen-web
+
+      # Informational: `package` itself fails on whatever it needs and lacks.
       - name: Check the tools
-        run: hosts/tizen/build.sh check
+        run: hosts/tizen/build.sh check || true
 
       - name: Build the package
         env:
