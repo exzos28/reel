@@ -17,3 +17,9 @@ test("a film without a source says so instead of playing", async () => {
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });
+
+test("pressing Watch opens the player", async () => {
+  const app = await open("./App.tsx");
+  await app.press("Watch");
+  expect(app.texts()).toContain("Back");
+});

@@ -44,7 +44,7 @@ function App() {
     <If when={!playing()} else={<Player />}>
     <Scroll style={{ flex: 1, backgroundColor: colors.hall() }}>
     <View style={{ paddingHorizontal: safe().x, paddingVertical: safe().y, gap: u(40) }}>
-      <FilmHeader film={focusedFilm} />
+      <FilmHeader film={focusedFilm} onWatch={() => play(focusedFilm())} />
       <Each of={shelves} key={(s) => s.id}>
         {(shelf, r) => (
           <View style={{ gap: u(20) }}>
@@ -61,6 +61,7 @@ function App() {
                     focused={() => row() === r() && cols()[r()] === c()}
                     rowFocused={() => row() === r()}
                     onPress={() => {
+                      if (row() === r() && cols()[r()] === c()) return play(film());
                       row.set(r());
                       cols.set(cols().map((x, i) => (i === r() ? c() : x)));
                     }}
@@ -78,7 +79,7 @@ function App() {
   );
 }
 
-function FilmHeader(props: { film: () => Film }) {
+function FilmHeader(props: { film: () => Film; onWatch: () => void }) {
   const f = props.film;
   return (
     <View style={{ gap: u(16), maxWidth: u(1100), minHeight: u(330) }}>
@@ -92,7 +93,12 @@ function FilmHeader(props: { film: () => Film }) {
       </Text>
       <Text style={{ ...type.body(), color: colors.screen(), maxWidth: u(980) }}>{filmText(f(), "about")}</Text>
       <View style={{ flexDirection: "row", alignItems: "center", gap: u(24), marginTop: u(8) }}>
-        <View style={{ backgroundColor: colors.beam(), borderRadius: 10, paddingHorizontal: u(36), paddingVertical: u(16) }}>
+        <View
+          role="button"
+          onPress={props.onWatch}
+          style={{ backgroundColor: colors.beam(), borderRadius: 10, paddingHorizontal: u(36), paddingVertical: u(16) }}
+          activeStyle={{ opacity: 0.85 }}
+        >
           <Text style={{ fontFamily: fonts.body, fontWeight: "600", fontSize: u(32), color: colors.hall() }}>
             {f().stoppedAt != null ? t("film.resume") : t("film.watch")}
           </Text>
