@@ -4,8 +4,9 @@
 // screens keep their focus in their own modules, so Back finds it again.
 import { effect, mount, setColorScheme, signal, View } from "nsh";
 import { Engine } from "app/native";
-import { Browse, Search } from "./ui/Browse";
+import { BrowseScreen } from "./ui/screens/browse/BrowseScreen";
 import { HomeScreen } from "./ui/screens/home/HomeScreen";
+import { SearchScreen } from "./ui/screens/search/SearchScreen";
 import { back, route } from "./ui/nav";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
@@ -37,13 +38,13 @@ function App() {
           <HomeScreen />
         </If>
         <If when={r().name === "movies"}>
-          <Browse page="movies" />
+          <BrowseScreen page="movies" />
         </If>
         <If when={r().name === "shows"}>
-          <Browse page="shows" />
+          <BrowseScreen page="shows" />
         </If>
         <If when={r().name === "search"}>
-          <Search />
+          <SearchScreen />
         </If>
         <If when={r().name === "settings"}>
           <Settings freeBytes={freeBytes} onClose={back} />
