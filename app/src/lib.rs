@@ -5,15 +5,19 @@ mod disk;
 mod engine;
 mod metadata;
 mod settings;
+mod sources;
 mod timeline;
 
 use nsh_core::prelude::*;
 
+pub use catalog::Catalog;
 pub use metadata::Meta;
 
 #[native_module("app/native")]
 fn native(registry: &mut Registry) {
-    registry.module::<Fmt>().module::<Engine>().module::<Catalog>().module::<Settings>().module::<Meta>();
+    registry.module::<Fmt>().module::<Engine>().module::<Catalog>().module::<Settings>().module::<Sources>().module::<Meta>();
+    // The catalog's stills and posters (`assets/`), named by `catalog`.
+    registry.assets(assets!());
 }
 
 /// The built-in torrent server (librqbit). Results are JSON strings.
@@ -48,21 +52,20 @@ impl Engine {
         engine::check_space().to_string()
     }
 
+    /// Starts playing a release a search found: `source` is its magnet or
+    /// .torrent URL; `season`/`episode` (0 for a film) pick the episode's file
+    /// in a pack. A job id for `status`, 0 when the engine could not start.
+    pub fn open_release(source: String, season: u32, episode: u32) -> u32 {
+        let ep = (season > 0 && episode > 0).then(|| (season as u16, episode as u16));
+        engine::open_release(&source, ep).unwrap_or_else(|e| {
+            eprintln!("reel engine: {e:#}");
+            0
+        })
+    }
+
     /// Stops the job and deletes what it downloaded (the cache is per film).
     pub fn close(job: u32) {
         engine::close(job);
-    }
-}
-
-/// The demo catalog.
-#[module]
-pub struct Catalog;
-
-#[module]
-impl Catalog {
-    /// The home shelves as JSON: `[{"id","items":[{"id","year","minutes","ink","paper","stoppedAt","playable"}]}]`.
-    pub fn shelves() -> String {
-        catalog::shelves().to_string()
     }
 }
 
@@ -85,9 +88,55 @@ impl Settings {
         settings::set_buffer_mb(mb)
     }
 
+    /// Saves the search source (a Torznab endpoint and its key; empty URL
+    /// removes it). JSON `{"ok":true,"source":{"url","hasKey"}}` or
+    /// `{"ok":false,"message"}` for an address that is not one.
+    pub fn set_source(url: String, key: String) -> String {
+        match settings::set_source(&url, &key) {
+            Ok(source) => serde_json::json!({ "ok": true, "source": source }).to_string(),
+            Err(message) => serde_json::json!({ "ok": false, "message": message }).to_string(),
+        }
+    }
+
     /// Saves the UI language (a BCP 47 tag).
     pub fn set_language(tag: String) {
         settings::set_language(&tag);
+    }
+}
+
+/// Finding releases on the user's own source (Torznab). Searches run in the
+/// background: start one, then poll `result`.
+#[module]
+pub struct Sources;
+
+#[module]
+impl Sources {
+    /// Searches for a film or an episode. `request` is JSON
+    /// `{"imdb","title","year","season","episode"}` (imdb, year, season and
+    /// episode optional). A search id for `result`; 0 when no source is set.
+    pub fn search(request: String) -> u32 {
+        let Some(source) = settings::source() else { return 0 };
+        match serde_json::from_str::<sources::Request>(&request) {
+            Ok(r) => sources::start_search(source, r),
+            Err(e) => {
+                eprintln!("reel sources: bad request {request}: {e}");
+                0
+            }
+        }
+    }
+
+    /// Checks the saved source (`t=caps`); a job id for `result`, 0 when none is set.
+    pub fn check() -> u32 {
+        settings::source().map(sources::start_check).unwrap_or(0)
+    }
+
+    /// `{"state":"pending"}`, `{"state":"done","releases":[…]}` (ranked: each
+    /// `{"id","title","source","infohash","size","seeders","peers","indexer",
+    /// "info":{resolution,hdr,dolby_vision,codec,source,season,episodes,season_pack},
+    /// "seasonPack"}`), `{"state":"done","caps":{…}}` for a check, or
+    /// `{"state":"failed","message"}`.
+    pub fn result(id: u32) -> String {
+        sources::result(id).to_string()
     }
 }
 

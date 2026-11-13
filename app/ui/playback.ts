@@ -3,7 +3,12 @@
 // twice a second and keeps the answers in signals for the screens.
 import { signal } from "nsh";
 import { Engine } from "app/native";
-import type { Film } from "../data";
+import type { PlayTarget, Summary } from "./catalog";
+
+/** What plays: a film, or an episode of a show (`title` is the show). */
+export interface Playing extends PlayTarget {
+  title: Summary;
+}
 
 /** What the core says about the film being played (see `engine::status`). */
 export type Status =
@@ -29,7 +34,7 @@ export interface Timeline {
   ahead: number;
 }
 
-export const film = signal<Film | null>(null);
+export const playing = signal<Playing | null>(null);
 export const status = signal<Status>({ phase: "idle" });
 export const timeline = signal<Timeline>({ ranges: [], ahead: 0 });
 /** Where the player is, for the core's timeline (set by the player). */
@@ -43,12 +48,12 @@ let generation = 0;
 
 // Engine calls are awaited: the native module answers at once, a test's
 // stand-in (`open`'s `modules`) with a promise.
-export async function play(f: Film) {
+export async function play(what: Playing) {
   stop();
   const gen = generation;
-  film.set(f);
+  playing.set(what);
   status.set({ phase: "resolving" });
-  const opened = await Engine.open(f.id);
+  const opened = await Engine.open(what.id);
   if (gen !== generation) return;
   if (!opened) {
     status.set({ phase: "failed", message: "engine" });
@@ -87,7 +92,7 @@ export function stop() {
   poll = undefined;
   if (job) Engine.close(job);
   job = 0;
-  film.set(null);
+  playing.set(null);
   status.set({ phase: "idle" });
   timeline.set({ ranges: [], ahead: 0 });
   position.set(0);

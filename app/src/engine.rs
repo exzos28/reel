@@ -12,7 +12,7 @@ use std::{
     },
 };
 
-use crate::{catalog, disk, timeline};
+use crate::{catalog, disk, sources, timeline};
 
 use anyhow::Context;
 use librqbit::{
@@ -45,6 +45,13 @@ enum Job {
 }
 
 static CORE: OnceLock<Core> = OnceLock::new();
+
+/// The episode a job plays, (season, episode), when its torrent is a pack.
+static EPISODES: Mutex<Option<HashMap<u32, (u16, u16)>>> = Mutex::new(None);
+
+fn episode_of(job: u32) -> Option<(u16, u16)> {
+    EPISODES.lock().unwrap().as_ref().and_then(|m| m.get(&job).copied())
+}
 
 /// The playback buffer the user chose (Settings), MiB. The UI keeps it across
 /// launches and sets it at start. Until the ring buffer exists it is the free
@@ -138,17 +145,6 @@ pub fn close(job: u32) {
     }
 }
 
-/// The file to play: the largest one with a video extension.
-fn pick_video(files: &[(usize, String, u64)]) -> Option<usize> {
-    const VIDEO: [&str; 6] = ["mp4", "m4v", "mov", "mkv", "webm", "avi"];
-    files
-        .iter()
-        .filter(|(_, name, _)| {
-            name.rsplit_once('.').is_some_and(|(_, ext)| VIDEO.iter().any(|v| ext.eq_ignore_ascii_case(v)))
-        })
-        .max_by_key(|(_, _, len)| *len)
-        .map(|(index, _, _)| *index)
-}
 
 /// Starts the engine if needed; the port of its stream server.
 #[cfg(test)]
@@ -186,6 +182,22 @@ fn new_job(state: Job) -> u32 {
             0
         }
     }
+}
+
+/// Starts playing a release found by a search: `source` is its magnet or
+/// .torrent URL; `episode` (season, episode) picks that episode's file in a
+/// pack. Checks the free space first, as `open`.
+pub fn open_release(source: &str, episode: Option<(u16, u16)>) -> anyhow::Result<u32> {
+    let space = check_space();
+    if space["ok"] == false {
+        let needed = space["needed"].as_u64().unwrap_or_default();
+        return Ok(new_job(Job::NoSpace { needed, free: space["free"].as_u64() }));
+    }
+    let job = add(source)?;
+    if let Some(ep) = episode {
+        EPISODES.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, ep);
+    }
+    Ok(job)
 }
 
 /// Adds a magnet link or torrent URL; returns a job id to poll with `status`.
@@ -232,7 +244,7 @@ pub fn status(job: u32) -> Value {
         Job::Resolving => json!({ "phase": "resolving" }),
         Job::Failed(message) => json!({ "phase": "failed", "message": message }),
         Job::Ready(handle) => {
-            let Some(file) = video_file(&handle) else {
+            let Some(file) = video_file(&handle, job) else {
                 return json!({ "phase": "failed", "message": "no video in this torrent" });
             };
             let stats = handle.stats();
@@ -252,7 +264,7 @@ pub fn status(job: u32) -> Value {
     }
 }
 
-fn video_file(handle: &librqbit::ManagedTorrent) -> Option<usize> {
+fn video_file(handle: &librqbit::ManagedTorrent, job: u32) -> Option<usize> {
     let files: Vec<(usize, String, u64)> = handle
         .with_metadata(|m| {
             m.file_infos
@@ -262,7 +274,7 @@ fn video_file(handle: &librqbit::ManagedTorrent) -> Option<usize> {
                 .collect()
         })
         .ok()?;
-    pick_video(&files)
+    sources::episode::pick(&files, episode_of(job))
 }
 
 /// Buckets the scrubber is cut into.
@@ -275,7 +287,7 @@ pub fn timeline(job: u32, position: f64, duration: f64) -> Value {
     let empty = json!({ "ranges": [], "ahead": 0 });
     let Some(core) = CORE.get() else { return empty };
     let Some(Job::Ready(handle)) = core.jobs.lock().unwrap().get(&job).cloned() else { return empty };
-    let Some(file) = video_file(&handle) else { return empty };
+    let Some(file) = video_file(&handle, job) else { return empty };
     let Some(buckets) = file_buckets(core, &handle, file, TIMELINE_BUCKETS) else { return empty };
     let ranges: Vec<[f64; 2]> = timeline::ready_ranges(&buckets).into_iter().map(|(a, b)| [a, b]).collect();
     json!({ "ranges": ranges, "ahead": timeline::ready_ahead(&buckets, position, duration) })
@@ -348,19 +360,7 @@ mod tests {
     use std::io::{Read, Write};
     use std::time::{Duration, Instant};
 
-    use super::{Layout, pick_video};
-
-    #[test]
-    fn picks_the_largest_video() {
-        let files = vec![
-            (0, "Sintel/poster.jpg".into(), 900_000_000),
-            (1, "Sintel/sintel.mp4".into(), 129_000_000),
-            (2, "Sintel/sample.MKV".into(), 10_000_000),
-            (3, "Sintel/sintel.en.srt".into(), 2_000),
-        ];
-        assert_eq!(pick_video(&files), Some(1));
-        assert_eq!(pick_video(&files[3..]), None);
-    }
+    use super::Layout;
 
     #[test]
     fn buffer_is_clamped_and_space_is_checked() {

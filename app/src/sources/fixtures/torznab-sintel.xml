@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:torznab="http://torznab.com/schemas/2015/feed">
+  <channel>
+    <title>Example indexer</title>
+    <item>
+      <title>Sintel 2010 1080p WEB x264 &amp; subs</title>
+      <guid>https://indexer.example/details/1</guid>
+      <jackettindexer id="internetarchive">Internet Archive</jackettindexer>
+      <size>129241752</size>
+      <link>https://indexer.example/dl/1.torrent</link>
+      <enclosure url="https://indexer.example/dl/1.torrent" length="129241752" type="application/x-bittorrent" />
+      <torznab:attr name="seeders" value="64" />
+      <torznab:attr name="peers" value="70" />
+      <torznab:attr name="infohash" value="08ADA5A7A6183AAE1E09D831DF6748D566095A10" />
+      <torznab:attr name="magneturl" value="magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&amp;dn=Sintel" />
+      <torznab:attr name="imdb" value="1727587" />
+    </item>
+    <item>
+      <title>Sintel.2010.720p.BluRay</title>
+      <size>500000000</size>
+      <link>https://indexer.example/dl/2.torrent</link>
+      <torznab:attr name="seeders" value="3" />
+    </item>
+    <item>
+      <title>Sintel 2010 duplicate of the first</title>
+      <torznab:attr name="seeders" value="10" />
+      <torznab:attr name="magneturl" value="magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10" />
+    </item>
+    <item>
+      <title>Nobody shares this one</title>
+      <link>https://indexer.example/dl/3.torrent</link>
+      <torznab:attr name="seeders" value="0" />
+    </item>
+  </channel>
+</rss>

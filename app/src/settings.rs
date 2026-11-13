@@ -23,11 +23,19 @@ pub const DEFAULT_LANGUAGE: &str = "en";
 struct Saved {
     buffer_mb: u32,
     language: String,
+    /// The user's search source: a Torznab endpoint and its key (may be empty).
+    source_url: String,
+    source_key: String,
 }
 
 impl Default for Saved {
     fn default() -> Self {
-        Saved { buffer_mb: DEFAULT_BUFFER_MB, language: DEFAULT_LANGUAGE.to_owned() }
+        Saved {
+            buffer_mb: DEFAULT_BUFFER_MB,
+            language: DEFAULT_LANGUAGE.to_owned(),
+            source_url: String::new(),
+            source_key: String::new(),
+        }
     }
 }
 
@@ -91,6 +99,7 @@ pub fn load(data_dir: Option<&Path>) -> Value {
     json!({
         "language": saved.language,
         "bufferMB": saved.buffer_mb,
+        "source": source_json(&saved),
         "bufferChoices": BUFFER_CHOICES
             .iter()
             .map(|c| json!({ "mb": c, "default": *c == DEFAULT_BUFFER_MB }))
@@ -112,6 +121,42 @@ pub fn set_buffer_mb(mb: u32) -> u32 {
     });
     engine::set_buffer_mb(mb as u64);
     mb
+}
+
+/// The search source as the UI may show it: the address, and whether a key is
+/// set (never the key itself).
+fn source_json(saved: &Saved) -> Value {
+    json!({ "url": saved.source_url, "hasKey": !saved.source_key.is_empty() })
+}
+
+/// The user's search source, if they entered one.
+pub fn source() -> Option<crate::sources::Source> {
+    with(|s| {
+        let url = s.saved.source_url.trim().to_owned();
+        (!url.is_empty()).then(|| crate::sources::Source {
+            url,
+            key: (!s.saved.source_key.is_empty()).then(|| s.saved.source_key.clone()),
+        })
+    })
+}
+
+/// Saves the search source. A URL that does not parse is refused with an error.
+pub fn set_source(url: &str, key: &str) -> Result<Value, String> {
+    let url = url.trim();
+    if !url.is_empty() {
+        let parsed = reqwest::Url::parse(url).map_err(|e| format!("not an address: {e}"))?;
+        if !matches!(parsed.scheme(), "http" | "https") {
+            return Err("the address must start with http:// or https://".into());
+        }
+    }
+    Ok(with(|s| {
+        s.saved.source_url = url.to_owned();
+        s.saved.source_key = key.trim().to_owned();
+        if let Some(file) = &s.file {
+            write(file, &s.saved);
+        }
+        source_json(&s.saved)
+    }))
 }
 
 pub fn set_language(tag: &str) {
@@ -147,6 +192,17 @@ mod tests {
         // A broken file falls back to the defaults.
         std::fs::write(dir.join("settings.json"), "{ not json").unwrap();
         assert_eq!(load(Some(&dir))["bufferMB"], DEFAULT_BUFFER_MB);
+
+        // The source: a bad address is refused, the key is never shown.
+        load(Some(&dir));
+        assert!(set_source("not a url", "").is_err());
+        let shown = set_source("http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api", "secret").unwrap();
+        assert_eq!(shown["hasKey"], true);
+        assert!(!shown.to_string().contains("secret"));
+        assert_eq!(source().unwrap().key.as_deref(), Some("secret"));
+        assert_eq!(load(Some(&dir))["source"]["hasKey"], true);
+        set_source("", "").unwrap();
+        assert!(source().is_none());
 
         std::fs::remove_dir_all(&dir).unwrap();
         engine::set_buffer_mb(DEFAULT_BUFFER_MB as u64);

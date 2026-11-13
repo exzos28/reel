@@ -1,0 +1,272 @@
+//! Finding releases of a film or an episode on the user's own source: a
+//! Torznab endpoint (Jackett, Prowlarr, JacRed, BitMagnet…), entered in
+//! Settings. reel ships no source and no address.
+//!
+//! A search runs in the background: `start_search` gives an id, `result`
+//! says `pending`, `done` (ranked releases) or `failed`.
+
+pub mod episode;
+pub mod release;
+pub mod torznab;
+
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{
+        Mutex, OnceLock,
+        atomic::{AtomicU32, Ordering},
+    },
+    time::Duration,
+};
+
+use serde::Deserialize;
+use serde_json::{Value, json};
+use tokio::runtime::Runtime;
+
+use torznab::{Caps, Item, Query};
+
+/// Where to search: the endpoint (…/api) and its key, if it has one.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Source {
+    pub url: String,
+    pub key: Option<String>,
+}
+
+/// A search as the UI asks for it (JSON).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Request {
+    pub imdb: Option<String>,
+    pub title: String,
+    pub year: Option<u16>,
+    /// Set (with `episode`) for an episode of a show.
+    pub season: Option<u16>,
+    pub episode: Option<u16>,
+}
+
+impl Request {
+    fn query(&self) -> Query {
+        match (self.season, self.episode) {
+            (Some(season), Some(episode)) => Query::Episode { imdb: self.imdb.clone(), title: self.title.clone(), season, episode },
+            _ => Query::Movie { imdb: self.imdb.clone(), title: self.title.clone(), year: self.year },
+        }
+    }
+}
+
+enum State {
+    Pending,
+    Done(Value),
+    Failed(String),
+}
+
+static NEXT: AtomicU32 = AtomicU32::new(1);
+static JOBS: Mutex<Option<HashMap<u32, State>>> = Mutex::new(None);
+/// Caps per endpoint, asked once per run of the app.
+static CAPS: Mutex<Option<HashMap<String, Caps>>> = Mutex::new(None);
+
+fn runtime() -> &'static Runtime {
+    static RT: OnceLock<Runtime> = OnceLock::new();
+    RT.get_or_init(|| {
+        tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .enable_all()
+            .thread_name("reel-sources")
+            .build()
+            .expect("the sources runtime starts")
+    })
+}
+
+fn client() -> &'static reqwest::Client {
+    static C: OnceLock<reqwest::Client> = OnceLock::new();
+    C.get_or_init(|| {
+        reqwest::Client::builder()
+            .timeout(Duration::from_secs(20))
+            .user_agent(concat!("reel/", env!("CARGO_PKG_VERSION")))
+            .build()
+            .expect("an HTTP client")
+    })
+}
+
+fn set(job: u32, state: State) {
+    JOBS.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, state);
+}
+
+async fn get(url: &str) -> anyhow::Result<String> {
+    let resp = client().get(url).send().await?;
+    let status = resp.status();
+    let body = resp.text().await?;
+    if !status.is_success() {
+        // Torznab errors come as XML with a 200 or a 4xx; say what the source said.
+        if let Err(e) = torznab::parse(&body) {
+            anyhow::bail!("{e}");
+        }
+        anyhow::bail!("the source answered HTTP {status}");
+    }
+    Ok(body)
+}
+
+async fn caps(source: &Source) -> anyhow::Result<Caps> {
+    if let Some(c) = CAPS.lock().unwrap().as_ref().and_then(|m| m.get(&source.url)).cloned() {
+        return Ok(c);
+    }
+    let c = torznab::parse_caps(&get(&torznab::caps_url(&source.url, source.key.as_deref())?).await?)?;
+    CAPS.lock().unwrap().get_or_insert_with(HashMap::new).insert(source.url.clone(), c.clone());
+    Ok(c)
+}
+
+/// Checks the source in the background: a job whose result is
+/// `{"state":"done","caps":{"movieImdb","tvImdb","tvSeasonEp"}}` or failed.
+pub fn start_check(source: Source) -> u32 {
+    let job = NEXT.fetch_add(1, Ordering::Relaxed);
+    set(job, State::Pending);
+    runtime().spawn(async move {
+        CAPS.lock().unwrap().get_or_insert_with(HashMap::new).remove(&source.url);
+        let state = match caps(&source).await {
+            Ok(c) => State::Done(json!({ "caps": { "movieImdb": c.movie_imdb, "tvImdb": c.tv_imdb, "tvSeasonEp": c.tv_season_ep } })),
+            Err(e) => State::Failed(format!("{e:#}")),
+        };
+        set(job, state);
+    });
+    job
+}
+
+/// Starts a search on `source`; poll `result(job)`.
+pub fn start_search(source: Source, request: Request) -> u32 {
+    let job = NEXT.fetch_add(1, Ordering::Relaxed);
+    set(job, State::Pending);
+    runtime().spawn(async move {
+        let state = match search(&source, &request).await {
+            Ok(releases) => State::Done(json!({ "releases": releases })),
+            Err(e) => State::Failed(format!("{e:#}")),
+        };
+        set(job, state);
+    });
+    job
+}
+
+/// `{"state":"pending"}`, `{"state":"done", …}` or `{"state":"failed","message"}`.
+pub fn result(job: u32) -> Value {
+    match JOBS.lock().unwrap().as_ref().and_then(|m| m.get(&job)) {
+        None => json!({ "state": "failed", "message": format!("no search {job}") }),
+        Some(State::Pending) => json!({ "state": "pending" }),
+        Some(State::Done(v)) => {
+            let mut v = v.clone();
+            v["state"] = "done".into();
+            v
+        }
+        Some(State::Failed(m)) => json!({ "state": "failed", "message": m }),
+    }
+}
+
+/// Runs the queries best first and stops once one finds something to play.
+async fn search(source: &Source, request: &Request) -> anyhow::Result<Vec<Value>> {
+    let caps = caps(source).await.unwrap_or_default();
+    let query = request.query();
+    let mut found = Vec::new();
+    let mut last_err = None;
+    for url in torznab::search_urls(&source.url, source.key.as_deref(), &query, &caps)? {
+        match get(&url).await.and_then(|xml| torznab::parse(&xml)) {
+            Ok(items) => {
+                found.extend(items);
+                if rank(&found, &query).iter().any(|r| r["seeders"].as_u64().unwrap_or(0) > 0) {
+                    break;
+                }
+            }
+            Err(e) => last_err = Some(e),
+        }
+    }
+    let ranked = rank(&found, &query);
+    match (ranked.is_empty(), last_err) {
+        (true, Some(e)) => Err(e),
+        _ => Ok(ranked),
+    }
+}
+
+/// How well a release fits the query: 2 the exact episode (or a film),
+/// 1 a season pack that holds it, 0 not this.
+fn fit(info: &release::ReleaseInfo, query: &Query) -> u8 {
+    match query {
+        Query::Movie { .. } => 2,
+        Query::Episode { season, episode, .. } => match info.season {
+            Some(s) if s != *season => 0,
+            _ if info.episodes.contains(episode) => 2,
+            Some(_) if info.episodes.is_empty() => 1,
+            _ => 0,
+        },
+    }
+}
+
+/// Deduplicated (by infohash, else link), what does not fit dropped, best first:
+/// people sharing, then how well it fits, then picture quality, then more people.
+fn rank(items: &[Item], query: &Query) -> Vec<Value> {
+    let mut seen = HashSet::new();
+    let mut rows: Vec<(u8, u8, u32, u32, Value)> = Vec::new();
+    for it in items {
+        let key = it.infohash.clone().or_else(|| it.link.clone()).unwrap_or_else(|| it.title.clone());
+        if it.magnet.is_none() && it.link.is_none() {
+            continue;
+        }
+        let info = release::parse(&it.title);
+        let fit = fit(&info, query);
+        if fit == 0 || !seen.insert(key.clone()) {
+            continue;
+        }
+        let seeders = it.seeders.unwrap_or(0);
+        let quality = release::quality_score(&info);
+        rows.push((
+            (seeders > 0) as u8,
+            fit,
+            quality,
+            seeders,
+            json!({
+                "id": key,
+                "title": it.title,
+                // What the engine opens: the magnet, else the .torrent URL.
+                "source": it.magnet.clone().or_else(|| it.link.clone()),
+                "infohash": it.infohash,
+                "size": it.size,
+                "seeders": it.seeders,
+                "peers": it.peers,
+                "indexer": it.indexer,
+                "info": info,
+                "seasonPack": fit == 1,
+            }),
+        ));
+    }
+    rows.sort_by(|a, b| (b.0, b.1, b.2, b.3).cmp(&(a.0, a.1, a.2, a.3)));
+    rows.into_iter().map(|r| r.4).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ranking_dedupes_and_orders() {
+        let items = torznab::parse(include_str!("fixtures/torznab-sintel.xml")).unwrap();
+        let q = Query::Movie { imdb: None, title: "Sintel".into(), year: Some(2010) };
+        let r = rank(&items, &q);
+        // 4 items: one duplicate by infohash, so 3; nobody sharing goes last.
+        assert_eq!(r.len(), 3);
+        assert_eq!(r[0]["title"], "Sintel 2010 1080p WEB x264 & subs");
+        assert_eq!(r[0]["info"]["resolution"], 1080);
+        assert!(r[0]["source"].as_str().unwrap().starts_with("magnet:"));
+        assert_eq!(r[1]["source"], "https://indexer.example/dl/2.torrent");
+        assert_eq!(r[2]["seeders"], 0);
+    }
+
+    #[test]
+    fn episodes_fit_or_not() {
+        let q = Query::Episode { imdb: None, title: "Flash Gordon".into(), season: 1, episode: 3 };
+        let item = |t: &str, s: u32| Item { title: t.into(), link: Some(format!("https://indexer.example/{t}")), seeders: Some(s), ..Default::default() };
+        let items = vec![
+            item("Flash.Gordon.S01E02.720p", 50),
+            item("Flash.Gordon.S01.1080p", 20),
+            item("Flash.Gordon.S01E03.720p", 5),
+            item("Flash.Gordon.S02E03.720p", 90),
+        ];
+        let r = rank(&items, &q);
+        let titles: Vec<_> = r.iter().map(|v| v["title"].as_str().unwrap()).collect();
+        assert_eq!(titles, vec!["Flash.Gordon.S01E03.720p", "Flash.Gordon.S01.1080p"]);
+        assert_eq!(r[1]["seasonPack"], true);
+    }
+}

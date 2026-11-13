@@ -18,7 +18,8 @@ async function playing() {
     clock: {},
     modules: { "app/native": { ...ENGINE, "Engine.status": status, "Engine.timeline": timeline } },
   });
-  await app.press("Watch");
+  await app.keyboard.press("down"); // Free to watch: Sintel
+  await app.press("Play");
   await app.wait(600); // one poll of the engine
   return app;
 }
@@ -27,6 +28,7 @@ test("the player shows the stream and its controls", async () => {
   const app = await playing();
   const texts = app.texts();
   expect(texts).toContain("Sintel");
+  expect(texts).toContain("720p WEB");
   expect(texts).toContain("streaming at 3.4 MB/s from 37 people");
   expect(app.shows("label:Pause")).toBe(true);
   expect(app.shows("label:Back 10 seconds")).toBe(true);
@@ -76,20 +78,37 @@ test("left and right seek 10 seconds on the scrubber", async () => {
 
 test("down moves to the buttons; left and right pick one, enter runs it", async () => {
   const app = await playing();
-  await app.keyboard.press("down");
-  await app.keyboard.press("right"); // play → back 10 s
+  await app.keyboard.press("down"); // on play/pause
+  expect(app.texts()).toContain("Pause"); // the focused button's label shows
   await app.keyboard.press("right"); // → forward 10 s
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("0:10");
+  await app.keyboard.press("left"); // → play/pause
   await app.keyboard.press("left"); // → back 10 s
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("0:00");
-  await app.keyboard.press("left"); // → play/pause
+  await app.keyboard.press("right"); // → play/pause
   await app.keyboard.press("enter");
   expect(app.shows("label:Play")).toBe(true);
   await app.keyboard.press("up"); // back on the scrubber: right seeks again
   await app.keyboard.press("right");
   expect(app.texts()).toContain("0:10");
+});
+
+test("the tracks button opens Audio, Subtitles and Release; Back closes it first", async () => {
+  const app = await playing();
+  await app.keyboard.press("down");
+  await app.keyboard.press("right");
+  await app.keyboard.press("right"); // → audio and subtitles
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("Subtitles");
+  expect(app.texts()).toContain("Original");
+  expect(app.texts()).toContain("720p WEB");
+  await app.wait(5000); // stays while the panel is open
+  expect(app.texts()).toContain("Subtitles");
+  await app.keyboard.press("escape");
+  expect(app.texts()).not.toContain("Subtitles");
+  expect(app.texts()).toContain("streaming at 3.4 MB/s from 37 people");
 });
 
 test("the buttons work with the mouse", async () => {
@@ -117,4 +136,41 @@ test("hidden, the remote is back on the scrubber", async () => {
   await app.wait(3100);
   await app.keyboard.press("right");
   expect(app.texts()).toContain("0:10");
+});
+
+const nextEpisode = JSON.stringify({
+  id: "flash-3-5", show: "flash", season: 3, number: 5, minutes: 20, date: [1940, 5, 1], rating: "6.9",
+  thumb: null, progress: 0, left: null, watched: false, quality: "1080p", playable: false,
+});
+
+async function nearTheEnd() {
+  const app = await open("./App.tsx", {
+    clock: {},
+    // The core offers the next episode (as it does in the last 40 s).
+    modules: { "app/native": { ...ENGINE, "Engine.status": status, "Engine.timeline": timeline, "Catalog.upNext": nextEpisode } },
+  });
+  await app.keyboard.press("right"); // Flash Gordon
+  await app.press("Resume S3:E4");
+  await app.wait(600);
+  return app;
+}
+
+test("near the end of an episode, Up next counts down and plays the next one", async () => {
+  const app = await nearTheEnd();
+  expect(app.texts()).toContain("Next episode · S3:E5");
+  expect(app.texts()).toContain("The Palace of Terror");
+  expect(app.texts()).toContain("in 6 s");
+  expect(app.texts()).not.toContain("streaming at 3.4 MB/s from 37 people");
+  await app.wait(6100);
+  await app.keyboard.press("escape"); // dismiss the card the next episode shows again
+  expect(app.texts()).toContain("S3:E5 · The Palace of Terror");
+});
+
+test("Watch credits dismisses Up next and brings the controls back", async () => {
+  const app = await nearTheEnd();
+  await app.keyboard.press("right");
+  await app.keyboard.press("enter");
+  expect(app.texts()).not.toContain("Next episode · S3:E5");
+  await app.keyboard.press("down");
+  expect(app.texts()).toContain("S3:E4 · The Destroying Ray");
 });

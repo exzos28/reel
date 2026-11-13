@@ -2778,6 +2778,8 @@ dependencies = [
  "librqbit",
  "librqbit-dualstack-sockets",
  "nsh-core",
+ "quick-xml",
+ "regex",
  "reqwest",
  "rusqlite",
  "serde",
