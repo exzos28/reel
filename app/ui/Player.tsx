@@ -195,6 +195,7 @@ export function Player() {
   const status = () => {
     const s = core();
     if (s.phase === "no_source") return t("player.no_source");
+    if (s.phase === "unsupported") return t(`compat.${s.reason}`);
     if (s.phase === "no_space")
       return s.free == null
         ? t("player.no_space_unknown", { needed: Fmt.size(s.needed) })
@@ -208,7 +209,7 @@ export function Player() {
   };
   const failed = () => {
     const phase = core().phase;
-    return phase === "failed" || phase === "no_source" || phase === "no_space" || lowSpace() || error() != null;
+    return phase === "failed" || phase === "no_source" || phase === "unsupported" || phase === "no_space" || lowSpace() || error() != null;
   };
   // The device ran out of space while playing: stop where we are, keep the overlay up.
   effect(() => { if (lowSpace()) { paused.set(true); poke(); } });

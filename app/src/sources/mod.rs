@@ -5,6 +5,7 @@
 //! A search runs in the background: `start_search` gives an id, `result`
 //! says `pending`, `done` (ranked releases) or `failed`.
 
+pub mod compat;
 pub mod episode;
 pub mod release;
 pub mod torznab;
@@ -135,7 +136,7 @@ pub fn start_search(source: Source, request: Request) -> u32 {
     set(job, State::Pending);
     runtime().spawn(async move {
         let state = match search(&source, &request).await {
-            Ok(releases) => State::Done(json!({ "releases": releases })),
+            Ok((releases, hidden)) => State::Done(json!({ "releases": releases, "hidden": hidden })),
             Err(e) => State::Failed(format!("{e:#}")),
         };
         set(job, state);
@@ -158,7 +159,9 @@ pub fn result(job: u32) -> Value {
 }
 
 /// Runs the queries best first and stops once one finds something to play.
-async fn search(source: &Source, request: &Request) -> anyhow::Result<Vec<Value>> {
+/// The releases that fit, best first, and those hidden because this device
+/// cannot play them (`{"title","reason"}`).
+async fn search(source: &Source, request: &Request) -> anyhow::Result<(Vec<Value>, Vec<Value>)> {
     let caps = caps(source).await.unwrap_or_default();
     let query = request.query();
     let mut found = Vec::new();
@@ -167,17 +170,17 @@ async fn search(source: &Source, request: &Request) -> anyhow::Result<Vec<Value>
         match get(&url).await.and_then(|xml| torznab::parse(&xml)) {
             Ok(items) => {
                 found.extend(items);
-                if rank(&found, &query).iter().any(|r| r["seeders"].as_u64().unwrap_or(0) > 0) {
+                if rank(&found, &query).0.iter().any(|r| r["seeders"].as_u64().unwrap_or(0) > 0) {
                     break;
                 }
             }
             Err(e) => last_err = Some(e),
         }
     }
-    let ranked = rank(&found, &query);
-    match (ranked.is_empty(), last_err) {
+    let (ranked, hidden) = rank(&found, &query);
+    match (ranked.is_empty() && hidden.is_empty(), last_err) {
         (true, Some(e)) => Err(e),
-        _ => Ok(ranked),
+        _ => Ok((ranked, hidden)),
     }
 }
 
@@ -197,7 +200,9 @@ fn fit(info: &release::ReleaseInfo, query: &Query) -> u8 {
 
 /// Deduplicated (by infohash, else link), what does not fit dropped, best first:
 /// people sharing, then how well it fits, then picture quality, then more people.
-fn rank(items: &[Item], query: &Query) -> Vec<Value> {
+fn rank(items: &[Item], query: &Query) -> (Vec<Value>, Vec<Value>) {
+    let profile = compat::profile();
+    let mut hidden = Vec::new();
     // Some indexers report 0 seeders for everything (they don't parse it):
     // then 0 means "unknown", not "nobody sharing".
     let seeders_known = items.iter().any(|it| it.seeders.unwrap_or(0) > 0);
@@ -211,6 +216,10 @@ fn rank(items: &[Item], query: &Query) -> Vec<Value> {
         let info = release::parse(&it.title);
         let fit = fit(&info, query);
         if fit == 0 || !seen.insert(key.clone()) {
+            continue;
+        }
+        if let Err(reason) = compat::release_ok(&info, profile) {
+            hidden.push(json!({ "title": it.title, "reason": reason }));
             continue;
         }
         let seeders = if seeders_known { it.seeders.unwrap_or(0) } else { 1 };
@@ -236,7 +245,7 @@ fn rank(items: &[Item], query: &Query) -> Vec<Value> {
         ));
     }
     rows.sort_by(|a, b| (b.0, b.1, b.2, b.3).cmp(&(a.0, a.1, a.2, a.3)));
-    rows.into_iter().map(|r| r.4).collect()
+    (rows.into_iter().map(|r| r.4).collect(), hidden)
 }
 
 #[cfg(test)]
@@ -247,7 +256,7 @@ mod tests {
     fn ranking_dedupes_and_orders() {
         let items = torznab::parse(include_str!("fixtures/torznab-sintel.xml")).unwrap();
         let q = Query::Movie { imdb: None, title: "Sintel".into(), year: Some(2010) };
-        let r = rank(&items, &q);
+        let r = rank(&items, &q).0;
         // 4 items: one duplicate by infohash, so 3; nobody sharing goes last.
         assert_eq!(r.len(), 3);
         assert_eq!(r[0]["title"], "Sintel 2010 1080p WEB x264 & subs");
@@ -258,13 +267,24 @@ mod tests {
     }
 
     #[test]
+    fn unsupported_releases_are_hidden_with_a_reason() {
+        compat::set_profile(compat::Profile::Tizen);
+        let q = Query::Movie { imdb: None, title: "Film".into(), year: None };
+        let item = |t: &str| Item { title: t.into(), link: Some(format!("https://indexer.example/{t}")), seeders: Some(5), ..Default::default() };
+        let (shown, hidden) = rank(&[item("Film 1080p BluRay DTS-HD MA"), item("Film 1080p WEB AAC")], &q);
+        compat::set_profile(compat::Profile::Mpv);
+        assert_eq!(shown.len(), 1);
+        assert_eq!(hidden[0]["reason"], "audio_dts");
+    }
+
+    #[test]
     fn zero_seeders_everywhere_means_unknown() {
         let q = Query::Movie { imdb: None, title: "Sintel".into(), year: None };
         let items = vec![
             Item { title: "Sintel 720p".into(), link: Some("https://indexer.example/a".into()), seeders: Some(0), ..Default::default() },
             Item { title: "Sintel 1080p".into(), link: Some("https://indexer.example/b".into()), seeders: Some(0), ..Default::default() },
         ];
-        let r = rank(&items, &q);
+        let r = rank(&items, &q).0;
         assert_eq!(r[0]["title"], "Sintel 1080p", "ordered by quality, not as dead");
         assert!(r[0]["seeders"].is_null());
     }
@@ -279,7 +299,7 @@ mod tests {
         };
         let source = Source { url, key };
         let request = Request { imdb: Some("tt0013442".into()), title: "Носферату".into(), year: Some(1922), season: None, episode: None };
-        let r = runtime().block_on(search(&source, &request)).expect("the source answers");
+        let (r, _) = runtime().block_on(search(&source, &request)).expect("the source answers");
         println!("{} releases; best: {:?} {:?}", r.len(), r.first().map(|v| &v["info"]), r.first().map(|v| &v["seeders"]));
         assert!(!r.is_empty());
         assert!(r[0]["source"].as_str().is_some_and(|s| s.starts_with("magnet:") || s.starts_with("http")));
@@ -295,7 +315,7 @@ mod tests {
             item("Flash.Gordon.S01E03.720p", 5),
             item("Flash.Gordon.S02E03.720p", 90),
         ];
-        let r = rank(&items, &q);
+        let r = rank(&items, &q).0;
         let titles: Vec<_> = r.iter().map(|v| v["title"].as_str().unwrap()).collect();
         assert_eq!(titles, vec!["Flash.Gordon.S01E03.720p", "Flash.Gordon.S01.1080p"]);
         assert_eq!(r[1]["seasonPack"], true);

@@ -144,6 +144,12 @@ search:
   title: Search
   soon: Search is not here yet. Browse Movies and Shows for now.
 
+compat:
+  audio_dts: This release has only DTS audio, which this device cannot play. Choose another release.
+  audio_truehd: This release has only TrueHD audio, which this device cannot play. Choose another release.
+  dolby_vision_only: This release is Dolby Vision without an HDR10 layer; this device would show wrong colours. Choose another release.
+  container: This file's format does not play on this device. Choose another release.
+
 player:
   back: Back
   resolving: Finding peers…

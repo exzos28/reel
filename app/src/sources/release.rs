@@ -12,7 +12,12 @@ pub struct ReleaseInfo {
     /// Vertical resolution: 2160, 1080, 720, 576, 480.
     pub resolution: Option<u16>,
     pub hdr: bool,
+    /// An HDR10 / HDR10+ layer is named (a Dolby Vision release with it falls
+    /// back to HDR10 on devices without Dolby Vision).
+    pub hdr10: bool,
     pub dolby_vision: bool,
+    /// Audio formats the name mentions: "dts", "truehd", "atmos", "eac3", "ac3", "aac", "flac", "opus".
+    pub audio: Vec<&'static str>,
     /// "x265", "x264", "av1".
     pub codec: Option<&'static str>,
     /// "remux", "bluray", "web", "hdtv", "dvd".
@@ -31,7 +36,19 @@ macro_rules! re {
 }
 
 static RES: LazyLock<Regex> = re!(r"(?i)\b(2160|1080|720|576|480)[pi]\b|\b(4k|uhd)\b");
-static HDR: LazyLock<Regex> = re!(r"(?i)\b(hdr10\+?|hdr)\b");
+static HDR10: LazyLock<Regex> = re!(r"(?i)\b(hdr10\+?|hdr)\b");
+static AUDIO: LazyLock<[(Regex, &'static str); 8]> = LazyLock::new(|| {
+    [
+        (Regex::new(r"(?i)\bdts(-?(hd|x|ma|es))?\b").unwrap(), "dts"),
+        (Regex::new(r"(?i)\btrue-?hd\b").unwrap(), "truehd"),
+        (Regex::new(r"(?i)\batmos\b").unwrap(), "atmos"),
+        (Regex::new(r"(?i)\b(e-?ac-?3|ddp|dd\+|dd5\.1\+)").unwrap(), "eac3"),
+        (Regex::new(r"(?i)\b(ac-?3|dd[ ._]?[25]\.[01]|dolby[ ._]digital)\b").unwrap(), "ac3"),
+        (Regex::new(r"(?i)\baac(2\.0|5\.1)?\b").unwrap(), "aac"),
+        (Regex::new(r"(?i)\bflac\b").unwrap(), "flac"),
+        (Regex::new(r"(?i)\bopus\b").unwrap(), "opus"),
+    ]
+});
 static DV: LazyLock<Regex> = re!(r"(?i)\b(dv|dovi|dolby[ ._-]?vision)\b");
 static X265: LazyLock<Regex> = re!(r"(?i)\b(x265|h\.?265|hevc)\b");
 static X264: LazyLock<Regex> = re!(r"(?i)\b(x264|h\.?264|avc)\b");
@@ -59,7 +76,13 @@ pub fn parse(name: &str) -> ReleaseInfo {
         };
     }
     info.dolby_vision = DV.is_match(name);
-    info.hdr = HDR.is_match(name) || info.dolby_vision;
+    info.hdr10 = HDR10.is_match(name);
+    info.hdr = info.hdr10 || info.dolby_vision;
+    info.audio = AUDIO.iter().filter(|(re, _)| re.is_match(name)).map(|(_, a)| *a).collect();
+    // "DD+" also matches the plain AC-3 pattern's prefix; E-AC-3 wins.
+    if info.audio.contains(&"eac3") {
+        info.audio.retain(|a| *a != "ac3");
+    }
     info.codec = if AV1.is_match(name) {
         Some("av1")
     } else if X265.is_match(name) {
@@ -140,6 +163,19 @@ mod tests {
         assert_eq!(i.source, Some("remux"));
         assert_eq!(i.codec, Some("x265"));
         assert_eq!(parse("Some Film 4K WEB-DL").resolution, Some(2160));
+    }
+
+    #[test]
+    fn audio_and_hdr_layers() {
+        let i = parse("Film.2160p.UHD.BluRay.REMUX.DV.HDR10.HEVC.TrueHD.Atmos.7.1");
+        assert!(i.dolby_vision && i.hdr10);
+        assert_eq!(i.audio, vec!["truehd", "atmos"]);
+        let dv_only = parse("Film 2160p WEB-DL DV H265 DDP5.1");
+        assert!(dv_only.dolby_vision && !dv_only.hdr10);
+        assert_eq!(dv_only.audio, vec!["eac3"]);
+        assert_eq!(parse("Film 1080p BluRay DTS-HD MA 5.1").audio, vec!["dts"]);
+        assert_eq!(parse("Film 1080p WEB AAC2.0 x264").audio, vec!["aac"]);
+        assert_eq!(parse("Фильм 1080p AC3").audio, vec!["ac3"]);
     }
 
     #[test]

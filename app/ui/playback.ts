@@ -16,6 +16,8 @@ export interface Playing extends PlayTarget {
 export type Status =
   | { phase: "idle" }
   | { phase: "no_source" }
+  /** The chosen file will not play on this device (`compat.<reason>`). */
+  | { phase: "unsupported"; reason: string }
   | { phase: "no_space"; needed: number; free: number | null }
   | { phase: "resolving" }
   | { phase: "failed"; message: string }

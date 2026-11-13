@@ -129,6 +129,19 @@ impl Sources {
         }
     }
 
+    /// Sets the player profile of this device (what it can play): "mpv",
+    /// "apple_avplayer", "android_mediaplayer", "tizen". Releases it cannot
+    /// play are hidden from searches. False for an unknown name.
+    pub fn set_profile(name: String) -> bool {
+        match sources::compat::Profile::parse(&name) {
+            Some(p) => {
+                sources::compat::set_profile(p);
+                true
+            }
+            None => false,
+        }
+    }
+
     /// Checks the saved source (`t=caps`); a job id for `result`, 0 when none is set.
     pub fn check() -> u32 {
         settings::source().map(sources::start_check).unwrap_or(0)

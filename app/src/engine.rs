@@ -299,6 +299,16 @@ pub fn status(job: u32) -> Value {
             let Some(file) = video_file(&handle, job) else {
                 return json!({ "phase": "failed", "message": "no video in this torrent" });
             };
+            // The release name said nothing against it; the file itself may still
+            // be in a container this device's player cannot open.
+            let name = handle
+                .with_metadata(|m| m.file_infos.get(file).map(|f| f.relative_filename.to_string_lossy().into_owned()))
+                .ok()
+                .flatten()
+                .unwrap_or_default();
+            if let Err(reason) = sources::compat::file_ok(&name, sources::compat::profile()) {
+                return json!({ "phase": "unsupported", "reason": reason });
+            }
             let stats = handle.stats();
             let live = stats.live.as_ref();
             let peers = live.map(|l| l.snapshot.peer_stats.live);
