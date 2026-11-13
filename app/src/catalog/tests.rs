@@ -142,6 +142,9 @@ fn without_tmdb_anime_and_a_notice() {
     assert_eq!(shelves[1]["id"], "no_tmdb");
     assert_eq!(shelves[1]["items"][0]["notice"], "no_tmdb");
     assert_eq!(browse("movies")["trending"][0]["notice"], "no_tmdb");
+    // The Anime page works without a TMDB key: AniList's trending.
+    let page = browse("anime");
+    assert!(page["trending"][0]["id"].as_str().unwrap().starts_with("anilist:"));
 }
 
 #[test]
