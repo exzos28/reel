@@ -49,7 +49,7 @@ export function Settings(props: { freeBytes: () => number | null; onClose: () =>
                   alignItems: "center",
                   height: u(68),
                   paddingHorizontal: u(28),
-                  borderRadius: radius(),
+                  borderRadius: radius(), borderCurve: "continuous",
                   // Selected is the lighter fill and a check; focus is the ring.
                   backgroundColor: bufferMB() === mb().mb ? colors.raise() : colors.card(),
                   ...focusRing(focus() === i(), "row"),

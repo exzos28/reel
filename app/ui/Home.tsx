@@ -145,8 +145,8 @@ function WideCard(props: { item: () => Summary; continuing: boolean; focused: ()
       hoverStyle={{ opacity: 0.92 }}
       style={{ width: u(352), flexShrink: 0, gap: u(4) }}
     >
-      <View style={{ borderRadius: radius(), ...focusRing(props.focused(), "card") }}>
-        <Picture item={s} src={() => s().card} titleSize={26} style={{ height: u(198), borderRadius: radius() }} />
+      <View style={{ borderRadius: radius(), borderCurve: "continuous", ...focusRing(props.focused(), "card") }}>
+        <Picture item={s} src={() => s().card} titleSize={26} style={{ height: u(198), borderRadius: radius(), borderCurve: "continuous" }} />
         <If when={props.continuing && s().progress > 0}>
           <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: u(5), overflow: "hidden", borderBottomLeftRadius: radius(), borderBottomRightRadius: radius() }}>
             <WatchedBar progress={() => s().progress} />

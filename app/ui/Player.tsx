@@ -270,7 +270,7 @@ export function Player() {
           testID="buffering"
           style={{ pointerEvents: "none", position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}
         >
-          <View style={{ width: u(96), height: u(96), borderRadius: 999, borderWidth: u(8), borderColor: alpha(colors.snow(), 0.16), borderTopColor: colors.snow(), animationName: "spin", animationDuration: 900, animationTimingFunction: "linear", animationIterationCount: "infinite", animationFrameRate: 30 }} />
+          <View style={{ width: u(96), height: u(96), borderRadius: 999, borderCurve: "continuous", borderWidth: u(8), borderColor: alpha(colors.snow(), 0.16), borderTopColor: colors.snow(), animationName: "spin", animationDuration: 900, animationTimingFunction: "linear", animationIterationCount: "infinite", animationFrameRate: 30 }} />
         </View>
       </If>
 
@@ -291,7 +291,7 @@ export function Player() {
             accessibilityLabel={t("player.back")}
             onPress={stop}
             hoverStyle={{ backgroundColor: colors.raise() }}
-            style={{ width: u(64), height: u(64), borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: alpha(colors.card(), 0.8) }}
+            style={{ width: u(64), height: u(64), borderRadius: 999, borderCurve: "continuous", alignItems: "center", justifyContent: "center", backgroundColor: alpha(colors.card(), 0.8) }}
           >
             <Icon src={() => backIcon} size={28} />
           </View>
@@ -402,25 +402,25 @@ function Scrubber(props: {
       }}
       style={{ marginTop: u(10), paddingVertical: u(14), justifyContent: "center" }}
     >
-      <View style={{ height: bar, borderRadius: bar / 2, backgroundColor: alpha(colors.snow(), 0.16) }}>
+      <View style={{ height: bar, borderRadius: bar / 2, borderCurve: "continuous", backgroundColor: alpha(colors.snow(), 0.16) }}>
         <Each of={ranges()} key={(r) => r.from}>
           {(r) => (
             <View
               style={{
-                position: "absolute", top: 0, bottom: 0, borderRadius: bar / 2,
+                position: "absolute", top: 0, bottom: 0, borderRadius: bar / 2, borderCurve: "continuous",
                 left: r().from * width(), width: (r().to - r().from) * width(),
                 backgroundColor: alpha(colors.snow(), 0.45),
               }}
             />
           )}
         </Each>
-        <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: at() * width(), borderRadius: bar / 2, backgroundColor: colors.snow() }} />
+        <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: at() * width(), borderRadius: bar / 2, borderCurve: "continuous", backgroundColor: colors.snow() }} />
       </View>
       <View
         style={{
           position: "absolute",
           left: at() * width() - u(13),
-          width: u(26), height: u(26), borderRadius: 999,
+          width: u(26), height: u(26), borderRadius: 999, borderCurve: "continuous",
           backgroundColor: colors.snow(),
           ...focusRing(props.focused()),
         }}
@@ -443,7 +443,7 @@ function RoundButton(props: {
         <View
           style={{
             position: "absolute", bottom: u(86), paddingHorizontal: u(14), paddingVertical: u(8),
-            borderRadius: u(8), backgroundColor: colors.card(), minWidth: u(68), alignItems: "center",
+            borderRadius: u(8), borderCurve: "continuous", backgroundColor: colors.card(), minWidth: u(68), alignItems: "center",
           }}
         >
           <Text style={{ numberOfLines: 1, ...type.small(), color: colors.snow() }}>{props.label()}</Text>
@@ -455,7 +455,7 @@ function RoundButton(props: {
         onPress={props.onPress}
         hoverStyle={{ backgroundColor: colors.control() }}
         style={{
-          width: u(68), height: u(68), borderRadius: 999,
+          width: u(68), height: u(68), borderRadius: 999, borderCurve: "continuous",
           alignItems: "center", justifyContent: "center",
           backgroundColor: props.selected() ? colors.control() : alpha(colors.raise(), 0.85),
           ...focusRing(props.focused()),
@@ -493,7 +493,7 @@ function TracksPanel(props: {
             hoverStyle={{ backgroundColor: colors.card() }}
             style={{
               flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-              minHeight: u(o().sub ? 74 : 60), paddingHorizontal: u(16), borderRadius: radius(),
+              minHeight: u(o().sub ? 74 : 60), paddingHorizontal: u(16), borderRadius: radius(), borderCurve: "continuous",
               backgroundColor: props.focused(col, i()) || isSelected(col, i(), o().selected) ? colors.card() : "transparent",
               ...focusRing(props.focused(col, i())),
             }}
@@ -518,7 +518,7 @@ function TracksPanel(props: {
     <View
       style={{
         position: "absolute", top: u(150), right: safe().x, width: u(1020), maxWidth: "90%",
-        flexDirection: "row", padding: u(26), borderRadius: u(14), backgroundColor: alpha(colors.card(), 0.94),
+        flexDirection: "row", padding: u(26), borderRadius: radius() + u(26), borderCurve: "continuous", backgroundColor: alpha(colors.card(), 0.94),
       }}
     >
       {column(0, t("player.audio"), () => props.tracks().audio.map((a) => ({ main: t(`tracks.audio.${a.key}`), selected: a.selected })))}
@@ -549,12 +549,12 @@ function UpNext(props: {
     <View
       style={{
         position: "absolute", right: safe().x, bottom: u(96), width: u(720), maxWidth: "90%",
-        padding: u(22), borderRadius: u(14), backgroundColor: alpha(colors.card(), 0.95),
+        padding: u(22), borderRadius: radius() + u(22), borderCurve: "continuous", backgroundColor: alpha(colors.card(), 0.95),
         boxShadow: `0 ${u(24)}px ${u(60)}px ${alpha(colors.ink(), 0.6)}`,
       }}
     >
       <View style={{ flexDirection: "row", gap: u(22) }}>
-        <View style={{ width: u(256), height: u(144), borderRadius: u(8), overflow: "hidden", backgroundColor: colors.raise() }}>
+        <View style={{ width: u(256), height: u(144), borderRadius: u(8), borderCurve: "continuous", overflow: "hidden", backgroundColor: colors.raise() }}>
           <If when={e().thumb}>
             <Image src={e().thumb!} style={{ flex: 1, objectFit: "cover", objectPosition: "center 30%" }} />
           </If>
@@ -576,7 +576,7 @@ function UpNext(props: {
           onPress={props.onPlay}
           style={{
             flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: u(12),
-            height: u(60), borderRadius: radius(), overflow: "hidden", backgroundColor: colors.snow(),
+            height: u(60), borderRadius: radius(), borderCurve: "continuous", overflow: "hidden", backgroundColor: colors.snow(),
             ...focusRing(props.focused() === 0),
           }}
         >
@@ -598,7 +598,7 @@ function UpNext(props: {
           onPress={props.onCredits}
           style={{
             flexDirection: "row", alignItems: "center", paddingHorizontal: u(26), height: u(60),
-            borderRadius: radius(), backgroundColor: colors.raise(),
+            borderRadius: radius(), borderCurve: "continuous", backgroundColor: colors.raise(),
             ...focusRing(props.focused() === 1),
           }}
         >

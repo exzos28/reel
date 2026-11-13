@@ -201,7 +201,7 @@ function Releases(props: { releases: () => Release[]; focused: (i: number) => bo
                 minHeight: u(76),
                 paddingHorizontal: u(28),
                 paddingVertical: u(12),
-                borderRadius: radius(),
+                borderRadius: radius(), borderCurve: "continuous",
                 backgroundColor: r().selected ? colors.raise() : colors.card(),
                 ...focusRing(props.focused(i()), "row"),
               }}
@@ -261,7 +261,7 @@ function Seasons(props: {
                   gap: u(10),
                   height: u(52),
                   paddingHorizontal: u(22),
-                  borderRadius: radius(),
+                  borderRadius: radius(), borderCurve: "continuous",
                   backgroundColor: selectedFill(props.season() === s().number),
                   ...focusRing(props.focused() && props.season() === s().number),
                 }}
@@ -302,7 +302,7 @@ function EpisodeRow(props: { episode: () => Episode; focused: () => boolean; onP
         paddingLeft: u(18),
         paddingRight: u(26),
         paddingVertical: u(7),
-        borderRadius: radius(),
+        borderRadius: radius(), borderCurve: "continuous",
         backgroundColor: colors.card(),
         ...focusRing(props.focused(), "row"),
       }}
@@ -310,11 +310,11 @@ function EpisodeRow(props: { episode: () => Episode; focused: () => boolean; onP
       <Text style={{ width: u(74), textAlign: "center", fontFamily: font, fontSize: u(44), fontWeight: 300, color: e().watched ? colors.ash() : colors.faint() }}>
         {String(e().number)}
       </Text>
-      <View style={{ width: u(185), height: u(104), borderRadius: u(8), overflow: "hidden", backgroundColor: colors.raise() }}>
+      <View style={{ width: u(185), height: u(104), borderRadius: u(8), borderCurve: "continuous", overflow: "hidden", backgroundColor: colors.raise() }}>
         <If when={e().thumb}>
           <Image src={e().thumb!} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, objectFit: "cover", objectPosition: "center 30%" }} />
         </If>
-        <View style={{ position: "absolute", left: u(8), bottom: u(10), flexDirection: "row", gap: u(5), paddingHorizontal: u(7), paddingVertical: u(3), borderRadius: u(5), backgroundColor: colors.ink() }}>
+        <View style={{ position: "absolute", left: u(8), bottom: u(10), flexDirection: "row", gap: u(5), paddingHorizontal: u(7), paddingVertical: u(3), borderRadius: u(5), borderCurve: "continuous", backgroundColor: colors.ink() }}>
           <Text style={{ fontFamily: font, fontSize: u(17), color: colors.red() }}>★</Text>
           <Text style={{ fontFamily: font, fontSize: u(17), fontWeight: 600, color: colors.snow() }}>{e().rating}</Text>
         </View>

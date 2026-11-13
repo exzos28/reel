@@ -54,7 +54,7 @@ export function Button(props: {
         gap: u(12),
         height: u(props.height ?? 60),
         paddingHorizontal: u(28),
-        borderRadius: radius(),
+        borderRadius: radius(), borderCurve: "continuous",
         backgroundColor: props.kind === "primary" ? colors.snow() : colors.raise(),
         ...focusRing(props.focused()),
       }}
@@ -87,7 +87,7 @@ export function IconButton(props: {
       style={{
         width: u(size),
         height: u(size),
-        borderRadius: 999,
+        borderRadius: 999, borderCurve: "continuous",
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: props.selected?.() ? colors.control() : props.background ? props.background() : colors.card(),
@@ -106,7 +106,7 @@ export function Badge(props: { text: string; size?: number }) {
       style={{
         borderWidth: 1,
         borderColor: colors.ash(),
-        borderRadius: u(4),
+        borderRadius: u(4), borderCurve: "continuous",
         paddingHorizontal: u(9),
         paddingVertical: u(4),
       }}
@@ -148,7 +148,7 @@ export function SignalBars(props: { bars: number }) {
             style={{
               width: u(5),
               height: u(h()),
-              borderRadius: 1,
+              borderRadius: 1, borderCurve: "continuous",
               backgroundColor: i() < props.bars ? colors.snow() : colors.raise(),
             }}
           />
@@ -231,7 +231,7 @@ export function NavBar(props: { current: Destination; focused: () => number | nu
     >
       <Logo />
       <View style={{ flexDirection: "row", alignItems: "center", gap: u(10) }}>
-        <View style={{ flexDirection: "row", gap: u(2), padding: u(5), borderRadius: u(14), backgroundColor: colors.card() }}>
+        <View style={{ flexDirection: "row", gap: u(2), padding: u(5), borderRadius: radius() + u(5), borderCurve: "continuous", backgroundColor: colors.card() }}>
           <Each of={pills} key={(n) => n.id}>
             {(n, i) => (
               <View
@@ -245,7 +245,7 @@ export function NavBar(props: { current: Destination; focused: () => number | nu
                   gap: u(10),
                   height: u(52),
                   paddingHorizontal: u(20),
-                  borderRadius: radius(),
+                  borderRadius: radius(), borderCurve: "continuous",
                   backgroundColor: props.current === n().id ? colors.nav() : "transparent",
                   ...focusRing(props.focused() === i()),
                 }}

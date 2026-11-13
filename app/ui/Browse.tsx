@@ -102,7 +102,7 @@ export function Browse(props: { page: Page }) {
           <Text style={{ ...type.section(), color: colors.snow(), marginRight: u(22) }}>{t(`browse.${props.page}.all`)}</Text>
           <Each of={["genres", "years", "countries"]} key="index">
             {(f) => (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: u(8), height: u(46), paddingHorizontal: u(18), borderRadius: radius(), backgroundColor: colors.card() }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: u(8), height: u(46), paddingHorizontal: u(18), borderRadius: radius(), borderCurve: "continuous", backgroundColor: colors.card() }}>
                 <Text style={{ ...type.meta(), color: colors.soft() }}>{t(`browse.filter.${f()}`)}</Text>
                 <Icon src={() => chevronIcon} size={18} color={colors.ash} />
               </View>
@@ -153,8 +153,8 @@ function PosterCard(props: { item: () => Summary; sub: () => string | null; focu
       hoverStyle={{ opacity: 0.92 }}
       style={{ width: u(196), flexShrink: 0, gap: u(3) }}
     >
-      <View style={{ borderRadius: radius(), ...focusRing(props.focused(), "card") }}>
-        <Picture item={s} src={() => s().poster} titleSize={22} style={{ height: u(290), borderRadius: radius() }} />
+      <View style={{ borderRadius: radius(), borderCurve: "continuous", ...focusRing(props.focused(), "card") }}>
+        <Picture item={s} src={() => s().poster} titleSize={22} style={{ height: u(290), borderRadius: radius(), borderCurve: "continuous" }} />
       </View>
       <Text style={{ numberOfLines: 1, fontFamily: font, fontSize: u(21), fontWeight: 600, color: colors.snow(), marginTop: u(12) }}>
         {titleText(s())}
@@ -178,12 +178,12 @@ function GridCard(props: { item: () => Summary; width: () => number; focused: ()
       hoverStyle={{ opacity: 0.92 }}
       style={{ width: props.width(), gap: u(3) }}
     >
-      <View style={{ borderRadius: radius(), ...focusRing(props.focused(), "card") }}>
-        <Picture item={s} src={() => s().still} titleSize={20} style={{ height: props.width() * 0.56, borderRadius: radius() }} />
+      <View style={{ borderRadius: radius(), borderCurve: "continuous", ...focusRing(props.focused(), "card") }}>
+        <Picture item={s} src={() => s().still} titleSize={20} style={{ height: props.width() * 0.56, borderRadius: radius(), borderCurve: "continuous" }} />
         <If when={s().still}>
           <View
             style={{
-              position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: radius(),
+              position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: radius(), borderCurve: "continuous",
               backgroundImage: `linear-gradient(0deg, ${alpha(colors.ink(), 0.85)} 0%, ${alpha(colors.ink(), 0)} 55%)`,
             }}
           />
@@ -194,7 +194,7 @@ function GridCard(props: { item: () => Summary; width: () => number; focused: ()
           </Text>
         </If>
         <If when={s().tag}>
-          <View style={{ position: "absolute", left: u(12), top: u(12), backgroundColor: colors.red(), borderRadius: u(4), paddingHorizontal: u(9), paddingVertical: u(6) }}>
+          <View style={{ position: "absolute", left: u(12), top: u(12), backgroundColor: colors.red(), borderRadius: u(4), borderCurve: "continuous", paddingHorizontal: u(9), paddingVertical: u(6) }}>
             <Text style={{ fontFamily: font, fontSize: u(17), fontWeight: 600, color: colors.snow() }}>{t(`tag.${s().tag}`)}</Text>
           </View>
         </If>
