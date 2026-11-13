@@ -1,7 +1,6 @@
 // A typographic poster: the film's title set on its own two colors. Focus is
 // the projector light: lift, beam outline, brighter; the rest of the row dims.
 import { effect, Text, View, type ViewRef } from "nsh";
-import { t } from "nsh/i18n";
 import { filmText, type Film } from "../data";
 import { colors, fonts, radius, u } from "./theme";
 
@@ -56,22 +55,6 @@ export function Poster(props: {
           {String(props.film().year)}
         </Text>
       </View>
-      <If when={props.film().downloaded != null}>
-        <Progress value={() => props.film().downloaded ?? 0} />
-      </If>
-    </View>
-  );
-}
-
-function Progress(props: { value: () => number }) {
-  return (
-    <View style={{ gap: u(6) }}>
-      <View style={{ height: u(6), borderRadius: u(3), backgroundColor: colors.line() }}>
-        <View style={{ height: u(6), borderRadius: u(3), width: `${Math.round(props.value() * 100)}%`, backgroundColor: colors.screen() }} />
-      </View>
-      <Text style={{ fontFamily: fonts.body, fontSize: u(24), color: colors.dim() }}>
-        {t("film.downloaded", { percent: Math.round(props.value() * 100) })}
-      </Text>
     </View>
   );
 }

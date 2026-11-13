@@ -81,11 +81,11 @@ posters with badges. Mockups: `design/concept/*.html`, renders in `design/concep
 | Token | Hex | Role |
 |---|---|---|
 | `night` | `#0A0F1C` | background, blue-black |
-| `deck` | `#141B2D` | raised surfaces: panels, download cards, release rows |
+| `deck` | `#141B2D` | raised surfaces: panels, release rows |
 | `rule` | `#26304A` | lines, empty progress tracks |
 | `paper` | `#F2F4F8` | text, the Play pill, focus |
 | `mist` | `#8B94A9` | secondary text |
-| `lamp` | `#F5B83D` | the one accent: rating, download progress, "selected" marks, glow |
+| `lamp` | `#F5B83D` | the one accent: rating, "ready ahead" in the player, "selected" marks, glow |
 
 Health of a release (people sharing): green `#4ADE80`, amber `#F59E0B`, red `#F87171`, as signal
 bars, never as the only cue (always with the count).
@@ -106,16 +106,16 @@ Phone: title 68, section 19, body 15.
 
 - Full-bleed hero still of the featured film, subject on the right (mirror the still if needed),
   dark gradients left and bottom, a lamp-coloured radial glow behind the subject.
-- Floating pill nav centered at the top: logo, Home, Movies, Series, Downloads (count badge),
+- Floating pill nav centered at the top: logo, Home, Movies, Series, My list,
   search, settings. Phone: the same pill as a bottom tab bar.
 - Hero block left: title, meta (rating, year, genre, runtime), 2 lines about, the release that Play
   will use (quality, size, people sharing), white Play pill + round secondary buttons.
 - Shelves of portrait posters with quality and rating badges; Continue watching has a watched
-  track under each poster; Downloading uses wide cards with a lamp progress bar and time left.
+  track under each poster. No downloads screen: reel streams only.
 - Film screen: release list sorted by how fast it starts (quality, source, size, tracks, people
   sharing, a plain-words note: "Plays now", "Needs 25 Mbit/s", "Few people sharing").
-- Player: scrubber shows watched (paper), downloaded (lamp) and missing (grey) ranges, with a line
-  "6 min ready ahead, downloading at 3.4 MB/s from 37 people"; Audio, Subtitles and Release in
+- Player: scrubber shows watched (paper), ready (lamp) and not loaded yet (grey) ranges, with a line
+  "6 min ready ahead, streaming at 3.4 MB/s from 37 people"; Audio, Subtitles and Release in
   one panel.
 
 ## Focus and selected (TV remote)

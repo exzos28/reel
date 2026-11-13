@@ -11,8 +11,6 @@ export interface Film {
   paper: string;
   /** Where the viewer stopped, seconds; absent if not started. */
   stoppedAt?: number;
-  /** Download progress 0..1 for the "Downloading" shelf. */
-  downloaded?: number;
   /** A magnet link the engine can play; demo films without one show "no source". */
   magnet?: string;
 }
@@ -41,9 +39,9 @@ export const films: Film[] = [
   { id: "general", year: 1926, minutes: 78, ink: "#2A1E14", paper: "#C9A27A", stoppedAt: 610 },
   { id: "sherlock", year: 1924, minutes: 45, ink: "#F2EDE4", paper: "#7A2E2E" },
   { id: "detour", year: 1945, minutes: 68, ink: "#F0D9A8", paper: "#22313F" },
-  { id: "charade", year: 1963, minutes: 113, ink: "#1F1A17", paper: "#E4A0A8", downloaded: 0.34 },
-  { id: "friday", year: 1940, minutes: 92, ink: "#F3EEE2", paper: "#2F4858", downloaded: 0.81 },
-  { id: "night", year: 1968, minutes: 96, ink: "#D8D4CC", paper: "#151515", downloaded: 0.07 },
+  { id: "charade", year: 1963, minutes: 113, ink: "#1F1A17", paper: "#E4A0A8" },
+  { id: "friday", year: 1940, minutes: 92, ink: "#F3EEE2", paper: "#2F4858" },
+  { id: "night", year: 1968, minutes: 96, ink: "#D8D4CC", paper: "#151515" },
 ];
 
 export interface Shelf {
@@ -55,6 +53,6 @@ export interface Shelf {
 export const shelves: Shelf[] = [
   { id: "open", items: films.filter((f) => f.magnet != null) },
   { id: "continue", items: films.filter((f) => f.stoppedAt != null) },
-  { id: "downloading", items: films.filter((f) => f.downloaded != null) },
+  { id: "noir", items: films.filter((f) => ["detour", "friday", "night", "charade"].includes(f.id)) },
   { id: "silent", items: films.filter((f) => f.year < 1930) },
 ];

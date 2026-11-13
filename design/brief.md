@@ -1,6 +1,6 @@
 # reel: design brief
 
-**What.** An app that plays films and series straight from torrents, with the torrent engine
+**What.** An app that streams films and series straight from torrents (no downloading for later: what the engine fetches is a temporary cache), with the torrent engine
 built in (Rust core inside the app, no separate server). Platforms: Samsung Tizen TV first, then
 macOS, Android / Android TV, iOS. One UI codebase in NSH.
 
@@ -12,7 +12,7 @@ phone: pick something on the way home, then watch on the TV.
 to where you stopped.
 
 **Main screens.**
-1. Home: continue watching, what is downloading, browse.
+1. Home: continue watching, browse.
 2. Film: description, available releases (quality, size, how many people share it), Watch.
 3. Choose a file (for series and multi-file releases).
 4. Player: playback, audio and subtitle tracks, buffer state.

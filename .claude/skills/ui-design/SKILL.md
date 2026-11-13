@@ -83,7 +83,7 @@ keyboard; arrows use the same spatial navigation as the TV.
 
 ## Copy
 
-Plain words from the viewer's side: "Watch", "Keep downloading", "Choose a file", not "Add
+Plain words from the viewer's side: "Watch", "Resume", "Choose a file", not "Add
 torrent to session". An action keeps its name through the flow. Errors say what happened and
 what to do ("No one is sharing this file right now. Try another release."), without apology.
 Empty screens invite an action. Sentence case everywhere.

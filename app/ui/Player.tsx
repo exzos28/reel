@@ -22,8 +22,7 @@ export function Player() {
     const tr = transfer();
     const peers = tr?.peers != null ? t("player.peers", { count: tr.peers }) : "";
     const speed = tr ? t("player.speed", { speed: tr.speed.toFixed(1) }) : "";
-    const done = tr ? t("player.downloaded", { percent: Math.round(tr.progress * 100) }) : "";
-    return [buffering() ? t("player.buffering") : "", done, speed, peers].filter(Boolean).join(", ");
+    return [buffering() ? t("player.buffering") : "", speed, peers].filter(Boolean).join(" ");
   };
 
   return (

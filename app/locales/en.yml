@@ -1,7 +1,7 @@
 shelf:
   open: Free to watch
   continue: Continue watching
-  downloading: Downloading
+  noir: Film noir
   silent: Silent films
 
 film:
@@ -9,7 +9,6 @@ film:
   watch: Watch
   resume: Resume
   resume_from: "from %{position}"
-  downloaded: "%{percent}% downloaded"
 
 fmt:
   minutes: "%{m} min"
@@ -20,9 +19,8 @@ player:
   back: Back
   resolving: Finding the film among peers…
   buffering: Buffering
-  downloaded: "%{percent}% downloaded"
-  speed: "%{speed} MB/s"
-  peers: "%{count} peers"
+  speed: "streaming at %{speed} MB/s"
+  peers: "from %{count} people"
   no_source: No source for this film yet. Try one from Free to watch.
   failed: "Could not play: %{message}"
 
