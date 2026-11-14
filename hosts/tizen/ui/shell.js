@@ -107,12 +107,12 @@
   var av = {
     listener: function (emit) {
       return {
-        onbufferingstart: function () { emit({ type: 'buffering', buffering: true }); },
-        onbufferingcomplete: function () { emit({ type: 'buffering', buffering: false }); },
+        onbufferingstart: function () { note('avplay buffering'); emit({ type: 'buffering', buffering: true }); },
+        onbufferingcomplete: function () { note('avplay buffered'); emit({ type: 'buffering', buffering: false }); },
         oncurrentplaytime: function (ms) { emit({ type: 'time', position: ms / 1000 }); },
         onstreamcompleted: function () { emit({ type: 'ended' }); },
-        onerror: function (e) { emit({ type: 'error', message: String(e) }); },
-        onevent: function (type, data) { emit({ type: 'event', event: type, data: data }); }
+        onerror: function (e) { note('avplay error ' + e); emit({ type: 'error', message: String(e) }); },
+        onevent: function (type, data) { note('avplay event ' + type + ' ' + data); emit({ type: 'event', event: type, data: data }); }
       };
     },
 
@@ -120,6 +120,7 @@
       if (typeof webapis === 'undefined' || !webapis.avplay) throw new Error('webapis.avplay is not available');
       var p = webapis.avplay;
       try { p.stop(); p.close(); } catch (e) { /* nothing was open */ }
+      av.resetSeek();
       emit({ type: 'step', step: 'open ' + url });
       p.open(url);
       p.setDisplayRect(0, 0, 1920, 1080);
@@ -141,15 +142,55 @@
       } catch (e) { return []; }
     },
 
+    // AVPlay takes one seekTo at a time: another while one runs fails or is lost, and the
+    // player can hang. Remote presses come faster than that, so a seek waits for the one
+    // running, and only the latest target waits (the ones in between are skipped).
+    seeking: false,
+    pendingSeek: null,
+    seekTimer: null,
+    resetSeek: function () {
+      av.seeking = false;
+      av.pendingSeek = null;
+      if (av.seekTimer) clearTimeout(av.seekTimer);
+      av.seekTimer = null;
+    },
+    seek: function (ms, emit) {
+      var p = webapis.avplay;
+      if (av.seeking) { av.pendingSeek = ms; return; }
+      av.seeking = true;
+      var t0 = Date.now();
+      var state = p.getState();
+      var finished = false;
+      var done = function (ok, e) {
+        if (finished) return;
+        finished = true;
+        if (av.seekTimer) clearTimeout(av.seekTimer);
+        av.seekTimer = null;
+        av.seeking = false;
+        note('avplay seek ' + ms + ' ms from ' + state + ': ' + (ok ? 'done' : 'failed ' + (e && (e.name || e))) + ' in ' + (Date.now() - t0) + ' ms');
+        if (av.pendingSeek != null) {
+          var next = av.pendingSeek;
+          av.pendingSeek = null;
+          av.seek(next, emit);
+        } else if (ok) emit({ type: 'seeked' });
+        else emit({ type: 'error', message: 'seek: ' + (e && (e.name || e)) });
+      };
+      // Some firmware never calls back: after 10 s the next seek may go anyway.
+      av.seekTimer = setTimeout(function () { done(false, 'no answer in 10 s'); }, 10000);
+      try {
+        p.seekTo(ms, function () { done(true); }, function (e) { done(false, e); });
+      } catch (e) { done(false, e); }
+    },
+
     handle: function (msg, emit) {
       var p = webapis.avplay;
       switch (msg.op) {
         case 'open': av.open(msg.url, emit); break;
         case 'play': p.play(); break;
         case 'pause': p.pause(); break;
-        case 'seek': p.seekTo(Math.round(msg.position * 1000), function () { emit({ type: 'seeked' }); }, function (e) { emit({ type: 'error', message: 'seek: ' + (e && e.name) }); }); break;
+        case 'seek': av.seek(Math.round(msg.position * 1000), emit); break;
         case 'track': p.setSelectTrack(msg.trackType, msg.index); break;
-        case 'stop': try { p.stop(); p.close(); } catch (e) { /* already closed */ } break;
+        case 'stop': av.resetSeek(); try { p.stop(); p.close(); } catch (e) { /* already closed */ } break;
         default: emit({ type: 'error', message: 'unknown op ' + msg.op });
       }
     }
