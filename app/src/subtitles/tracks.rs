@@ -1,6 +1,7 @@
 //! The audio and subtitle tracks inside the video, as the video view reports
-//! them. mpv's `track-list` is read here (`from_mpv`), on every platform, so
-//! the view only passes it on; the UI hands the result back to `menu`.
+//! them. mpv's `track-list` (`from_mpv`) and AVPlay's track info
+//! (`from_avplay`) are read here, on every platform, so the view only passes
+//! them on; the UI hands the result back to `menu`.
 
 use serde::{Deserialize, Serialize};
 
@@ -26,12 +27,96 @@ pub struct Track {
     pub selected: bool,
 }
 
-/// The tracks the view reports: the `tracks` event's payload.
+/// The tracks the view reports: the `tracks` event's payload. It reads
+/// either form a view gives: these fields (mpv's view, through `from_mpv`),
+/// or `{"avplay": [...]}`, AVPlay's tracks as the TV shell passes them on
+/// (`from_avplay`).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(from = "ViewTracks")]
 pub struct Embedded {
     pub audio: Vec<Track>,
     pub subtitles: Vec<Track>,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum ViewTracks {
+    Avplay { avplay: Vec<AvplayTrack> },
+    Tracks(EmbeddedFields),
+}
+
+#[derive(Default, Deserialize)]
+#[serde(default)]
+struct EmbeddedFields {
+    audio: Vec<Track>,
+    subtitles: Vec<Track>,
+}
+
+impl From<ViewTracks> for Embedded {
+    fn from(v: ViewTracks) -> Embedded {
+        match v {
+            ViewTracks::Avplay { avplay } => from_avplay(&avplay),
+            ViewTracks::Tracks(f) => Embedded { audio: f.audio, subtitles: f.subtitles },
+        }
+    }
+}
+
+/// One entry of AVPlay's `getTotalTrackInfo()` as the TV shell passes it on
+/// (hosts/tizen/ui/shell.js): `extra` is AVPlay's `extra_info`, itself JSON.
+#[derive(Debug, Clone, Deserialize)]
+pub struct AvplayTrack {
+    pub index: i64,
+    #[serde(rename = "type")]
+    pub kind: String,
+    #[serde(default)]
+    pub extra: Option<String>,
+}
+
+/// AVPlay's `extra_info` of an audio track: `{"fourCC","language","channels",…}`.
+#[derive(Default, Deserialize)]
+#[serde(default)]
+struct AvplayExtra {
+    #[serde(rename = "fourCC")]
+    four_cc: Option<String>,
+    language: Option<String>,
+    /// A count ("6"): a string as Samsung documents it, a number on some firmware.
+    channels: Option<serde_json::Value>,
+}
+
+/// AVPlay's tracks as audio and subtitle tracks; a track's id is its AVPlay
+/// index (what `setSelectTrack` takes). AVPlay starts on its first audio
+/// track, so that one is selected. Its text tracks are left out: AVPlay hands
+/// their text to the page (`onsubtitlechange`), which the shell does not pass
+/// on, so they would show nothing; the release's subtitle files still do.
+pub fn from_avplay(tracks: &[AvplayTrack]) -> Embedded {
+    let mut out = Embedded::default();
+    for t in tracks.iter().filter(|t| t.kind.eq_ignore_ascii_case("AUDIO")) {
+        let extra: AvplayExtra = t.extra.as_deref().and_then(|e| serde_json::from_str(e).ok()).unwrap_or_default();
+        let count = match &extra.channels {
+            Some(serde_json::Value::String(s)) => s.trim().parse::<u32>().ok(),
+            Some(serde_json::Value::Number(n)) => n.as_u64().and_then(|n| u32::try_from(n).ok()),
+            _ => None,
+        };
+        out.audio.push(Track {
+            id: t.index,
+            language: extra
+                .language
+                .as_deref()
+                .map(str::trim)
+                .filter(|l| !l.is_empty() && *l != "und")
+                .map(|l| files::language(l).map_or_else(|| l.to_owned(), str::to_owned)),
+            codec: extra.four_cc.map(|c| c.trim().to_owned()).filter(|c| !c.is_empty()),
+            // As mpv says it, for `channels_name`.
+            channels: count.filter(|n| *n > 0).map(|n| match n {
+                1 => "mono".to_owned(),
+                2 => "stereo".to_owned(),
+                n => format!("unknown{n}"),
+            }),
+            selected: out.audio.is_empty(),
+            ..Track::default()
+        });
+    }
+    out
 }
 
 /// One entry of mpv's `track-list` property.
@@ -171,5 +256,35 @@ mod tests {
         assert!(e.subtitles[0].forced);
         assert_eq!(e.subtitles[1].language.as_deref(), Some("tlh"), "unknown codes stay as they are");
         assert!(from_mpv("not json").is_none());
+    }
+
+    #[test]
+    fn reads_avplays_tracks() {
+        let json = r#"{"avplay":[
+            {"index":0,"type":"VIDEO","extra":"{\"fourCC\":\"H264\",\"Width\":\"1920\"}"},
+            {"index":1,"type":"AUDIO","extra":"{\"fourCC\":\"AAC\",\"language\":\"eng\",\"channels\":\"2\"}"},
+            {"index":2,"type":"AUDIO","extra":"{\"fourCC\":\"EAC3\",\"language\":\"rus\",\"channels\":6}"},
+            {"index":3,"type":"AUDIO","extra":"not json"},
+            {"index":4,"type":"TEXT","extra":"{\"track_lang\":\"eng\"}"}
+        ]}"#;
+        let e: Embedded = serde_json::from_str(json).unwrap();
+        assert_eq!(e.audio.iter().map(|t| t.id).collect::<Vec<_>>(), [1, 2, 3]);
+        assert!(e.audio[0].selected && !e.audio[1].selected, "AVPlay starts on its first audio track");
+        assert_eq!(e.audio[0].language.as_deref(), Some("en"));
+        assert_eq!(detail(&e.audio[0]).as_deref(), Some("AAC 2.0"));
+        assert_eq!(e.audio[1].language.as_deref(), Some("ru"));
+        assert_eq!(detail(&e.audio[1]).as_deref(), Some("E-AC3 5.1"));
+        assert_eq!(e.audio[2].language, None);
+        assert_eq!(detail(&e.audio[2]), None);
+        assert!(e.subtitles.is_empty(), "AVPlay's text tracks do not show");
+    }
+
+    #[test]
+    fn reads_the_views_own_form_still() {
+        let e: Embedded = serde_json::from_str(r#"{"audio":[{"id":2,"language":"en"}]}"#).unwrap();
+        assert_eq!(e.audio[0].id, 2);
+        assert!(e.subtitles.is_empty());
+        let back: Embedded = serde_json::from_str(&serde_json::to_string(&e).unwrap()).unwrap();
+        assert_eq!(back, e);
     }
 }

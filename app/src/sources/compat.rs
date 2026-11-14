@@ -35,6 +35,17 @@ impl Profile {
         })
     }
 
+    /// The video view that draws for this profile when the host's own player
+    /// is not a view of the UI's: a Samsung TV's AVPlay, which the TV shell
+    /// plays on the video plane under the web UI (`"avplay"`). None: the UI's
+    /// own view decides (mpv or the platform's `<Video>`).
+    pub fn host_video(self) -> Option<&'static str> {
+        match self {
+            Profile::Tizen => Some("avplay"),
+            Profile::Mpv | Profile::AppleAvPlayer | Profile::AndroidMediaPlayer => None,
+        }
+    }
+
     /// The default for the platform this core was built for; a host with a
     /// different player (mpv on macOS, the Tizen service) sets its own.
     fn default_for_target() -> Profile {
@@ -121,5 +132,12 @@ mod tests {
         assert_eq!(file_ok("Film/film.mp4", Profile::AppleAvPlayer), Ok(()));
         assert_eq!(file_ok("Film/film.mkv", Profile::Tizen), Ok(()));
         assert_eq!(file_ok("Film/film.avi", Profile::Mpv), Ok(()));
+    }
+
+    #[test]
+    fn only_the_tv_draws_video_under_the_ui() {
+        assert_eq!(Profile::Tizen.host_video(), Some("avplay"));
+        assert_eq!(Profile::Mpv.host_video(), None);
+        assert_eq!(Profile::AppleAvPlayer.host_video(), None);
     }
 }

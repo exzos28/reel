@@ -129,8 +129,13 @@ impl VideoEngine {
     /// `"mpv"` where reel's mpv view (`reel/mpv`) can play (macOS with
     /// libmpv found: MKV, every codec, track selection), else `"native"`
     /// (NSH's `<Video>`, the platform's player). Choosing mpv also sets the
-    /// search profile to it, so releases only mpv plays are offered.
+    /// search profile to it, so releases only mpv plays are offered. On a
+    /// Samsung TV (the `tizen` profile its host sets) `"avplay"`: the TV
+    /// shell's AVPlay draws under the web UI.
     pub fn kind() -> String {
+        if let Some(kind) = sources::compat::profile().host_video() {
+            return kind.into();
+        }
         #[cfg(target_os = "macos")]
         if mpv::available() {
             sources::compat::set_profile(sources::compat::Profile::Mpv);
