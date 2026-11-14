@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0F0F0F">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/Geist.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="stylesheet" href="style.css?v=20261115c">
+<link rel="stylesheet" href="style.css?v=20261115f">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -20,13 +20,10 @@
     <nav aria-label="Sections">
       <ul class="top-links">
         <li><a href="#how">How it works</a></li>
-        <li><a href="#features">Features</a></li>
-        <li><a href="#tv">Try it</a></li>
-        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#install">Install</a></li>
       </ul>
     </nav>
     <!-- Placeholder: the repository is private for now; this URL works once it is public. -->
-    <a class="btn secondary small" href="https://github.com/exzos28/reel">GitHub</a>
   </div>
 </header>
 
@@ -37,13 +34,9 @@
   <div class="wrap hero-grid">
     <div class="hero-text">
       <h1 id="hero-title">Pick a film. It plays in seconds.</h1>
-      <p class="lead">reel is a source-available app with a torrent engine built in. It streams the film while it fetches it, so you never wait for a download. Made for the TV and the remote, and for phones, tablets and computers too.</p>
-      <p class="note">reel comes with no content and no sources. It works with any search source that speaks the Torznab standard: Jackett, Prowlarr or any other. You connect your own.</p>
-      <div class="actions">
-        <!-- Placeholder: the repository is private for now; these URLs work once it is public. -->
-        <a class="btn primary" href="https://github.com/exzos28/reel/releases">Get reel</a>
-        <a class="btn secondary" href="https://github.com/exzos28/reel">Source code</a>
-      </div>
+      <p class="lead">Films and series from torrents. Nothing to download first.</p>
+      <p class="note">Works with any Torznab source: Jackett, Prowlarr and others.</p>
+      <div class="actions"><a class="btn primary" href="#install">Get reel</a></div>
       <ul id="platforms" class="logos" aria-label="Platforms">
         <li title="macOS, iPhone and iPad">
           <svg viewBox="2.6 1.6 18.8 18.8" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.15-2.8.85-3.5.85-.75 0-1.85-.83-3.05-.8C6.9 7.48 5 8.9 5 12.3c0 2 .75 4.1 1.65 5.4.8 1.1 1.5 2.05 2.55 2 1-.04 1.4-.66 2.65-.66 1.2 0 1.55.66 2.65.64 1.1-.02 1.8-1 2.45-2 .78-1.12 1.1-2.22 1.12-2.28-.02-.01-1.67-.65-1.67-2.7zM14.3 5.9c.57-.69.95-1.64.85-2.6-.82.03-1.81.55-2.4 1.24-.53.6-.99 1.58-.86 2.51.91.07 1.84-.46 2.41-1.15z"/></svg>
@@ -118,7 +111,7 @@
           <div class="m-ok"><svg viewBox="0 0 24 24" class="i"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Connected. It searches by IMDb id.</div>
         </div>
         <h3>Add your search source</h3>
-        <p>In Settings, enter the Torznab address of any search source, such as Jackett or Prowlarr on your computer or a Torznab-compatible service, and its API key. reel has no source of its own and never adds one.</p>
+        <p>Paste a Torznab address and key in Settings, or scan the QR code on the TV.</p>
       </li>
       <li class="step">
         <div class="mock mock-release" aria-hidden="true">
@@ -127,7 +120,7 @@
           <div class="m-row"><span class="q">720p</span><span class="m-sz">1.6 GB</span><span class="bars"><i></i><i class="off"></i><i class="off"></i><i class="off"></i></span><span class="m-n">3</span><span class="m-check"></span></div>
         </div>
         <h3>Pick a title</h3>
-        <p>Browse films, series and anime, or search. reel asks your source for releases and lists only those this device can play, the best of each quality first.</p>
+        <p>Browse or search. reel finds releases your device can play.</p>
       </li>
       <li class="step">
         <div class="mock mock-player" aria-hidden="true">
@@ -136,113 +129,58 @@
           <div class="m-times"><span>41:12</span><span>2:33:00</span></div>
         </div>
         <h3>It plays</h3>
-        <p>The engine fetches the start of the film first and playback begins. It keeps a few minutes ready ahead and shows how fast the film is coming.</p>
+        <p>It starts in seconds and keeps minutes ready ahead.</p>
       </li>
     </ol>
   </div>
 </section>
 
-<!-- Features -->
-<section id="features" aria-labelledby="features-title">
+<!-- Platforms -->
+<!-- Source and privacy -->
+<section id="install" aria-labelledby="install-title">
   <div class="wrap">
-    <h2 id="features-title">What it does</h2>
-    <div class="lead-features">
-      <article class="lead-card">
-        <div class="lead-text">
-          <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></svg></span>
-          <h3>Any Torznab source</h3>
-          <p>reel speaks Torznab, the open search standard of Jackett, Prowlarr and other indexers. Add the address and key of any provider that answers in it; reel checks it and says how it searches.</p>
-        </div>
-        <div class="lead-visual" aria-hidden="true">
-          <div class="chips"><span>Jackett</span><span>Prowlarr</span><span>Any Torznab</span></div>
-          <div class="field">http://192.168.1.10:9117/…/torznab/api</div>
-          <div class="ok"><svg viewBox="0 0 24 24" class="i"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Connected. It searches by IMDb id.</div>
-        </div>
-      </article>
-      <article class="lead-card">
-        <div class="lead-text">
-          <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg></span>
-          <h3>Streams, never downloads</h3>
-          <p>No downloads screen and no waiting for a file: the engine keeps only a buffer of the film, up to the size you set. If you like, the player shows how fast it comes and how much is ready ahead.</p>
-        </div>
-        <div class="lead-visual" aria-hidden="true">
-          <div class="bar"><span class="played"></span><span class="ready"></span><span class="ready far"></span></div>
-          <div class="stats"><span><b>12.4</b> MB/s</span><span><b>86</b> people</span><span><b>4 min</b> ready</span></div>
-        </div>
-      </article>
-    </div>
-    <ul class="features">
-      <li>
-        <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8"/></svg></span>
-        <h3>Continue watching</h3>
-        <p>Every film and episode resumes where you stopped; watched episodes get a mark.</p>
+    <h2 id="install-title">Installation</h2>
+    <p class="section-lead">Pick your device.</p>
+    <!-- The files come with the first release; until then these links lead nowhere. -->
+    <ul class="gets">
+      <li class="get">
+        <div class="get-head"><svg viewBox="2.6 1.6 18.8 18.8" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.15-2.8.85-3.5.85-.75 0-1.85-.83-3.05-.8C6.9 7.48 5 8.9 5 12.3c0 2 .75 4.1 1.65 5.4.8 1.1 1.5 2.05 2.55 2 1-.04 1.4-.66 2.65-.66 1.2 0 1.55.66 2.65.64 1.1-.02 1.8-1 2.45-2 .78-1.12 1.1-2.22 1.12-2.28-.02-.01-1.67-.65-1.67-2.7zM14.3 5.9c.57-.69.95-1.64.85-2.6-.82.03-1.81.55-2.4 1.24-.53.6-.99 1.58-.86 2.51.91.07 1.84-.46 2.41-1.15z"/></svg><span>Mac<small>Apple silicon and Intel</small></span></div>
+        <a class="btn primary" href="downloads/reel-macos.zip">Download for Mac</a>
       </li>
-      <li>
-        <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><rect x="4" y="5" width="16" height="4" rx="1"/><rect x="4" y="11" width="16" height="4" rx="1"/><path d="M4 18.5h10"/></svg></span>
-        <h3>Seasons and episodes</h3>
-        <p>Season tabs and episode lists; near the end of one, the next is ready.</p>
+      <li class="get">
+        <div class="get-head"><svg viewBox="2.6 1.6 18.8 18.8" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.15-2.8.85-3.5.85-.75 0-1.85-.83-3.05-.8C6.9 7.48 5 8.9 5 12.3c0 2 .75 4.1 1.65 5.4.8 1.1 1.5 2.05 2.55 2 1-.04 1.4-.66 2.65-.66 1.2 0 1.55.66 2.65.64 1.1-.02 1.8-1 2.45-2 .78-1.12 1.1-2.22 1.12-2.28-.02-.01-1.67-.65-1.67-2.7zM14.3 5.9c.57-.69.95-1.64.85-2.6-.82.03-1.81.55-2.4 1.24-.53.6-.99 1.58-.86 2.51.91.07 1.84-.46 2.41-1.15z"/></svg><span>iPhone and iPad<small>Installed with AltStore</small></span></div>
+        <a class="btn primary" href="downloads/altstore.json">Add to AltStore</a><p class="get-note">Needs <a href="https://altstore.io">AltStore</a> on the device.</p>
       </li>
-      <li>
-        <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="m9 12 2 2 4-4"/></svg></span>
-        <h3>Only what your device plays</h3>
-        <p>Releases in formats the device cannot play are left out, so a film does not fail to start.</p>
+      <li class="get">
+        <div class="get-head"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5 11 4.5v7H4zM12.5 4.3 20 3.2v8.3h-7.5zM4 12.9h7v7l-7-1zM12.5 12.9H20v8l-7.5-1.1z"/></svg><span>Windows<small>Installer</small></span></div>
+        <a class="btn primary" href="downloads/reel-windows-setup.exe">Download for Windows</a>
       </li>
-      <li>
-        <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="M7 14h4M13 14h4M7 11h2M11 11h6"/></svg></span>
-        <h3>Subtitles and audio</h3>
-        <p>Tracks from the video or subtitle files from the release; your choice is kept per title.</p>
+      <li class="get">
+        <div class="get-head"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c-2.2 0-3.5 1.8-3.5 4.3 0 1.4-.55 2.4-1.45 3.6C5.8 12 5 13.7 5 15.6c0 1.15.35 2.15.95 2.95l-1.1 1.55c-.3.42 0 .9.5.9h13.3c.5 0 .8-.48.5-.9l-1.1-1.55c.6-.8.95-1.8.95-2.95 0-1.9-.8-3.6-2.05-5.2-.9-1.2-1.45-2.2-1.45-3.6 0-2.5-1.3-4.3-3.5-4.3z"/><ellipse cx="12" cy="15.3" rx="3.1" ry="3.9" class="cut"/><circle cx="10.6" cy="6.6" r=".8" class="cut"/><circle cx="13.4" cy="6.6" r=".8" class="cut"/></svg><span>Linux<small>GTK 4.14 or newer</small></span></div>
+        <a class="btn primary" href="downloads/reel-linux.tar.gz">Download for Linux</a>
       </li>
-      <li>
-        <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></span>
-        <h3>Movies, series, cartoons, anime</h3>
-        <p>Filter by genre, years and country; the grid keeps loading. Anime from AniList and Jikan.</p>
+      <li class="get">
+        <div class="get-head"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 18.5a8.5 8.5 0 0 1 17 0z"/><path d="m6.3 9.2-1.7-2.9M17.7 9.2l1.7-2.9" class="stroke"/><circle cx="8.9" cy="14.4" r="1.15" class="cut"/><circle cx="15.1" cy="14.4" r="1.15" class="cut"/></svg><span>Android<small>Phone, tablet, TV</small></span></div>
+        <a class="btn primary" href="downloads/reel-android.apk">Download APK</a>
       </li>
-      <li>
-        <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.5 2.5 2.5 13.5 0 16M12 4c-2.5 2.5-2.5 13.5 0 16"/></svg></span>
-        <h3>Titles in your language</h3>
-        <p>Names and descriptions in the language you choose, and releases searched by it too.</p>
+      <li class="get">
+        <div class="get-head"><svg viewBox="0 0 24 24" aria-hidden="true" class="line"><rect x="2.5" y="4.5" width="19" height="12.5" rx="1.5"/><path d="M8 20.5h8M12 17v3.5"/></svg><span>Samsung TV<small>Tizen</small></span></div>
+        <a class="btn primary" href="downloads/reel-tv.wgt">Download for Samsung TV</a>
+        <details class="get-steps">
+          <summary>Install with <a href="https://github.com/Vincent-Fournier/Apps2Samsung">Apps2Samsung</a></summary>
+          <ol class="numbered">
+        <li><b>On the TV:</b> Apps → press 1 2 3 4 5 → Developer mode on, your computer's IP as Host PC IP. Restart the TV.</li>
+        <li><b>On the computer:</b> open Apps2Samsung and pick the TV.</li>
+        <li><b>Install</b> the package below with Apps2Samsung (the first time, sign in to Samsung once).</li>
+              </ol>
+        </details>
       </li>
     </ul>
   </div>
 </section>
 
-<!-- TV first -->
-<section id="tv" class="band" aria-labelledby="tv-title">
-  <div class="wrap">
-    <h2 id="tv-title">Made for the remote</h2>
-    <p class="section-lead">Four arrows, OK and Back. Try it.</p>
-    <div class="rd" id="remote-demo" tabindex="0" aria-label="A small reel screen: use the arrow keys, Enter and Escape, or the remote's buttons">
-      <div class="rd-tv" aria-hidden="true">
-        <div class="rd-rows">
-          <div class="rd-row"><b>Continue watching</b><div class="rd-cards"></div></div>
-          <div class="rd-row"><b>Silent classics</b><div class="rd-cards"></div></div>
-          <div class="rd-row"><b>Science fiction</b><div class="rd-cards"></div></div>
-        </div>
-        <div class="rd-open" hidden><div class="rd-open-title"></div><div class="rd-open-play">▶ Play</div><div class="rd-open-hint">Back to close</div></div>
-      </div>
-      <div class="rd-remote">
-        <button type="button" data-k="up" aria-label="Up">▲</button>
-        <button type="button" data-k="left" aria-label="Left">◀</button>
-        <button type="button" data-k="ok" class="rd-ok">OK</button>
-        <button type="button" data-k="right" aria-label="Right">▶</button>
-        <button type="button" data-k="down" aria-label="Down">▼</button>
-        <button type="button" data-k="back" class="rd-back">Back</button>
-      </div>
-    </div>
-    <details class="install">
-      <summary>Install on a Samsung TV</summary>
-      <ol class="numbered">
-        <li>On the TV, open Apps, press 1 2 3 4 5 on the remote and turn on Developer mode, with your computer's IP as Host PC IP. Restart the TV.</li>
-        <li>On that computer, open <a href="https://github.com/Vincent-Fournier/Apps2Samsung">Apps2Samsung</a> and pick the TV.</li>
-        <li>Install the reel <code>.wgt</code> package. Apps2Samsung signs it for your TV.</li>
-      </ol>
-    </details>
-  </div>
-</section>
-
-<!-- Platforms -->
-<!-- Source and privacy -->
-<section id="privacy" class="band" aria-labelledby="privacy-title">
+<!-- Hidden until it is decided how open the code is (docs/todo.md). -->
+<section id="privacy" class="band" aria-labelledby="privacy-title" hidden>
   <div class="wrap split">
     <div>
       <h2 id="privacy-title">Open code, no accounts</h2>
@@ -265,53 +203,6 @@
   </div>
 </section>
 
-<!-- FAQ -->
-<section id="faq" aria-labelledby="faq-title">
-  <div class="wrap narrow">
-    <h2 id="faq-title">Questions</h2>
-    <details>
-      <summary>What is reel?</summary>
-      <p>A video player with a torrent engine and a film and series catalog. You pick a title, it finds releases through your search source and streams the one you choose.</p>
-    </details>
-    <details>
-      <summary>Does reel come with films or sources?</summary>
-      <p>No. reel ships no content, no tracker addresses and no indexers. Releases come only from the search source you add in Settings.</p>
-    </details>
-    <details>
-      <summary>What is a search source?</summary>
-      <p>Any search service that answers in the Torznab format, the open standard of torrent indexers: Jackett or Prowlarr on your computer or home server, or any other Torznab-compatible provider. You give reel its address and API key; reel does not depend on any one of them.</p>
-    </details>
-    <details>
-      <summary>Is there an official or recommended search source?</summary>
-      <p>No. The reel project does not run, sell or recommend any search source, and takes no money from anyone who does. reel works with any service that speaks the Torznab standard, so a service may call itself compatible with reel; that does not make it part of reel, endorsed by it, or connected to it. What such a service searches, and whether you may use it, is between you and that service.</p>
-    </details>
-    <details>
-      <summary>Can others use the reel name?</summary>
-      <p>To say a service works with reel, yes. Not in a way that suggests it is official, endorsed by the project or part of it, and not with the reel logo.</p>
-    </details>
-    <details>
-      <summary>What am I allowed to watch?</summary>
-      <p>reel is a tool, like a browser or a torrent client. What you search for and play is your choice and your responsibility. Play only what you have the right to watch where you live.</p>
-    </details>
-    <details>
-      <summary>Does it fill up my device?</summary>
-      <p>No. reel streams and keeps only a buffer of the film, up to the size you set in Settings. It needs that much free space to start.</p>
-    </details>
-    <details>
-      <summary>Where do titles, posters and descriptions come from?</summary>
-      <p>From TMDB for films and series, and from AniList and Jikan for anime. If you build reel yourself, add your own free TMDB key; without one, reel lists only anime.</p>
-    </details>
-    <details>
-      <summary>Why is it not in the App Store or Google Play?</summary>
-      <p>The App Store does not accept torrent clients, and reel is not published to any store. Packages will be on GitHub Releases; Samsung TVs install them through Apps2Samsung.</p>
-    </details>
-    <details>
-      <summary>Is it free?</summary>
-      <p>Yes, for personal and other noncommercial use. There is no account, no subscription and no ads. Using reel or its code for commercial purposes is not allowed (PolyForm Noncommercial License 1.0.0).</p>
-    </details>
-  </div>
-</section>
-
 </main>
 
 <footer class="foot">
@@ -319,7 +210,6 @@
     <div>
       <div class="wordmark">reel</div>
       <!-- Placeholder: the repository is private for now; this URL works once it is public. -->
-      <p><a href="https://github.com/exzos28/reel">Source code on GitHub</a></p>
     </div>
     <div class="credits">
       <p>This product uses the TMDB API but is not endorsed or certified by TMDB. Film and series data from <a href="https://www.themoviedb.org">The Movie Database (TMDB)</a>.</p>
@@ -328,6 +218,5 @@
     </div>
   </div>
 </footer>
-<script src="remote-demo.js?v=20261115" defer></script>
 </body>
 </html>
