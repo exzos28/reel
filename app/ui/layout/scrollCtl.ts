@@ -44,10 +44,6 @@ export interface ScrollCtl {
  * the viewport's start, given the viewport's length. A page opens where it
  * was left (`memory` names it) or at its top: opening a screen never scrolls
  * it to its focus, so switching screens does not make it jump. */
-/** Some vertical page is scrolled away from its top (the Mac's title bar
- * blurs what passes under it then). */
-export const pageScrolled = signal(false);
-
 export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number) => number; memory?: string }): ScrollCtl {
   const horizontal = !!opts.horizontal;
   let frame = 0;
@@ -107,7 +103,6 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     offset: signal(0),
     remember(offset) {
       ctl.offset.set(offset);
-      if (!horizontal) pageScrolled.set(offset > 1);
       if (!frame) at = offset;
       if (opts.memory) offsets.set(opts.memory, offset);
     },
