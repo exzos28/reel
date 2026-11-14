@@ -4,7 +4,6 @@
 import { computed, View } from "nsh";
 import { home, toggleList, type Summary } from "../../catalog";
 import { useZones } from "../../focus/zones";
-import { NAV_BOTTOM } from "../../layout/NavBar";
 import { NAV } from "../../layout/navItems";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
@@ -15,10 +14,6 @@ import { u } from "../../theme";
 import { cols, heroAt, navAt, row, zone } from "./focus";
 import { HomeHero } from "./HomeHero";
 import { HomeShelf } from "./HomeShelf";
-
-/** How far Home scrolls before its content runs under the nav: to the top
- * of the hero's text (TV pixels). */
-const NAV_CLEAR = 236 - NAV_BOTTOM;
 
 export function HomeScreen() {
   const shelves = computed(() => home());
@@ -66,7 +61,7 @@ export function HomeScreen() {
   };
 
   return (
-    <Screen ctl={page} navClear={NAV_CLEAR}>
+    <Screen ctl={page} nav>
       <View ref={page.follow(() => zone() !== "shelves", "start")}>
         <HomeHero
           item={focused}

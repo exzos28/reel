@@ -1,7 +1,6 @@
-// The top-level screens (Home, Movies, Shows, Anime) under the one shared nav: the
-// screen changes, the nav stays mounted where it is.
+// The top-level screens (Home, Movies, Shows, Anime). Each has the same nav at
+// the top of its content (layout/Screen), scrolling with the page.
 import { View } from "nsh";
-import { NavLayer } from "../layout/NavLayer";
 import { route, type Destination } from "../nav";
 import { BrowseScreen } from "./browse/BrowseScreen";
 import { HomeScreen } from "./home/HomeScreen";
@@ -27,7 +26,6 @@ export function TopLevel() {
       <If when={current() === "anime"}>
         <BrowseScreen page="anime" />
       </If>
-      <NavLayer current={current} />
     </View>
   );
 }

@@ -81,7 +81,7 @@ export function BrowseScreen(props: { page: Page }) {
   };
 
   return (
-    <Screen ctl={page} navClear={24}>
+    <Screen ctl={page} nav>
       <View ref={page.follow(() => zone() === "nav", "start")} style={{ height: u(NAV_BOTTOM) }} />
       <BrowseHeader page={props.page} />
       <Trending

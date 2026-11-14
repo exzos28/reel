@@ -73,6 +73,8 @@ export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; onScroll?: 
         ref={(r: ScrollRef) => c.scroll.set(r)}
         horizontal={c.horizontal}
         scrollbar={false}
+        // No overscroll bounce anywhere: content stops at its edges.
+        bounces={false}
         scrollEventThrottle={16}
         onScroll={(e: ScrollEvent) => {
           poke();
