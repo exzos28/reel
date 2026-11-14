@@ -314,6 +314,7 @@ test("Mac: the releases open in a sheet under the window bar; Esc closes it, the
   expect(app.texts()).toContain("3 found, the best of each quality first");
   expect(app.shows("label:Close")).toBe(true);
   await app.keyboard.press("escape");
+  await app.wait(600); // the sheet slides away
   expect(app.texts()).not.toContain("3 found, the best of each quality first");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("All movies");

@@ -2,6 +2,8 @@
 // release panel is on the title screen: an Any row (not for the order), then
 // one row per choice; the picked ones are lighter with a check. OK picks
 // (genres toggle, the panel stays open); Back or a press outside closes it.
+import { isDesktop } from "../../layout/chrome";
+import { BAR_HEIGHT } from "../../layout/WindowBar";
 import { Text, View, type ViewRef, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { optionText, type FilterGroup, type FilterOption } from "../../catalog";
@@ -15,10 +17,11 @@ import checkIcon from "../../icons/check.svg";
 const PANEL_WIDTH = 640;
 
 const backdropStyle = (): ViewStyle => ({
-  position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 20, backgroundColor: alpha(colors.ink(), 0.6),
+  position: "absolute", top: isDesktop ? BAR_HEIGHT : 0, left: 0, right: 0, bottom: 0, zIndex: 20, backgroundColor: alpha(colors.ink(), 0.6),
 });
 const panelStyle = (): ViewStyle => ({
-  position: "absolute", top: 0, right: 0, bottom: 0, width: u(PANEL_WIDTH), zIndex: 21,
+  // Under a desktop's window bar, which stays usable.
+  position: "absolute", top: isDesktop ? BAR_HEIGHT : 0, right: 0, bottom: 0, width: u(PANEL_WIDTH), zIndex: 21,
   backgroundColor: colors.ink(), borderLeftWidth: 1, borderLeftColor: alpha(colors.snow(), 0.08),
   boxShadow: `${-u(30)}px 0 ${u(60)}px ${alpha(colors.ink(), 0.8)}`,
 });
