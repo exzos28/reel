@@ -2,6 +2,7 @@
 //! mapped by its own code): no network.
 
 use super::*;
+use crate::metadata::discover::Sort;
 use crate::metadata::{
     provider::{MapCx, TitleSource},
     tmdb::{ImageConfig, Tmdb},
@@ -74,6 +75,7 @@ fn reset(tmdb_on: bool, source: bool) {
     LIST.lock().unwrap().clear();
     SHOWN.lock().unwrap().clear();
     filters::clear();
+    paging::clear();
     progress::clear();
     search::reset();
     *TEST_TMDB.lock().unwrap() = Some(tmdb_on);
@@ -432,7 +434,7 @@ fn browse_filters_offer_and_mark() {
     let genres = tmdb().map_genres(&fixture("tmdb_genre_movie.json")).unwrap();
     let countries = tmdb().map_countries(&fixture("tmdb_countries_pl.json")).unwrap();
     seed(Call::FilterOptions(DiscoverKind::Movie), json!({ "genres": genres, "countries": countries }));
-    seed(Call::Discover(DiscoverKind::Movie, Filter::default()), discover_cards("tmdb_trending_movie.json"));
+    seed(Call::Discover(DiscoverKind::Movie, Filter::default(), 1), discover_cards("tmdb_trending_movie.json"));
     let page = browse("movies");
     assert_eq!(page["allState"], "done");
     assert!(!page["all"].as_array().unwrap().is_empty());
@@ -468,7 +470,7 @@ fn browse_filters_offer_and_mark() {
 #[test]
 fn a_new_filter_keeps_the_last_grid_until_its_answer() {
     let _g = fresh(true, false);
-    seed(Call::Discover(DiscoverKind::Movie, Filter::default()), discover_cards("tmdb_trending_movie.json"));
+    seed(Call::Discover(DiscoverKind::Movie, Filter::default(), 1), discover_cards("tmdb_trending_movie.json"));
     let before = browse("movies")["all"].clone();
     assert!(!before.as_array().unwrap().is_empty());
 
@@ -480,12 +482,12 @@ fn a_new_filter_keeps_the_last_grid_until_its_answer() {
 
     let mut fr = Filter::default();
     fr.country = Some("FR".into());
-    seed(Call::Discover(DiscoverKind::Movie, fr.clone()), json!({ "items": [] }));
+    seed(Call::Discover(DiscoverKind::Movie, fr.clone(), 1), json!({ "items": [] }));
     let page = browse("movies");
     assert_eq!(page["allState"], "empty");
     assert!(page["all"].as_array().unwrap().is_empty());
 
-    seed(Call::Discover(DiscoverKind::Movie, fr), discover_cards("tmdb_discover_tv.json"));
+    seed(Call::Discover(DiscoverKind::Movie, fr, 1), discover_cards("tmdb_discover_tv.json"));
     let page = browse("movies");
     assert_eq!(page["allState"], "done");
     assert_ne!(page["all"], before);
@@ -515,6 +517,140 @@ fn anime_filters_are_anilists() {
     // Movies has nothing to filter without TMDB.
     assert_eq!(browse("movies")["filters"], json!([]));
     assert!(!choose_filter("movies", "genres", "18"));
+}
+
+// ---- The browse grid page by page (stand-in pages made of fixture cards).
+
+fn fixture_cards(fixture_name: &str) -> Vec<Value> {
+    list_of(&discover_cards(fixture_name)["items"]).to_vec()
+}
+
+/// A discover answer: `cards`, and whether the source has a page after it.
+fn discover_page(cards: &[Value], more: bool) -> Value {
+    json!({ "items": cards, "more": more })
+}
+
+fn movies_page(n: u32) -> Call {
+    Call::Discover(DiscoverKind::Movie, Filter::default(), n)
+}
+
+fn grid_ids(page: &Value) -> Vec<String> {
+    list_of(&page["all"]).iter().map(|s| s["id"].as_str().unwrap().to_owned()).collect()
+}
+
+fn card_ids(cards: &[Value]) -> Vec<String> {
+    let mut seen = HashSet::new();
+    cards.iter().map(|c| c["id"].as_str().unwrap().to_owned()).filter(|id| seen.insert(id.clone())).collect()
+}
+
+#[test]
+fn the_grid_grows_page_by_page_without_repeats_until_the_end() {
+    let _g = fresh(true, false);
+    let films = fixture_cards("tmdb_trending_movie.json");
+    let shows = fixture_cards("tmdb_discover_tv.json");
+    let (a, b) = films.split_at(films.len() / 2);
+    seed(movies_page(1), discover_page(a, true));
+    let page = browse("movies");
+    assert_eq!(grid_ids(&page), card_ids(a));
+    assert_eq!((page["more"].clone(), page["moreState"].clone()), (json!(true), json!("idle")));
+
+    assert!(browse_more("movies"), "page 2 is asked for");
+    let page = browse("movies");
+    assert_eq!(page["moreState"], "loading");
+    assert_eq!(grid_ids(&page), card_ids(a), "the grid stays while it comes");
+    assert!(!browse_more("movies"), "one page at a time");
+
+    // Page 2 repeats the last card of page 1 (the list moved between the asks).
+    let mut second = vec![a.last().unwrap().clone()];
+    second.extend_from_slice(b);
+    seed(movies_page(2), discover_page(&second, true));
+    let page = browse("movies");
+    assert_eq!(grid_ids(&page), card_ids(&films), "page 1's cards first, each title once");
+    assert_eq!((page["more"].clone(), page["moreState"].clone()), (json!(true), json!("idle")));
+
+    // The source's last page.
+    assert!(browse_more("movies"));
+    seed(movies_page(3), discover_page(&shows, false));
+    let page = browse("movies");
+    let all: Vec<Value> = films.iter().chain(&shows).cloned().collect();
+    assert_eq!(grid_ids(&page), card_ids(&all));
+    assert_eq!(page["more"], false);
+    assert!(!browse_more("movies"), "nothing after the last page");
+}
+
+#[test]
+fn a_page_that_fails_keeps_the_grid_and_is_asked_again() {
+    let _g = fresh(true, false);
+    let films = fixture_cards("tmdb_trending_movie.json");
+    seed(movies_page(1), discover_page(&films, true));
+    assert!(browse_more("movies"));
+    let before = browse("movies")["all"].clone();
+    land(&movies_page(2), &json!({ "data": null, "error": { "kind": "network" } }), u64::MAX);
+    let page = browse("movies");
+    assert_eq!(page["all"], before, "what shows stays");
+    assert_eq!((page["more"].clone(), page["moreState"].clone()), (json!(true), json!("failed")));
+    assert!(!browse_more("movies"), "not again at once");
+
+    // A while later asking again asks for the same page.
+    SLOTS.0.lock().unwrap().get_mut(&movies_page(2).key()).unwrap().failed_at =
+        Some(Instant::now() - Duration::from_secs(10));
+    assert!(browse_more("movies"));
+    assert_eq!(browse("movies")["moreState"], "loading");
+    seed(movies_page(2), discover_page(&fixture_cards("tmdb_discover_tv.json"), false));
+    let page = browse("movies");
+    assert_eq!(page["moreState"], "idle");
+    assert!(list_of(&page["all"]).len() > list_of(&before).len());
+}
+
+#[test]
+fn a_new_filter_or_sort_starts_from_page_one() {
+    let _g = fresh(true, false);
+    let films = fixture_cards("tmdb_trending_movie.json");
+    let shows = fixture_cards("tmdb_discover_tv.json");
+    let (a, b) = films.split_at(films.len() / 2);
+    seed(movies_page(1), discover_page(a, true));
+    assert!(browse_more("movies"));
+    seed(movies_page(2), discover_page(b, true));
+    let two_pages = browse("movies")["all"].clone();
+    assert_eq!(grid_ids(&browse("movies")), card_ids(&films));
+
+    assert!(choose_filter("movies", "sort", "top_rated"));
+    let page = browse("movies");
+    assert_eq!(page["allState"], "loading");
+    assert_eq!(page["all"], two_pages, "the last grid, all of it, until the new one lands");
+    assert_eq!(page["more"], false);
+    assert!(!browse_more("movies"), "nothing to page before the new grid's first page");
+
+    let top = Filter { sort: Sort::TopRated, ..Filter::default() };
+    seed(Call::Discover(DiscoverKind::Movie, top.clone(), 1), discover_page(&shows, true));
+    let page = browse("movies");
+    assert_eq!(grid_ids(&page), card_ids(&shows), "page 1 only");
+    assert!(browse_more("movies"));
+    assert!(SLOTS.0.lock().unwrap().get(&Call::Discover(DiscoverKind::Movie, top, 2).key()).is_some_and(|s| s.loading));
+
+    // Back to the first order: it starts again from its page 1 too.
+    assert!(choose_filter("movies", "sort", "popular"));
+    assert_eq!(grid_ids(&browse("movies")), card_ids(a));
+}
+
+/// Pages 1 and 2 of the Movies grid from TMDB (with the build's key):
+/// `REEL_TMDB_TOKEN=… cargo test -- --ignored live_browse_pages --nocapture`.
+#[test]
+#[ignore]
+fn live_browse_pages() {
+    let _g = fresh(crate::metadata::tmdb::build_key().is_some(), false);
+    let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+    for n in [1, 2] {
+        let text = rt.block_on(metadata::discover(DiscoverKind::Movie, Filter::default(), "en".into(), n));
+        let envelope: Value = serde_json::from_str(&text).unwrap();
+        println!("page {n}: {} items, more {}", list_of(&envelope["data"]["items"]).len(), envelope["data"]["more"]);
+        land(&movies_page(n), &envelope, u64::MAX);
+        if n == 1 {
+            assert!(browse_more("movies"));
+        }
+    }
+    let page = browse("movies");
+    assert!(list_of(&page["all"]).len() > 20, "two pages");
 }
 
 #[test]

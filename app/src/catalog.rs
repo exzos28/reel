@@ -31,6 +31,7 @@ use crate::{metadata, progress, settings, sources};
 
 mod details;
 mod filters;
+mod paging;
 mod search;
 
 // ---- Ids.
@@ -71,8 +72,8 @@ enum Call {
     Trending(&'static str),
     Title(String),
     Season(String, u32),
-    /// A browse grid: the catalog through a filter (`Meta`'s discover).
-    Discover(DiscoverKind, Filter),
+    /// A page (from 1) of a browse grid: the catalog through a filter (`Meta`'s discover).
+    Discover(DiscoverKind, Filter, u32),
     /// What the filters of a catalog offer (genre names, country names).
     FilterOptions(DiscoverKind),
 }
@@ -83,7 +84,8 @@ impl Call {
             Call::Trending(k) => format!("trending/{k}"),
             Call::Title(id) => format!("title/{id}"),
             Call::Season(id, n) => format!("season/{id}/{n}"),
-            Call::Discover(kind, f) => format!("discover/{}/{}", kind.as_str(), f.key()),
+            Call::Discover(kind, f, 1) => format!("discover/{}/{}", kind.as_str(), f.key()),
+            Call::Discover(kind, f, n) => format!("discover/{}/{}/p{n}", kind.as_str(), f.key()),
             Call::FilterOptions(kind) => format!("filterOptions/{}", kind.as_str()),
         }
     }
@@ -252,7 +254,7 @@ fn ask(call: Call, rev: u64) {
             Call::Trending(kind) => metadata::trending(kind.to_string(), lang).await,
             Call::Title(id) => metadata::title(id.clone(), lang).await,
             Call::Season(id, n) => metadata::season(id.clone(), *n, lang).await,
-            Call::Discover(kind, f) => metadata::discover(*kind, f.clone(), lang).await,
+            Call::Discover(kind, f, n) => metadata::discover(*kind, f.clone(), lang, *n).await,
             Call::FilterOptions(kind) => metadata::filter_options(*kind, lang).await,
         };
         let envelope: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
@@ -276,7 +278,9 @@ fn land(call: &Call, envelope: &Value, rev: u64) {
     let changed = {
         let mut slots = lock.lock().unwrap();
         let slot = slots.entry(call.key()).or_default();
-        let changed = !slot.loaded || (data.is_some() && slot.data != data);
+        let changed = !slot.loaded
+            || (data.is_some() && slot.data != data)
+            || (data.is_none() && slot.data.is_none() && slot.failed_at.is_none());
         slot.failed_at = if data.is_none() { Some(Instant::now()) } else { None };
         if data.is_some() {
             slot.data = data;
@@ -1233,14 +1237,18 @@ pub fn home() -> Value {
 static SHOWN: LazyLock<Mutex<HashMap<DiscoverKind, Filter>>> = LazyLock::new(Default::default);
 
 /// A browse page (`"movies"`, `"shows"`, `"anime"`):
-/// `{"trending":[summary…],"all":[summary…],"filters":[group…],"allState"}`.
+/// `{"trending":[summary…],"all":[summary…],"filters":[group…],"allState",
+/// "more","moreState"}`.
 /// `all` is the catalog through the page's filters (see `filters::groups`
-/// for `filters`); `allState` is "done", "loading" (a new filter's answer is
-/// on its way: `all` is still the last one's), "empty" (nothing matches) or
-/// "offline". Without TMDB, Shows lists anime and Movies a notice card.
+/// for `filters`), the pages asked for so far (see `paging`); `allState` is
+/// "done", "loading" (a new filter's answer is on its way: `all` is still the
+/// last one's), "empty" (nothing matches) or "offline". `more`: the source
+/// has more after `all` (`browse_more` asks for it); `moreState`: "idle",
+/// "loading" (the next page is on its way) or "failed" (`all` stays; asking
+/// again retries). Without TMDB, Shows lists anime and Movies a notice card.
 pub fn browse(page: &str) -> Value {
     let Some(kind) = filters::page_kind(page, tmdb_on()) else {
-        return json!({ "trending": [notice("no_tmdb")], "all": [], "filters": [], "allState": "done" });
+        return json!({ "trending": [notice("no_tmdb")], "all": [], "filters": [], "allState": "done", "more": false, "moreState": "idle" });
     };
     let trending = Call::Trending(match kind {
         DiscoverKind::Movie => "movie",
@@ -1248,7 +1256,7 @@ pub fn browse(page: &str) -> Value {
         DiscoverKind::Anime => "anime",
     });
     let filter = filters::of(kind);
-    let grid = Call::Discover(kind, filter.clone());
+    let grid = Call::Discover(kind, filter.clone(), 1);
     let shown = SHOWN.lock().unwrap().get(&kind).cloned().filter(|f| *f != filter);
     let options = Call::FilterOptions(kind);
     // The first grid of a page may wait a moment like the rest; a new
@@ -1263,26 +1271,41 @@ pub fn browse(page: &str) -> Value {
         data = meta(&grid);
     }
     let mut state = "done";
+    let mut showing = filter.clone();
     match (&data, shown) {
         (Some(_), _) => {
             SHOWN.lock().unwrap().insert(kind, filter.clone());
         }
         (None, Some(last)) if !answered(&grid) => {
-            data = peek(&Call::Discover(kind, last));
+            data = peek(&Call::Discover(kind, last.clone(), 1));
+            showing = last;
             state = "loading";
         }
         (None, _) => state = if answered(&grid) { "offline" } else { "loading" },
     }
-    let (t, a) = (shelf_items(&cards(&got[0])), shelf_items(&cards(&data)));
+    let paged = data.as_ref().map(|d| paging::grid(kind, &showing, d));
+    // The last filter's grid while the new one loads: nothing more to ask for it.
+    let (more, more_state) = match &paged {
+        Some(p) if showing == filter => (p.more, p.state),
+        _ => (false, "idle"),
+    };
+    let (t, a) = (shelf_items(&cards(&got[0])), shelf_items(&paged.map(|p| p.cards).unwrap_or_default()));
     if state == "done" && a.is_empty() {
         state = "empty";
     }
     let groups = filters::groups(kind, &filter, got[1].as_ref());
     if t.is_empty() && a.is_empty() && filter.is_default() {
         let key = if answered(&trending) { "offline" } else { "loading" };
-        return json!({ "trending": [notice(key)], "all": [], "filters": groups, "allState": state });
+        return json!({ "trending": [notice(key)], "all": [], "filters": groups, "allState": state, "more": false, "moreState": "idle" });
     }
-    json!({ "trending": t, "all": a, "filters": groups, "allState": state })
+    json!({ "trending": t, "all": a, "filters": groups, "allState": state, "more": more, "moreState": more_state })
+}
+
+/// Asks for the next page of a browse page's grid (see `paging::more`):
+/// whether one is on its way now.
+pub fn browse_more(page: &str) -> bool {
+    let Some(kind) = filters::page_kind(page, tmdb_on()) else { return false };
+    paging::more(kind, &filters::of(kind))
 }
 
 /// One choice in a browse page's filter panel: `group` "genres" toggles
@@ -1293,6 +1316,9 @@ pub fn choose_filter(page: &str, group: &str, id: &str) -> bool {
     let Some(kind) = filters::page_kind(page, tmdb_on()) else { return false };
     let changed = filters::choose(kind, group, id);
     if changed {
+        // The new filter's grid starts from page 1; the one on screen keeps its pages until it lands.
+        let shown = SHOWN.lock().unwrap().get(&kind).cloned();
+        paging::reset(kind, shown.as_ref());
         bump();
     }
     changed
@@ -1469,6 +1495,12 @@ impl Catalog {
     /// "filters":[group…],"allState"}` (see `catalog::browse`).
     pub fn browse(page: String) -> String {
         browse(&page).to_string()
+    }
+
+    /// The next page of a browse page's grid (`"movies"`, `"shows"`, `"anime"`):
+    /// whether one is on its way now (`browse`'s `moreState` says when it is in).
+    pub fn browse_more(page: String) -> bool {
+        browse_more(&page)
     }
 
     /// One choice in a browse page's filter panel (see `catalog::choose_filter`):

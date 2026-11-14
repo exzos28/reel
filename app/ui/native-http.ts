@@ -146,6 +146,7 @@ export const Catalog: CatalogModule = {
   changed: a("Catalog", "changed"),
   home: s("Catalog", "home"),
   browse: s("Catalog", "browse"),
+  browseMore: s("Catalog", "browseMore"),
   chooseFilter: s("Catalog", "chooseFilter"),
   title: s("Catalog", "title"),
   episodes: s("Catalog", "episodes"),

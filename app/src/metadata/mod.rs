@@ -437,27 +437,30 @@ async fn trending_work(kind: String, lang: String) -> CallResult {
     Ok((json!({ "items": items }), age))
 }
 
-async fn discover_work(kind: DiscoverKind, filter: Filter, lang: String) -> CallResult {
+async fn discover_work(kind: DiscoverKind, filter: Filter, lang: String, page: u32) -> CallResult {
     let svc = service();
     let mut age = Age::default();
     let anime = kind == DiscoverKind::Anime;
     let cx = map_cx(&lang, &mut age, !anime).await;
-    let items = if anime {
-        let got = cached(Anilist.discover_request(&filter)).await.map_err(|e| (e, Some(ProviderId::Anilist)))?;
+    let page = page.max(1);
+    let (items, more) = if anime {
+        let got =
+            cached(Anilist.discover_request(&filter, page)).await.map_err(|e| (e, Some(ProviderId::Anilist)))?;
         age.add(&got);
         let cards = Anilist.map_cards(&got.body, &cx).map_err(|e| (e, Some(ProviderId::Anilist)))?;
-        canonicalize(cards, svc.tmdb().configured())
+        (canonicalize(cards, svc.tmdb().configured()), Anilist.discover_more(&got.body))
     } else {
         let src = svc.tmdb();
         let today = cache::date_of(now());
-        let req = src.discover_request(kind, &filter, &lang, &today).map_err(|e| (e, Some(ProviderId::Tmdb)))?;
+        let req =
+            src.discover_request(kind, &filter, &lang, &today, page).map_err(|e| (e, Some(ProviderId::Tmdb)))?;
         let got = cached(req).await.map_err(|e| (e, Some(ProviderId::Tmdb)))?;
         age.add(&got);
         let mut cards = src.map_cards(&got.body, &cx).map_err(|e| (e, Some(ProviderId::Tmdb)))?;
         mark_anime(&mut cards);
-        cards
+        (cards, src.discover_more(&got.body, page))
     };
-    Ok((json!({ "items": items }), age))
+    Ok((json!({ "items": items, "page": page, "more": more }), age))
 }
 
 /// What the filters of `kind` offer that a source names: `{"genres":[[id,
@@ -852,9 +855,10 @@ pub async fn trending(kind: String, language: String) -> String {
     run(trending_work(kind, language)).await
 }
 
-/// The first page of `kind` through `filter` (`data`: `{"items":[TitleCard]}`).
-pub async fn discover(kind: DiscoverKind, filter: Filter, language: String) -> String {
-    run(discover_work(kind, filter, language)).await
+/// Page `page` (from 1) of `kind` through `filter` (`data`: `{"items":[TitleCard],
+/// "page","more"}`; `more`: the source has a page after it).
+pub async fn discover(kind: DiscoverKind, filter: Filter, language: String, page: u32) -> String {
+    run(discover_work(kind, filter, language, page)).await
 }
 
 /// What the filters of `kind` offer (see `filter_options_work`).

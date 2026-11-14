@@ -169,7 +169,8 @@ impl Tmdb {
         self.get("/configuration", vec![], CacheKind::Config)
     }
 
-    /// The films (`Movie`) or series (`Tv`) `filter` lets through, first page.
+    /// The films (`Movie`) or series (`Tv`) `filter` lets through, page
+    /// `page` (from 1; the first one's query is the popular shelf's).
     /// `today` ("YYYY-MM-DD") keeps "newest" to what is out.
     pub fn discover_request(
         &self,
@@ -177,6 +178,7 @@ impl Tmdb {
         filter: &Filter,
         lang: &str,
         today: &str,
+        page: u32,
     ) -> Result<Request, ProviderError> {
         let (path, date, min_votes) = match kind {
             DiscoverKind::Movie => ("/discover/movie", "primary_release_date", 300),
@@ -221,7 +223,24 @@ impl Tmdb {
         if let Some(c) = &filter.country {
             query.push(("with_origin_country", c.clone()));
         }
+        if page > 1 {
+            query.push(("page", page.to_string()));
+        }
         self.get(path, query, CacheKind::Shelf)
+    }
+
+    /// Whether a discover answer for `page` has a page after it: TMDB counts
+    /// `total_pages` but serves none past `DISCOVER_LAST_PAGE`. An answer
+    /// without the count has more when its page is full.
+    pub fn discover_more(&self, body: &Value, page: u32) -> bool {
+        let last = match body.get("total_pages").and_then(Value::as_u64) {
+            Some(total) => total.min(DISCOVER_LAST_PAGE as u64) as u32,
+            None => {
+                let full = body.get("results").and_then(Value::as_array).is_some_and(|r| r.len() >= DISCOVER_PAGE_SIZE);
+                return full && page < DISCOVER_LAST_PAGE;
+            }
+        };
+        page < last
     }
 
     /// TMDB's genres of films or series, in `lang`.
@@ -448,6 +467,10 @@ impl Provider for Tmdb {
         }
     }
 }
+
+/// The last page TMDB's discover serves, and how many titles a page has.
+pub const DISCOVER_LAST_PAGE: u32 = 500;
+const DISCOVER_PAGE_SIZE: usize = 20;
 
 impl TitleSource for Tmdb {
     fn shelf_request(&self, shelf: Shelf, lang: &str) -> Result<Request, ProviderError> {

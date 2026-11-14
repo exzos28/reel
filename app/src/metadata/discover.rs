@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn without_filters_it_is_the_popular_shelf() {
-        let req = tmdb().discover_request(DiscoverKind::Movie, &Filter::default(), "en", TODAY).unwrap();
+        let req = tmdb().discover_request(DiscoverKind::Movie, &Filter::default(), "en", TODAY, 1).unwrap();
         let shelf = tmdb().shelf_request(Shelf::PopularMovies, "en").unwrap();
         // The same query, so the same cached answer.
         assert_eq!(req.key, shelf.key);
@@ -200,7 +200,7 @@ mod tests {
     #[test]
     fn tmdb_films_by_genres_decade_country_best_rated() {
         let f = filter(&["18", "80"], Some("2010"), Some("FR"), Sort::TopRated);
-        let req = tmdb().discover_request(DiscoverKind::Movie, &f, "pl-PL", TODAY).unwrap();
+        let req = tmdb().discover_request(DiscoverKind::Movie, &f, "pl-PL", TODAY, 1).unwrap();
         let (_, q) = get(&req);
         assert_eq!(q["with_genres"], "18,80", "every genre");
         assert_eq!(q["primary_release_date.gte"], "2010-01-01");
@@ -211,14 +211,14 @@ mod tests {
         assert_eq!(q["language"], "pl-PL");
         assert!(req.key.contains("with_genres=18,80"));
         // Another filter, another cache entry.
-        let other = tmdb().discover_request(DiscoverKind::Movie, &Filter::default(), "pl-PL", TODAY).unwrap();
+        let other = tmdb().discover_request(DiscoverKind::Movie, &Filter::default(), "pl-PL", TODAY, 1).unwrap();
         assert_ne!(req.key, other.key);
     }
 
     #[test]
     fn tmdb_series_newest_stops_at_today() {
         let f = filter(&[], Some("2020"), None, Sort::Newest);
-        let (url, q) = get(&tmdb().discover_request(DiscoverKind::Tv, &f, "en", TODAY).unwrap());
+        let (url, q) = get(&tmdb().discover_request(DiscoverKind::Tv, &f, "en", TODAY, 1).unwrap());
         assert!(url.ends_with("/discover/tv"));
         assert_eq!(q["sort_by"], "first_air_date.desc");
         assert_eq!(q["first_air_date.gte"], "2020-01-01");
@@ -226,11 +226,11 @@ mod tests {
         assert!(!q.contains_key("primary_release_date.lte"));
         // Before 1960: no lower bound; an older decade ends before today anyway.
         let f = filter(&[], Some(OLDER), None, Sort::Newest);
-        let (_, q) = get(&tmdb().discover_request(DiscoverKind::Tv, &f, "en", TODAY).unwrap());
+        let (_, q) = get(&tmdb().discover_request(DiscoverKind::Tv, &f, "en", TODAY, 1).unwrap());
         assert!(!q.contains_key("first_air_date.gte"));
         assert_eq!(q["first_air_date.lte"], "1959-12-31");
         let f = filter(&[], None, None, Sort::TopRated);
-        let (_, q) = get(&tmdb().discover_request(DiscoverKind::Tv, &f, "en", TODAY).unwrap());
+        let (_, q) = get(&tmdb().discover_request(DiscoverKind::Tv, &f, "en", TODAY, 1).unwrap());
         assert_eq!(q["vote_count.gte"], "200");
     }
 
@@ -238,17 +238,17 @@ mod tests {
     fn tmdb_drops_what_is_not_its_own() {
         // AniList's genre names and an unknown decade (filters of another catalog).
         let f = filter(&["Drama", "18"], Some("1850"), None, Sort::Popular);
-        let (_, q) = get(&tmdb().discover_request(DiscoverKind::Movie, &f, "en", TODAY).unwrap());
+        let (_, q) = get(&tmdb().discover_request(DiscoverKind::Movie, &f, "en", TODAY, 1).unwrap());
         assert_eq!(q["with_genres"], "18");
         assert!(!q.contains_key("primary_release_date.gte"));
-        assert!(tmdb().discover_request(DiscoverKind::Anime, &f, "en", TODAY).is_err());
-        assert!(Tmdb::new(None).discover_request(DiscoverKind::Movie, &f, "en", TODAY).is_err());
+        assert!(tmdb().discover_request(DiscoverKind::Anime, &f, "en", TODAY, 1).is_err());
+        assert!(Tmdb::new(None).discover_request(DiscoverKind::Movie, &f, "en", TODAY, 1).is_err());
     }
 
     #[test]
     fn anilist_variables() {
         let f = filter(&["Drama", "Mecha", "18"], Some("2010"), Some("JP"), Sort::TopRated);
-        let req = Anilist.discover_request(&f);
+        let req = Anilist.discover_request(&f, 1);
         let Call::Graphql { query, variables, .. } = &req.call else { panic!("GraphQL") };
         assert!(query.contains("genre_in: $genres"));
         assert_eq!(variables["sort"], json!(["SCORE_DESC"]));
@@ -259,15 +259,44 @@ mod tests {
         assert_eq!(variables["minPopularity"], 5000);
         assert!(req.key.starts_with("anilist:discover:"));
 
-        let req = Anilist.discover_request(&filter(&[], Some(OLDER), None, Sort::Newest));
+        let req = Anilist.discover_request(&filter(&[], Some(OLDER), None, Sort::Newest), 1);
         let Call::Graphql { variables, .. } = &req.call else { panic!("GraphQL") };
         assert_eq!(variables["sort"], json!(["START_DATE_DESC"]));
         assert_eq!(variables["statusNot"], "NOT_YET_RELEASED");
         assert!(variables.get("from").is_none());
         assert_eq!(variables["until"], 19_600_000);
-        let req = Anilist.discover_request(&Filter::default());
+        let req = Anilist.discover_request(&Filter::default(), 1);
         let Call::Graphql { variables, .. } = &req.call else { panic!("GraphQL") };
-        assert_eq!(*variables, json!({ "sort": ["POPULARITY_DESC"] }));
+        assert_eq!(*variables, json!({ "page": 1, "sort": ["POPULARITY_DESC"] }));
+    }
+
+    #[test]
+    fn further_pages() {
+        let f = filter(&["18"], None, None, Sort::Popular);
+        let first = tmdb().discover_request(DiscoverKind::Movie, &f, "en", TODAY, 1).unwrap();
+        let second = tmdb().discover_request(DiscoverKind::Movie, &f, "en", TODAY, 2).unwrap();
+        assert!(!get(&first).1.contains_key("page"), "page 1 is the query without a page");
+        assert_eq!(get(&second).1["page"], "2");
+        assert_ne!(first.key, second.key, "each page its own cache entry");
+
+        // TMDB counts 1001 pages but serves 500.
+        let body = fixture("tmdb_discover_tv.json");
+        assert!(tmdb().discover_more(&body, 1));
+        assert!(tmdb().discover_more(&body, 499));
+        assert!(!tmdb().discover_more(&body, 500));
+        assert!(!tmdb().discover_more(&json!({ "results": [], "total_pages": 3 }), 3));
+        assert!(tmdb().discover_more(&json!({ "results": [], "total_pages": 3 }), 2));
+
+        let a1 = Anilist.discover_request(&f, 1);
+        let a3 = Anilist.discover_request(&f, 3);
+        let Call::Graphql { query, variables, .. } = &a3.call else { panic!("GraphQL") };
+        assert!(query.contains("Page(page: $page") && query.contains("hasNextPage"));
+        assert_eq!(variables["page"], 3);
+        assert_eq!(a1.key, format!("anilist:discover:{}", f.key()));
+        assert_ne!(a1.key, a3.key);
+        let page = |more: bool| json!({ "data": { "Page": { "pageInfo": { "hasNextPage": more }, "media": [] } } });
+        assert!(Anilist.discover_more(&page(true)));
+        assert!(!Anilist.discover_more(&page(false)));
     }
 
     #[test]

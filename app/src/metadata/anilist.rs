@@ -48,9 +48,10 @@ const MEDIA_QUERY: &str = "query ($id: Int) {
 }";
 
 /// Browsing with filters (`Anilist::discover_request`); the fields are `LIST_QUERY`'s.
-const DISCOVER_QUERY: &str = "query ($sort: [MediaSort], $genres: [String], $from: FuzzyDateInt, $until: FuzzyDateInt,
-  $country: CountryCode, $minPopularity: Int, $statusNot: MediaStatus) {
-  Page(page: 1, perPage: 30) {
+const DISCOVER_QUERY: &str = "query ($page: Int, $sort: [MediaSort], $genres: [String], $from: FuzzyDateInt,
+  $until: FuzzyDateInt, $country: CountryCode, $minPopularity: Int, $statusNot: MediaStatus) {
+  Page(page: $page, perPage: 30) {
+    pageInfo { hasNextPage }
     media(type: ANIME, isAdult: false, sort: $sort, genre_in: $genres, startDate_greater: $from,
       startDate_lesser: $until, countryOfOrigin: $country, popularity_greater: $minPopularity, status_not: $statusNot) {
       id idMal format status episodes duration season seasonYear averageScore
@@ -97,15 +98,16 @@ pub fn current_season(now: i64) -> (&'static str, u16) {
 }
 
 impl Anilist {
-    /// The anime `filter` lets through, first page. Genres are AniList's
-    /// names; a decade is a start-date range (exclusive bounds, YYYYMMDD).
-    pub fn discover_request(&self, filter: &Filter) -> Request {
+    /// The anime `filter` lets through, page `page` (from 1). Genres are
+    /// AniList's names; a decade is a start-date range (exclusive bounds, YYYYMMDD).
+    pub fn discover_request(&self, filter: &Filter, page: u32) -> Request {
         let sort = match filter.sort {
             Sort::Popular => "POPULARITY_DESC",
             Sort::TopRated => "SCORE_DESC",
             Sort::Newest => "START_DATE_DESC",
         };
-        let mut vars = json!({ "sort": [sort] });
+        let page = page.max(1);
+        let mut vars = json!({ "page": page, "sort": [sort] });
         let genres: Vec<&str> =
             filter.genres.iter().map(String::as_str).filter(|g| discover::ANIME_GENRES.contains(g)).collect();
         if !genres.is_empty() {
@@ -128,7 +130,21 @@ impl Anilist {
             Sort::Newest => vars["statusNot"] = json!("NOT_YET_RELEASED"),
             Sort::Popular => {}
         }
-        request(format!("anilist:discover:{}", filter.key()), CacheKind::Shelf, DISCOVER_QUERY, vars)
+        // The first page keeps the key it had before there were others.
+        let key = match page {
+            1 => format!("anilist:discover:{}", filter.key()),
+            n => format!("anilist:discover:{};p={n}", filter.key()),
+        };
+        request(key, CacheKind::Shelf, DISCOVER_QUERY, vars)
+    }
+
+    /// Whether a discover answer has a page after it (`pageInfo.hasNextPage`;
+    /// an answer without it has more when its page is full).
+    pub fn discover_more(&self, body: &Value) -> bool {
+        match body.pointer("/data/Page/pageInfo/hasNextPage").and_then(Value::as_bool) {
+            Some(more) => more,
+            None => body.pointer("/data/Page/media").and_then(Value::as_array).is_some_and(|m| m.len() >= 30),
+        }
     }
 
     pub fn entries_request(&self, ids: &[u64]) -> Request {

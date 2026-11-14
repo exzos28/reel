@@ -135,6 +135,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         let (page,): (String,) = args(a)?;
         ret(Catalog::browse(page))
     })
+    .sync("Catalog", "browseMore", |a| {
+        let (page,): (String,) = args(a)?;
+        ret(Catalog::browse_more(page))
+    })
     .sync("Catalog", "chooseFilter", |a| {
         let (page, group, id): (String, String, String) = args(a)?;
         ret(Catalog::choose_filter(page, group, id))
