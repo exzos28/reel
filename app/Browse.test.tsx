@@ -119,7 +119,7 @@ test("Sort by is a pill with the same panel, without Clear", async () => {
   expect(app.shows("id:filter-panel")).toBe(false);
 });
 
-test("mouse: a pill opens its panel, a row picks, a press outside closes", async () => {
+test("mouse: a pill opens its drawer, a row picks, ✕ closes it", async () => {
   const { native, calls } = page();
   const app = await movies(native, { platform: "macos", width: 1440, height: 900 });
   await app.press("id:filter-countries");
@@ -128,7 +128,8 @@ test("mouse: a pill opens its panel, a row picks, a press outside closes", async
   expect(app.shows("id:filter-panel")).toBe(false);
   await app.press("id:filter-genres");
   expect(app.shows("id:filter-panel")).toBe(true);
-  await app.press("id:filter-backdrop");
+  await app.press("label:Close");
+  await app.wait(600); // the sheet slides away
   expect(app.shows("id:filter-panel")).toBe(false);
 });
 

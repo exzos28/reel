@@ -5,7 +5,7 @@ import { Text, View, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import type { Release } from "../../catalog";
 import { rowStyle } from "../../kit/Row";
-import { labelText, metaText, sectionTitle } from "../../kit/text";
+import { labelText } from "../../kit/text";
 import type { Follow } from "../../layout/Scroller";
 import { SectionHeader } from "../../layout/Section";
 import { alpha, colors, safe, u } from "../../theme";
@@ -51,15 +51,9 @@ export function ReleaseList(props: {
   const moreAt = () => props.releases().length;
   return (
     <View style={props.inPanel ? undefined : { paddingHorizontal: safe().x, marginTop: u(40) }}>
-      <If
-        when={props.inPanel}
-        else={<SectionHeader title={props.title ?? (() => t("releases.title"))} note={props.header} />}
-      >
-        {/* A panel is narrow: the note under the title, room on the right for its ✕. */}
-        <View style={{ gap: u(6), paddingRight: 40 }}>
-          <Text style={sectionTitle()}>{(props.title ?? (() => t("releases.title")))()}</Text>
-          <Text style={metaText()}>{props.header()}</Text>
-        </View>
+      {/* In a drawer, the drawer shows the title and the note. */}
+      <If when={!props.inPanel}>
+        <SectionHeader title={props.title ?? (() => t("releases.title"))} note={props.header} />
       </If>
       <View style={{ gap: u(12), marginTop: u(20) }}>
         <If
