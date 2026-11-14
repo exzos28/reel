@@ -152,6 +152,14 @@ pub async fn changed(after: u64) -> u64 {
     waiting.await.unwrap_or_else(|_| revision())
 }
 
+/// The search source changed: what the old one found (or failed to find) is dropped, so the
+/// screens search the new one at once.
+pub fn source_changed() {
+    SEARCHES.lock().unwrap().clear();
+    CHOSEN.lock().unwrap().clear();
+    bump();
+}
+
 /// The content language changed: everything asked so far was in the old one.
 pub fn language_changed() {
     SLOTS.0.lock().unwrap().clear();
@@ -164,7 +172,8 @@ pub fn revision() -> u64 {
     REV.load(Ordering::Relaxed) + metadata::revision()
 }
 
-fn runtime() -> &'static tokio::runtime::Runtime {
+/// The catalog's runtime; also what `settings::changed` waits on.
+pub(crate) fn runtime() -> &'static tokio::runtime::Runtime {
     static RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
     RT.get_or_init(|| {
         tokio::runtime::Builder::new_multi_thread()

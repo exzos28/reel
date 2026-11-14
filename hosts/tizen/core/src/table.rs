@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 
-use reel_app::{Catalog, Engine, Fmt, Meta, Settings, Sources, VideoEngine};
+use reel_app::{Catalog, Engine, Fmt, Hosted, Meta, Settings, Sources, VideoEngine};
 use reel_rpc::{Error, Registry, args, no_args, ret};
 
 /// `Settings.load` and `Meta.init` take the host's data dir (`process.dataDir` on native
@@ -104,6 +104,32 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Settings", "setStreamDetails", |a| {
         let (on,): (bool,) = args(a)?;
         ret(Settings::set_stream_details(on))
+    })
+    .sync("Settings", "current", |a| {
+        no_args(&a)?;
+        ret(Settings::current())
+    })
+    .sync("Settings", "revision", |a| {
+        no_args(&a)?;
+        ret(Settings::revision())
+    })
+    .r#async("Settings", "changed", |a| async move {
+        let (after,): (f64,) = args(a)?;
+        ret(Settings::changed(after).await)
+    });
+
+    // Settings from a phone (docs/hosted-settings.md): what the TV's own UI shows of it.
+    r.sync("Hosted", "address", |a| {
+        no_args(&a)?;
+        ret(Hosted::address())
+    })
+    .sync("Hosted", "pairing", |a| {
+        no_args(&a)?;
+        ret(Hosted::pairing())
+    })
+    .sync("Hosted", "cancelPairing", |a| {
+        no_args(&a)?;
+        ret(Hosted::cancel_pairing())
     });
 
     r.sync("Sources", "search", |a| {

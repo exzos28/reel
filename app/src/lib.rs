@@ -16,6 +16,8 @@ mod disk;
 #[cfg(not(target_arch = "wasm32"))]
 mod engine;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod hosted;
+#[cfg(not(target_arch = "wasm32"))]
 mod metadata;
 #[cfg(not(target_arch = "wasm32"))]
 mod progress;
@@ -41,7 +43,7 @@ pub use metadata::Meta;
 fn native(registry: &mut Registry) {
     registry.module::<Fmt>();
     #[cfg(not(target_arch = "wasm32"))]
-    registry.module::<Engine>().module::<Catalog>().module::<Settings>().module::<Sources>().module::<Meta>().module::<VideoEngine>();
+    registry.module::<Engine>().module::<Catalog>().module::<Settings>().module::<Sources>().module::<Meta>().module::<VideoEngine>().module::<Hosted>();
 }
 
 /// The mpv video view (`reel/mpv`), where libmpv is found.
@@ -234,6 +236,50 @@ impl Settings {
     /// Saves the UI language (a BCP 47 tag).
     pub fn set_language(tag: String) {
         settings::set_language(&tag);
+    }
+
+    /// The settings as `load` answers them, from memory (after a change made elsewhere,
+    /// e.g. on the hosted page from a phone).
+    pub fn current() -> String {
+        settings::current().to_string()
+    }
+
+    /// Goes up when the settings change (here or on the hosted page) and when the hosted
+    /// page's pairing code appears or goes: read `current` and `Hosted.pairing` again.
+    pub fn revision() -> f64 {
+        settings::revision() as f64
+    }
+
+    /// The revision once it is past `after`, or the same after a while: what the UI waits on.
+    pub async fn changed(after: f64) -> f64 {
+        settings::changed(after as u64).await as f64
+    }
+}
+
+/// Settings from a phone: the page this device serves on the local network
+/// (docs/hosted-settings.md), as the TV's own UI shows it.
+#[cfg(not(target_arch = "wasm32"))]
+#[module]
+pub struct Hosted;
+
+#[cfg(not(target_arch = "wasm32"))]
+#[module]
+impl Hosted {
+    /// Where to open the page: `{"url":"http://192.168.1.20:47392/settings"}`, or
+    /// `{"url":null}` where this device does not serve it or has no network address.
+    pub fn address() -> String {
+        hosted::address().to_string()
+    }
+
+    /// The code to show while a browser pairs: `{"code":"482913","expiresIn":115}`, or
+    /// `{"code":null}`.
+    pub fn pairing() -> String {
+        hosted::pairing().to_string()
+    }
+
+    /// The viewer dismissed the code (Back).
+    pub fn cancel_pairing() {
+        hosted::cancel_pairing();
     }
 }
 

@@ -818,3 +818,13 @@ fn a_well_shared_4k_is_the_default_and_a_remux_is_not() {
     let few = [r(2160, 25.0, 20), r(1080, 8.0, 5000)];
     assert_eq!(chosen("film:test-4k-few", &few, 170, 1), Some(1), "a 4K with few people sharing waits: 1080p");
 }
+
+#[test]
+fn a_new_source_drops_what_the_old_one_found() {
+    let _g = fresh(true, true);
+    found("tmdb:movie:603", vec![release("The.Matrix.1999.1080p", Some(1080), "BluRay", 8.0, 100, false)]);
+    let rev = revision();
+    source_changed();
+    assert!(search_of("tmdb:movie:603").is_none(), "searched again on the new source");
+    assert!(revision() > rev, "the screens read again");
+}

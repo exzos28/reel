@@ -3370,6 +3370,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "encoding_rs",
+ "getrandom 0.3.4",
  "image",
  "libc",
  "librqbit",

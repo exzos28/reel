@@ -588,12 +588,17 @@ async fn fetch_torrent(url: &str) -> anyhow::Result<Fetched> {
 /// An error as the viewer may see it: no keys, no long links.
 pub fn redact(message: &str) -> String {
     use std::sync::LazyLock;
-    static KEY: LazyLock<regex::Regex> =
-        LazyLock::new(|| regex::Regex::new(r"(?i)\b((?:jackett_)?api_?key|passkey|pk|token)=[^&\s]+").unwrap());
     static URL: LazyLock<regex::Regex> =
         LazyLock::new(|| regex::Regex::new(r"(https?)://([^/\s?]+)[^\s]*").unwrap());
-    let no_keys = KEY.replace_all(message, "$1=…");
-    URL.replace_all(&no_keys, "$1://$2/…").into_owned()
+    URL.replace_all(&redact_keys(message), "$1://$2/…").into_owned()
+}
+
+/// `text` with the values of key-like parameters cut out (`apikey=…`), links kept whole.
+pub fn redact_keys(text: &str) -> String {
+    use std::sync::LazyLock;
+    static KEY: LazyLock<regex::Regex> =
+        LazyLock::new(|| regex::Regex::new(r"(?i)\b((?:jackett_)?api_?key|passkey|pk|token)=[^&\s]+").unwrap());
+    KEY.replace_all(text, "$1=…").into_owned()
 }
 
 fn add_to(core: &Core, job: u32, url: &str) {

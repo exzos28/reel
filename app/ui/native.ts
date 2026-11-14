@@ -26,6 +26,8 @@ export const Sources = remote ? http.Sources : local.Sources;
 export const Meta = remote ? http.Meta : local.Meta;
 // What draws the video is the core's call (its profile: "avplay" on the TV).
 export const VideoEngine = remote ? http.VideoEngine : local.VideoEngine;
+// Settings from a phone: the page's address and its pairing code (docs/hosted-settings.md).
+export const Hosted = remote ? http.Hosted : local.Hosted;
 export const Fmt = local.Fmt;
 
 /** The data dir to pass to `Settings.load` and `Meta.init`: the core's on the web (the

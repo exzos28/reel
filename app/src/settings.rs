@@ -5,7 +5,11 @@
 
 use std::{
     path::{Path, PathBuf},
-    sync::Mutex,
+    sync::{
+        Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::Duration,
 };
 
 use serde::{Deserialize, Serialize};
@@ -106,9 +110,49 @@ struct State {
     /// Where `settings.json` lives; None keeps the settings in memory only.
     file: Option<PathBuf>,
     saved: Saved,
+    /// `load` ran: what is here is the user's, not the defaults.
+    loaded: bool,
 }
 
 static STATE: Mutex<Option<State>> = Mutex::new(None);
+
+/// Goes up with every change of the settings (from this device's UI or the hosted page) and
+/// whenever the hosted page's pairing code appears or goes: the UI reads again.
+static REV: AtomicU64 = AtomicU64::new(0);
+static CHANGED: tokio::sync::Notify = tokio::sync::Notify::const_new();
+/// How long `changed` waits before answering with the same revision.
+const CHANGED_WAIT: Duration = Duration::from_secs(25);
+
+pub fn revision() -> u64 {
+    REV.load(Ordering::Relaxed)
+}
+
+/// Something the UI shows from here changed.
+pub(crate) fn bump() {
+    REV.fetch_add(1, Ordering::Relaxed);
+    CHANGED.notify_waiters();
+}
+
+/// The revision once it is past `after` (at once if it already is), or the same one after
+/// `CHANGED_WAIT`: the UI waits on it, so a change made on a phone shows on the TV at once.
+pub async fn changed(after: u64) -> u64 {
+    let waiting = crate::catalog::runtime().spawn(async move {
+        let deadline = tokio::time::Instant::now() + CHANGED_WAIT;
+        loop {
+            let notified = CHANGED.notified();
+            tokio::pin!(notified);
+            notified.as_mut().enable();
+            let now = revision();
+            if now > after {
+                return now;
+            }
+            if tokio::time::timeout_at(deadline, notified).await.is_err() {
+                return revision();
+            }
+        }
+    });
+    waiting.await.unwrap_or_else(|_| revision())
+}
 
 fn read(file: &Path) -> Saved {
     std::fs::read_to_string(file)
@@ -128,13 +172,24 @@ fn write(file: &Path, saved: &Saved) {
 
 fn with<R>(f: impl FnOnce(&mut State) -> R) -> R {
     let mut guard = STATE.lock().unwrap();
-    let state = guard.get_or_insert_with(|| State { file: None, saved: Saved::default() });
+    let state = guard.get_or_insert_with(|| State { file: None, saved: Saved::default(), loaded: false });
     f(state)
 }
 
+/// Writes the settings to their file, when they have one.
+fn save(s: &State) {
+    if let Some(file) = &s.file {
+        write(file, &s.saved);
+    }
+}
+
+/// Whether `load` ran (before it, a write would be overwritten by the file).
+pub fn loaded() -> bool {
+    with(|s| s.loaded)
+}
+
 /// Reads the settings from `data_dir` (None: defaults, kept in memory),
-/// configures the engine from them and returns what the UI needs:
-/// `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`.
+/// configures the engine from them and returns what the UI needs (`current`).
 pub fn load(data_dir: Option<&Path>) -> Value {
     let file = data_dir.map(|d| d.join("settings.json"));
     if file.is_none() {
@@ -148,8 +203,18 @@ pub fn load(data_dir: Option<&Path>) -> Value {
     engine::set_buffer_mb(saved.buffer_mb as u64);
     with(|s| {
         s.file = file;
-        s.saved = saved.clone();
+        s.saved = saved;
+        s.loaded = true;
     });
+    bump();
+    current()
+}
+
+/// The settings as the UI shows them, from memory:
+/// `{"language","contentLanguage","contentLanguages":[{"tag","name"}],"bufferMB",
+/// "streamDetails","source":{"url","hasKey"},"bufferChoices":[{"mb","default"}]}`.
+pub fn current() -> Value {
+    let saved = with(|s| s.saved.clone());
     json!({
         "language": saved.language,
         "contentLanguage": saved.content_language,
@@ -160,15 +225,21 @@ pub fn load(data_dir: Option<&Path>) -> Value {
         "bufferMB": saved.buffer_mb,
         "streamDetails": saved.stream_details,
         "source": source_json(&saved),
-        // Only the sizes this device has room for (the smallest always).
-        "bufferChoices": BUFFER_CHOICES
-            .iter()
-            .enumerate()
-            .filter(|(i, c)| *i == 0 || engine::buffer_fits(**c as u64))
-            .map(|(_, c)| c)
-            .map(|c| json!({ "mb": c, "default": *c == DEFAULT_BUFFER_MB }))
+        "bufferChoices": buffer_choices()
+            .into_iter()
+            .map(|c| json!({ "mb": c, "default": c == DEFAULT_BUFFER_MB }))
             .collect::<Vec<_>>(),
     })
+}
+
+/// The buffer sizes this device has room for (the smallest always).
+pub fn buffer_choices() -> Vec<u32> {
+    BUFFER_CHOICES
+        .iter()
+        .enumerate()
+        .filter(|(i, c)| *i == 0 || engine::buffer_fits(**c as u64))
+        .map(|(_, c)| *c)
+        .collect()
 }
 
 /// Saves a buffer size from `BUFFER_CHOICES` and hands it to the engine;
@@ -177,13 +248,12 @@ pub fn set_buffer_mb(mb: u32) -> u32 {
     let mb = with(|s| {
         if BUFFER_CHOICES.contains(&mb) {
             s.saved.buffer_mb = mb;
-            if let Some(file) = &s.file {
-                write(file, &s.saved);
-            }
+            save(s);
         }
         s.saved.buffer_mb
     });
     engine::set_buffer_mb(mb as u64);
+    bump();
     mb
 }
 
@@ -191,11 +261,10 @@ pub fn set_buffer_mb(mb: u32) -> u32 {
 pub fn set_stream_details(on: bool) -> bool {
     with(|s| {
         s.saved.stream_details = on;
-        if let Some(file) = &s.file {
-            write(file, &s.saved);
-        }
-        on
-    })
+        save(s);
+    });
+    bump();
+    on
 }
 
 /// The search source as the UI may show it: the address, and whether a key is
@@ -217,21 +286,51 @@ pub fn source() -> Option<crate::sources::Source> {
 
 /// Saves the search source. A URL that does not parse is refused with an error.
 pub fn set_source(url: &str, key: &str) -> Result<Value, String> {
+    set_source_with(url, Some(key))
+}
+
+/// Saves the search source; `key` None keeps the saved key. A URL that does not parse is
+/// refused with an error. A new source drops what the catalog found on the old one.
+pub fn set_source_with(url: &str, key: Option<&str>) -> Result<Value, String> {
     let url = url.trim();
+    check_url(url)?;
+    let (shown, changed) = with(|s| {
+        let before = (s.saved.source_url.clone(), s.saved.source_key.clone());
+        s.saved.source_url = url.to_owned();
+        if let Some(key) = key {
+            s.saved.source_key = key.trim().to_owned();
+        }
+        save(s);
+        (source_json(&s.saved), before != (s.saved.source_url.clone(), s.saved.source_key.clone()))
+    });
+    if changed {
+        crate::catalog::source_changed();
+    }
+    bump();
+    Ok(shown)
+}
+
+/// An address the source may have: empty (none), or http(s).
+fn check_url(url: &str) -> Result<(), String> {
     if !url.is_empty() {
         let parsed = reqwest::Url::parse(url).map_err(|e| format!("not an address: {e}"))?;
         if !matches!(parsed.scheme(), "http" | "https") {
             return Err("the address must start with http:// or https://".into());
         }
     }
-    Ok(with(|s| {
-        s.saved.source_url = url.to_owned();
-        s.saved.source_key = key.trim().to_owned();
-        if let Some(file) = &s.file {
-            write(file, &s.saved);
-        }
-        source_json(&s.saved)
-    }))
+    Ok(())
+}
+
+/// The saved source's address with key-like parameters cut out (`apikey=…`): what a page
+/// off this device may see of it.
+pub fn source_url_redacted() -> String {
+    with(|s| engine::redact_keys(&s.saved.source_url))
+}
+
+/// As before `load` (tests of what answers only once the settings are loaded).
+#[cfg(test)]
+pub(crate) fn forget_loaded_for_test() {
+    with(|s| s.loaded = false);
 }
 
 /// The language titles and descriptions are asked for (a TMDB tag like "ru-RU").
@@ -239,26 +338,30 @@ pub fn content_language() -> String {
     with(|s| s.saved.content_language.clone())
 }
 
+/// Whether `tag` is one of `CONTENT_LANGUAGES`.
+pub fn is_content_language(tag: &str) -> bool {
+    CONTENT_LANGUAGES.iter().any(|(t, _)| *t == tag)
+}
+
 /// Saves the content language if it is one of `CONTENT_LANGUAGES`; the one in effect.
 pub fn set_content_language(tag: &str) -> String {
-    with(|s| {
-        if CONTENT_LANGUAGES.iter().any(|(t, _)| *t == tag) {
+    let now = with(|s| {
+        if is_content_language(tag) {
             s.saved.content_language = tag.to_owned();
-            if let Some(file) = &s.file {
-                write(file, &s.saved);
-            }
+            save(s);
         }
         s.saved.content_language.clone()
-    })
+    });
+    bump();
+    now
 }
 
 pub fn set_language(tag: &str) {
     with(|s| {
         s.saved.language = tag.to_owned();
-        if let Some(file) = &s.file {
-            write(file, &s.saved);
-        }
+        save(s);
     });
+    bump();
 }
 
 #[cfg(test)]
@@ -267,6 +370,7 @@ mod tests {
 
     #[test]
     fn saves_and_loads_from_the_data_dir() {
+        let _guard = crate::catalog::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let dir = std::env::temp_dir().join(format!("reel-settings-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
 
@@ -326,4 +430,22 @@ mod tests {
         assert_eq!(with_default_source(Saved::default(), None).source_url, "");
     }
 
+    #[test]
+    fn every_change_wakes_whoever_waits() {
+        let _guard = crate::catalog::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+        let seen = revision();
+        // Already past: answers at once.
+        set_stream_details(false);
+        assert!(rt.block_on(changed(seen)) > seen);
+        // Waiting: a change from elsewhere (a phone) wakes it.
+        let now = revision();
+        let waiter = std::thread::spawn(move || {
+            tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(changed(now))
+        });
+        std::thread::sleep(Duration::from_millis(50));
+        set_buffer_mb(DEFAULT_BUFFER_MB);
+        assert!(waiter.join().unwrap() > now);
+        assert_eq!(current()["bufferMB"], DEFAULT_BUFFER_MB);
+    }
 }

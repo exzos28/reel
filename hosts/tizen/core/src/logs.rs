@@ -2,6 +2,9 @@
 //! answers with the core's log (data/core.log, its end), the service's startup error and the TV
 //! app's own journal (which the app POSTs to /shell-log from the TV itself). Read only, and keys
 //! in URLs are cut out. `scripts/tizen-logs.sh <TV IP>` fetches it.
+//!
+//! The same listener serves the settings page for a phone, `GET /settings` and
+//! `/settings/api/*` (docs/hosted-settings.md); app/'s `hosted` module does the work.
 
 use std::{
     net::{Ipv4Addr, SocketAddr},
@@ -12,9 +15,9 @@ use std::{
 use axum::{
     Router,
     extract::{ConnectInfo, State},
-    http::{StatusCode, header},
+    http::{HeaderMap, Method, StatusCode, Uri, header},
     response::IntoResponse,
-    routing::{get, post},
+    routing::{any, get, post},
 };
 
 pub const LOGS_PORT: u16 = 47_392;
@@ -39,7 +42,8 @@ pub fn serve_once(data_dir: PathBuf) {
                 let addr = SocketAddr::from((Ipv4Addr::UNSPECIFIED, LOGS_PORT));
                 match tokio::net::TcpListener::bind(addr).await {
                     Ok(l) => {
-                        eprintln!("reel logs: GET http://<this TV>:{LOGS_PORT}/logs");
+                        eprintln!("reel logs: GET http://<this TV>:{LOGS_PORT}/logs, settings page at /settings");
+                        reel_app::hosted::serving_on(LOGS_PORT);
                         let app = router(data_dir).into_make_service_with_connect_info::<SocketAddr>();
                         if let Err(e) = axum::serve(l, app).await {
                             eprintln!("reel logs: stopped: {e}");
@@ -60,7 +64,55 @@ fn router(data_dir: PathBuf) -> Router {
         .route("/logs", get(logs))
         .route("/shell-log", post(shell_log))
         .route("/app-log", post(app_log))
+        .route("/settings", get(settings_page))
+        .route("/settings/api/{*rest}", any(settings_api))
         .with_state(data_dir)
+}
+
+/// The page itself: no data in it, and nothing it may load from elsewhere.
+async fn settings_page() -> impl IntoResponse {
+    (
+        [
+            (header::CONTENT_TYPE, "text/html; charset=utf-8"),
+            (header::CACHE_CONTROL, "no-store"),
+            (header::REFERRER_POLICY, "no-referrer"),
+            (header::X_FRAME_OPTIONS, "DENY"),
+            (
+                header::CONTENT_SECURITY_POLICY,
+                "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; form-action 'none'",
+            ),
+        ],
+        reel_app::hosted::PAGE,
+    )
+}
+
+/// The page's API, answered by app/'s `hosted::handle`. No CORS headers: only the page,
+/// from this origin, may call it.
+async fn settings_api(method: Method, uri: Uri, headers: HeaderMap, body: String) -> impl IntoResponse {
+    // Blocking: a write saves settings.json.
+    let answer = tokio::task::spawn_blocking(move || {
+        let text = |name| headers.get(name).and_then(|v: &axum::http::HeaderValue| v.to_str().ok());
+        reel_app::hosted::handle(&reel_app::hosted::Request {
+            method: method.as_str(),
+            path: uri.path(),
+            host: text(header::HOST.as_str()),
+            session: text(reel_app::hosted::SESSION_HEADER),
+            body: &body,
+        })
+    })
+    .await;
+    match answer {
+        Ok(r) => (
+            StatusCode::from_u16(r.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            [(header::CONTENT_TYPE, "application/json"), (header::CACHE_CONTROL, "no-store")],
+            r.body.to_string(),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            [(header::CONTENT_TYPE, "application/json"), (header::CACHE_CONTROL, "no-store")],
+            serde_json::json!({ "error": e.to_string() }).to_string(),
+        ),
+    }
 }
 
 async fn logs(State(data_dir): State<PathBuf>) -> impl IntoResponse {
@@ -144,7 +196,44 @@ fn redact(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::redact;
+    use super::{SocketAddr, redact, router};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    async fn request(port: u16, raw: String) -> (u16, String, String) {
+        let mut conn = tokio::net::TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+        conn.write_all(raw.as_bytes()).await.unwrap();
+        let mut out = String::new();
+        conn.read_to_string(&mut out).await.unwrap();
+        let (head, body) = out.split_once("\r\n\r\n").unwrap();
+        let status = head.split(' ').nth(1).unwrap().parse().unwrap();
+        (status, head.to_ascii_lowercase(), body.to_owned())
+    }
+
+    /// The settings page and its API on the LAN listener (app/'s hosted module answers; its
+    /// own tests cover pairing and the settings).
+    #[tokio::test]
+    async fn serves_the_settings_page() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let app = router(std::env::temp_dir()).into_make_service_with_connect_info::<SocketAddr>();
+        tokio::spawn(async move { axum::serve(listener, app).await });
+
+        let (status, head, body) = request(port, "GET /settings HTTP/1.1\r\nHost: 192.168.1.20\r\nConnection: close\r\n\r\n".into()).await;
+        assert_eq!(status, 200);
+        assert!(head.contains("content-type: text/html"));
+        assert!(head.contains("content-security-policy: default-src 'none'"));
+        assert!(body.contains("Pair with the TV"));
+
+        let api = |host: &str| format!("POST /settings/api/pair HTTP/1.1\r\nHost: {host}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+        let (status, head, body) = request(port, api("evil.example:47392")).await;
+        assert_eq!((status, body.as_str()), (403, r#"{"error":"host"}"#));
+        assert!(!head.contains("access-control-allow-origin"), "no CORS: only the page calls it");
+        // Before the UI loads the settings, nothing is changed.
+        let (status, _, body) = request(port, api(&format!("127.0.0.1:{port}"))).await;
+        assert_eq!((status, body.as_str()), (503, r#"{"error":"not_ready"}"#));
+        let (status, _, _) = request(port, "GET /settings/api/state HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n".into()).await;
+        assert_eq!(status, 503);
+    }
 
     #[test]
     fn keys_are_cut_from_urls() {

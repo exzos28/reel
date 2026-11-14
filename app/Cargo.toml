@@ -31,6 +31,8 @@ rusqlite = { version = "0.42", features = ["bundled"] }
 quick-xml = "0.41"
 regex = "1"
 encoding_rs = "0.8"
+# Pairing codes and sessions of the hosted settings page (src/hosted); already in the tree.
+getrandom = "0.3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # The mpv video view (`src/mpv`): a native component on NSH's AppKit host.

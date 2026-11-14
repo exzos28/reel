@@ -15,7 +15,7 @@
 // engine, up to a second), so the frames it blocks are few. The Promise-returning methods
 // (Meta's data calls, which may wait for the network) use an asynchronous request.
 import type {
-  CatalogModule, EngineModule, FmtModule, MetaModule, SettingsModule, SourcesModule, VideoEngineModule,
+  CatalogModule, EngineModule, FmtModule, HostedModule, MetaModule, SettingsModule, SourcesModule, VideoEngineModule,
 } from "app/native";
 
 // NSH's typings (nsh/globals.d.ts) do not declare these browser globals; on the web they exist.
@@ -170,6 +170,9 @@ export const Settings: SettingsModule = {
   setSource: s("Settings", "setSource"),
   setContentLanguage: s("Settings", "setContentLanguage"),
   setLanguage: s("Settings", "setLanguage"),
+  current: s("Settings", "current"),
+  revision: s("Settings", "revision"),
+  changed: a("Settings", "changed"),
 };
 
 export const Sources: SourcesModule = {
@@ -194,6 +197,12 @@ export const Meta: MetaModule = {
 
 export const VideoEngine: VideoEngineModule = {
   kind: s("VideoEngine", "kind"),
+};
+
+export const Hosted: HostedModule = {
+  address: s("Hosted", "address"),
+  pairing: s("Hosted", "pairing"),
+  cancelPairing: s("Hosted", "cancelPairing"),
 };
 
 // Fmt is pure and also registered in the wasm32 build, which `ui/native.ts` uses. Over HTTP

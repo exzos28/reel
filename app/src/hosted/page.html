@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="referrer" content="no-referrer">
+<title>reel settings</title>
+<style>
+:root{--ink:#0F0F0F;--card:#1A1A1A;--raise:#2A2A2A;--snow:#F5F5F5;--soft:#D6D6D6;--ash:#8C8C8C;--red:#E5383B;--faint:#5E5E5E}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ink);color:var(--snow);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:520px;margin:0 auto;padding:28px 16px 48px}
+h1{font-size:28px;font-weight:700;letter-spacing:-.01em;margin:0 0 4px}
+h2{font-size:19px;font-weight:600;margin:0 0 6px}
+p{margin:0;color:var(--soft)}
+.sub{color:var(--ash);margin-bottom:28px}
+section{background:var(--card);border-radius:14px;padding:18px 16px;margin:0 0 16px}
+section>p{margin-bottom:14px;font-size:15px}
+label{display:block;font-size:13px;color:var(--ash);margin:12px 0 6px}
+input,select{width:100%;height:48px;padding:0 14px;border:1px solid var(--raise);border-radius:10px;background:var(--ink);color:var(--snow);font:inherit;outline:none}
+input:focus,select:focus{border-color:var(--snow)}
+input.code{font-size:28px;letter-spacing:.4em;text-align:center;font-variant-numeric:tabular-nums}
+button{height:48px;padding:0 20px;border:0;border-radius:10px;background:var(--snow);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+button.quiet{background:var(--raise);color:var(--snow)}
+button:disabled{opacity:.5}
+.row{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
+.check{display:flex;gap:10px;align-items:center;margin-top:10px;color:var(--soft);font-size:15px}
+.check input{width:20px;height:20px;margin:0}
+.msg{font-size:15px;color:var(--ash);min-height:1.45em}
+.msg.bad{color:var(--red)}
+.msg.good{color:var(--snow)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{background:var(--raise);color:var(--snow);font-weight:500;height:44px;padding:0 16px}
+.chips button[aria-pressed=true]{background:var(--snow);color:var(--ink)}
+.note{font-size:13px;color:var(--faint);margin-top:24px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<h1>reel</h1>
+<p class="sub">Settings of reel on your TV.</p>
+
+<section id="pair">
+  <h2>Pair with the TV</h2>
+  <p>Ask the TV for a code, then type the code it shows.</p>
+  <div class="row" id="askRow"><button id="ask">Show a code on the TV</button></div>
+  <form id="codeForm" hidden>
+    <label for="code">Code on the TV</label>
+    <input id="code" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
+    <div class="row"><button type="submit">Pair</button><button type="button" class="quiet" id="again">New code</button></div>
+  </form>
+  <p class="msg" id="pairMsg"></p>
+</section>
+
+<div id="settings" hidden>
+  <section>
+    <h2>Search source</h2>
+    <p>The Torznab address of your own Jackett (or Prowlarr, JacRed…) and its API key. reel comes with no source of its own.</p>
+    <form id="sourceForm">
+      <label for="url">Address</label>
+      <input id="url" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api">
+      <label for="key">API key</label>
+      <input id="key" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+      <div class="check" id="removeRow" hidden><input type="checkbox" id="removeKey"><label for="removeKey" style="margin:0;font-size:15px;color:inherit">Remove the saved key</label></div>
+      <div class="row"><button type="submit" id="save">Save and check</button></div>
+      <p class="msg" id="sourceMsg"></p>
+    </form>
+  </section>
+  <section>
+    <h2>Language</h2>
+    <p>The language of titles, descriptions and episode names.</p>
+    <select id="language" aria-label="Language"></select>
+    <p class="msg" id="languageMsg"></p>
+  </section>
+  <section>
+    <h2>Playback buffer</h2>
+    <p>How much of a film reel keeps ahead while it plays. Only the sizes the TV has room for.</p>
+    <div class="chips" id="buffer"></div>
+    <p class="msg" id="bufferMsg"></p>
+  </section>
+</div>
+
+<p class="note">This page talks to your TV over plain HTTP on your home network. Use it on a network you trust.</p>
+</main>
+<script>
+(function () {
+  'use strict';
+  var API = '/settings/api';
+  var KEY = 'reel.session';
+  var $ = function (id) { return document.getElementById(id); };
+  var session = null;
+  var pairing = null;
+  try { session = localStorage.getItem(KEY); } catch (e) {}
+
+  function remember(s) {
+    session = s;
+    try { s ? localStorage.setItem(KEY, s) : localStorage.removeItem(KEY); } catch (e) {}
+  }
+
+  function say(id, text, kind) {
+    var el = $(id);
+    el.textContent = text || '';
+    el.className = 'msg' + (kind ? ' ' + kind : '');
+  }
+
+  // The API's answer as {status, body}; a lost session goes back to pairing.
+  function api(method, path, body) {
+    var headers = {};
+    if (session) headers['X-Reel-Session'] = session;
+    if (body) headers['Content-Type'] = 'application/json';
+    return fetch(API + path, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (b) {
+          if (r.status === 401) { remember(null); showPair('Pair again: the TV no longer knows this browser.'); }
+          return { status: r.status, body: b };
+        });
+      }, function () { return { status: 0, body: { error: 'network' } }; });
+  }
+
+  function problem(r) {
+    var e = r.body && r.body.error;
+    if (r.status === 0) return 'The TV did not answer. Is reel open on it?';
+    if (e === 'not_ready') return 'reel is still starting on the TV. Try again in a moment.';
+    if (e === 'locked') return 'Too many wrong codes. Try again in ' + Math.ceil(r.body.retryAfter / 60) + ' min.';
+    if (e === 'wrong_code') return r.body.attemptsLeft ? 'Wrong code. ' + r.body.attemptsLeft + ' tries left.' : 'Wrong code. Ask for a new one.';
+    if (e === 'expired') return 'That code is gone (it expired, was cancelled on the TV or replaced). Ask for a new one.';
+    if (e === 'host') return 'Open this page by the TV’s IP address, as the TV shows it.';
+    return (r.body && (r.body.message || r.body.error)) || 'Something went wrong (HTTP ' + r.status + ').';
+  }
+
+  function showPair(text) {
+    $('settings').hidden = true;
+    $('pair').hidden = false;
+    $('codeForm').hidden = true;
+    $('askRow').hidden = false;
+    say('pairMsg', text, text ? 'bad' : '');
+  }
+
+  function ask() {
+    $('ask').disabled = true;
+    api('POST', '/pair').then(function (r) {
+      $('ask').disabled = false;
+      if (r.status !== 200) return say('pairMsg', problem(r), 'bad');
+      pairing = r.body.pairing;
+      $('askRow').hidden = true;
+      $('codeForm').hidden = false;
+      $('code').value = '';
+      $('code').focus();
+      say('pairMsg', 'The code is on the TV now. It works for ' + Math.round(r.body.expiresIn / 60) + ' minutes.');
+    });
+  }
+
+  $('ask').addEventListener('click', ask);
+  $('again').addEventListener('click', ask);
+  $('codeForm').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    api('POST', '/pair/confirm', { pairing: pairing, code: $('code').value.trim() }).then(function (r) {
+      if (r.status !== 200) {
+        if (r.body.error === 'expired' || r.body.attemptsLeft === 0) { $('codeForm').hidden = true; $('askRow').hidden = false; }
+        return say('pairMsg', problem(r), 'bad');
+      }
+      remember(r.body.session);
+      load();
+    });
+  });
+
+  function load() {
+    api('GET', '/state').then(function (r) {
+      if (r.status === 401) return;
+      if (r.status !== 200) return showPair(problem(r));
+      $('pair').hidden = true;
+      $('settings').hidden = false;
+      show(r.body);
+    });
+  }
+
+  function showSource(src) {
+    $('url').value = src.url;
+    $('key').value = '';
+    $('key').placeholder = src.hasKey ? 'Key saved. Type a new one to replace it' : 'The key from your Jackett dashboard (if it has one)';
+    $('removeRow').hidden = !src.hasKey;
+    $('removeKey').checked = false;
+  }
+
+  function show(s) {
+    showSource(s.source);
+    var lang = $('language');
+    lang.innerHTML = '';
+    s.contentLanguages.forEach(function (l) {
+      var o = document.createElement('option');
+      o.value = l.tag;
+      o.textContent = l.name;
+      o.selected = l.tag === s.contentLanguage;
+      lang.appendChild(o);
+    });
+    var box = $('buffer');
+    box.innerHTML = '';
+    s.bufferChoices.forEach(function (c) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.mb = String(c.mb);
+      b.textContent = (c.mb >= 1024 ? c.mb / 1024 + ' GB' : c.mb + ' MB') + (c.default ? ' (default)' : '');
+      b.setAttribute('aria-pressed', String(c.mb === s.bufferMB));
+      b.addEventListener('click', function () { chooseBuffer(c.mb); });
+      box.appendChild(b);
+    });
+  }
+
+  $('language').addEventListener('change', function () {
+    say('languageMsg', 'Saving…');
+    api('POST', '/language', { tag: $('language').value }).then(function (r) {
+      say('languageMsg', r.status === 200 ? 'Saved. The TV shows titles in this language now.' : problem(r), r.status === 200 ? 'good' : 'bad');
+    });
+  });
+
+  function chooseBuffer(mb) {
+    say('bufferMsg', 'Saving…');
+    api('POST', '/buffer', { mb: mb }).then(function (r) {
+      if (r.status !== 200) return say('bufferMsg', problem(r), 'bad');
+      Array.prototype.forEach.call($('buffer').children, function (b) {
+        b.setAttribute('aria-pressed', String(Number(b.dataset.mb) === r.body.bufferMB));
+      });
+      say('bufferMsg', 'Saved.', 'good');
+    });
+  }
+
+  $('sourceForm').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    $('save').disabled = true;
+    say('sourceMsg', 'Saving…');
+    var body = { url: $('url').value.trim(), key: $('key').value.trim(), removeKey: $('removeKey').checked };
+    api('POST', '/source', body).then(function (r) {
+      if (r.status !== 200) { $('save').disabled = false; return say('sourceMsg', problem(r), 'bad'); }
+      showSource(r.body.source);
+      if (!r.body.source.url) { $('save').disabled = false; return say('sourceMsg', 'Search source removed.', 'good'); }
+      say('sourceMsg', 'Checking the source…');
+      poll(r.body.check);
+    });
+  });
+
+  function poll(id) {
+    api('GET', '/check/' + id).then(function (r) {
+      var s = r.body.state;
+      if (r.status === 200 && s === 'pending') return setTimeout(function () { poll(id); }, 400);
+      $('save').disabled = false;
+      if (r.status === 200 && s === 'done') {
+        return say('sourceMsg', r.body.caps.movieImdb ? 'Connected. It searches by IMDb id.' : 'Connected. It searches by title.', 'good');
+      }
+      say('sourceMsg', 'Could not reach the source: ' + (r.body.message || problem(r)), 'bad');
+    });
+  }
+
+  if (session) load(); else showPair('');
+})();
+</script>
+</body>
+</html>
