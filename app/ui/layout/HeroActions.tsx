@@ -8,6 +8,7 @@ import playIcon from "../icons/play.svg";
 import plusIcon from "../icons/plus.svg";
 import checkIcon from "../icons/check.svg";
 import chevronIcon from "../icons/chevron.svg";
+import trailerIcon from "../icons/trailer.svg";
 import { Icon } from "../kit/Icon";
 import { rounded } from "../kit/shape";
 import { colors, focusRing } from "../theme";
@@ -31,6 +32,11 @@ export function ListButton(props: { inList: () => boolean; addKey: string; focus
       onPress={props.onPress}
     />
   );
+}
+
+/** "Trailer": opens the title's trailer outside the app. */
+export function TrailerButton(props: { focused: () => boolean; onPress: () => void }) {
+  return <Button kind="secondary" icon={() => trailerIcon} label={() => t("title.trailer")} focused={props.focused} onPress={props.onPress} />;
 }
 
 const releaseButtonStyle = (focused: boolean): ViewStyle => ({

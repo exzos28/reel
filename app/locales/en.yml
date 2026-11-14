@@ -40,6 +40,7 @@ title:
   my_list: My list
   add_to_list: Add to list
   in_list: In my list
+  trailer: Trailer
 
 card:
   meta: "%{rating} · %{year} · %{kind}"

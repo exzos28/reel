@@ -1,12 +1,13 @@
-// A film or a show. The hero with Play, Add to list and the release Play
-// uses (OK opens the releases in a panel on the right); then for a show the
+// A film or a show. The hero with Play, Add to list, Trailer (when there is
+// one) and the release Play uses (OK opens the releases in a panel on the
+// right); then for a show the
 // season tabs and the episodes; then About (the whole overview, who made
 // it), the cast, the details and More like this. Remote: the focus starts on
 // Play; Up from the actions reaches the back button; on the season tabs Left
 // and Right switch the season; OK on a release makes it the one Play uses,
 // on an episode plays it; Down past the list walks the cast row, then More
 // like this, where OK opens the title. Back goes one level up.
-import { computed, effect, signal, View } from "nsh";
+import { computed, effect, openUrl, signal, View } from "nsh";
 import { t } from "nsh/i18n";
 import {
   chooseRelease, episodeCode, episodeReleases, episodes, releaseLine, releasesText, title as titleOf, toggleList,
@@ -28,7 +29,7 @@ import { action, castAt, focusTitle, item, releaseAt, season, similarAt, zone, t
 import { ReleasePanel } from "./ReleasePanel";
 import { SeriesEpisodes } from "./SeriesEpisodes";
 import { SimilarShelf } from "./SimilarShelf";
-import { TitleHero } from "./TitleHero";
+import { heroActions, TitleHero, type HeroAction } from "./TitleHero";
 
 export function TitleScreen(props: { id: string }) {
   const data = computed(() => titleOf(props.id) as Title);
@@ -65,7 +66,7 @@ export function TitleScreen(props: { id: string }) {
     if (e) enterList(Math.max(0, eps().findIndex((x) => x.id === e.id)));
     else {
       zone.set("actions");
-      action.set(2);
+      action.set(heroRow().indexOf("release"));
     }
   };
   /** OK on a release row: choose it and close (an episode's: and play it); on Show more: show the rest. */
@@ -109,9 +110,21 @@ export function TitleScreen(props: { id: string }) {
       if (s && s !== season()) season.set(s);
     }
   });
-  const actions = [() => play({ ...data().play, title: data() }), () => toggleList(props.id), () => openPanel()];
-  /** The release button is there once the core knows the release Play uses. */
-  const actionCount = () => (data().release ? 3 : 2);
+  /** Opens the trailer's web page outside the app. */
+  // TODO: a TV has no browser to open a YouTube page in (Tizen: hand it to the
+  // YouTube app through the shell, or play the trailer in the app).
+  const openTrailer = () => {
+    const url = data().trailer;
+    if (url) openUrl(url).catch((e) => console.warn(`reel: the trailer did not open: ${e}`));
+  };
+  const run: Record<HeroAction, () => void> = {
+    play: () => play({ ...data().play, title: data() }),
+    list: () => toggleList(props.id),
+    trailer: openTrailer,
+    release: () => openPanel(),
+  };
+  const heroRow = () => heroActions(data());
+  const actionCount = () => heroRow().length;
   /** Where the focus lands in a season's episodes: where the viewer is, else the first. */
   const firstItem = () => {
     const r = data().resume;
@@ -160,7 +173,10 @@ export function TitleScreen(props: { id: string }) {
         // On a Mac Back is in the title bar, out of the remote's reach (Esc goes back).
         up: () => !backInTitleBar && zone.set("back"),
         down: () => (isShow() ? zone.set("tabs") : below(null)),
-        enter: () => actions[action()](),
+        enter: () => {
+          const a = heroRow()[action()];
+          if (a) run[a]();
+        },
       },
       releases: {
         up: () => releaseAt.set(Math.max(releaseAt() - 1, 0)),
@@ -208,9 +224,10 @@ export function TitleScreen(props: { id: string }) {
         <TitleHero
           data={data}
           focusedAt={() => (zone() === "actions" ? action() : null)}
-          onPlay={actions[0]}
-          onToggle={actions[1]}
-          onReleases={() => openPanel()}
+          onPlay={run.play}
+          onToggle={run.list}
+          onTrailer={run.trailer}
+          onReleases={run.release}
         />
       </View>
       <If when={isShow()}>

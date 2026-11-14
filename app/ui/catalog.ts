@@ -139,6 +139,8 @@ export interface Title extends Summary {
   studios: string[];
   /** A series' status, a key under `status.*`. */
   status: string | null;
+  /** A trailer's web page (a YouTube watch URL), or null. */
+  trailer: string | null;
   /** More like this. */
   similar: Summary[];
 }

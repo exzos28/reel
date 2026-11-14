@@ -86,6 +86,7 @@ const BELOW = {
   countries: ["United Kingdom", "United States"],
   studios: ["Legendary Pictures", "Syncopy"],
   status: null,
+  trailer: null,
 };
 
 /** Inception's screen: three releases from the user's source, fastest first. */
@@ -116,6 +117,7 @@ export const AOT_TITLE = {
   countries: ["Japan"],
   studios: ["MBS"],
   status: "ended",
+  trailer: null,
   certification: "TV-MA",
   ratings: [
     { source: "tmdb", value: "8.7", votes: "7.1K" },

@@ -75,6 +75,42 @@ test("the release button opens the releases in a panel; OK picks one and closes 
   expect(app.texts()).not.toContain("3 found, the best of each quality first");
 });
 
+const TRAILER = "https://www.youtube.com/watch?v=YoHD9XEInc0";
+const withTrailer = { ...NATIVE, "Catalog.title": JSON.stringify({ ...JSON.parse(NATIVE["Catalog.title"] as string), trailer: TRAILER }) };
+
+test("Trailer shows only when the title has one", async () => {
+  expect((await inception()).texts()).not.toContain("Trailer");
+  const app = await inception(withTrailer);
+  const texts = app.texts();
+  expect(texts.indexOf("Add to list")).toBeLessThan(texts.indexOf("Trailer"));
+  expect(texts.indexOf("Trailer")).toBeLessThan(texts.indexOf("1080p BluRay · 8 GB · 412 people sharing"));
+});
+
+test("the remote reaches Trailer between the list and the release button, which stays last and opens its panel", async () => {
+  const app = await inception(withTrailer);
+  await app.keyboard.press("right");
+  await app.keyboard.press("right"); // Trailer
+  await app.keyboard.press("enter");
+  expect(app.openedUrls()).toEqual([TRAILER]);
+  expect(app.texts()).not.toContain("Releases");
+  await app.keyboard.press("right"); // the release button
+  await app.keyboard.press("right"); // stays on it: it is the last
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("3 found, the best of each quality first");
+  await app.keyboard.press("escape"); // closes the panel, back on the release button
+  expect(app.texts()).not.toContain("3 found, the best of each quality first");
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("3 found, the best of each quality first");
+  expect(app.openedUrls()).toEqual([TRAILER]);
+});
+
+test("a click on Trailer opens it", async () => {
+  const app = await open("./App.tsx", { platform: "macos", width: 1440, height: 900, modules: { "app/native": withTrailer } });
+  await app.press("label:Inception >> nth=0");
+  await app.press("text:Trailer");
+  expect(app.openedUrls()).toEqual([TRAILER]);
+});
+
 test("the remote goes from the actions to the cast, then More like this, which opens a title; Back finds the focus", async () => {
   const chosen: number[] = [];
   const app = await inception({
