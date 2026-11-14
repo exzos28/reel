@@ -4,11 +4,12 @@
 // the pills (left/right along them), Down again to the grid, which moves by
 // rows and columns (Up from its first row: the pills). OK on a pill opens its
 // panel on the right (Up/Down, OK picks, Back closes); OK on a card opens the
-// title. Back closes the panel, then goes Home. A new grid puts the grid's focus on its first card.
+// title. Back closes the panel, then takes the focus to the nav, then Home. A new grid puts the grid's focus on its first card.
 import { computed, effect, Text, untracked, View } from "nsh";
 import { t } from "nsh/i18n";
 import { browse, chooseFilter, type Summary } from "../../catalog";
 import { clamp } from "../../focus/memory";
+import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
 import { metaText } from "../../kit/text";
 import { cellWidth, Grid, gridColumns, gridRows } from "../../layout/Grid";
@@ -82,6 +83,14 @@ export function BrowseScreen(props: { page: Page }) {
   const page = scroller({ anchor: (viewport) => viewport / 3, memory: `browse:${props.page}` });
 
   showNav(() => (zone() === "nav" ? nav() : null));
+  useRootBack({
+    ctl: page,
+    onNav: () => zone() === "nav",
+    toNav: () => {
+      zone.set("nav");
+      nav.set(NAV.findIndex((n) => n.id === props.page));
+    },
+  });
   useZones(
     zone,
     {

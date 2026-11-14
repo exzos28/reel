@@ -57,11 +57,12 @@ export function FloatingBack(props: { focused: () => boolean; onPress: () => voi
   );
 }
 
-/** The back button, then the page's title, aligned to the top. */
+/** The back button, then the page's title, aligned to the top. A TV has no
+ * Back on screen (the remote's key), a Mac has it in the title bar. */
 export function PageHeader(props: { title: () => string; focused: () => boolean; onBack: () => void }) {
   return (
     <View style={row(u(24), "flex-start")}>
-      <If when={!backInTitleBar}>
+      <If when={!backInTitleBar && chrome !== "tv"}>
         <BackButton focused={props.focused} onPress={props.onBack} />
       </If>
       <Text style={pageTitle()}>{props.title()}</Text>

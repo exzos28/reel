@@ -73,21 +73,30 @@ export function back() {
 
 /** What Back closes before it leaves the page, newest first: a closer returns
  * true when it closed something (a keyboard, a panel, a card, the player's
- * controls) or handled Back itself (the player leaving, a root's own rule). */
+ * controls) or handled Back itself (the player leaving). */
 type Closer = () => boolean;
 const closers: Closer[] = [];
+/** The shown page's own rule for Back once nothing is open on it (a root's:
+ * design/navigation.md, "TV"); true when it took Back. */
+const pageRules: Closer[] = [];
+
+const keep = (list: Closer[], fn: Closer) => {
+  list.push(fn);
+  cleanup(() => {
+    const at = list.lastIndexOf(fn);
+    if (at >= 0) list.splice(at, 1);
+  });
+};
 
 /** Lets `fn` take Back while the component that calls it is shown. */
-export function onBack(fn: Closer) {
-  closers.push(fn);
-  cleanup(() => {
-    const at = closers.lastIndexOf(fn);
-    if (at >= 0) closers.splice(at, 1);
-  });
-}
+export const onBack = (fn: Closer) => keep(closers, fn);
+/** The page's rule for Back after its closers, while the page is shown. */
+export const onPageBack = (fn: Closer) => keep(pageRules, fn);
 
-/** Back, from any key or button: the newest closer that takes it, else one level up. */
+/** Back, from any key or button: the newest closer that takes it, then the
+ * page's rule, else one level up. */
 export function handleBack() {
   for (let i = closers.length - 1; i >= 0; i--) if (closers[i]()) return;
+  for (let i = pageRules.length - 1; i >= 0; i--) if (pageRules[i]()) return;
   back();
 }

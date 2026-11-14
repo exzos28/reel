@@ -73,7 +73,7 @@ test("connected, the stage counts the film's start in until the video loads", as
   const starting = await waiting(JSON.parse(status));
   expect(starting.texts()).toContain("Starting");
   noControls(starting);
-  await starting.press("label:Back");
+  await starting.keyboard.press("escape"); // the remote's Back
   expect(starting.texts()).toContain("Continue watching");
 });
 
@@ -187,8 +187,6 @@ test("the buttons work with the mouse", async () => {
   expect(app.texts()).toContain("0:10");
   await app.press("label:Pause");
   expect(app.shows("label:Play")).toBe(true);
-  await app.press("label:Back");
-  expect(app.texts()).toContain("Continue watching");
 });
 
 test("escape hides the overlay first, then leaves the player", async () => {

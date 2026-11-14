@@ -77,6 +77,15 @@ function frameLink(w: FrameLike): AvplayLink {
   };
 }
 
+/** Asks the TV shell to leave the app (hosts/tizen/ui/shell.js); false where
+ * the page has no shell above it. */
+export function postExitToShell(): boolean {
+  const w = frame();
+  if (!w) return false;
+  w.top!.postMessage({ reel: "exit" }, "*");
+  return true;
+}
+
 const hostLink: AvplayLink = {
   send: (op) => host.post("avplay", op),
   listen: (onEvent) => host.on<AvplayEvent>("avplay-event", onEvent),

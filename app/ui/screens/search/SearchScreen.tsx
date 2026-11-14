@@ -1,29 +1,33 @@
-// Search: the query field at the top, then the results as rows of 16:9
-// cards (Movies, Shows, Anime), or the recent searches while nothing is
-// typed. The core searches once the query rests and answers through the
-// catalog's revision. Remote: the screen opens on the field with its
-// keyboard up; OK on the field brings the keyboard back (a TV's on-screen
-// one), Down goes into the recent searches or the results, Up comes back,
-// OK on a card opens its title, Back closes the keyboard, then leaves.
+// Search, a nav destination: the nav, the page's title and the query field,
+// then the results as rows of 16:9 cards (Movies, Shows, Anime), or the
+// recent searches while nothing is typed. The core searches once the query
+// rests and answers through the catalog's revision. Remote: the screen opens
+// on the field (with its keyboard up where one types at once); OK on the
+// field brings the keyboard (a TV's on-screen one), Up goes to the nav, Down
+// into the recent searches or the results; OK on a card opens its title.
+// Back closes the keyboard, then takes the focus to the nav, then Home.
 import { computed, keymap, signal, Text, View, type InputRef, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { rememberSearch, search, type SearchAnswer } from "../../catalog";
 import { byKeys } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
-import { metaText } from "../../kit/text";
+import { metaText, pageTitle } from "../../kit/text";
 import { row as inRow } from "../../kit/shape";
-import { BackButton } from "../../layout/BackButton";
+import { useRootBack } from "../../focus/rootBack";
+import { NAV_BOTTOM } from "../../layout/NavBar";
+import { NAV } from "../../layout/navItems";
+import { showNav } from "../../layout/navState";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
-import { backInTitleBar } from "../../layout/TopBar";
-import { handleBack, onBack, openTitle } from "../../nav";
+import { go, handleBack, onBack, openTitle } from "../../nav";
 import { density, safe, u } from "../../theme";
 import { HomeShelf } from "../home/HomeShelf";
-import { cols, query, recentAt, row, zone } from "./focus";
+import { cols, navAt, query, recentAt, row, zone } from "./focus";
 import { RecentSearches } from "./RecentSearches";
 import { SearchField } from "./SearchField";
 
-const topStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: safe().y, gap: u(28) });
+/** The title where a destination's page starts (170 on a TV), the field under it. */
+const topStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(NAV_BOTTOM + 58), gap: u(28) });
 
 /** The line under the field: what is going on, or nothing. */
 function statusText(a: SearchAnswer): string {
@@ -52,9 +56,9 @@ export function SearchScreen() {
   /** The field has the input's focus: a keyboard is up (a TV's on-screen one) or typing goes to it. */
   const typing = signal(false);
   const type = () => input?.focus();
-  const toField = (typing: boolean) => {
+  const toField = (keyboard: boolean) => {
     zone.set("field");
-    if (typing) type();
+    if (keyboard) type();
   };
   const leaveField = (to: "recent" | "results") => {
     input?.blur();
@@ -93,8 +97,20 @@ export function SearchScreen() {
     below();
   };
 
+  const toNav = () => {
+    input?.blur();
+    typing.set(false);
+    navAt.set(NAV.findIndex((n) => n.id === "search"));
+    zone.set("nav");
+  };
   const keys = {
-    field: { down: below, enter: type },
+    nav: {
+      left: () => navAt.set(clamp(navAt() - 1, NAV.length - 1)),
+      right: () => navAt.set(clamp(navAt() + 1, NAV.length - 1)),
+      down: () => toField(typesAtOnce),
+      enter: () => go(NAV[navAt()].id),
+    },
+    field: { up: toNav, down: below, enter: type },
     recent: {
       left: () => recentAt.set(clamp(recentAt() - 1, recent().length - 1)),
       right: () => recentAt.set(clamp(recentAt() + 1, recent().length - 1)),
@@ -121,14 +137,14 @@ export function SearchScreen() {
 
   /** The page puts the focused row in its upper third. */
   const page = scroller({ anchor: (viewport) => viewport / 3, memory: "search" });
+  showNav(() => (zone() === "nav" ? navAt() : null));
+  useRootBack({ ctl: page, onNav: () => zone() === "nav", toNav });
 
   return (
-    <Screen ctl={page}>
+    <Screen ctl={page} nav>
       <View ref={page.follow(() => zone() !== "results", "start")} style={topStyle()}>
+        <Text style={pageTitle()}>{t("nav.search")}</Text>
         <View style={inRow(u(24))}>
-          <If when={!backInTitleBar}>
-            <BackButton focused={() => false} onPress={handleBack} />
-          </If>
           <SearchField
             value={query}
             focused={() => zone() === "field"}

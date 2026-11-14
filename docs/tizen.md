@@ -111,6 +111,7 @@ How the pieces fit:
 - The UI (served from 127.0.0.1) is cross-origin to the shell, so it drives AVPlay with `window.top.postMessage({reel:"avplay", op:"open"|"play"|"pause"|"seek"|"track"|"stop", …})`.
 - The shell checks the sender's origin and replies to the sender with `{reel:"avplay-event", type:"loaded"|"time"|"buffering"|"seeked"|"ended"|"error"|"event", …}`.
 - The client lives in `app/ui/avplay.ts` (`hosts/tizen/bridge/avplay.ts` was its first sketch).
+- Leaving the app goes the same way: after "Exit reel?" the UI posts `{reel:"exit"}` and the shell calls `tizen.application.getCurrentApplication().exit()`.
 
 Integration in app/:
 - The core says what draws the video: `VideoEngine.kind()` answers `"avplay"` under the `tizen` profile, which the TV's core sets at start (`Profile::host_video`, app/src/sources/compat.rs).

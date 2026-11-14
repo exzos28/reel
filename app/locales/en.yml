@@ -9,6 +9,14 @@ nav:
   search: Search
   settings: Settings
   back: Back
+  # Desktop tooltip of Back and its accessibility label: the page it goes to.
+  back_to: "Back to %{page}"
+
+exit:
+  title: Exit reel?
+  about: Anything playing stops. What you watched is kept.
+  stay: Stay
+  exit: Exit
 
 shelf:
   continue: Continue watching
@@ -263,6 +271,7 @@ compat:
 
 player:
   back: Back
+  close: Close
   fullscreen: Full screen
   exit_fullscreen: Exit full screen
   stage:
@@ -308,7 +317,6 @@ player:
 
 settings:
   title: Settings
-  hint: "OK chooses, Back closes."
   selected: Selected
   language:
     title: Language

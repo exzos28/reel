@@ -13,6 +13,7 @@ import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
 import { handleBack, isRoot, route, useTabStacks } from "./ui/nav";
 import { isTouch } from "./ui/layout/chrome";
+import { ExitDialog } from "./ui/layout/ExitDialog";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
 import { loadSettings } from "./ui/preferences";
@@ -62,6 +63,7 @@ function App() {
           {(id) => <TitleScreen id={id()} />}
         </Each>
       </If>
+      <ExitDialog />
     </View>
   );
 }

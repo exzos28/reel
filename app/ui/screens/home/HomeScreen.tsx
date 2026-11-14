@@ -3,6 +3,7 @@
 // buttons, then to the nav. OK on a card opens its title; on Play, plays.
 import { cleanup, computed, effect, signal, View } from "nsh";
 import { home, toggleList, type Summary } from "../../catalog";
+import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
 import { NAV } from "../../layout/navItems";
 import { Screen } from "../../layout/Screen";
@@ -44,6 +45,14 @@ export function HomeScreen() {
   const page = scroller({ anchor: (viewport) => viewport / 3, memory: "home" });
 
   showNav(() => (zone() === "nav" ? navAt() : null));
+  useRootBack({
+    ctl: page,
+    onNav: () => zone() === "nav",
+    toNav: () => {
+      zone.set("nav");
+      navAt.set(0);
+    },
+  });
   useZones(zone, {
     nav: {
       left: () => navAt.set(Math.max(navAt() - 1, 0)),

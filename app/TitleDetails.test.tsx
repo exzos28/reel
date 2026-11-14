@@ -60,8 +60,7 @@ test("the release button opens the releases in a panel; OK picks one and closes 
     },
   });
   expect(app.texts()).not.toContain("Releases");
-  await app.keyboard.press("right");
-  await app.keyboard.press("right"); // the release button
+  await app.keyboard.press("down"); // the release button, its own row under the actions
   await app.keyboard.press("enter");
   for (const s of ["Releases", "3 found, the best of each quality first", "Starts fast", "Needs 58 Mbit/s internet"])
     expect(app.texts()).toContain(s);
@@ -82,25 +81,44 @@ test("Trailer shows only when the title has one", async () => {
   expect((await inception()).texts()).not.toContain("Trailer");
   const app = await inception(withTrailer);
   const texts = app.texts();
-  expect(texts.indexOf("Add to list")).toBeLessThan(texts.indexOf("Trailer"));
   expect(texts.indexOf("Trailer")).toBeLessThan(texts.indexOf("1080p BluRay · 8 GB · 412 people sharing"));
+  // Add to list is the page's header action, not one of the hero's.
+  expect(texts).toContain("Add to list");
 });
 
-test("the remote reaches Trailer between the list and the release button, which stays last and opens its panel", async () => {
+test("Left and Right stay in the actions row; the release button is the row under it, Up returns to the action left", async () => {
   const app = await inception(withTrailer);
-  await app.keyboard.press("right");
   await app.keyboard.press("right"); // Trailer
+  await app.keyboard.press("right"); // stays on it: the row ends there, the release button is not in it
   await app.keyboard.press("enter");
   expect(app.openedUrls()).toEqual([TRAILER]);
   expect(app.texts()).not.toContain("Releases");
-  await app.keyboard.press("right"); // the release button
-  await app.keyboard.press("right"); // stays on it: it is the last
+  await app.keyboard.press("down"); // the release row
+  await app.keyboard.press("right"); // nothing beside it
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("3 found, the best of each quality first");
   await app.keyboard.press("escape"); // closes the panel, back on the release button
   expect(app.texts()).not.toContain("3 found, the best of each quality first");
+  await app.keyboard.press("up"); // back on Trailer, the action the focus came from
   await app.keyboard.press("enter");
-  expect(app.texts()).toContain("3 found, the best of each quality first");
+  expect(app.openedUrls()).toEqual([TRAILER, TRAILER]);
+  await app.keyboard.press("down");
+  await app.keyboard.press("down"); // past the release row: the next section, the cast
+  await app.keyboard.press("enter"); // nothing opens on a person
+  expect(app.texts()).not.toContain("3 found, the best of each quality first");
+  expect(app.openedUrls()).toEqual([TRAILER, TRAILER]);
+});
+
+test("Up from the actions reaches Add to list in the header; OK toggles it; Down returns to the action left", async () => {
+  const toggled: string[] = [];
+  const app = await inception({ ...withTrailer, "Catalog.toggleList": (id: string) => void toggled.push(id) });
+  await app.keyboard.press("right"); // Trailer
+  await app.keyboard.press("up"); // Add to list
+  await app.keyboard.press("left"); // stays: nothing beside it
+  await app.keyboard.press("enter");
+  expect(toggled.length).toBe(1);
+  await app.keyboard.press("down"); // Trailer again
+  await app.keyboard.press("enter");
   expect(app.openedUrls()).toEqual([TRAILER]);
 });
 
@@ -120,6 +138,7 @@ test("the remote goes from the actions to the cast, then More like this, which o
       return true;
     },
   });
+  await app.keyboard.press("down"); // the release button
   await app.keyboard.press("down"); // the cast
   await app.keyboard.press("right");
   await app.keyboard.press("enter"); // nothing opens on a person
@@ -129,6 +148,7 @@ test("the remote goes from the actions to the cast, then More like this, which o
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("More like this"); // back on Inception, not Home
   await app.keyboard.press("up"); // the cast
+  await app.keyboard.press("up"); // the release button
   await app.keyboard.press("up"); // the actions, on Play
   expect(chosen).toEqual([]);
   await app.keyboard.press("escape");
@@ -152,4 +172,22 @@ test("a person without a photo shows their initials; a click on a similar title 
   await app.press("label:Dune >> nth=0");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("More like this");
+});
+
+const titleWith = (over: object) => ({ ...NATIVE, "Catalog.title": JSON.stringify({ ...JSON.parse(NATIVE["Catalog.title"] as string), ...over }) });
+
+test("while the release is not known, its row is a skeleton the remote passes over", async () => {
+  const app = await app_(titleWith({ release: null, releases: [], releasesState: "searching" }));
+  await app.keyboard.press("enter"); // Inception
+  expect(app.shows("release-row-skeleton")).toBe(true);
+  await app.keyboard.press("down"); // past the skeleton: the cast
+  await app.keyboard.press("enter"); // nothing opens on a person
+  expect(app.texts()).not.toContain("Releases");
+});
+
+test("with no release at all, the row says why in the button's place", async () => {
+  const app = await app_(titleWith({ release: null, playable: false, releases: [], releasesState: "no_source" }));
+  await app.keyboard.press("enter");
+  expect(app.shows("release-row-skeleton")).toBe(false);
+  expect(app.texts()).toContain("Add a search source in Settings to find releases.");
 });

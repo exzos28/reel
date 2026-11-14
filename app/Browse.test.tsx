@@ -50,7 +50,9 @@ test("remote: Down reaches the pills, OK opens Genres, OK toggles and it stays o
   await app.keyboard.press("escape");
   expect(app.shows("id:filter-panel")).toBe(false);
   expect(app.texts()).toContain("All movies");
-  // Back again leaves the page.
+  // Back again takes the focus to the nav, then leaves the page.
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("All movies");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });

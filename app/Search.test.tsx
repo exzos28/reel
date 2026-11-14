@@ -45,14 +45,18 @@ test("typing shows the results in rows; Down, OK opens a title; Back comes back,
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Arrival");
   expect(app.texts()).toContain("Movies");
+  await app.keyboard.press("escape"); // the focus to Search in the nav
+  expect(app.texts()).toContain("Arrival");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });
 
-test("Up from the first row goes back to the field; Back from the field leaves", async () => {
+test("Up from the first row goes back to the field; Back from the field goes to the nav, then Home", async () => {
   const app = await searchScreen(SEARCH_DUNE);
   await app.keyboard.press("down");
   await app.keyboard.press("up");
+  await app.keyboard.press("escape");
+  expect(app.shows("search-field")).toBe(true);
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });
@@ -62,7 +66,8 @@ test("OK on the field brings the keyboard up; Back closes it first, then leaves"
   await app.keyboard.press("down");
   await app.keyboard.press("up");
   await app.keyboard.press("enter"); // the TV's keyboard
-  await app.keyboard.press("escape");
+  await app.keyboard.press("escape"); // closes it
+  await app.keyboard.press("escape"); // the nav
   expect(app.shows("search-field")).toBe(true);
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");

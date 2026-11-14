@@ -19,6 +19,7 @@ import { BACK_SIZE, BackButton, Icon } from "./components";
 import { streamDetails } from "./preferences";
 import { cachedAhead, duration, firstFrame, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
 import { alpha, colors, focusRing, font, radius, safe, type, u } from "./theme";
+import { chrome } from "./layout/chrome";
 import { onBack } from "./nav";
 import { SubtitleOverlay } from "./SubtitleOverlay";
 import { playerTracks, type TrackOption } from "./tracks";
@@ -402,7 +403,8 @@ export function Player() {
           />
         )}
       </If>
-      <If when={staged()}>
+      {/* A TV has no Back on screen: the remote's Back key is it. */}
+      <If when={staged() && chrome !== "tv"}>
         <View style={{ position: "absolute", top: safe().y, left: safe().x }}>
           <BackButton
             focused={() => false}
@@ -425,14 +427,16 @@ export function Player() {
         />
         {/* Top: back, title, the episode or release, what the engine is doing. */}
         <View style={{ position: "absolute", top: safe().y, left: safe().x, right: safe().x, flexDirection: "row", alignItems: "flex-start", gap: u(24) }}>
-          <BackButton
-            focused={() => false}
-            onPress={stop}
-            label={() => t("player.back")}
-            background={() => alpha(colors.card(), 0.8)}
-          />
-          {/* The title's first line centred on the button; more lines go below. */}
-          <View style={{ gap: u(4), flexShrink: 1, marginTop: (u(BACK_SIZE) - u(34) * 1.25) / 2 }}>
+          <If when={chrome !== "tv"}>
+            <BackButton
+              focused={() => false}
+              onPress={stop}
+              label={() => t("player.back")}
+              background={() => alpha(colors.card(), 0.8)}
+            />
+          </If>
+          {/* The title's first line centred on the button (a TV's at the safe area's corner); more lines go below. */}
+          <View style={{ gap: u(4), flexShrink: 1, marginTop: chrome === "tv" ? 0 : (u(BACK_SIZE) - u(34) * 1.25) / 2 }}>
             <Text style={{ fontFamily: font, fontSize: u(34), fontWeight: 600, color: colors.snow() }}>
               {what() ? titleText(what()!.title) : ""}
             </Text>

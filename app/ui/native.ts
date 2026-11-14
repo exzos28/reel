@@ -6,9 +6,11 @@
 // `app/native` only exports what the wasm crate registered, so it is imported as a namespace:
 // a named import of a module it lacks would not resolve there.
 import { platform } from "nsh";
+import { BackHandler } from "nsh/mobile";
 import process from "process";
 import * as local from "app/native";
 import * as http from "./native-http";
+import { postExitToShell } from "./avplay";
 
 /** The web build: the modules come from the core over HTTP. */
 export const remote = platform.os === "web";
@@ -30,4 +32,12 @@ export const Fmt = local.Fmt;
  * page's `process.dataDir` is not a path on the core's machine), else the app's. */
 export function dataDir(): string {
   return remote ? http.coreDataDir() : (process.dataDir ?? "");
+}
+
+/** Leaves reel ("Exit reel?" on a TV): the Tizen shell closes the app; Android
+ * (TV) finishes the activity. Elsewhere the system's own controls close it. */
+export function exitApp() {
+  if (postExitToShell()) return;
+  if (platform.os === "android") return BackHandler.exitApp();
+  throw new Error(`reel does not leave by itself on ${platform.os}`);
 }

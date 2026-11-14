@@ -136,7 +136,7 @@ test("AVPlay's error shows on the stage, and Back stops AVPlay", async () => {
   await event({ type: "error", message: "PLAYER_ERROR_NOT_SUPPORTED_FILE" });
   expect(app.shows("stage")).toBe(true);
   expect(app.texts()).toContain("Could not play: PLAYER_ERROR_NOT_SUPPORTED_FILE");
-  await app.press("label:Back");
+  await app.keyboard.press("escape"); // the remote's Back
   expect(app.texts()).toContain("Continue watching");
   expect(ops().at(-1)).toEqual({ op: "stop" });
 });
