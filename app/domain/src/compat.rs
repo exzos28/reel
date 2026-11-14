@@ -7,7 +7,7 @@ use std::sync::Mutex;
 
 use serde::Serialize;
 
-use super::release::ReleaseInfo;
+use crate::release::ReleaseInfo;
 
 /// The player a platform plays through.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -120,7 +120,7 @@ pub fn file_ok(name: &str, profile: Profile) -> Result<(), Reason> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sources::release::parse;
+    use crate::release::parse;
 
     #[test]
     fn tizen_refuses_what_it_cannot_decode() {

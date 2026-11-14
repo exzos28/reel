@@ -1,0 +1,16 @@
+//! reel's domain: the types and decisions every layer shares, with no I/O. See
+//! app/ARCHITECTURE.md.
+//!
+//! `compat` keeps the device's player profile process-wide (the host sets it once at start);
+//! everything else here is plain data and functions on it.
+
+pub mod compat;
+pub mod discover;
+pub mod episode;
+pub mod keys;
+pub mod play;
+pub mod redact;
+pub mod release;
+pub mod search;
+pub mod subtitles;
+pub mod timeline;

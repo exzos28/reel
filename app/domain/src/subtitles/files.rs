@@ -5,7 +5,7 @@
 use serde::Serialize;
 
 use super::parse::Format;
-use crate::sources::{episode, release};
+use crate::{episode, release};
 
 /// Bigger than this is not a subtitle file (a few MB holds a long film's ASS).
 pub const MAX_BYTES: u64 = 8 * 1024 * 1024;

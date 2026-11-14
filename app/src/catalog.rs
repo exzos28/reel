@@ -34,35 +34,10 @@ mod filters;
 mod paging;
 mod search;
 
-// ---- Ids.
+// ---- Ids (`reel_domain::keys`).
 
-/// What plays: a title, or an episode of one.
-pub fn episode_key(show: &str, season: u32, episode: u32) -> String {
-    format!("{show}:s{season}e{episode}")
-}
-
-/// `tmdb:tv:1399:s1e2` → ("tmdb:tv:1399", Some((1, 2))); a title id → (id, None).
-pub fn parse_key(key: &str) -> (&str, Option<(u32, u32)>) {
-    if let Some((show, ep)) = key.rsplit_once(':')
-        && let Some(rest) = ep.strip_prefix('s')
-        && let Some((s, e)) = rest.split_once('e')
-        && let (Ok(s), Ok(e)) = (s.parse(), e.parse())
-    {
-        return (show, Some((s, e)));
-    }
-    (key, None)
-}
-
-/// A show's season, as what its releases are searched and chosen for.
-pub fn season_key(show: &str, season: u32) -> String {
-    format!("{show}:season{season}")
-}
-
-/// `tmdb:tv:1399:season2` → ("tmdb:tv:1399", 2).
-fn parse_season_key(key: &str) -> Option<(&str, u32)> {
-    let (show, tail) = key.rsplit_once(':')?;
-    Some((show, tail.strip_prefix("season")?.parse().ok()?))
-}
+pub use reel_domain::keys::{episode_key, parse_key, season_key};
+use reel_domain::keys::parse_season_key;
 
 // ---- Meta answers, kept in memory for the sync calls.
 
@@ -827,17 +802,7 @@ fn releases_state(key: &str) -> &'static str {
     }
 }
 
-/// What the engine opens for `key`.
-pub enum PlaySource {
-    /// No source set, no release found, or no such title.
-    None,
-    /// Still finding out (the title or the search): ask again.
-    Searching,
-    /// A magnet or .torrent URL, and the episode to pick in a pack.
-    Ready(String, Option<(u16, u16)>),
-    /// The episode is not in the release chosen for its season: the viewer picks one for it.
-    NotInRelease,
-}
+pub use reel_domain::play::PlaySource;
 
 /// Whether a release holds an episode: from its files once they are known,
 /// else from its name ("S01E01-08", "S01" holds every one: unknown).

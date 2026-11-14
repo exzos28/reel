@@ -28,7 +28,9 @@
 pub mod anilist;
 pub mod animemap;
 pub mod cache;
-pub mod discover;
+pub use reel_domain::discover;
+#[cfg(test)]
+mod discover_tests;
 pub mod http;
 pub mod id;
 pub mod jikan;

@@ -1,6 +1,6 @@
 //! Which file of a multi-file torrent is a given episode.
 
-use super::release;
+use crate::release;
 
 const VIDEO: [&str; 8] = ["mp4", "m4v", "mov", "mkv", "webm", "avi", "ts", "m2ts"];
 

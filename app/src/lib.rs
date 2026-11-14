@@ -27,8 +27,6 @@ mod settings;
 mod sources;
 #[cfg(not(target_arch = "wasm32"))]
 mod subtitles;
-#[cfg(not(target_arch = "wasm32"))]
-mod timeline;
 #[cfg(target_os = "macos")]
 mod mpv;
 

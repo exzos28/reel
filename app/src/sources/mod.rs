@@ -5,10 +5,10 @@
 //! A search runs in the background: `start_search` gives an id, `result`
 //! says `pending`, `done` (ranked releases) or `failed`.
 
-pub mod compat;
-pub mod episode;
-pub mod release;
 pub mod torznab;
+
+pub use reel_domain::{compat, episode, release};
+pub use reel_domain::search::{Request, Source};
 
 use std::{
     collections::{HashMap, HashSet},
@@ -19,37 +19,20 @@ use std::{
     time::Duration,
 };
 
-use serde::Deserialize;
 use serde_json::{Value, json};
 use tokio::runtime::Runtime;
 
 use torznab::{Caps, Item, Query};
 
-/// Where to search: the endpoint (…/api) and its key, if it has one.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Source {
-    pub url: String,
-    pub key: Option<String>,
+/// The Torznab queries of a search.
+trait Queries {
+    fn query(&self) -> Query;
+    fn query_for(&self, title: &str, imdb: Option<String>) -> Query;
+    fn names(&self) -> Vec<String>;
+    fn alt_queries(&self) -> Vec<Query>;
 }
 
-/// A search as the UI asks for it (JSON).
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Request {
-    pub imdb: Option<String>,
-    pub title: String,
-    /// Other names to try by text when `title` finds nothing to play: the
-    /// original title, the title in another language (trackers name releases
-    /// "Локализованное / Original").
-    #[serde(default)]
-    pub alt_titles: Vec<String>,
-    pub year: Option<u16>,
-    /// Set (with `episode`) for an episode of a show.
-    pub season: Option<u16>,
-    pub episode: Option<u16>,
-}
-
-impl Request {
+impl Queries for Request {
     fn query(&self) -> Query {
         self.query_for(&self.title, self.imdb.clone())
     }
@@ -154,7 +137,7 @@ pub fn start_check(source: Source) -> u32 {
         CAPS.lock().unwrap().get_or_insert_with(HashMap::new).remove(&source.url);
         let state = match caps(&source).await {
             Ok(c) => State::Done(json!({ "caps": { "movieImdb": c.movie_imdb, "tvImdb": c.tv_imdb, "tvSeasonEp": c.tv_season_ep } })),
-            Err(e) => State::Failed(crate::engine::redact(&format!("{e:#}"))),
+            Err(e) => State::Failed(reel_domain::redact::redact(&format!("{e:#}"))),
         };
         set(job, state);
     });
@@ -168,7 +151,7 @@ pub fn start_search(source: Source, request: Request) -> u32 {
     runtime().spawn(async move {
         let state = match search(&source, &request).await {
             Ok((releases, hidden)) => State::Done(json!({ "releases": releases, "hidden": hidden })),
-            Err(e) => State::Failed(crate::engine::redact(&format!("{e:#}"))),
+            Err(e) => State::Failed(reel_domain::redact::redact(&format!("{e:#}"))),
         };
         set(job, state);
     });

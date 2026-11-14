@@ -12,7 +12,8 @@ use std::{
     },
 };
 
-use crate::{buffer, catalog, disk, progress, sources, timeline};
+use crate::{buffer, catalog, disk, progress, sources};
+use reel_domain::timeline;
 
 use anyhow::Context;
 use librqbit::{
@@ -585,21 +586,7 @@ async fn fetch_torrent(url: &str) -> anyhow::Result<Fetched> {
     anyhow::bail!("the source redirected too many times")
 }
 
-/// An error as the viewer may see it: no keys, no long links.
-pub fn redact(message: &str) -> String {
-    use std::sync::LazyLock;
-    static URL: LazyLock<regex::Regex> =
-        LazyLock::new(|| regex::Regex::new(r"(https?)://([^/\s?]+)[^\s]*").unwrap());
-    URL.replace_all(&redact_keys(message), "$1://$2/…").into_owned()
-}
-
-/// `text` with the values of key-like parameters cut out (`apikey=…`), links kept whole.
-pub fn redact_keys(text: &str) -> String {
-    use std::sync::LazyLock;
-    static KEY: LazyLock<regex::Regex> =
-        LazyLock::new(|| regex::Regex::new(r"(?i)\b((?:jackett_)?api_?key|passkey|pk|token)=[^&\s]+").unwrap());
-    KEY.replace_all(text, "$1=…").into_owned()
-}
+pub use reel_domain::redact::{redact, redact_keys};
 
 fn add_to(core: &Core, job: u32, url: &str) {
     if !TIMES.lock().unwrap().as_ref().is_some_and(|t| t.contains_key(&job)) {
@@ -937,15 +924,6 @@ mod tests {
     use std::time::{Duration, Instant};
 
     use super::{Layout, with_open_trackers};
-
-    #[test]
-    fn errors_hide_keys_and_links() {
-        let m = "GET http://127.0.0.1:9117/dl/rutracker/?jackett_apikey=z53secret&path=Q2Z&file=x returned 302 Found";
-        let r = super::redact(m);
-        assert!(!r.contains("z53secret") && !r.contains("path=Q2Z"), "{r}");
-        assert!(r.contains("http://127.0.0.1:9117/…"), "{r}");
-        assert_eq!(super::redact("announce?pk=abc&x=1"), "announce?pk=…&x=1");
-    }
 
     #[test]
     fn magnets_get_open_trackers_once() {

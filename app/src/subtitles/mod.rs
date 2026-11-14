@@ -9,9 +9,7 @@
 //!   and the files above, with what is in use and what the view should apply.
 //!   The subtitles chosen are remembered per title (`progress`).
 
-pub mod files;
-pub mod parse;
-pub mod tracks;
+pub use reel_domain::subtitles::{files, parse, tracks};
 
 use std::{
     collections::HashMap,
@@ -426,7 +424,7 @@ mod tests {
 
     #[test]
     fn cues_in_a_window_once_loaded() {
-        let srt = parse::parse(parse::Format::Srt, include_str!("fixtures/sample.srt"));
+        let srt = parse::parse(parse::Format::Srt, include_str!("../../domain/src/subtitles/fixtures/sample.srt"));
         JOBS.lock().unwrap().entry(777).or_default().loaded.insert(4, Loaded::Ready(srt));
         let now = cues(777, 4, 2.0, 2.0);
         assert_eq!(now["state"], "ready");
