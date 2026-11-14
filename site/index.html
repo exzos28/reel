@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>reel: films and series from torrents, playing in seconds</title>
+<meta name="description" content="reel is an open-source app with a built-in torrent engine. Pick a film or an episode and it starts playing while it streams. Releases come only from a search source you add yourself. Made for the TV first.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0F0F0F">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/Geist.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap top-row">
+    <a class="wordmark" href="#" aria-label="reel, back to the top">reel</a>
+    <nav aria-label="Sections">
+      <ul class="top-links">
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#platforms">Platforms</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+    </nav>
+    <!-- Placeholder: the repository is private for now; this URL works once it is public. -->
+    <a class="btn secondary small" href="https://github.com/exzos28/reel">GitHub</a>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- Hero -->
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap hero-grid">
+    <div class="hero-text">
+      <h1 id="hero-title">Pick a film. It plays in seconds.</h1>
+      <p class="lead">reel is an open-source app with a torrent engine built in. It streams the film while it fetches it, so you never wait for a download. Made for the TV and the remote, and for phones, tablets and computers too.</p>
+      <p class="note">reel comes with no content and no sources. You connect your own search source.</p>
+      <div class="actions">
+        <a class="btn primary" href="#platforms">Get reel</a>
+        <!-- Placeholder: the repository is private for now; this URL works once it is public. -->
+        <a class="btn secondary" href="https://github.com/exzos28/reel">Source code</a>
+      </div>
+    </div>
+
+    <figure class="tv" aria-label="Drawing of reel's home screen on a TV">
+      <div class="tv-screen" aria-hidden="true">
+        <div class="ui">
+          <div class="ui-backdrop"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
+          <div class="ui-logo">reel</div>
+          <div class="ui-nav">
+            <span class="ui-pills"><span class="sel">Home</span><span>Movies</span><span>Shows</span><span>Anime</span></span>
+            <span class="ui-round"><svg viewBox="0 0 24 24" class="i"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></span>
+          </div>
+          <div class="ui-info">
+            <div class="ui-title">Metropolis</div>
+            <div class="ui-meta"><span class="star">★</span> 8.3 <span class="ash">· 1927 · 2 h 33 min</span> <span class="ui-badge">1080p</span> <span class="ui-badge">Silent</span></div>
+            <div class="ui-release"><b>1080p</b> · 4.2 GB · 37 people sharing · starts in seconds</div>
+            <div class="ui-actions"><span class="ui-btn primary">▶&#xFE0E; Resume 1:12:40</span><span class="ui-btn">+ My list</span></div>
+          </div>
+          <div class="ui-shelf">
+            <div class="ui-h">Continue watching</div>
+            <div class="ui-row">
+              <div class="ui-card focus"><div class="ui-thumb t1"><i style="width:47%"></i></div><div class="ui-ct">Metropolis</div><div class="ui-cm">1 h 21 min left</div></div>
+              <div class="ui-card"><div class="ui-thumb t2"><i style="width:72%"></i></div><div class="ui-ct">Flash Gordon</div><div class="ui-cm">S1:E4 · 7 min left</div></div>
+              <div class="ui-card"><div class="ui-thumb t3"><i style="width:18%"></i></div><div class="ui-ct">The General</div><div class="ui-cm">1 h 4 min left</div></div>
+              <div class="ui-card"><div class="ui-thumb t4"><i style="width:33%"></i></div><div class="ui-ct">Nosferatu</div><div class="ui-cm">58 min left</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tv-stand" aria-hidden="true"></div>
+      <figcaption>The home screen on a TV, drawn for this page. The titles are public-domain films.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- How it works -->
+<section id="how" class="band" aria-labelledby="how-title">
+  <div class="wrap">
+    <h2 id="how-title">How it works</h2>
+    <p class="section-lead">Three steps, and the first one you do once.</p>
+    <ol class="steps">
+      <li class="step">
+        <div class="mock mock-source" aria-hidden="true">
+          <div class="m-label">Search source</div>
+          <div class="m-field">http://192.168.1.10:9117/…/torznab/api</div>
+          <div class="m-field dim">API key</div>
+          <div class="m-ok"><svg viewBox="0 0 24 24" class="i"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Connected. It searches by IMDb id.</div>
+        </div>
+        <h3>Add your search source</h3>
+        <p>In Settings, enter the Torznab address of a search service you run yourself, such as Jackett or Prowlarr, and its API key. reel has no source of its own and never adds one.</p>
+      </li>
+      <li class="step">
+        <div class="mock mock-release" aria-hidden="true">
+          <div class="m-row sel"><span class="q">1080p</span><span class="m-sz">4.2 GB</span><span class="bars"><i></i><i></i><i></i><i class="off"></i></span><span class="m-n">37</span><span class="m-note">Starts fast</span></div>
+          <div class="m-row"><span class="q">4K</span><span class="m-sz">18.9 GB</span><span class="bars"><i></i><i></i><i class="off"></i><i class="off"></i></span><span class="m-n">12</span><span class="m-note">Needs 25 Mbit/s</span></div>
+          <div class="m-row"><span class="q">720p</span><span class="m-sz">1.6 GB</span><span class="bars"><i></i><i class="off"></i><i class="off"></i><i class="off"></i></span><span class="m-n">3</span><span class="m-note">Few people sharing</span></div>
+        </div>
+        <h3>Pick a title</h3>
+        <p>Browse films, series and anime, or search. reel asks your source for releases and lists only those this device can play, the best of each quality first.</p>
+      </li>
+      <li class="step">
+        <div class="mock mock-player" aria-hidden="true">
+          <div class="m-line"><b>6 min ready ahead</b> · streaming at 3.4 MB/s from 37 people</div>
+          <div class="scrub"><span class="w"></span><span class="r"></span></div>
+          <div class="m-times"><span>41:12</span><span>2:33:00</span></div>
+        </div>
+        <h3>It plays</h3>
+        <p>The engine fetches the start of the film first and playback begins. It keeps a few minutes ready ahead and shows how fast the film is coming.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- Features -->
+<section id="features" aria-labelledby="features-title">
+  <div class="wrap">
+    <h2 id="features-title">What it does</h2>
+    <ul class="features">
+      <li>
+        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>
+        <h3>Streams, never downloads</h3>
+        <p>There is no downloads screen. The engine keeps only a buffer of the film on the device, up to the size you set.</p>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8"/></svg>
+        <h3>Continue watching</h3>
+        <p>Every film and episode resumes where you stopped. Watched episodes get a mark.</p>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><rect x="4" y="5" width="16" height="4" rx="1"/><rect x="4" y="11" width="16" height="4" rx="1"/><path d="M4 18.5h10"/></svg>
+        <h3>Seasons and episodes</h3>
+        <p>Season tabs and an episode list for every series. Near the end of an episode, the next one is ready to start.</p>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="m9 12 2 2 4-4"/></svg>
+        <h3>Only what your device plays</h3>
+        <p>Releases with audio, video or HDR formats the device cannot play are left out, per device, so a film does not fail to start because of its format.</p>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="M7 14h4M13 14h4M7 11h2M11 11h6"/></svg>
+        <h3>Subtitles and audio tracks</h3>
+        <p>Pick the audio track and subtitles, from the video or from subtitle files in the release. Your subtitle choice is kept per title.</p>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M4 18h3v-4H4zM10.5 18h3V10h-3zM17 18h3V6h-3z"/></svg>
+        <h3>Stream details</h3>
+        <p>See how fast the film is coming, from how many people, and how many minutes are ready ahead. Off if you prefer a clean screen.</p>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M12 3.5 14.6 9l5.9.7-4.4 4 1.2 5.8L12 16.6l-5.3 2.9 1.2-5.8-4.4-4L9.4 9z"/></svg>
+        <h3>Anime</h3>
+        <p>A separate anime catalog from AniList and Jikan, with trending this season and all-time lists.</p>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+        <h3>Browse and search</h3>
+        <p>Movies, shows and anime, filtered by genre, years and country, sorted by popularity, rating or date. The grid keeps loading as you scroll. Search covers all three.</p>
+      </li>
+      <li>
+        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.5 2.5 2.5 13.5 0 16M12 4c-2.5 2.5-2.5 13.5 0 16"/></svg>
+        <h3>Titles in your language</h3>
+        <p>Titles, descriptions and episode names come in the language you choose. reel searches releases by the title in that language, then by the original.</p>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<!-- TV first -->
+<section id="tv" class="band" aria-labelledby="tv-title">
+  <div class="wrap split">
+    <div>
+      <h2 id="tv-title">Made for the TV first</h2>
+      <p class="section-lead">reel is designed for a room with the lights down and a remote in hand. Phones, tablets and computers get the same app with layouts of their own.</p>
+      <ul class="ticks">
+        <li>Everything works with the four arrows, OK and Back.</li>
+        <li>Focus is a white ring that lifts the item, the same on every screen.</li>
+        <li>Back goes one level up, closes panels first, and asks before leaving the app.</li>
+        <li>Large type and few items per row, readable from the couch.</li>
+      </ul>
+    </div>
+    <div class="tizen">
+      <h3>Samsung TVs (Tizen)</h3>
+      <p>reel runs on Samsung TVs as a sideloaded app, never through the Samsung store. The first test TV is a 2024 model on Tizen 9; other models are not tested yet.</p>
+      <ol class="numbered">
+        <li>On the TV, open Apps, press 1 2 3 4 5 on the remote and turn on Developer mode, with your computer's IP as Host PC IP. Restart the TV.</li>
+        <li>On that computer, open <a href="https://github.com/Vincent-Fournier/Apps2Samsung">Apps2Samsung</a> and pick the TV.</li>
+        <li>Install the reel <code>.wgt</code> package. Apps2Samsung signs it for your TV.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- Platforms -->
+<section id="platforms" aria-labelledby="platforms-title">
+  <div class="wrap">
+    <h2 id="platforms-title">Platforms</h2>
+    <p class="section-lead">reel is not in any app store. Packages will be published on GitHub Releases; until then, you build it from source.</p>
+    <ul class="platforms">
+      <li class="pf">
+        <h3>macOS</h3>
+        <p class="status s-src">Build from source</p>
+        <p>An <code>.app</code> for Apple silicon or Intel. Packages on GitHub Releases from the first release.</p>
+      </li>
+      <li class="pf">
+        <h3>Windows</h3>
+        <p class="status s-src">Build from source</p>
+        <p>A <code>.zip</code> and an installer. Packages on GitHub Releases from the first release.</p>
+      </li>
+      <li class="pf">
+        <h3>Linux</h3>
+        <p class="status s-src">Build from source</p>
+        <p>A <code>.tar.gz</code> for distributions with GTK 4.14 or newer. Packages on GitHub Releases from the first release.</p>
+      </li>
+      <li class="pf">
+        <h3>iOS</h3>
+        <p class="status s-src">Build from source</p>
+        <p>The App Store does not accept torrent clients, so reel is for sideloading: build and sign it yourself.</p>
+      </li>
+      <li class="pf">
+        <h3>iPadOS</h3>
+        <p class="status s-src">Build from source</p>
+        <p>The same universal build as iPhone, with a layout for the larger screen. Sideloading only.</p>
+      </li>
+      <li class="pf">
+        <h3>Samsung TV (Tizen)</h3>
+        <p class="status s-test">In testing</p>
+        <p>A <code>.wgt</code> package, installed with Apps2Samsung. Being tested on a 2024 TV.</p>
+      </li>
+      <li class="pf">
+        <h3>Android</h3>
+        <p class="status s-wip">In progress</p>
+        <p>The Android build is set up in CI but does not pass yet. It will come as an <code>.apk</code> on GitHub Releases.</p>
+      </li>
+      <li class="pf">
+        <h3>Android TV</h3>
+        <p class="status s-plan">Planned</p>
+        <p>The TV layout and remote control are ready in the app; an Android TV package is not built yet.</p>
+      </li>
+      <li class="pf">
+        <h3>Web</h3>
+        <p class="status s-plan">Planned</p>
+        <p>A browser cannot run the torrent engine. The web build today is only the interface of the Samsung TV app.</p>
+      </li>
+    </ul>
+    <ul class="legend" aria-label="What the statuses mean">
+      <li><span class="status s-src">Build from source</span> builds today from the repository</li>
+      <li><span class="status s-test">In testing</span> builds and is being tried on a real device</li>
+      <li><span class="status s-wip">In progress</span> started, does not build yet</li>
+      <li><span class="status s-plan">Planned</span> no build yet</li>
+    </ul>
+  </div>
+</section>
+
+<!-- Open source and privacy -->
+<section id="privacy" class="band" aria-labelledby="privacy-title">
+  <div class="wrap split">
+    <div>
+      <h2 id="privacy-title">Open source, no accounts</h2>
+      <p class="section-lead">The whole app is on GitHub: a Rust core with the torrent engine, and one interface for every platform.</p>
+      <ul class="ticks">
+        <li>No reel account and no sign-in.</li>
+        <li>No analytics or tracking code.</li>
+        <li>Settings and watch progress stay on your device.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Who reel talks to</h3>
+      <ul class="plain">
+        <li>Your search source, at the address you entered.</li>
+        <li>TMDB, AniList and Jikan, for titles, posters and descriptions.</li>
+        <li>A public anime ID list on GitHub, to match anime between catalogs.</li>
+        <li>Other people sharing the film. As with any torrent app, they can see your IP address.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" aria-labelledby="faq-title">
+  <div class="wrap narrow">
+    <h2 id="faq-title">Questions</h2>
+    <details>
+      <summary>What is reel?</summary>
+      <p>A video player with a torrent engine and a film and series catalog. You pick a title, it finds releases through your search source and streams the one you choose.</p>
+    </details>
+    <details>
+      <summary>Does reel come with films or sources?</summary>
+      <p>No. reel ships no content, no tracker addresses and no indexers. Releases come only from the search source you add in Settings.</p>
+    </details>
+    <details>
+      <summary>What is a search source?</summary>
+      <p>A search service that answers in the Torznab format, which you run and configure yourself, for example Jackett or Prowlarr on your computer or home server. You give reel its address and API key.</p>
+    </details>
+    <details>
+      <summary>What am I allowed to watch?</summary>
+      <p>reel is a tool, like a browser or a torrent client. What you search for and play is your choice and your responsibility. Play only what you have the right to watch where you live.</p>
+    </details>
+    <details>
+      <summary>Does it fill up my device?</summary>
+      <p>No. reel streams and keeps only a buffer of the film, up to the size you set in Settings. It needs that much free space to start.</p>
+    </details>
+    <details>
+      <summary>Where do titles, posters and descriptions come from?</summary>
+      <p>From TMDB for films and series, and from AniList and Jikan for anime. If you build reel yourself, add your own free TMDB key; without one, reel lists only anime.</p>
+    </details>
+    <details>
+      <summary>Why is it not in the App Store or Google Play?</summary>
+      <p>The App Store does not accept torrent clients, and reel is not published to any store. Packages will be on GitHub Releases; Samsung TVs install them through Apps2Samsung.</p>
+    </details>
+    <details>
+      <summary>Is it free?</summary>
+      <p>Yes. There is no account, no subscription and no ads.</p>
+    </details>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-grid">
+    <div>
+      <div class="wordmark">reel</div>
+      <!-- Placeholder: the repository is private for now; this URL works once it is public. -->
+      <p><a href="https://github.com/exzos28/reel">Source code on GitHub</a></p>
+    </div>
+    <div class="credits">
+      <p>This product uses the TMDB API but is not endorsed or certified by TMDB. Film and series data from <a href="https://www.themoviedb.org">The Movie Database (TMDB)</a>.</p>
+      <p>Anime data from <a href="https://anilist.co">AniList</a> and <a href="https://jikan.moe">Jikan</a>, an unofficial MyAnimeList API. Anime ID mapping from <a href="https://github.com/Fribb/anime-lists">Fribb's anime-lists</a>.</p>
+      <p>Set in <a href="https://vercel.com/font">Geist</a>, under the SIL Open Font License. Pictures of the app on this page are drawings; the titles in them are public-domain films.</p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

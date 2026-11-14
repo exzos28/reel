@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#161B20"/>
+  <!-- An "r" in the wordmark's red, drawn as shapes so it needs no font. -->
+  <path d="M19 20h8.5l.4 5.2C29.6 21.6 32.6 19.6 37 19.6h4.5v8.6H37c-5.4 0-8.8 2.6-8.8 8.5V46H19z" fill="#E5383B"/>
+</svg>
