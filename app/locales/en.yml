@@ -248,6 +248,7 @@ browse:
     loading: Loading…
     empty: Nothing matches these filters.
     offline: Could not load this list. Check the connection.
+    more_failed: Could not load more titles. Move down to try again.
 
 search:
   title: Search

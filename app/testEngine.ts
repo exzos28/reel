@@ -177,11 +177,16 @@ export function browseFilters(picked: string[] = []) {
 export const BROWSE_TRENDING = [DUNE, ARRIVAL, INCEPTION];
 export const BROWSE_ALL = [ARRIVAL, DUNE, INCEPTION, SEVERANCE];
 
+/** `n` films for a long browse grid, "Film <from+1>" on. */
+export const browseCards = (n: number, from = 0) =>
+  Array.from({ length: n }, (_, i) => summary({ id: `tmdb:movie:${9000 + from + i}`, title: `Film ${from + i + 1}` }));
+
 /** The catalog as most tests see it: Home, Browse, Inception's screen. */
 export const CATALOG = {
   "Catalog.revision": 1,
   "Catalog.home": JSON.stringify(HOME),
-  "Catalog.browse": JSON.stringify({ trending: BROWSE_TRENDING, all: BROWSE_ALL, filters: browseFilters(), allState: "done" }),
+  "Catalog.browse": JSON.stringify({ trending: BROWSE_TRENDING, all: BROWSE_ALL, filters: browseFilters(), allState: "done", more: false, moreState: "idle" }),
+  "Catalog.browseMore": false,
   "Catalog.chooseFilter": false,
   "Catalog.title": JSON.stringify(INCEPTION_TITLE),
   "Catalog.episodes": JSON.stringify(AOT_S3),

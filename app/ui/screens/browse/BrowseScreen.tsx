@@ -5,9 +5,11 @@
 // rows and columns (Up from its first row: the pills). OK on a pill opens its
 // panel on the right (Up/Down, OK picks, Back closes); OK on a card opens the
 // title. Back closes the panel, then takes the focus to the nav, then Home. A new grid puts the grid's focus on its first card.
+// The grid has no end: within two rows of its last (or when the page scrolls near it) the
+// core is asked for its next page, which lands under the rows shown; the focus stays.
 import { computed, effect, Text, untracked, View } from "nsh";
 import { t } from "nsh/i18n";
-import { browse, chooseFilter, type Summary } from "../../catalog";
+import { browse, browseMore, chooseFilter, type Summary } from "../../catalog";
 import { clamp } from "../../focus/memory";
 import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
@@ -25,7 +27,11 @@ import { FilterBar } from "./FilterBar";
 import { FilterPanel, panelRows } from "./FilterPanel";
 import { focusOf, type Page } from "./focus";
 import { GridCard } from "./GridCard";
+import { GridTail } from "./GridTail";
 import { Trending } from "./Trending";
+
+/** The next page is asked for when the focus is this many rows from the grid's last. */
+const NEAR_ROWS = 2;
 
 export function BrowseScreen(props: { page: Page }) {
   const data = computed(() => browse(props.page));
@@ -42,13 +48,15 @@ export function BrowseScreen(props: { page: Page }) {
     return g ? panelRows(g).length : 0;
   };
 
-  /** Another grid (the filters changed): its first card is the one to focus. */
+  /** Another grid (the filters changed): its first card is the one to focus. More of the
+   * same grid (its next page) keeps the focus where it is. */
   const ids = computed(() => data().all.map((s) => s.id).join(","));
   effect(() => {
     const now = ids();
     untracked(() => {
-      if (gridIds() !== now) {
-        if (gridIds() !== "") cell.set(0);
+      const before = gridIds();
+      if (before !== now) {
+        if (before !== "" && !now.startsWith(`${before},`)) cell.set(0);
         gridIds.set(now);
       }
       if (zone() === "grid" && count() === 0) zone.set("filters");
@@ -73,6 +81,18 @@ export function BrowseScreen(props: { page: Page }) {
     // A single choice is made: back to the pills; genres stay open to toggle more.
     if (!g.multi) closePanel();
   };
+  /** The core's next page, unless one is on its way or there is none. */
+  const askMore = () =>
+    untracked(() => {
+      const d = data();
+      if (d.more && d.moreState !== "loading") browseMore(props.page);
+    });
+  // The remote: the focus near the grid's last rows (again when a page landed and it still is).
+  effect(() => {
+    if (zone() !== "grid") return;
+    if (Math.floor(cell() / columns()) >= rows().length - 1 - NEAR_ROWS) askMore();
+  });
+
   const toGrid = () => {
     if (count() === 0) return;
     zone.set("grid");
@@ -195,6 +215,15 @@ export function BrowseScreen(props: { page: Page }) {
               onPress={() => openCell(at())}
             />
           )}
+        />
+        <GridTail
+          page={page}
+          state={() => (data().more ? data().moreState : "idle")}
+          columns={columns}
+          width={() => cellWidth(columns(), 24)}
+          gap={24}
+          grid={data}
+          onNear={askMore}
         />
       </Screen>
       <If when={panelOpen()}>

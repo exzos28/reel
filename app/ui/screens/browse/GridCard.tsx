@@ -18,6 +18,7 @@ export function GridCard(props: { item: () => Summary; width: () => number; focu
     <Card
       label={() => titleText(s())}
       focused={props.focused}
+      testID={props.focused() ? "grid-focused" : undefined}
       onPress={props.onPress}
       style={cardBox(props.width(), 3, false)}
       picture={[

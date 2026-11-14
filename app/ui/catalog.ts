@@ -249,6 +249,10 @@ export interface Browse {
   filters: FilterGroup[];
   /** "loading": a new filter's grid is on its way (`all` is the last one). */
   allState: "done" | "loading" | "empty" | "offline";
+  /** The source has more after `all` (`browseMore` asks for the next page). */
+  more: boolean;
+  /** The next page: "loading" on its way, "failed" (asking again retries). */
+  moreState: "idle" | "loading" | "failed";
 }
 
 export type BrowsePage = "movies" | "shows" | "anime";
@@ -283,6 +287,10 @@ export const rememberSearch = (query: string) => Catalog.rememberSearch(query);
 export function toggleList(id: string) {
   Catalog.toggleList(id);
   version.set(version() + 1);
+}
+/** Asks the core for the next page of a browse grid; `changed` brings it. */
+export function browseMore(page: BrowsePage) {
+  if (Catalog.browseMore(page)) version.set(version() + 1);
 }
 /** One choice in a filter panel (`id` empty: clear the group). */
 export function chooseFilter(page: BrowsePage, group: string, id: string) {

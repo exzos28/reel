@@ -1,5 +1,8 @@
 import { expect, test } from "nsh/test";
-import { BROWSE_ALL, BROWSE_TRENDING, browseFilters, NATIVE, SEVERANCE, openApp } from "./testEngine";
+import { BROWSE_ALL, BROWSE_TRENDING, browseCards, browseFilters, NATIVE, SEVERANCE, openApp } from "./testEngine";
+
+/** Grid cards per row on the tests' 1920-wide TV. */
+const COLUMNS = 5;
 
 /** A browse page with `picked` filter options selected (the grid as the core
  * answers it for them: only Severance once anything is picked); the choices
@@ -147,4 +150,65 @@ test("nothing matching says so", async () => {
   await app.keyboard.press("down");
   await app.keyboard.press("enter");
   expect(app.shows("id:filter-panel")).toBe(true);
+});
+
+/** A long grid the core has more of (`moreState` as given): the pages the UI
+ * asks for go to `asked`. */
+function longGrid(moreState = "idle", more = true) {
+  const asked: string[] = [];
+  const native = {
+    ...NATIVE,
+    "Catalog.browse": JSON.stringify({
+      trending: BROWSE_TRENDING, all: browseCards(40), filters: browseFilters(), allState: "done", more, moreState,
+    }),
+    "Catalog.browseMore": (p: string) => {
+      asked.push(p);
+      return true;
+    },
+  };
+  return { native, asked };
+}
+
+test("remote: moving down the grid asks for the next page two rows before its end; the focus stays", async () => {
+  const { native, asked } = longGrid();
+  const app = await movies(native);
+  await app.keyboard.press("down"); // the pills
+  await app.keyboard.press("down"); // the grid's first row
+  expect(asked).toEqual([]);
+  let rows = 0;
+  while (asked.length === 0 && rows < 20) {
+    await app.keyboard.press("down");
+    rows++;
+  }
+  expect(asked).toEqual(["movies"]);
+  // 40 cards, COLUMNS a row: the last row is row 7 (from 0), so row 5 asks.
+  expect(rows).toBe(Math.ceil(40 / COLUMNS) - 3);
+  // Asking does not move the focus: it is on the first card of that row.
+  const focused = `Film ${rows * COLUMNS + 1}`;
+  expect(app.shows(`id:grid-focused >> text:${focused}`)).toBe(true);
+  await app.keyboard.press("right");
+  expect(app.shows(`id:grid-focused >> text:Film ${rows * COLUMNS + 2}`)).toBe(true);
+});
+
+test("mouse: scrolling near the grid's end asks for the next page", async () => {
+  const { native, asked } = longGrid();
+  const app = await movies(native, { platform: "macos", width: 1440, height: 900 });
+  expect(asked).toEqual([]);
+  await app.scroll("Film 1", 4000);
+  await app.wait(100);
+  expect(asked.length).toBeGreaterThan(0);
+  expect(asked[0]).toBe("movies");
+});
+
+test("grey cards end the grid while its next page comes; a line when it failed; nothing past the end", async () => {
+  const loading = await movies(longGrid("loading").native);
+  expect(loading.shows("id:grid-skeleton")).toBe(true);
+  const failed = await movies(longGrid("failed").native);
+  expect(failed.shows("id:grid-skeleton")).toBe(false);
+  expect(failed.texts()).toContain("Could not load more titles. Move down to try again.");
+  const { native, asked } = longGrid("idle", false);
+  const end = await movies(native);
+  for (let i = 0; i < 12; i++) await end.keyboard.press("down");
+  expect(asked).toEqual([]);
+  expect(end.shows("id:grid-skeleton")).toBe(false);
 });

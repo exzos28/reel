@@ -16,12 +16,14 @@ export function Card(props: {
   onPress: () => void;
   style: ViewStyle;
   viewRef?: (r: ViewRef) => void;
+  testID?: string;
   picture: JSX.Element;
   children: JSX.Element;
 }) {
   return (
     <View
       ref={props.viewRef ?? (() => {})}
+      testID={props.testID}
       role="button"
       accessibilityLabel={props.label()}
       onPress={props.onPress}
