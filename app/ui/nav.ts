@@ -96,7 +96,13 @@ export const onPageBack = (fn: Closer) => keep(pageRules, fn);
 /** Back, from any key or button: the newest closer that takes it, then the
  * page's rule, else one level up. */
 export function handleBack() {
-  for (let i = closers.length - 1; i >= 0; i--) if (closers[i]()) return;
-  for (let i = pageRules.length - 1; i >= 0; i--) if (pageRules[i]()) return;
-  back();
+  if (!closeFirst()) back();
+}
+
+/** What is open on the page, then the page's rule: true when one took Back.
+ * The system back of a native stack (Android) asks this before it pops. */
+export function closeFirst(): boolean {
+  for (let i = closers.length - 1; i >= 0; i--) if (closers[i]()) return true;
+  for (let i = pageRules.length - 1; i >= 0; i--) if (pageRules[i]()) return true;
+  return false;
 }

@@ -19,9 +19,9 @@ import { clamp } from "../../focus/memory";
 import { useZones } from "../../focus/zones";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
-import { isDesktop } from "../../layout/chrome";
+import { chrome, isDesktop } from "../../layout/chrome";
 import { ListToggle } from "../../layout/ListToggle";
-import { FloatingBack } from "../../layout/TopBar";
+import { discCorner, FloatingBack } from "../../layout/TopBar";
 import { handleBack, openTitle } from "../../nav";
 import { pickReleaseFor, play, playing } from "../../playback";
 import { safe, u } from "../../theme";
@@ -36,7 +36,11 @@ import { SimilarShelf } from "./SimilarShelf";
 import { heroActions, TitleHero, type HeroAction } from "./TitleHero";
 
 /** The page's header action, at the safe area's top-right. */
-const headerStyle = (): ViewStyle => ({ position: "absolute", top: safe().y, right: safe().x, zIndex: 3 });
+/** The page's header action: at the safe area's top-right on a TV, the disc
+ * across from the back disc on a phone (a desktop's is in the window bar, a
+ * tablet's in its top row). */
+const headerStyle = (): ViewStyle =>
+  chrome === "phone" ? discCorner("right") : { position: "absolute", top: safe().y, right: safe().x, zIndex: 3 };
 
 export function TitleScreen(props: { id: string }) {
   const data = computed(() => titleOf(props.id) as Title);
@@ -179,8 +183,8 @@ export function TitleScreen(props: { id: string }) {
       actions: {
         left: () => action.set(Math.max(action() - 1, 0)),
         right: () => action.set(Math.min(action() + 1, actionCount() - 1)),
-        // On a desktop Add to list is in the window bar (⌘D / Ctrl+D), not above the actions.
-        up: () => !isDesktop && zone.set("header"),
+        // Add to list is above the actions on a TV (a desktop's is in the window bar, ⌘D / Ctrl+D).
+        up: () => chrome === "tv" && zone.set("header"),
         down: () => (data().release ? zone.set("release") : underHero()),
         enter: () => {
           const a = heroRow()[clamp(action(), actionCount() - 1)];
@@ -244,8 +248,8 @@ export function TitleScreen(props: { id: string }) {
           onReleases={() => openPanel()}
         />
       </View>
-      {/* On a desktop Add to list is in the window bar. */}
-      <If when={!isDesktop}>
+      {/* On a desktop Add to list is in the window bar, on a tablet in the top row. */}
+      <If when={chrome === "tv" || chrome === "phone"}>
         <View style={headerStyle()}>
           <ListToggle inList={() => data().inList} focused={() => zone() === "header"} onPress={toggle} />
         </View>
@@ -302,8 +306,8 @@ export function TitleScreen(props: { id: string }) {
         </If>
       </View>
     </Screen>
-    <If when={panelOpen()}>
-      <ReleasePanel
+    <ReleasePanel
+        open={panelOpen}
         title={releasesTitle}
         header={() => (panelEpisode() ? releasesText({ ...data(), ...panelData() } as Title) : releasesText(data()))}
         message={panelMessage}
@@ -318,7 +322,6 @@ export function TitleScreen(props: { id: string }) {
         }}
         onClose={closePanel}
       />
-    </If>
     </View>
   );
 }

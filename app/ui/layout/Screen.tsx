@@ -1,7 +1,8 @@
 import { effect, View, type JSX, type ViewStyle } from "nsh";
 import { go, section, toTop } from "../nav";
 import { colors, safe, u } from "../theme";
-import { isDesktop } from "./chrome";
+import { chrome, isDesktop } from "./chrome";
+import { PhoneHead, tabBarHeight } from "./TouchNav";
 import { NavBar } from "./NavBar";
 import { NAV } from "./navItems";
 import { navFocus } from "./navState";
@@ -21,11 +22,12 @@ const navStyle: ViewStyle = { position: "absolute", top: 0, left: 0, right: 0, z
  * the top, or past the hero (`hero`, its height in TV pixels) on a page
  * that opens with one. */
 export function Screen(props: { ctl: ScrollCtl; bottom?: number; nav?: boolean; hero?: number; children: JSX.Element }) {
-  if (isDesktop) {
+  if (isDesktop || chrome === "tablet") {
     const ctl = props.ctl;
     effect(() => {
       const hero = props.hero;
       const under = hero == null ? 0 : u(hero) - BAR_HEIGHT;
+      // (The tablet's top row turns solid the same way.)
       barSolid.set((ctl.offset() ?? 0) > under);
     });
   }
@@ -38,9 +40,12 @@ export function Screen(props: { ctl: ScrollCtl; bottom?: number; nav?: boolean; 
   });
   return (
     <Scroller ctl={props.ctl} style={screenStyle()}>
-      <View style={{ paddingBottom: safe().y + u(props.bottom ?? 0) }}>
+      <View style={{ paddingBottom: safe().y + u(props.bottom ?? 0) + (chrome === "phone" ? tabBarHeight() : 0) }}>
         {props.children}
-        <If when={props.nav && !isDesktop}>
+        <If when={props.nav && chrome === "phone"}>
+          <PhoneHead />
+        </If>
+        <If when={props.nav && chrome === "tv"}>
           <View style={navStyle}>
             <NavBar
               current={section}

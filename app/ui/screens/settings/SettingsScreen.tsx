@@ -9,6 +9,7 @@ import { Engine } from "../../native";
 import { t } from "nsh/i18n";
 import { clamp } from "../../focus/memory";
 import { useRootBack } from "../../focus/rootBack";
+import { isTouch } from "../../layout/chrome";
 import { NAV_BOTTOM } from "../../layout/NavBar";
 import { NAV } from "../../layout/navItems";
 import { showNav } from "../../layout/navState";
@@ -114,9 +115,12 @@ export function SettingsScreen() {
   showNav(() => (onNav() ? navAt() : null));
   useRootBack({ ctl: page, onNav, toNav });
   return (
-    <Screen ctl={page} nav>
+    // On touch Settings is pushed on the current tab, under the system header (its title).
+    <Screen ctl={page} nav={!isTouch}>
       <View style={pageStyle()}>
-        <Text style={pageTitle()}>{t("settings.title")}</Text>
+        <If when={!isTouch}>
+          <Text style={pageTitle()}>{t("settings.title")}</Text>
+        </If>
         <LanguageSection focusedAt={at} onFocus={(i) => focus.set(i)} />
         <BufferSection freeBytes={freeBytes} focusedAt={() => at() - bufferAt()} onFocus={(i) => focus.set(bufferAt() + i)} />
         <DetailsSection focused={() => at() === detailsAt()} onFocus={() => focus.set(detailsAt())} />

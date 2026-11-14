@@ -6,7 +6,6 @@
 import { Image, Text, View, type ImageStyle, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { Meta } from "../../native";
-import { handleBack } from "../../nav";
 import { bodyText, labelText, metaText, sectionTitle } from "../../kit/text";
 import { isDesktop } from "../../layout/chrome";
 import { PageHeader } from "../../layout/TopBar";
@@ -59,7 +58,7 @@ export function AboutScreen() {
   const sources = JSON.parse(Meta.attribution()) as Attribution[];
   return (
     <View style={pageStyle()}>
-      <PageHeader title={() => t("settings.about.title")} onBack={handleBack} />
+      <PageHeader title={() => t("settings.about.title")} />
       <Text style={sectionTitle()}>{t("settings.about.data")}</Text>
       <View style={listStyle()}>
         <Each of={sources} key={(s) => s.provider}>

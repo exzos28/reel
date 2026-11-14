@@ -304,3 +304,17 @@ test("TV: OK on the current destination in the nav keeps the page, at its root",
   await app.keyboard.press("escape"); // on the nav: Home
   expect(app.texts()).toContain("Continue watching");
 });
+
+test("Mac: the releases open in a sheet under the window bar; Esc closes it, then goes back", async () => {
+  const app = await app_(NATIVE, { platform: "macos", width: 1440, height: 900 });
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  await app.keyboard.press("down"); // the release button
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("3 found, the best of each quality first");
+  expect(app.shows("label:Close")).toBe(true);
+  await app.keyboard.press("escape");
+  expect(app.texts()).not.toContain("3 found, the best of each quality first");
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("All movies");
+});
