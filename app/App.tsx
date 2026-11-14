@@ -5,6 +5,7 @@
 // Home, Movies, Shows and Anime share one nav (screens/TopLevel.tsx).
 import { effect, mount, setColorScheme, signal, View } from "nsh";
 import { Engine } from "app/native";
+import { AboutScreen } from "./ui/screens/about/AboutScreen";
 import { SearchScreen } from "./ui/screens/search/SearchScreen";
 import { SettingsScreen } from "./ui/screens/settings/SettingsScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
@@ -42,6 +43,9 @@ function App() {
         </If>
         <If when={r().name === "settings"}>
           <SettingsScreen freeBytes={freeBytes} onClose={back} />
+        </If>
+        <If when={r().name === "about"}>
+          <AboutScreen onClose={back} />
         </If>
         {/* Keyed by the id: a title opened from another one (More like this) is a new screen. */}
         <Each of={r().name === "title" ? [(r() as { id: string }).id] : []} key={(id) => id}>

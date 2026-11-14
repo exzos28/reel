@@ -9,6 +9,14 @@ export const ENGINE = {
   "Engine.close": null,
   "Engine.checkSpace": JSON.stringify({ ok: true, free: 10 * 1024 ** 3, needed: 306 * 1024 ** 2, buffer: 256 }),
   "Engine.timeline": JSON.stringify({ ranges: [], ahead: 0 }),
+  /** The sources About names, as the core lists them. */
+  "Meta.attribution": JSON.stringify([
+    { provider: "tmdb", name: "TMDB", url: "https://www.themoviedb.org", logoRequired: true, license: null,
+      notice: "This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB." },
+    { provider: "anilist", name: "AniList", url: "https://anilist.co", notice: null, logoRequired: false, license: null },
+    { provider: "jikan", name: "Jikan (MyAnimeList)", url: "https://jikan.moe", notice: null, logoRequired: false, license: null },
+    { provider: "animeLists", name: "Fribb/anime-lists", url: "https://github.com/Fribb/anime-lists", notice: null, logoRequired: false, license: null },
+  ]),
 };
 
 const img = (size: string, name: string) => `https://image.tmdb.org/t/p/${size}/${name}.jpg`;
