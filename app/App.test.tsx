@@ -83,6 +83,7 @@ test("the nav opens Movies; a poster opens its film with the releases found; Bac
   await app.keyboard.press("escape"); // the panel
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("All movies");
+  await app.keyboard.press("down"); // the filter pills
   await app.keyboard.press("down"); // the grid
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("2 h 28 min");
