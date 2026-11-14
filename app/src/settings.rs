@@ -15,7 +15,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::engine;
+use crate::wiring::playback;
+use reel_domain::{redact::redact_keys, search::Source};
 
 /// Choices for the playback buffer, MiB.
 pub const BUFFER_CHOICES: [u32; 5] = [128, 256, 512, 1024, 2048];
@@ -200,7 +201,7 @@ pub fn load(data_dir: Option<&Path>) -> Value {
     if let (Some(f), true) = (&file, saved.default_source_used != before.default_source_used) {
         write(f, &saved);
     }
-    engine::set_buffer_mb(saved.buffer_mb as u64);
+    playback().set_buffer_mb(saved.buffer_mb as u64);
     with(|s| {
         s.file = file;
         s.saved = saved;
@@ -237,7 +238,7 @@ pub fn buffer_choices() -> Vec<u32> {
     BUFFER_CHOICES
         .iter()
         .enumerate()
-        .filter(|(i, c)| *i == 0 || engine::buffer_fits(**c as u64))
+        .filter(|(i, c)| *i == 0 || playback().buffer_fits(**c as u64))
         .map(|(_, c)| *c)
         .collect()
 }
@@ -252,7 +253,7 @@ pub fn set_buffer_mb(mb: u32) -> u32 {
         }
         s.saved.buffer_mb
     });
-    engine::set_buffer_mb(mb as u64);
+    playback().set_buffer_mb(mb as u64);
     bump();
     mb
 }
@@ -274,10 +275,10 @@ fn source_json(saved: &Saved) -> Value {
 }
 
 /// The user's search source, if they entered one.
-pub fn source() -> Option<crate::sources::Source> {
+pub fn source() -> Option<Source> {
     with(|s| {
         let url = s.saved.source_url.trim().to_owned();
-        (!url.is_empty()).then(|| crate::sources::Source {
+        (!url.is_empty()).then(|| Source {
             url,
             key: (!s.saved.source_key.is_empty()).then(|| s.saved.source_key.clone()),
         })
@@ -324,7 +325,7 @@ fn check_url(url: &str) -> Result<(), String> {
 /// The saved source's address with key-like parameters cut out (`apikey=…`): what a page
 /// off this device may see of it.
 pub fn source_url_redacted() -> String {
-    with(|s| engine::redact_keys(&s.saved.source_url))
+    with(|s| redact_keys(&s.saved.source_url))
 }
 
 /// As before `load` (tests of what answers only once the settings are loaded).
@@ -381,7 +382,7 @@ mod tests {
 
         assert_eq!(set_buffer_mb(1024), 1024);
         assert_eq!(set_buffer_mb(333), 1024, "a size not offered is refused");
-        assert_eq!(engine::buffer_mb(), 1024);
+        assert_eq!(playback().buffer_mb(), 1024);
 
         let again = load(Some(&dir));
         assert_eq!(again["bufferMB"], 1024);
@@ -409,13 +410,13 @@ mod tests {
         set_content_language(DEFAULT_CONTENT_LANGUAGE);
 
         std::fs::remove_dir_all(&dir).unwrap();
-        engine::set_buffer_mb(DEFAULT_BUFFER_MB as u64);
+        playback().set_buffer_mb(DEFAULT_BUFFER_MB as u64);
     }
 
     #[test]
     fn only_buffers_the_device_has_room_for_are_offered() {
-        assert!(engine::buffer_fits(1));
-        assert!(!engine::buffer_fits(1 << 30), "a petabyte fits nowhere");
+        assert!(playback().buffer_fits(1));
+        assert!(!playback().buffer_fits(1 << 30), "a petabyte fits nowhere");
     }
 
     #[test]

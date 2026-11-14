@@ -36,11 +36,7 @@ use librqbit_core::lengths::ValidPieceIndex;
 
 /// Share of the budget kept behind a reader, for short seeks back.
 pub const BEHIND_PERCENT: u64 = 12;
-/// How far ahead of the picture the player reads into its own cache (mpv's
-/// `demuxer-max-bytes`): the reader's position is that far ahead of what is on
-/// screen, so at least this much is kept behind it (what is being watched stays
-/// on disk, and the scrubber shows it as ready).
-pub const PLAYER_CACHE: u64 = 64 * 1024 * 1024;
+pub use reel_domain::play::PLAYER_CACHE;
 /// A reader not seen for this long is forgotten (unless it is the last one).
 const FORGET_READER_AFTER: Duration = Duration::from_secs(60);
 /// At most this many readers are remembered.

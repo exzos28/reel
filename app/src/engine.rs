@@ -12,8 +12,13 @@ use std::{
     },
 };
 
-use crate::{buffer, catalog, disk, progress, sources};
-use reel_domain::timeline;
+use crate::{buffer, disk};
+use reel_domain::{
+    compat, episode,
+    play::PlaySource,
+    ports::PlaybackHost,
+    timeline,
+};
 
 use anyhow::Context;
 use librqbit::{
@@ -52,6 +57,23 @@ enum Job {
 }
 
 static CORE: OnceLock<Core> = OnceLock::new();
+
+/// The application's side (the catalog's decisions, the watch progress): set once by
+/// whoever builds the engine (`Local::new`).
+static HOST: OnceLock<Arc<dyn PlaybackHost>> = OnceLock::new();
+
+pub fn set_host(host: Arc<dyn PlaybackHost>) {
+    let _ = HOST.set(host);
+}
+
+fn host() -> Option<&'static dyn PlaybackHost> {
+    HOST.get().map(|h| h.as_ref())
+}
+
+/// The release `key` plays, as the application decides; none without one.
+fn play_source(key: &str) -> PlaySource {
+    host().map_or(PlaySource::None, |h| h.play_source(key))
+}
 
 /// The episode a job plays, (season, episode), when its torrent is a pack.
 static EPISODES: Mutex<Option<HashMap<u32, (u16, u16)>>> = Mutex::new(None);
@@ -170,7 +192,7 @@ pub fn start() -> anyhow::Result<u16> {
 }
 
 /// Starts playing what `key` names in the catalog (a title or an episode,
-/// see `catalog::play_source`): the release the user chose or the catalog
+/// see `PlaybackHost::play_source`): the release the user chose or the catalog
 /// picked. While the catalog still searches, the job stays `resolving` and
 /// starts when a release is found (`no_source` when none is). A job id to
 /// poll with `status` (which says when there is no source or no room).
@@ -180,15 +202,15 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
         let needed = space["needed"].as_u64().unwrap_or_default();
         return Ok(new_job(Job::NoSpace { needed, free: space["free"].as_u64() }));
     }
-    match catalog::play_source(key) {
-        catalog::PlaySource::None => Ok(new_job(Job::NoSource)),
-        catalog::PlaySource::NotInRelease => Ok(new_job(Job::NotInRelease)),
-        catalog::PlaySource::Ready(source, episode) => {
+    match play_source(key) {
+        PlaySource::None => Ok(new_job(Job::NoSource)),
+        PlaySource::NotInRelease => Ok(new_job(Job::NotInRelease)),
+        PlaySource::Ready(source, episode) => {
             let job = open_release(&source, episode)?;
             remember_key(job, key);
             Ok(job)
         }
-        catalog::PlaySource::Searching => {
+        PlaySource::Searching => {
             let job = new_job(Job::Searching);
             remember_key(job, key);
             time_start(job, "searching the source");
@@ -205,9 +227,9 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
                     if !core.jobs.lock().unwrap().contains_key(&job) {
                         return;
                     }
-                    match catalog::play_source(&key) {
-                        catalog::PlaySource::Searching if started.elapsed() < std::time::Duration::from_secs(150) => {}
-                        catalog::PlaySource::Ready(source, episode) => {
+                    match play_source(&key) {
+                        PlaySource::Searching if started.elapsed() < std::time::Duration::from_secs(150) => {}
+                        PlaySource::Ready(source, episode) => {
                             time_step(job, "release chosen");
                             if let Some(ep) = episode {
                                 EPISODES.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, ep);
@@ -215,7 +237,7 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
                             add_to(core, job, &source);
                             return;
                         }
-                        catalog::PlaySource::NotInRelease => {
+                        PlaySource::NotInRelease => {
                             core.jobs.lock().unwrap().insert(job, Job::NotInRelease);
                             return;
                         }
@@ -426,7 +448,7 @@ fn warm(job: u32, handle: Arc<librqbit::ManagedTorrent>) {
     let Some(len) = handle.with_metadata(|m| m.file_infos.get(file).map(|f| f.len)).ok().flatten() else { return };
     let mut spots: Vec<(u64, &'static str)> = vec![(len.saturating_sub(TAIL_BYTES), "end of the file in")];
     let key = JOB_KEYS.lock().unwrap().as_ref().and_then(|k| k.get(&job).cloned());
-    if let Some(e) = key.and_then(|k| progress::get(&k)).filter(|e| !e.watched && e.position > 0.0 && e.duration > 0.0) {
+    if let Some(e) = key.and_then(|k| host()?.resume(&k)).filter(|e| !e.watched && e.position > 0.0 && e.duration > 0.0) {
         // Bytes in proportion to time: near enough to fetch the right pieces first.
         let at = (len as f64 * (e.position / e.duration).clamp(0.0, 1.0)) as u64;
         spots.push((at, "resume point in"));
@@ -492,7 +514,9 @@ pub fn torrent_files(url: &str) -> Option<Files> {
                 .map(|(i, d)| (i, d.filename.to_pathbuf().to_string_lossy().into_owned(), d.len))
                 .collect();
             FILES.lock().unwrap().get_or_insert_with(HashMap::new).insert(url, Some(files));
-            crate::catalog::bump();
+            if let Some(host) = host() {
+                host.files_known();
+            }
         }
     });
     None
@@ -586,7 +610,7 @@ async fn fetch_torrent(url: &str) -> anyhow::Result<Fetched> {
     anyhow::bail!("the source redirected too many times")
 }
 
-pub use reel_domain::redact::{redact, redact_keys};
+use reel_domain::redact::redact;
 
 fn add_to(core: &Core, job: u32, url: &str) {
     if !TIMES.lock().unwrap().as_ref().is_some_and(|t| t.contains_key(&job)) {
@@ -710,7 +734,7 @@ pub fn status(job: u32) -> Value {
                 .ok()
                 .flatten()
                 .unwrap_or_default();
-            if let Err(reason) = sources::compat::file_ok(&name, sources::compat::profile()) {
+            if let Err(reason) = compat::file_ok(&name, compat::profile()) {
                 return json!({ "phase": "unsupported", "reason": reason });
             }
             // The player polls this: keep the cache's idea of the readers fresh.
@@ -780,7 +804,7 @@ fn video_file(handle: &librqbit::ManagedTorrent, job: u32) -> Option<usize> {
                 .collect()
         })
         .ok()?;
-    sources::episode::pick(&files, episode_of(job))
+    episode::pick(&files, episode_of(job))
 }
 
 /// What a ready job plays, for the subtitles: its torrent, the video's
@@ -798,7 +822,7 @@ pub(crate) fn playing_files(job: u32) -> Option<(Arc<librqbit::ManagedTorrent>, 
                 .collect()
         })
         .ok()?;
-    let video = sources::episode::pick(&files, episode_of(job))?;
+    let video = episode::pick(&files, episode_of(job))?;
     Some((handle, video, files))
 }
 

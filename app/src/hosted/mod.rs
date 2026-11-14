@@ -20,7 +20,7 @@ use std::{
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::{catalog, settings, sources};
+use crate::{catalog, settings, wiring::playback};
 use pairing::{Pairing, Refused};
 
 /// The page, self-contained (no resource from elsewhere).
@@ -280,14 +280,14 @@ fn authorized(req: &Request, route: &str) -> Response {
             if let Err(message) = settings::set_source_with(&url, key) {
                 return reply(400, json!({ "ok": false, "message": message }));
             }
-            let check = settings::source().map(sources::start_check).unwrap_or(0);
+            let check = settings::source().map(|s| playback().check_source(s)).unwrap_or(0);
             if check != 0 {
                 CHECKS.lock().unwrap().insert(check);
             }
             reply(200, json!({ "ok": true, "source": source_view(), "check": check }))
         }
         ("GET", r) if r.starts_with("/check/") => match r["/check/".len()..].parse::<u32>() {
-            Ok(id) if CHECKS.lock().unwrap().contains(&id) => reply(200, sources::result(id)),
+            Ok(id) if CHECKS.lock().unwrap().contains(&id) => reply(200, playback().search_result(id)),
             _ => error(404, "not_found"),
         },
         ("POST", "/language") => {

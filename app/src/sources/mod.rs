@@ -7,7 +7,7 @@
 
 pub mod torznab;
 
-pub use reel_domain::{compat, episode, release};
+use reel_domain::{compat, release};
 pub use reel_domain::search::{Request, Source};
 
 use std::{

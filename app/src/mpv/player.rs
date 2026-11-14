@@ -15,7 +15,7 @@ use std::{
 use serde_json::{Value, json};
 
 use super::ffi::{self, Handle, Lib, cstr};
-use crate::subtitles::tracks;
+use reel_domain::subtitles::tracks;
 
 /// Where events go: (name, payload). Called on the player's event thread.
 pub type Emit = Arc<dyn Fn(&str, Value) + Send + Sync>;
@@ -82,7 +82,7 @@ impl Player {
             ("sub-auto", "no"),
             ("audio-file-auto", "no"),
             ("cache", "yes"),
-            // The engine keeps this much behind where the player reads (buffer::PLAYER_CACHE).
+            // The engine keeps this much behind where the player reads (reel_domain::play::PLAYER_CACHE).
             ("demuxer-max-bytes", PLAYER_CACHE_OPTION),
         ];
         for (name, value) in options {
@@ -191,9 +191,9 @@ fn track_value(value: Option<&Value>) -> String {
     }
 }
 
-/// `buffer::PLAYER_CACHE` as mpv's option value.
+/// `reel_domain::play::PLAYER_CACHE` as mpv's option value.
 const PLAYER_CACHE_OPTION: &str = "64MiB";
-const _: () = assert!(crate::buffer::PLAYER_CACHE == 64 * 1024 * 1024, "keep PLAYER_CACHE_OPTION in step");
+const _: () = assert!(reel_domain::play::PLAYER_CACHE == 64 * 1024 * 1024, "keep PLAYER_CACHE_OPTION in step");
 
 impl Drop for Player {
     fn drop(&mut self) {

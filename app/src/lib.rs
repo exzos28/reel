@@ -5,16 +5,30 @@
 //! the others over HTTP from the core (`ui/native.ts`, docs/tizen.md).
 //! New native modules follow the same rule: `#[cfg(not(target_arch = "wasm32"))]`.
 
-#[cfg(not(target_arch = "wasm32"))]
+// The engine inside the app (cargo feature `engine`): adapters behind `Playback`.
+#[cfg(all(feature = "engine", not(target_arch = "wasm32")))]
 mod buffer;
+#[cfg(all(feature = "engine", not(target_arch = "wasm32")))]
+mod disk;
+#[cfg(all(feature = "engine", not(target_arch = "wasm32")))]
+mod engine;
+#[cfg(all(feature = "engine", not(target_arch = "wasm32")))]
+mod local_engine;
+#[cfg(all(feature = "engine", not(target_arch = "wasm32")))]
+mod sources;
+#[cfg(all(feature = "engine", not(target_arch = "wasm32")))]
+mod subtitles;
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg_attr(feature = "engine", allow(dead_code))]
+mod no_engine;
+#[cfg(not(target_arch = "wasm32"))]
+mod tracks;
+#[cfg(not(target_arch = "wasm32"))]
+mod wiring;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod thumbs;
 #[cfg(not(target_arch = "wasm32"))]
 mod catalog;
-#[cfg(not(target_arch = "wasm32"))]
-mod disk;
-#[cfg(not(target_arch = "wasm32"))]
-mod engine;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod hosted;
 #[cfg(not(target_arch = "wasm32"))]
@@ -23,10 +37,6 @@ mod metadata;
 mod progress;
 #[cfg(not(target_arch = "wasm32"))]
 mod settings;
-#[cfg(not(target_arch = "wasm32"))]
-mod sources;
-#[cfg(not(target_arch = "wasm32"))]
-mod subtitles;
 #[cfg(target_os = "macos")]
 mod mpv;
 
@@ -36,6 +46,8 @@ use nsh_core::prelude::*;
 pub use catalog::Catalog;
 #[cfg(not(target_arch = "wasm32"))]
 pub use metadata::Meta;
+#[cfg(not(target_arch = "wasm32"))]
+use wiring::playback;
 
 #[native_module("app/native")]
 fn native(registry: &mut Registry) {
@@ -63,31 +75,31 @@ impl Engine {
     /// user's search source: a job id for `status`, 0 when the engine could
     /// not start (see the log).
     pub fn open(id: String) -> u32 {
-        engine::open(&id).unwrap_or_else(|e| {
-            eprintln!("reel engine: {e:#}");
+        playback().open(&id).unwrap_or_else(|e| {
+            eprintln!("reel engine: {e}");
             0
         })
     }
 
-    /// What the player shows for the job, JSON with a `phase` (see `engine::status`).
+    /// What the player shows for the job, JSON with a `phase` (see `Playback::status`).
     pub fn status(job: u32) -> String {
-        engine::status(job).to_string()
+        playback().status(job).to_string()
     }
 
     /// What the scrubber draws at `position` of `duration` seconds:
-    /// `{"ranges":[[from,to],…],"ahead":seconds}` (see `engine::timeline`).
+    /// `{"ranges":[[from,to],…],"ahead":seconds}` (see `Playback::timeline`).
     /// `cached`: seconds the video view holds in memory ahead of `position` (mpv's cache),
     /// shown as ready with what is on disk.
     /// `read_byte`/`read_time`: the byte of the file the view has read to and the moment of
     /// the film it holds there (0: unknown), which places what is on disk in time.
     pub fn timeline(job: u32, position: f64, duration: f64, cached: f64, read_byte: f64, read_time: f64) -> String {
-        engine::timeline(job, position, duration, cached, read_byte, read_time).to_string()
+        playback().timeline(job, position, duration, cached, read_byte, read_time).to_string()
     }
 
     /// Whether there is room to start playing, as JSON
     /// `{"ok":bool,"free":bytes|null,"needed":bytes,"buffer":MiB}`.
     pub fn check_space() -> String {
-        engine::check_space().to_string()
+        playback().check_space().to_string()
     }
 
     /// Starts playing a release a search found: `source` is its magnet or
@@ -95,8 +107,8 @@ impl Engine {
     /// in a pack. A job id for `status`, 0 when the engine could not start.
     pub fn open_release(source: String, season: u32, episode: u32) -> u32 {
         let ep = (season > 0 && episode > 0).then(|| (season as u16, episode as u16));
-        engine::open_release(&source, ep).unwrap_or_else(|e| {
-            eprintln!("reel engine: {e:#}");
+        playback().open_release(&source, ep).unwrap_or_else(|e| {
+            eprintln!("reel engine: {e}");
             0
         })
     }
@@ -104,48 +116,48 @@ impl Engine {
     /// The player shows the first frame of the job's film (for the timing log,
     /// `$TMPDIR/reel-timings.log`).
     pub fn first_frame(job: u32) {
-        engine::time_step(job, "first frame on screen");
-        engine::first_frame_shown(job);
+        playback().first_frame(job);
     }
 
     /// Stops the job and deletes what it downloaded (the cache is per film).
     pub fn close(job: u32) {
-        engine::close(job);
+        tracks::forget(job);
+        playback().close(job);
     }
 
     /// The subtitle files of what the job plays (fetching them starts with the
     /// first ready answer): `{"state":"pending"|"ready","files":[{"id",
-    /// "language","label","format"}]}` (see `subtitles::list`).
+    /// "language","label","format"}]}` (see `Playback::subtitles`).
     pub fn subtitles(job: u32) -> String {
-        subtitles::list(job).to_string()
+        playback().subtitles(job).to_string()
     }
 
     /// The cues of subtitle file `id` on screen at some moment of `from..=to`
     /// seconds; the overlay asks with `from == to` at its position (see
-    /// `subtitles::cues`): `{"state","cues":[{"start","end","text"}]}`.
+    /// `Playback::cues`): `{"state","cues":[{"start","end","text"}]}`.
     pub fn cues(job: u32, id: u32, from: f64, to: f64) -> String {
-        subtitles::cues(job, id as usize, from, to).to_string()
+        playback().cues(job, id as usize, from, to).to_string()
     }
 
     /// The Audio and Subtitles columns of the tracks panel for the job playing
     /// `id`, with what the video view should apply. `embedded` is the view's
     /// `tracks` event as JSON, empty where the view reports none (see
-    /// `subtitles::menu`).
+    /// `tracks::menu`).
     pub fn tracks(job: u32, id: String, embedded: String) -> String {
         let embedded = parse_embedded(&embedded);
-        subtitles::menu(job, &id, embedded.as_ref()).to_string()
+        tracks::menu(job, &id, embedded.as_ref()).to_string()
     }
 
     /// The viewer picked `choice` (a key of `tracks`); subtitles are
     /// remembered for the title. The columns after it (as `tracks`).
     pub fn choose_track(job: u32, id: String, embedded: String, choice: String) -> String {
         let embedded = parse_embedded(&embedded);
-        subtitles::choose(job, &id, embedded.as_ref(), &choice).to_string()
+        tracks::choose(job, &id, embedded.as_ref(), &choice).to_string()
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn parse_embedded(json: &str) -> Option<subtitles::tracks::Embedded> {
+fn parse_embedded(json: &str) -> Option<reel_domain::subtitles::tracks::Embedded> {
     (!json.is_empty()).then(|| serde_json::from_str(json).ok()).flatten()
 }
 
@@ -164,12 +176,12 @@ impl VideoEngine {
     /// Samsung TV (the `tizen` profile its host sets) `"avplay"`: the TV
     /// shell's AVPlay draws under the web UI.
     pub fn kind() -> String {
-        if let Some(kind) = sources::compat::profile().host_video() {
+        if let Some(kind) = reel_domain::compat::profile().host_video() {
             return kind.into();
         }
         #[cfg(target_os = "macos")]
         if mpv::available() {
-            sources::compat::set_profile(sources::compat::Profile::Mpv);
+            reel_domain::compat::set_profile(reel_domain::compat::Profile::Mpv);
             return "mpv".into();
         }
         "native".into()
@@ -187,7 +199,7 @@ impl Settings {
     /// The kind of device, when the host knows better than the system ("tv" on a
     /// Samsung TV, whose web view NSH takes for a desktop browser); empty otherwise.
     pub fn device() -> String {
-        sources::compat::profile().device().unwrap_or_default().to_owned()
+        reel_domain::compat::profile().device().unwrap_or_default().to_owned()
     }
 
     /// Loads the settings from `data_dir` (the app's data directory, empty
@@ -301,8 +313,8 @@ impl Sources {
     /// episode optional). A search id for `result`; 0 when no source is set.
     pub fn search(request: String) -> u32 {
         let Some(source) = settings::source() else { return 0 };
-        match serde_json::from_str::<sources::Request>(&request) {
-            Ok(r) => sources::start_search(source, r),
+        match serde_json::from_str::<reel_domain::search::Request>(&request) {
+            Ok(r) => playback().search(source, r),
             Err(e) => {
                 eprintln!("reel sources: bad request {request}: {e}");
                 0
@@ -314,9 +326,9 @@ impl Sources {
     /// "apple_avplayer", "android_mediaplayer", "tizen". Releases it cannot
     /// play are hidden from searches. False for an unknown name.
     pub fn set_profile(name: String) -> bool {
-        match sources::compat::Profile::parse(&name) {
+        match reel_domain::compat::Profile::parse(&name) {
             Some(p) => {
-                sources::compat::set_profile(p);
+                reel_domain::compat::set_profile(p);
                 true
             }
             None => false,
@@ -325,7 +337,7 @@ impl Sources {
 
     /// Checks the saved source (`t=caps`); a job id for `result`, 0 when none is set.
     pub fn check() -> u32 {
-        settings::source().map(sources::start_check).unwrap_or(0)
+        settings::source().map(|s| playback().check_source(s)).unwrap_or(0)
     }
 
     /// `{"state":"pending"}`, `{"state":"done","releases":[…]}` (ranked: each
@@ -334,7 +346,7 @@ impl Sources {
     /// "seasonPack"}`), `{"state":"done","caps":{…}}` for a check, or
     /// `{"state":"failed","message"}`.
     pub fn result(id: u32) -> String {
-        sources::result(id).to_string()
+        playback().search_result(id).to_string()
     }
 }
 

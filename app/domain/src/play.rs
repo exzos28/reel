@@ -22,3 +22,9 @@ pub struct Resume {
 
 /// A torrent's files: (index, path, length).
 pub type Files = Vec<(usize, String, u64)>;
+
+/// How far ahead of the picture the player reads into its own cache (mpv's
+/// `demuxer-max-bytes`): the reader's position is that far ahead of what is on
+/// screen, so at least this much is kept behind it (what is being watched stays
+/// on disk, and the scrubber shows it as ready). The engine's cache and the video view agree on it.
+pub const PLAYER_CACHE: u64 = 64 * 1024 * 1024;

@@ -9,6 +9,7 @@ pub mod discover;
 pub mod episode;
 pub mod keys;
 pub mod play;
+pub mod ports;
 pub mod redact;
 pub mod release;
 pub mod search;

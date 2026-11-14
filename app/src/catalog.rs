@@ -27,7 +27,8 @@ use nsh_core::prelude::*;
 use serde_json::{Value, json};
 
 use crate::metadata::discover::{DiscoverKind, Filter};
-use crate::{metadata, progress, settings, sources};
+use crate::{metadata, progress, settings, wiring::playback};
+use reel_domain::{compat, episode};
 
 mod details;
 mod filters;
@@ -377,7 +378,7 @@ const STILL_W: u32 = 1280;
 const STILL_W_TV: u32 = 780;
 
 fn still_width() -> u32 {
-    if crate::sources::compat::profile().device() == Some("tv") { STILL_W_TV } else { STILL_W }
+    if compat::profile().device() == Some("tv") { STILL_W_TV } else { STILL_W }
 }
 const CARD_W: u32 = 780;
 /// A TV's card is 352 px wide at 1x: w500 (13 KB, 0.14 MP decoded) is enough; w780 is for
@@ -397,7 +398,7 @@ fn card_url(image: &Value) -> Option<String> {
 }
 
 fn card_width() -> u32 {
-    if crate::sources::compat::profile().device() == Some("tv") { CARD_W_TV } else { CARD_W }
+    if compat::profile().device() == Some("tv") { CARD_W_TV } else { CARD_W }
 }
 const POSTER_W: u32 = 342;
 const THUMB_W: u32 = 300;
@@ -549,16 +550,16 @@ fn start_search(key: String, request: Value) {
         bump();
     };
     let Some(source) = settings::source() else { return };
-    let request: sources::Request = match serde_json::from_value(request) {
+    let request: reel_domain::search::Request = match serde_json::from_value(request) {
         Ok(r) => r,
         Err(e) => return finish(Search { releases: None, failed: Some(e.to_string()) }),
     };
-    let job = sources::start_search(source, request);
+    let job = playback().search(source, request);
     std::thread::spawn(move || {
         let started = Instant::now();
         loop {
             std::thread::sleep(Duration::from_millis(300));
-            let r = sources::result(job);
+            let r = playback().search_result(job);
             match r["state"].as_str() {
                 Some("pending") if started.elapsed() < Duration::from_secs(120) => continue,
                 Some("done") => {
@@ -577,7 +578,7 @@ fn start_search(key: String, request: Value) {
 
 #[cfg(test)]
 fn start_search(_key: String, _request: Value) {
-    let _ = sources::result;
+    let _ = playback;
 }
 
 fn search_of(key: &str) -> Option<Search> {
@@ -815,7 +816,7 @@ pub enum Has {
 
 fn has_episode(r: &Value, s: u32, e: u32) -> Has {
     if let Some(files) = text(&r["source"]).and_then(|u| torrent_files(&u)) {
-        return if sources::episode::pick(&files, Some((s as u16, e as u16))).is_some() { Has::Yes } else { Has::No };
+        return if episode::pick(&files, Some((s as u16, e as u16))).is_some() { Has::Yes } else { Has::No };
     }
     let info = &r["info"];
     if info["season"].as_u64().is_some_and(|x| x != s as u64) {
@@ -833,7 +834,7 @@ fn has_episode(r: &Value, s: u32, e: u32) -> Has {
 /// reading them the first time it is asked).
 #[cfg(not(test))]
 fn torrent_files(url: &str) -> Option<Vec<(usize, String, u64)>> {
-    crate::engine::torrent_files(url)
+    playback().torrent_files(url)
 }
 #[cfg(test)]
 fn torrent_files(url: &str) -> Option<Vec<(usize, String, u64)>> {
@@ -1335,7 +1336,7 @@ pub fn title(id: &str) -> Value {
     ensure_search(&w.key, &info);
     // Play starts sooner when the release's link is already opened.
     if let PlaySource::Ready(source, _) = play_source(&w.key) {
-        crate::engine::prefetch(&source);
+        playback().prefetch(&source);
     }
     let mut v = summary(&info);
     let rk = release_key(&info, &w);

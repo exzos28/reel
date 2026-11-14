@@ -8,6 +8,12 @@ publish = false
 [workspace]
 members = ["domain"]
 
+[features]
+default = ["engine"]
+# The torrent engine inside the app (librqbit, the ring-buffer cache, the Torznab source).
+# Without it `Playback` answers that there is no engine on this device (app/ARCHITECTURE.md).
+engine = []
+
 [dependencies]
 nsh-core = "0.5.0"
 serde_json = "1"
