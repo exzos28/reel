@@ -326,14 +326,27 @@ fn resume_continue_watching_and_up_next() {
     assert!(up_next(MATRIX, 8150.0, 8160.0).is_null());
 }
 
+/// What the engine read of the torrents' files, by link (tests set it).
+pub(super) static TORRENT_FILES: LazyLock<Mutex<HashMap<String, Vec<(usize, String, u64)>>>> = LazyLock::new(Default::default);
+
+/// A release of a season that names its episodes ("S03E01-05").
+fn episodes_release(title: &str, season: u32, episodes: &[u32], seeders: u64) -> Value {
+    let mut r = release(title, Some(1080), "web", 10.0, seeders, episodes.len() != 1);
+    r["info"]["season"] = json!(season);
+    r["info"]["episodes"] = json!(episodes);
+    r
+}
+
 #[test]
-fn an_episode_plays_its_own_release_or_a_pack() {
+fn an_episode_plays_from_its_seasons_release() {
     let _g = fresh(true, true);
     seed_aot();
+    TORRENT_FILES.lock().unwrap().clear();
     let key = "tmdb:tv:1429:s3e2";
+    let season = season_key(AOT, 3);
     assert!(matches!(play_source(key), PlaySource::Searching));
-    assert!(SEARCHES.lock().unwrap().contains_key(key), "playing starts the search");
-    found(key, vec![release("Attack.on.Titan.S03.1080p.WEB", Some(1080), "web", 22.0, 90, true)]);
+    assert!(SEARCHES.lock().unwrap().contains_key(&season), "playing searches the season");
+    found(&season, vec![release("Attack.on.Titan.S03.1080p.WEB", Some(1080), "web", 22.0, 90, true)]);
     match play_source(key) {
         PlaySource::Ready(_, Some((3, 2))) => {}
         _ => panic!("the pack plays episode 2"),
@@ -342,6 +355,56 @@ fn an_episode_plays_its_own_release_or_a_pack() {
     assert_eq!(tracks(key)["releases"][0]["mbit"], 6);
     assert_eq!(tracks(key)["releases"][0]["pack"], true);
     assert_eq!(episodes(AOT, 3)[1]["quality"], "1080p");
+    assert_eq!(episodes(AOT, 3)[1]["inRelease"], "unknown", "a pack named for the whole season");
+}
+
+#[test]
+fn an_episode_not_in_its_seasons_release_asks_for_another() {
+    let _g = fresh(true, true);
+    seed_aot();
+    TORRENT_FILES.lock().unwrap().clear();
+    let season = season_key(AOT, 3);
+    // A pack of 1–5 (packs first, though fewer share it), and episode 14 alone.
+    found(&season, vec![
+        episodes_release("AoT.S03E01-05.1080p", 3, &[1, 2, 3, 4, 5], 60),
+        episodes_release("AoT.S03E14.1080p", 3, &[14], 300),
+    ]);
+    assert!(matches!(play_source("tmdb:tv:1429:s3e2"), PlaySource::Ready(s, Some((3, 2))) if s.contains("E01-05")));
+    assert!(matches!(play_source("tmdb:tv:1429:s3e13"), PlaySource::NotInRelease));
+    // The fixture's season lists episodes 1, 2, 3, 13 and 14.
+    let eps = episodes(AOT, 3);
+    assert_eq!(eps[1]["inRelease"], "yes");
+    assert_eq!(eps[3]["inRelease"], "no");
+    assert_eq!(eps[3]["quality"], Value::Null, "no quality for what it is not in");
+
+    // The viewer picks a release for episode 13 alone.
+    let thirteen = "tmdb:tv:1429:s3e13";
+    let mine = episode_releases(thirteen);
+    assert_eq!(mine["releasesState"], "searching");
+    assert_eq!(mine["seasonRelease"]["quality"], "1080p");
+    found(thirteen, vec![episodes_release("AoT.S03E13.720p", 3, &[13], 40)]);
+    assert!(choose_release(thirteen, 0));
+    assert!(matches!(play_source(thirteen), PlaySource::Ready(s, _) if s.contains("E13")));
+    assert_eq!(episodes(AOT, 3)[3]["inRelease"], "own");
+    assert!(matches!(play_source("tmdb:tv:1429:s3e3"), PlaySource::Ready(s, _) if s.contains("E01-05")), "the others keep the season's");
+}
+
+#[test]
+fn a_releases_files_settle_what_its_name_only_suggests() {
+    let _g = fresh(true, true);
+    seed_aot();
+    let season = season_key(AOT, 3);
+    let pack = release("Attack.on.Titan.Season.3.1080p", Some(1080), "web", 22.0, 90, true);
+    let link = pack["source"].as_str().unwrap().to_owned();
+    found(&season, vec![pack]);
+    assert_eq!(episodes(AOT, 3)[3]["inRelease"], "unknown");
+    let files = (1..=3).map(|e| (e - 1, format!("AoT/Attack.on.Titan.S03E{e:02}.mkv"), 1u64 << 30)).collect();
+    TORRENT_FILES.lock().unwrap().insert(link, files);
+    let eps = episodes(AOT, 3);
+    assert_eq!(eps[2]["inRelease"], "yes");
+    assert_eq!(eps[3]["inRelease"], "no", "its files stop at episode 3 (eps[3] is episode 13)");
+    assert!(matches!(play_source("tmdb:tv:1429:s3e13"), PlaySource::NotInRelease));
+    TORRENT_FILES.lock().unwrap().clear();
 }
 
 #[test]

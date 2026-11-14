@@ -37,6 +37,8 @@ struct Core {
 enum Job {
     /// The film has no source to play.
     NoSource,
+    /// The episode is not in the release chosen for its season.
+    NotInRelease,
     /// Not enough free space to start: the buffer plus the reserve (bytes).
     NoSpace { needed: u64, free: Option<u64> },
     /// The catalog still searches for a release to play.
@@ -171,6 +173,7 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
     }
     match catalog::play_source(key) {
         catalog::PlaySource::None => Ok(new_job(Job::NoSource)),
+        catalog::PlaySource::NotInRelease => Ok(new_job(Job::NotInRelease)),
         catalog::PlaySource::Ready(source, episode) => open_release(&source, episode),
         catalog::PlaySource::Searching => {
             let job = new_job(Job::Searching);
@@ -196,6 +199,10 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
                                 EPISODES.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, ep);
                             }
                             add_to(core, job, &source);
+                            return;
+                        }
+                        catalog::PlaySource::NotInRelease => {
+                            core.jobs.lock().unwrap().insert(job, Job::NotInRelease);
                             return;
                         }
                         _ => {
@@ -361,6 +368,52 @@ fn time_peers(job: u32, p: &Value, speed: f64) {
         )
     };
     log_line(&line);
+}
+
+// ---- A release's files, read before it plays --------------------------------
+
+type Files = Vec<(usize, String, u64)>;
+/// The files of the releases asked about: None while reading (or when it failed).
+static FILES: Mutex<Option<HashMap<String, Option<Files>>>> = Mutex::new(None);
+
+/// The files of the torrent `url` (a source link or a magnet): None the first
+/// time, while the engine reads its metadata (a .torrent at once, a magnet
+/// from peers) without downloading any of it; the catalog is told when they are in.
+pub fn torrent_files(url: &str) -> Option<Files> {
+    {
+        let mut all = FILES.lock().unwrap();
+        let all = all.get_or_insert_with(HashMap::new);
+        if let Some(known) = all.get(url) {
+            return known.clone();
+        }
+        all.insert(url.to_owned(), None);
+    }
+    let Ok(core) = core() else { return None };
+    let (session, url) = (core.session.clone(), url.to_owned());
+    core.rt.spawn(async move {
+        let add = if url.starts_with("http://") || url.starts_with("https://") {
+            match fetch_once(&url).await {
+                Ok(Fetched::Torrent(bytes)) => AddTorrent::from_bytes(bytes),
+                Ok(Fetched::Magnet(magnet)) => AddTorrent::from_url(with_open_trackers(&magnet)),
+                Err(_) => return,
+            }
+        } else {
+            AddTorrent::from_url(with_open_trackers(&url))
+        };
+        let options = AddTorrentOptions { list_only: true, ..Default::default() };
+        let listed = tokio::time::timeout(std::time::Duration::from_secs(90), session.add_torrent(add, Some(options))).await;
+        if let Ok(Ok(librqbit::AddTorrentResponse::ListOnly(l))) = listed {
+            let files: Files = l
+                .info
+                .iter_file_details()
+                .enumerate()
+                .map(|(i, d)| (i, d.filename.to_pathbuf().to_string_lossy().into_owned(), d.len))
+                .collect();
+            FILES.lock().unwrap().get_or_insert_with(HashMap::new).insert(url, Some(files));
+            crate::catalog::bump();
+        }
+    });
+    None
 }
 
 // ---- Prefetch: the source's link is opened while the title screen shows -----
@@ -538,7 +591,8 @@ fn add_to(core: &Core, job: u32, url: &str) {
 const START_BYTES: u64 = 8 * MIB;
 
 /// What the player shows for the job, as JSON with a `phase`:
-/// - `"no_source"`, `"no_space"` (`needed`, `free` bytes, `free` may be null),
+/// - `"no_source"`, `"not_in_release"` (the episode is not in its season's
+///   release: the viewer picks another), `"no_space"` (`needed`, `free` bytes, `free` may be null),
 ///   `"failed"` (`message`);
 /// - `"resolving"`: `stage` is `"searching"` (the catalog still looks for a
 ///   release) or `"finding"` (asking people for the torrent's metadata);
@@ -559,12 +613,17 @@ pub fn status(job: u32) -> Value {
     };
     match state {
         Job::NoSource => json!({ "phase": "no_source" }),
+        Job::NotInRelease => json!({ "phase": "not_in_release" }),
         Job::NoSpace { needed, free } => json!({ "phase": "no_space", "needed": needed, "free": free }),
         Job::Searching => json!({ "phase": "resolving", "stage": "searching" }),
         Job::Resolving => json!({ "phase": "resolving", "stage": "finding" }),
         Job::Failed(message) => json!({ "phase": "failed", "message": message }),
         Job::Ready(handle, link) => {
             let Some(file) = video_file(&handle, job) else {
+                // A pack whose name promised the episode, but its files lack it.
+                if episode_of(job).is_some() {
+                    return json!({ "phase": "not_in_release" });
+                }
                 return json!({ "phase": "failed", "message": "no video in this torrent" });
             };
             // The release name said nothing against it; the file itself may still

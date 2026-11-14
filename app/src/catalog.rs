@@ -49,6 +49,17 @@ pub fn parse_key(key: &str) -> (&str, Option<(u32, u32)>) {
     (key, None)
 }
 
+/// A show's season, as what its releases are searched and chosen for.
+pub fn season_key(show: &str, season: u32) -> String {
+    format!("{show}:season{season}")
+}
+
+/// `tmdb:tv:1399:season2` → ("tmdb:tv:1399", 2).
+fn parse_season_key(key: &str) -> Option<(&str, u32)> {
+    let (show, tail) = key.rsplit_once(':')?;
+    Some((show, tail.strip_prefix("season")?.parse().ok()?))
+}
+
 // ---- Meta answers, kept in memory for the sync calls.
 
 #[derive(Clone, Debug, PartialEq)]
@@ -91,7 +102,7 @@ static SLOTS: LazyLock<(Mutex<HashMap<String, Slot>>, Condvar)> = LazyLock::new(
 /// Goes up with every change the UI should read again for.
 static REV: AtomicU64 = AtomicU64::new(0);
 
-fn bump() {
+pub(crate) fn bump() {
     REV.fetch_add(1, Ordering::Relaxed);
 }
 
@@ -457,13 +468,15 @@ fn ensure_search(key: &str, info: &Info) {
         return;
     }
     let (_, ep) = parse_key(key);
+    let season = parse_season_key(key).map(|(_, s)| s);
     let (title, alt_titles) = search_titles(info);
+    let film = ep.is_none() && season.is_none();
     let request = json!({
         "imdb": info.imdb,
         "title": title,
         "altTitles": alt_titles,
-        "year": if ep.is_none() { info.year } else { None },
-        "season": ep.map(|e| e.0),
+        "year": if film { info.year } else { None },
+        "season": ep.map(|e| e.0).or(season),
         "episode": ep.map(|e| e.1),
     });
     SEARCHES.lock().unwrap().insert(key.to_owned(), Search::default());
@@ -585,7 +598,9 @@ fn chosen(key: &str, releases: &[Value], minutes: u32, episodes: u32) -> Option<
     {
         return Some(i);
     }
-    let rs = releases.iter().enumerate();
+    // A season plays from a pack when there is one: it holds every episode.
+    let packs = parse_season_key(key).is_some() && releases.iter().any(|r| r["seasonPack"] == true);
+    let rs = releases.iter().enumerate().filter(|(_, r)| !packs || r["seasonPack"] == true);
     rs.clone()
         .filter(|(_, r)| plays_now(peers(r), mbit(r, minutes, episodes)))
         .max_by_key(|(i, r)| (quality_rank(r), peers(r), std::cmp::Reverse(*i)))
@@ -605,6 +620,13 @@ fn bars(peers: u64) -> u8 {
 
 /// How long one of `key` runs and how many episodes a pack of its season holds.
 fn length_of(key: &str, info: &Info) -> (u32, u32) {
+    if let Some((show, s)) = parse_season_key(key) {
+        let episodes = info.seasons.iter().find(|x| x.0 == s).map_or(1, |x| x.2);
+        let minutes = peek(&Call::Season(show.to_owned(), s))
+            .and_then(|season| find_episode(&season, 1).and_then(|x| x["runtimeMinutes"].as_u64()))
+            .map_or(info.minutes, |m| m as u32);
+        return (minutes, episodes);
+    }
     let (show, ep) = parse_key(key);
     let Some((s, e)) = ep else { return (info.minutes, 1) };
     let episodes = info.seasons.iter().find(|x| x.0 == s).map_or(1, |x| x.2);
@@ -725,6 +747,61 @@ pub enum PlaySource {
     Searching,
     /// A magnet or .torrent URL, and the episode to pick in a pack.
     Ready(String, Option<(u16, u16)>),
+    /// The episode is not in the release chosen for its season: the viewer picks one for it.
+    NotInRelease,
+}
+
+/// Whether a release holds an episode: from its files once they are known,
+/// else from its name ("S01E01-08", "S01" holds every one: unknown).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Has {
+    Yes,
+    No,
+    Unknown,
+}
+
+fn has_episode(r: &Value, s: u32, e: u32) -> Has {
+    if let Some(files) = text(&r["source"]).and_then(|u| torrent_files(&u)) {
+        return if sources::episode::pick(&files, Some((s as u16, e as u16))).is_some() { Has::Yes } else { Has::No };
+    }
+    let info = &r["info"];
+    if info["season"].as_u64().is_some_and(|x| x != s as u64) {
+        return Has::No;
+    }
+    match info["episodes"].as_array() {
+        Some(eps) if !eps.is_empty() => {
+            if eps.iter().any(|x| x.as_u64() == Some(e as u64)) { Has::Yes } else { Has::No }
+        }
+        _ => Has::Unknown,
+    }
+}
+
+/// The files of a release's torrent once the engine has read them (it starts
+/// reading them the first time it is asked).
+#[cfg(not(test))]
+fn torrent_files(url: &str) -> Option<Vec<(usize, String, u64)>> {
+    crate::engine::torrent_files(url)
+}
+#[cfg(test)]
+fn torrent_files(url: &str) -> Option<Vec<(usize, String, u64)>> {
+    tests::TORRENT_FILES.lock().unwrap().get(url).cloned()
+}
+
+/// The release a show's season plays from (the viewer's, else a pack, else the
+/// best single one), whether it holds episode `e`; None while searching or when
+/// the season has none. Starts the season's search.
+fn season_has(show: &str, info: &Info, s: u32, e: u32) -> Option<(String, Has)> {
+    let key = season_key(show, s);
+    ensure_search(&key, info);
+    let releases = releases_of(&key);
+    let (minutes, episodes) = length_of(&key, info);
+    let r = &releases[chosen(&key, &releases, minutes, episodes)?];
+    Some((text(&r["source"])?, has_episode(r, s, e)))
+}
+
+/// The season's search finished (found or not).
+fn season_done(show: &str, s: u32) -> bool {
+    search_of(&season_key(show, s)).is_some_and(|x| x.releases.is_some() || x.failed.is_some())
 }
 
 /// The release `key` plays, starting what is needed to know it.
@@ -738,6 +815,17 @@ pub fn play_source(key: &str) -> PlaySource {
         return if answered(&call) { PlaySource::None } else { PlaySource::Searching };
     };
     let info = from_title(&t);
+    if let Some((s, e)) = ep
+        && !CHOSEN.lock().unwrap().contains_key(key)
+    {
+        match season_has(title, &info, s, e) {
+            Some((source, Has::Yes | Has::Unknown)) => return PlaySource::Ready(source, Some((s as u16, e as u16))),
+            Some((_, Has::No)) => return PlaySource::NotInRelease,
+            None if !season_done(title, s) => return PlaySource::Searching,
+            // The season has no release at all: look for this episode alone.
+            None => {}
+        }
+    }
     ensure_search(key, &info);
     match search_of(key) {
         Some(Search { releases: Some(releases), .. }) => {
@@ -780,10 +868,23 @@ fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
     let minutes = ep["runtimeMinutes"].as_u64().map_or(fallback_minutes, |m| m as u32);
     let seen = progress::get(&key);
     let watched = seen.as_ref().is_some_and(|e| e.watched);
-    let quality = search_of(&key).and_then(|s| s.releases).and_then(|rs| {
-        let pick = chosen(&key, &rs, minutes, 1)?;
-        Some(quality(&rs[pick]))
+    // Where it plays from: a release picked for it, else its season's (if it holds it).
+    let own = CHOSEN.lock().unwrap().contains_key(&key);
+    let from = plays_from(&key);
+    let pick = search_of(&from).and_then(|s| s.releases).and_then(|rs| {
+        let i = chosen(&from, &rs, minutes, 1)?;
+        Some(rs[i].clone())
     });
+    let in_release = match (&pick, own) {
+        (_, true) => Some("own"),
+        (Some(r), false) => Some(match has_episode(r, season, number) {
+            Has::Yes => "yes",
+            Has::No => "no",
+            Has::Unknown => "unknown",
+        }),
+        (None, _) => None,
+    };
+    let quality = pick.as_ref().filter(|_| in_release != Some("no")).map(quality);
     json!({
         "id": key,
         "show": show,
@@ -800,6 +901,9 @@ fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
         "watched": watched,
         "start": seen.as_ref().filter(|e| !e.watched).map_or(0.0, |e| e.position),
         "quality": quality,
+        // "yes", "unknown" (its name does not say), "no" (pick another), "own"
+        // (a release picked for it); null while its season is searched.
+        "inRelease": in_release,
         "playable": has_source(),
     })
 }
@@ -857,6 +961,15 @@ struct Where {
     left: Option<u32>,
     /// A show the viewer is in (or onto the next episode of).
     resume: bool,
+}
+
+/// What a title's releases are chosen for: a film itself, a show's season
+/// (of the episode Play starts).
+fn release_key(info: &Info, w: &Where) -> String {
+    match w.episode {
+        Some((s, _)) => season_key(&info.id, s),
+        None => w.key.clone(),
+    }
 }
 
 fn where_in(info: &Info) -> Where {
@@ -934,7 +1047,7 @@ fn summary(info: &Info) -> Value {
         "tag": null,
         "playable": has_source(),
         "inList": in_list(&info.id),
-        "release": release_line(&w.key, info),
+        "release": release_line(&release_key(info, &w), info),
         "play": play,
     })
 }
@@ -1101,8 +1214,10 @@ pub fn title(id: &str) -> Value {
         crate::engine::prefetch(&source);
     }
     let mut v = summary(&info);
-    v["releases"] = json!(releases_json(&w.key, &info));
-    v["releasesState"] = json!(releases_state(&w.key));
+    let rk = release_key(&info, &w);
+    ensure_search(&rk, &info);
+    v["releases"] = json!(releases_json(&rk, &info));
+    v["releasesState"] = json!(releases_state(&rk));
     v["aboutFull"] = json!(info.about.chars().count() > HERO_ABOUT);
     v["cast"] = json!(details::cast(&t["credits"]));
     v["crew"] = json!(details::crew(&t["credits"], info.show));
@@ -1127,6 +1242,30 @@ pub fn title(id: &str) -> Value {
     v
 }
 
+/// Whose releases `key` plays from: an episode its own when the viewer picked
+/// one for it, else its season's; a film itself.
+fn plays_from(key: &str) -> String {
+    match parse_key(key) {
+        (show, Some((s, _))) if !CHOSEN.lock().unwrap().contains_key(key) => season_key(show, s),
+        _ => key.to_owned(),
+    }
+}
+
+/// The releases of one episode, for the viewer to pick one when it is not in
+/// its season's release: `{"releases","releasesState","seasonRelease"}` (the
+/// season's release line, the one it is not in).
+pub fn episode_releases(key: &str) -> Value {
+    let (show, ep) = parse_key(key);
+    let (Some((s, _)), Some(t)) = (ep, peek(&Call::Title(show.to_owned()))) else { return json!({ "releases": [], "releasesState": "none" }) };
+    let info = Info { id: show.to_owned(), ..from_title(&t) };
+    ensure_search(key, &info);
+    json!({
+        "releases": releases_json(key, &info),
+        "releasesState": releases_state(key),
+        "seasonRelease": release_line(&season_key(show, s), &info),
+    })
+}
+
 /// The tracks of what plays: audio and subtitle options (keys under
 /// `tracks.*`; the engine does not list a file's tracks yet) and the releases.
 pub fn tracks(key: &str) -> Value {
@@ -1135,7 +1274,7 @@ pub fn tracks(key: &str) -> Value {
     json!({
         "audio": [{ "key": "original", "selected": true }],
         "subtitles": [{ "key": "off", "selected": true }],
-        "releases": info.map(|i| releases_json(key, &i)).unwrap_or_default(),
+        "releases": info.map(|i| releases_json(&plays_from(key), &i)).unwrap_or_default(),
     })
 }
 
@@ -1164,7 +1303,10 @@ pub fn toggle_list(id: &str) -> bool {
 pub fn choose_release(id: &str, index: usize) -> bool {
     let (title, ep) = parse_key(id);
     let key = match (ep, peek(&Call::Title(title.to_owned()))) {
-        (None, Some(t)) => where_in(&Info { id: title.to_owned(), ..from_title(&t) }).key,
+        (None, Some(t)) => {
+            let info = Info { id: title.to_owned(), ..from_title(&t) };
+            release_key(&info, &where_in(&info))
+        }
         _ => id.to_owned(),
     };
     let ok = index < releases_of(&key).len();
@@ -1244,6 +1386,12 @@ impl Catalog {
     /// Makes release `index` the one Play uses for `id`.
     pub fn choose_release(id: String, index: u32) -> bool {
         choose_release(&id, index as usize)
+    }
+
+    /// The releases of one episode (an episode key), to pick one when it is not
+    /// in its season's: `{"releases","releasesState","seasonRelease"}`.
+    pub fn episode_releases(key: String) -> String {
+        episode_releases(&key).to_string()
     }
 
     /// Where the player should start `id` (what plays), seconds: where the
