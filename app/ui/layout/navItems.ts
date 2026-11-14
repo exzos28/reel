@@ -4,6 +4,7 @@ import type { Destination } from "../nav";
 import homeIcon from "../icons/home.svg";
 import moviesIcon from "../icons/movies.svg";
 import showsIcon from "../icons/shows.svg";
+import animeIcon from "../icons/anime.svg";
 import searchIcon from "../icons/search.svg";
 import settingsIcon from "../icons/settings.svg";
 
@@ -12,6 +13,7 @@ export const NAV: { id: Destination; icon: ImageAsset; pill: boolean }[] = [
   { id: "home", icon: homeIcon, pill: true },
   { id: "movies", icon: moviesIcon, pill: true },
   { id: "shows", icon: showsIcon, pill: true },
+  { id: "anime", icon: animeIcon, pill: true },
   { id: "search", icon: searchIcon, pill: false },
   { id: "settings", icon: settingsIcon, pill: false },
 ];

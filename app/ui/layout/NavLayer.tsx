@@ -1,4 +1,4 @@
-// The nav of the top-level screens (Home, Movies, Shows): one view over
+// The nav of the top-level screens (Home, Movies, Shows, Anime): one view over
 // them, so switching between them leaves it where it is. It stays put
 // while a screen scrolls; once the content runs under it, a band of the
 // background keeps it readable.

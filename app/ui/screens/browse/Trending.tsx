@@ -5,11 +5,12 @@ import { Shelf } from "../../layout/Shelf";
 import { safe } from "../../theme";
 import { PosterCard } from "./PosterCard";
 
-/** The trending row of posters (a show's poster says when it airs).
+/** The trending row of posters (with `airs`, a poster says when its next
+ * episode airs).
  * `focusedAt`: the poster the focus is on, null while it is elsewhere. */
 export function Trending(props: {
   items: () => Summary[];
-  shows: boolean;
+  airs: boolean;
   focusedAt: () => number | null;
   blockRef: (r: ViewRef) => void;
   onOpen: (i: number) => void;
@@ -23,7 +24,7 @@ export function Trending(props: {
           {(item, i) => (
             <PosterCard
               item={item}
-              sub={() => (props.shows ? airsText(item()) : null)}
+              sub={() => (props.airs ? airsText(item()) : null)}
               focused={() => props.focusedAt() === i()}
               follow={line.follow}
               onPress={() => props.onOpen(i())}

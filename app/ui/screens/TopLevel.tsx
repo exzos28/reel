@@ -1,4 +1,4 @@
-// The top-level screens (Home, Movies, Shows) under the one shared nav: the
+// The top-level screens (Home, Movies, Shows, Anime) under the one shared nav: the
 // screen changes, the nav stays mounted where it is.
 import { View } from "nsh";
 import { NavLayer } from "../layout/NavLayer";
@@ -6,7 +6,7 @@ import { route, type Destination } from "../nav";
 import { BrowseScreen } from "./browse/BrowseScreen";
 import { HomeScreen } from "./home/HomeScreen";
 
-const TOP_LEVEL: Destination[] = ["home", "movies", "shows"];
+const TOP_LEVEL: Destination[] = ["home", "movies", "shows", "anime"];
 
 /** Whether `name` is a screen under the shared nav. */
 export const isTopLevel = (name: string) => TOP_LEVEL.includes(name as Destination);
@@ -23,6 +23,9 @@ export function TopLevel() {
       </If>
       <If when={current() === "shows"}>
         <BrowseScreen page="shows" />
+      </If>
+      <If when={current() === "anime"}>
+        <BrowseScreen page="anime" />
       </If>
       <NavLayer current={current} />
     </View>

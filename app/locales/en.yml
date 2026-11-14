@@ -5,6 +5,7 @@ nav:
   home: Home
   movies: Movies
   shows: Shows
+  anime: Anime
   search: Search
   settings: Settings
   back: Back
@@ -133,6 +134,11 @@ browse:
     lead: Binge-worthy series and episodes
     trending: Current & upcoming
     all: All shows
+  anime:
+    title: Anime
+    lead: Seasonal hits and all-time favourites
+    trending: Trending this season
+    all: All anime
   filter:
     genres: Genres
     years: Years

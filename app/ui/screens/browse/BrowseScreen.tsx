@@ -1,4 +1,4 @@
-// Movies and Shows: page title, a trending row of posters, the filter
+// Movies, Shows and Anime: page title, a trending row of posters, the filter
 // pills (static for now) and a grid of 16:9 cards. Remote: the focus starts
 // on the first poster; Up from the row goes to the nav; the grid moves by
 // rows and columns. OK opens the title. Back goes Home.
@@ -86,7 +86,7 @@ export function BrowseScreen(props: { page: Page }) {
       <BrowseHeader page={props.page} />
       <Trending
         items={() => data().trending}
-        shows={props.page === "shows"}
+        airs={props.page !== "movies"}
         focusedAt={() => (zone() === "trending" ? trend() : null)}
         blockRef={page.follow(() => zone() === "trending", "nearest")}
         onOpen={openTrending}

@@ -2,7 +2,7 @@
 // density on a TV, regular on a Mac, compact on a phone) and by the mouse.
 // Only one screen is mounted at a time, so only its keys are bound; the
 // screens keep their focus in their own modules, so Back finds it again.
-// Home, Movies and Shows share one nav (screens/TopLevel.tsx).
+// Home, Movies, Shows and Anime share one nav (screens/TopLevel.tsx).
 import { effect, mount, setColorScheme, signal, View } from "nsh";
 import { Engine } from "app/native";
 import { SearchScreen } from "./ui/screens/search/SearchScreen";
