@@ -1,4 +1,4 @@
-// The player: the platform's video view on the local stream under our own
+// The player: the video view (mpv or the platform's, VideoSurface) on the local stream under our own
 // controls (design/concept/tv-player.html). The overlay shows on any key,
 // press or mouse move and hides after a few quiet seconds, unless the film
 // is paused, buffering or the tracks panel is open. Remote: Space/Enter
@@ -6,13 +6,16 @@
 // buttons on the buttons row), Up/Down switch rows, Escape closes the
 // panel, then hides the overlay, then leaves. Near the end of an episode
 // the Up next card (tv-player-end.html) takes the remote instead.
-import { cleanup, computed, effect, Image, keymap, signal, Text, Video, View, type ImageAsset, type VideoRef } from "nsh";
+import { cleanup, computed, effect, Image, keymap, signal, Text, View, type ImageAsset } from "nsh";
 import { t } from "nsh/i18n";
 import { Catalog, Fmt } from "app/native";
 import { episodeCode, episodeText, runtime, titleText, type Episode, type Release } from "./catalog";
 import { BACK_SIZE, BackButton, Icon } from "./components";
 import { duration, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
 import { alpha, colors, focusRing, font, radius, safe, type, u } from "./theme";
+import { SubtitleOverlay } from "./SubtitleOverlay";
+import { playerTracks, type TrackOption } from "./tracks";
+import { VideoSurface, type SurfaceRef } from "./VideoSurface";
 import playIcon from "./icons/play.svg";
 import pauseIcon from "./icons/pause.svg";
 import rewindIcon from "./icons/rewind.svg";
@@ -32,8 +35,6 @@ type ButtonId = (typeof BUTTONS)[number];
 const PLAY_BUTTON = 1;
 
 interface Tracks {
-  audio: { key: string; selected: boolean }[];
-  subtitles: { key: string; selected: boolean }[];
   releases: Release[];
 }
 
@@ -44,7 +45,7 @@ export function Player() {
   const url = computed(() => { const s = core(); return s.phase === "ready" ? s.stream_url : ""; });
   const lowSpace = computed(() => { const s = core(); return s.phase === "ready" && s.low_space; });
 
-  let video: VideoRef | undefined;
+  let surface: SurfaceRef | undefined;
   const paused = signal(false);
   const loaded = signal(false);
   /** What `onBuffer` last said. */
@@ -60,9 +61,16 @@ export function Player() {
   const panelCol = signal(0);
   const panelRow = signal(0);
   const tracks = computed<Tracks>(() => JSON.parse(Catalog.tracks(what()?.id ?? "")));
-  /** Demo choices: the panel shows them; NSH's Video has no track API yet. */
+  /** The release picked in the panel (shown; switching releases is the catalog's). */
   const picked = signal<Record<number, number>>({});
-  const columns = computed(() => [tracks().audio.length, tracks().subtitles.length, tracks().releases.length]);
+  // Audio and Subtitles: what the core says the video and the release have.
+  const { embedded, menu, cue, choose } = playerTracks();
+  const columns = computed(() => [menu().audio.length, menu().subtitles.length, tracks().releases.length]);
+  const pick = (col: number, row: number) => {
+    const option = col === 0 ? menu().audio[row] : col === 1 ? menu().subtitles[row] : undefined;
+    if (col === 2) picked.set({ ...picked(), [col]: row });
+    else if (option && option.kind !== "original") void choose(option.key).catch((e) => console.warn("tracks", e));
+  };
 
   // Up next: the core says when and what (near the end of an episode).
   const next = computed<Episode | null>(() => {
@@ -123,7 +131,7 @@ export function Player() {
     const d = duration();
     const to = Math.max(0, d > 0 ? Math.min(seconds, d) : seconds);
     position.set(to);
-    video?.seek(to);
+    surface?.seek(to);
   };
   const seekBy = (d: number) => seekTo(position() + d);
   const togglePause = () => paused.set(!paused());
@@ -178,7 +186,7 @@ export function Player() {
     space: key(togglePause),
     enter: key(
       (shown) => {
-        if (panel()) picked.set({ ...picked(), [panelCol()]: panelRow() });
+        if (panel()) pick(panelCol(), panelRow());
         else if (shown && row() === "buttons") run(BUTTONS[button()]);
         else togglePause();
       },
@@ -250,11 +258,13 @@ export function Player() {
       focusable={false}
     >
       <If when={ready()}>
-        <Video
-          ref={(r) => (video = r)}
+        <VideoSurface
+          surfaceRef={(r) => (surface = r)}
           src={url()}
-          controls={false}
           paused={paused()}
+          audioTrack={menu().apply.audio}
+          subtitleTrack={menu().apply.subtitle}
+          onTracks={(json) => embedded.set(json)}
           progressUpdateInterval={250}
           onLoad={(e) => {
             loaded.set(true);
@@ -269,6 +279,8 @@ export function Player() {
           style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
         />
       </If>
+
+      <SubtitleOverlay text={cue} lifted={() => overlay() && !card()} />
 
       <If when={ready() && !failed() && (buffering() || !loaded())}>
         <View
@@ -314,9 +326,11 @@ export function Player() {
         <If when={panel()}>
           <TracksPanel
             tracks={tracks}
+            audio={() => menu().audio}
+            subtitles={() => menu().subtitles}
             picked={picked}
             focused={(col, i) => panelCol() === col && panelRow() === i}
-            onPick={(col, i) => { poke(); panelCol.set(col); panelRow.set(i); picked.set({ ...picked(), [col]: i }); }}
+            onPick={(col, i) => { poke(); panelCol.set(col); panelRow.set(i); pick(col, i); }}
           />
         </If>
 
@@ -473,12 +487,14 @@ function RoundButton(props: {
 /** Audio, Subtitles and Release in one dark panel. */
 function TracksPanel(props: {
   tracks: () => Tracks;
+  audio: () => TrackOption[];
+  subtitles: () => TrackOption[];
   picked: () => Record<number, number>;
   focused: (col: number, i: number) => boolean;
   onPick: (col: number, i: number) => void;
 }) {
   const isSelected = (col: number, i: number, fromCore: boolean) => {
-    const p = props.picked()[col];
+    const p = col === 2 ? props.picked()[col] : undefined;
     return p != null ? p === i : fromCore;
   };
   const column = (col: number, heading: string, options: () => { main: string; sub?: string; selected: boolean }[]) => (
@@ -524,8 +540,8 @@ function TracksPanel(props: {
         flexDirection: "row", padding: u(26), borderRadius: radius() + u(26), borderCurve: "continuous", backgroundColor: alpha(colors.card(), 0.94),
       }}
     >
-      {column(0, t("player.audio"), () => props.tracks().audio.map((a) => ({ main: t(`tracks.audio.${a.key}`), selected: a.selected })))}
-      {column(1, t("player.subtitles"), () => props.tracks().subtitles.map((s) => ({ main: t(`tracks.subtitles.${s.key}`), selected: s.selected })))}
+      {column(0, t("player.audio"), () => props.audio().map((a, i) => ({ main: trackName(a, i + 1), sub: trackNote(a), selected: a.selected })))}
+      {column(1, t("player.subtitles"), () => props.subtitles().map((s, i) => ({ main: trackName(s, i), sub: trackNote(s), selected: s.selected })))}
       {column(2, t("player.release"), () =>
         props.tracks().releases.map((r) => ({
           main: `${r.quality} ${r.source}`,
@@ -535,6 +551,27 @@ function TracksPanel(props: {
       )}
     </View>
   );
+}
+
+/** A track's name in the panel: its language, else its title, else its number. */
+function trackName(o: TrackOption, number: number) {
+  if (o.kind === "original") return t("tracks.audio.original");
+  if (o.kind === "off") return t("tracks.subtitles.off");
+  // The core gives ISO 639-1 codes for the languages it knows (`languages.*`).
+  if (o.language && o.language.length === 2) return t(`languages.${o.language}`);
+  if (o.language) return o.language.toUpperCase();
+  return o.title || t("tracks.number", { number });
+}
+
+/** The line under a track's name: its title, forced, where it comes from or its format. */
+function trackNote(o: TrackOption) {
+  if (o.kind === "original" || o.kind === "off") return undefined;
+  const parts = [
+    o.language ? o.title : null,
+    o.forced ? t("tracks.forced") : null,
+    o.kind === "external" ? t("tracks.from_torrent") : [o.codec?.toUpperCase(), o.channels].filter(Boolean).join(" "),
+  ].filter((p): p is string => !!p);
+  return parts.length ? parts.join(" · ") : undefined;
 }
 
 /** Near the end of an episode: the next one, Play now with its countdown,

@@ -58,6 +58,8 @@ function saveProgress() {
 }
 
 let job = 0;
+/** The engine's job for what plays (0 when nothing does), for the tracks. */
+export const currentJob = () => job;
 let poll: ReturnType<typeof setInterval> | undefined;
 /** Bumped by `stop`, so an answer for an older film is dropped. */
 let generation = 0;

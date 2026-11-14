@@ -7,7 +7,10 @@ mod metadata;
 mod progress;
 mod settings;
 mod sources;
+mod subtitles;
 mod timeline;
+#[cfg(target_os = "macos")]
+mod mpv;
 
 use nsh_core::prelude::*;
 
@@ -16,7 +19,13 @@ pub use metadata::Meta;
 
 #[native_module("app/native")]
 fn native(registry: &mut Registry) {
-    registry.module::<Fmt>().module::<Engine>().module::<Catalog>().module::<Settings>().module::<Sources>().module::<Meta>();
+    registry.module::<Fmt>().module::<Engine>().module::<Catalog>().module::<Settings>().module::<Sources>().module::<Meta>().module::<VideoEngine>();
+}
+
+/// The mpv video view (`reel/mpv`), where libmpv is found.
+#[native_components(macos)]
+fn components(components: &nsh_platform_macos::Components) {
+    mpv::register(components);
 }
 
 /// The built-in torrent server (librqbit). Results are JSON strings.
@@ -67,6 +76,60 @@ impl Engine {
     /// Stops the job and deletes what it downloaded (the cache is per film).
     pub fn close(job: u32) {
         engine::close(job);
+    }
+
+    /// The subtitle files of what the job plays (fetching them starts with the
+    /// first ready answer): `{"state":"pending"|"ready","files":[{"id",
+    /// "language","label","format"}]}` (see `subtitles::list`).
+    pub fn subtitles(job: u32) -> String {
+        subtitles::list(job).to_string()
+    }
+
+    /// The cues of subtitle file `id` on screen at some moment of `from..=to`
+    /// seconds; the overlay asks with `from == to` at its position (see
+    /// `subtitles::cues`): `{"state","cues":[{"start","end","text"}]}`.
+    pub fn cues(job: u32, id: u32, from: f64, to: f64) -> String {
+        subtitles::cues(job, id as usize, from, to).to_string()
+    }
+
+    /// The Audio and Subtitles columns of the tracks panel for the job playing
+    /// `id`, with what the video view should apply. `embedded` is the view's
+    /// `tracks` event as JSON, empty where the view reports none (see
+    /// `subtitles::menu`).
+    pub fn tracks(job: u32, id: String, embedded: String) -> String {
+        let embedded = parse_embedded(&embedded);
+        subtitles::menu(job, &id, embedded.as_ref()).to_string()
+    }
+
+    /// The viewer picked `choice` (a key of `tracks`); subtitles are
+    /// remembered for the title. The columns after it (as `tracks`).
+    pub fn choose_track(job: u32, id: String, embedded: String, choice: String) -> String {
+        let embedded = parse_embedded(&embedded);
+        subtitles::choose(job, &id, embedded.as_ref(), &choice).to_string()
+    }
+}
+
+fn parse_embedded(json: &str) -> Option<subtitles::tracks::Embedded> {
+    (!json.is_empty()).then(|| serde_json::from_str(json).ok()).flatten()
+}
+
+/// Which video view plays on this device.
+#[module]
+pub struct VideoEngine;
+
+#[module]
+impl VideoEngine {
+    /// `"mpv"` where reel's mpv view (`reel/mpv`) can play (macOS with
+    /// libmpv found: MKV, every codec, track selection), else `"native"`
+    /// (NSH's `<Video>`, the platform's player). Choosing mpv also sets the
+    /// search profile to it, so releases only mpv plays are offered.
+    pub fn kind() -> String {
+        #[cfg(target_os = "macos")]
+        if mpv::available() {
+            sources::compat::set_profile(sources::compat::Profile::Mpv);
+            return "mpv".into();
+        }
+        "native".into()
     }
 }
 

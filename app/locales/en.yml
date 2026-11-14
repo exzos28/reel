@@ -114,6 +114,37 @@ tracks:
   subtitles:
     "off": "Off"
     en: English
+  number: "Track %{number}"
+  forced: Forced
+  from_torrent: File in the release
+  loading: Looking for subtitles…
+
+languages:
+  en: English
+  ru: Russian
+  uk: Ukrainian
+  be: Belarusian
+  de: German
+  fr: French
+  es: Spanish
+  it: Italian
+  pt: Portuguese
+  pl: Polish
+  cs: Czech
+  nl: Dutch
+  sv: Swedish
+  "no": Norwegian
+  da: Danish
+  fi: Finnish
+  hu: Hungarian
+  ro: Romanian
+  el: Greek
+  tr: Turkish
+  ar: Arabic
+  he: Hebrew
+  ja: Japanese
+  zh: Chinese
+  ko: Korean
 
 series:
   season: "Season %{number}"

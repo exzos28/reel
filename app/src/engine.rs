@@ -133,6 +133,7 @@ pub fn cache_dir() -> PathBuf {
 
 /// Stops a job and deletes what it downloaded.
 pub fn close(job: u32) {
+    crate::subtitles::forget(job);
     let Some(core) = CORE.get() else { return };
     let Some(state) = core.jobs.lock().unwrap().remove(&job) else { return };
     if let Job::Ready(handle) = state {
@@ -337,6 +338,32 @@ fn video_file(handle: &librqbit::ManagedTorrent, job: u32) -> Option<usize> {
         })
         .ok()?;
     sources::episode::pick(&files, episode_of(job))
+}
+
+/// What a ready job plays, for the subtitles: its torrent, the video's
+/// file index, and the torrent's files (index, path, length). None until the
+/// torrent's metadata is in (or for a job that does not play).
+pub(crate) fn playing_files(job: u32) -> Option<(Arc<librqbit::ManagedTorrent>, usize, Vec<(usize, String, u64)>)> {
+    let core = CORE.get()?;
+    let Some(Job::Ready(handle)) = core.jobs.lock().unwrap().get(&job).cloned() else { return None };
+    let files: Vec<(usize, String, u64)> = handle
+        .with_metadata(|m| {
+            m.file_infos
+                .iter()
+                .enumerate()
+                .map(|(index, f)| (index, f.relative_filename.to_string_lossy().into_owned(), f.len))
+                .collect()
+        })
+        .ok()?;
+    let video = sources::episode::pick(&files, episode_of(job))?;
+    Some((handle, video, files))
+}
+
+/// Runs `task` on the engine's runtime (started by then: a job is ready).
+pub(crate) fn spawn(task: impl std::future::Future<Output = ()> + Send + 'static) {
+    if let Some(core) = CORE.get() {
+        core.rt.spawn(task);
+    }
 }
 
 /// Buckets the scrubber is cut into.

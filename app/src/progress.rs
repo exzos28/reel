@@ -63,6 +63,10 @@ impl Entry {
 struct Saved {
     /// By what plays: a title id, or `<title>:s<season>e<episode>`.
     entries: HashMap<String, Entry>,
+    /// The subtitles chosen per title (not per episode): "off", a language
+    /// ("en"), or "?" for a track whose language is unknown.
+    #[serde(default)]
+    subtitles: HashMap<String, String>,
 }
 
 struct Store {
@@ -104,6 +108,9 @@ pub fn init(data_dir: Option<&Path>) {
                     s.saved.entries.insert(k, e);
                 }
             }
+        }
+        for (title, pref) in read.subtitles {
+            s.saved.subtitles.entry(title).or_insert(pref);
         }
         s.file = file;
     });
@@ -169,6 +176,24 @@ pub fn recent() -> Vec<(String, Entry)> {
     let mut out: Vec<_> = latest.into_values().collect();
     out.sort_by(|a, b| b.1.order().cmp(&a.1.order()));
     out
+}
+
+/// The subtitles last chosen for `title` (see `Saved::subtitles`).
+pub fn subtitle_pref(title: &str) -> Option<String> {
+    with(|s| s.saved.subtitles.get(title).cloned())
+}
+
+/// Remembers the subtitles chosen for `title`.
+pub fn set_subtitle_pref(title: &str, pref: &str) {
+    with(|s| {
+        if s.saved.subtitles.get(title).map(String::as_str) == Some(pref) {
+            return;
+        }
+        s.saved.subtitles.insert(title.to_owned(), pref.to_owned());
+        if let Some(file) = &s.file {
+            write(file, &s.saved);
+        }
+    });
 }
 
 /// The latest entry of `title`.

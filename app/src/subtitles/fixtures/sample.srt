@@ -1,0 +1,16 @@
+1
+00:00:01,000 --> 00:00:03,500
+<i>The lighthouse keeper</i>
+waves from the rock.
+
+2
+00:01:01,250 --> 00:01:04,000 X1:10 X2:20
+{\an8}<font color="#ffffff">Is anyone out there?</font>
+
+3
+01:00:02,000 --> 01:00:05,000
+Lights &amp; bells.
+
+4
+broken timing
+not a cue

@@ -1,0 +1,17 @@
+WEBVTT - a short sample
+
+NOTE written for the tests
+
+STYLE
+::cue { color: white }
+
+intro
+00:02.000 --> 00:04.000 align:start position:10%
+<v Narrator>Morning on the pier.</v>
+
+00:00:06.000 --> 00:00:09.000
+<c.yellow>Gulls circle</c>
+over the <00:00:07.500>boats.
+
+01:15.500 --> 01:18.000
+Tide's coming in.
