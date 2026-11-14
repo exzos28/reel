@@ -207,6 +207,8 @@ export function BrowseScreen(props: { page: Page }) {
           rowGap={28}
           gap={24}
           rowRef={(r) => page.follow(() => zone() === "grid" && cell() >= r().at && cell() < r().at + r().items.length)}
+          page={page}
+          focusRow={() => (zone() === "grid" ? Math.floor(cell() / columns()) : null)}
           cell={(item, at) => (
             <GridCard
               item={item}

@@ -98,7 +98,7 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
       : placement === "nearest" && !fixedLine ? nearestOffset(geometry, current)
       : anchorOffset({ ...geometry, anchor: opts.anchor(geometry.viewport) });
     if (perf.on && !horizontal && !first) {
-      console.log(`[perf] scroll ${Math.round(current)} → ${Math.round(target)}: sent ${Math.round(performance.now() - t0)} ms after the key`);
+      console.log(`[perf] scroll ${Math.round(current)} → ${Math.round(target)} (block ${Math.round(start)}, view ${Math.round(geometry.viewport)}, content ${Math.round(geometry.content)}): sent ${Math.round(performance.now() - t0)} ms after the key`);
     }
     go(target, !first);
   };

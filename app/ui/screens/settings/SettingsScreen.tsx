@@ -7,6 +7,7 @@
 import { keymap, signal, Text, View, type ViewRef, type ViewStyle } from "nsh";
 import { Engine } from "../../native";
 import { t } from "nsh/i18n";
+import { byKeys } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
 import { useRootBack } from "../../focus/rootBack";
 import { isTouch } from "../../layout/chrome";
@@ -115,14 +116,14 @@ export function SettingsScreen() {
   const at = () => (onNav() ? -1 : focus());
 
   keymap.bind(
-    {
+    byKeys({
       up: () =>
         picker() ? pickAt.set(Math.max(pickAt() - 1, 0)) : onNav() ? undefined : focus() === 0 ? toNav() : move(-1),
       down: () =>
         picker() ? pickAt.set(Math.min(pickAt() + 1, choices().length - 1)) : onNav() ? onNav.set(false) : move(1),
       left: () => onNav() && navAt.set(clamp(navAt() - 1, NAV.length - 1)),
       right: () => onNav() && navAt.set(clamp(navAt() + 1, NAV.length - 1)),
-    },
+    }),
     { repeat: true },
   );
   keymap.bind({
@@ -149,9 +150,16 @@ export function SettingsScreen() {
         <If when={!isTouch}>
           <Text style={pageTitle()}>{t("settings.title")}</Text>
         </If>
-        <LanguageSection focused={() => at() === LANGUAGE_AT && !picker()} onOpen={() => open("language")} />
-        <BufferSection freeBytes={freeBytes} focused={() => at() === BUFFER_AT && !picker()} onOpen={() => open("buffer")} />
-        <DetailsSection focused={() => at() === detailsAt()} onFocus={() => focus.set(detailsAt())} />
+        {/* Each section is a block the page brings to the focus line when its row has the focus. */}
+        <View ref={page.follow(() => at() === LANGUAGE_AT)}>
+          <LanguageSection focused={() => at() === LANGUAGE_AT && !picker()} onOpen={() => open("language")} />
+        </View>
+        <View ref={page.follow(() => at() === BUFFER_AT)}>
+          <BufferSection freeBytes={freeBytes} focused={() => at() === BUFFER_AT && !picker()} onOpen={() => open("buffer")} />
+        </View>
+        <View ref={page.follow(() => at() === detailsAt())}>
+          <DetailsSection focused={() => at() === detailsAt()} onFocus={() => focus.set(detailsAt())} />
+        </View>
         <SourceSection />
         <AboutRow focused={() => at() === aboutAt()} viewRef={page.follow(() => at() === aboutAt(), "nearest")} onPress={about} />
       </View>

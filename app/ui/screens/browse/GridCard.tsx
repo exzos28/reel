@@ -22,7 +22,7 @@ export function GridCard(props: { item: () => Summary; width: () => number; focu
       onPress={props.onPress}
       style={cardBox(props.width(), 3, false)}
       picture={[
-        <Picture item={s} src={() => s().still} titleSize={20} style={{ height: props.width() * 0.56, ...rounded() }} />,
+        <Picture item={s} src={() => s().card ?? s().still} titleSize={20} style={{ height: props.width() * 0.56, ...rounded() }} />,
         <If when={s().tag}>
           <Tag text={() => t(`tag.${s().tag}`)} />
         </If>,
