@@ -14,6 +14,8 @@ one hybrid .wgt (package ReelTizen1)
       ReelCore.dll loads lib/libreel_tizen_core.so (Rust: app/ crate + JSON RPC server)
       127.0.0.1:47391   /health, /rpc (token), /ui/* (the NSH web build)
       127.0.0.1:<random> librqbit's stream server (/torrents/{id}/stream/{file})
+      0.0.0.0:47392     on the LAN: /logs (read only) and /settings, the settings page for a
+                        phone, paired with a code the TV shows (docs/hosted-settings.md)
 ```
 
 The pattern comes from [tizen-os-ambilight](https://github.com/exzos28/tizen-os-ambilight), which already works on the same TV generation:

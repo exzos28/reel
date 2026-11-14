@@ -101,11 +101,11 @@ address) and `Hosted.pairing()` / `Hosted.address()`.
 
 **The code on the TV.** `Hosted.pairing()` is `{"code":"482913","expiresIn":115}` while a code
 waits, `{"code":null}` otherwise. While there is one the app shows a panel over whatever screen
-is open: the code in large digits, "Enter this code on your phone to change reel's settings",
-and its expiry. It goes when the code is used, expires (the core bumps the revision when it
-does), is dropped after 5 wrong tries, or the viewer presses Back (`Hosted.cancelPairing()`,
-which also makes the waiting page say "Cancelled on the TV"). The panel does not take other
-keys from the screen under it.
+is open (`ui/layout/PairingDialog.tsx`): the code in large digits and "Type this code on
+reel's settings page on your phone or computer", with Cancel. It goes when the code is used,
+expires (the core bumps the revision when it does), is dropped after 5 wrong tries, or the
+viewer presses Back or OK on Cancel (`Hosted.cancelPairing()`; the page then hears `expired`
+and says the code is gone). The panel does not pass keys to the screen under it.
 
 ## 5. The address
 
