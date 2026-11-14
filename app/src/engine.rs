@@ -247,9 +247,40 @@ pub fn add(url: &str) -> anyhow::Result<u32> {
 }
 
 /// Adds a magnet link or torrent URL as job `job` (resolving until it is in).
+/// Open public trackers added to every magnet, as torrent clients do
+/// ("automatically add these trackers"): magnets from indexers often name one
+/// tracker or none, and DHT alone finds peers slowly.
+const OPEN_TRACKERS: [&str; 6] = [
+    "udp://tracker.opentrackr.org:1337/announce",
+    "udp://open.stealth.si:80/announce",
+    "udp://tracker.torrent.eu.org:451/announce",
+    "udp://exodus.desync.com:6969/announce",
+    "udp://open.demonii.com:1337/announce",
+    "udp://explodie.org:6969/announce",
+];
+
+/// A magnet with the open trackers it does not name yet; other URLs as they are.
+fn with_open_trackers(url: &str) -> String {
+    if !url.starts_with("magnet:") {
+        return url.to_owned();
+    }
+    let mut out = url.to_owned();
+    for tr in OPEN_TRACKERS {
+        let encoded: String = tr.bytes().map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => (b as char).to_string(),
+            _ => format!("%{b:02X}"),
+        }).collect();
+        if !out.contains(&encoded) && !out.contains(tr) {
+            out.push_str("&tr=");
+            out.push_str(&encoded);
+        }
+    }
+    out
+}
+
 fn add_to(core: &Core, job: u32, url: &str) {
     core.jobs.lock().unwrap().insert(job, Job::Resolving);
-    let (session, jobs, url) = (core.session.clone(), core.jobs.clone(), url.to_owned());
+    let (session, jobs, url) = (core.session.clone(), core.jobs.clone(), with_open_trackers(url));
     // The film's cache: at most the buffer, around where the player reads.
     let link = buffer::Link::default();
     let storage = buffer::RingFactory::new(cache_dir().join("ring"), buffer_mb() * MIB, link.clone());
@@ -477,7 +508,16 @@ mod tests {
     };
     use std::time::{Duration, Instant};
 
-    use super::Layout;
+    use super::{Layout, with_open_trackers};
+
+    #[test]
+    fn magnets_get_open_trackers_once() {
+        let m = "magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce";
+        let out = with_open_trackers(m);
+        assert_eq!(out.matches("tracker.opentrackr.org").count(), 1, "not twice");
+        assert!(out.contains("tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce"));
+        assert_eq!(with_open_trackers("https://indexer.example/a.torrent"), "https://indexer.example/a.torrent");
+    }
 
     #[test]
     fn buffer_is_clamped_and_space_is_checked() {

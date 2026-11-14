@@ -262,8 +262,10 @@ fn rank(items: &[Item], query: &Query) -> (Vec<Value>, Vec<Value>) {
             json!({
                 "id": key,
                 "title": it.title,
-                // What the engine opens: the magnet, else the .torrent URL.
-                "source": it.magnet.clone().or_else(|| it.link.clone()),
+                // What the engine opens: the .torrent first (through the user's source it
+                // carries the tracker's announce, with their key for private trackers, so
+                // peers come at once), else the magnet (DHT and whatever trackers it names).
+                "source": it.link.clone().filter(|l| !l.starts_with("magnet:")).or_else(|| it.magnet.clone()),
                 "infohash": it.infohash,
                 "size": it.size,
                 "seeders": if seeders_known { it.seeders } else { None },
@@ -291,7 +293,7 @@ mod tests {
         assert_eq!(r.len(), 3);
         assert_eq!(r[0]["title"], "Sintel 2010 1080p WEB x264 & subs");
         assert_eq!(r[0]["info"]["resolution"], 1080);
-        assert!(r[0]["source"].as_str().unwrap().starts_with("magnet:"));
+        assert_eq!(r[0]["source"], "https://indexer.example/dl/1.torrent", "the .torrent before the magnet");
         assert_eq!(r[1]["source"], "https://indexer.example/dl/2.torrent");
         assert_eq!(r[2]["seeders"], 0);
     }
