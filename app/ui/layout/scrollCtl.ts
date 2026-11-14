@@ -46,20 +46,17 @@ export interface ScrollCtl {
  * the viewport's start, given the viewport's length. A page opens where it
  * was left (`memory` names it) or at its top: opening a screen never scrolls
  * it to its focus, so switching screens does not make it jump. */
-/** The next animation step. On the web build (a Samsung TV) the app's code runs in a
- * frame the browser does not draw, where requestAnimationFrame may never call back: a
- * timer drives the steps there instead. */
+/** The web build (a Samsung TV): the app's code runs in a frame the browser does not
+ * draw, where requestAnimationFrame never calls back and steps sent one by one arrive in
+ * bursts; the browser's own smooth scrolling animates there instead. */
 const webBuild = platform.os === "web";
-const nextFrame = (f: (now: number) => void): number =>
-  webBuild ? (setTimeout(() => f(performance.now()), 16) as unknown as number) : requestAnimationFrame(f);
-const cancelFrame = (id: number) => (webBuild ? clearTimeout(id as unknown as ReturnType<typeof setTimeout>) : cancelAnimationFrame(id));
 
 export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number) => number; memory?: string }): ScrollCtl {
   const horizontal = !!opts.horizontal;
   let frame = 0;
   let at = 0;
   const stop = () => {
-    if (frame) cancelFrame(frame);
+    if (frame) cancelAnimationFrame(frame);
     frame = 0;
     running.delete(stop);
   };
@@ -68,19 +65,23 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     ctl.scroll()?.scrollTo(horizontal ? { x: v, animated: false } : { y: v, animated: false });
   };
   const go = (target: number, animate: boolean) => {
-    if (webBuild) console.log(`[scroll] ${horizontal ? "x" : "y"} ${Math.round(at)} → ${Math.round(target)}${ctl.scroll() ? "" : " (no scroll view)"}`);
     stop();
     if (!animate || reduceMotion() || Math.abs(target - at) < 1) return set(target);
+    if (webBuild) {
+      at = target;
+      ctl.scroll()?.scrollTo(horizontal ? { x: target, animated: true } : { y: target, animated: true });
+      return;
+    }
     const from = at;
     const t0 = performance.now();
     const step = (now: number) => {
       const p = Math.min(1, (now - t0) / DURATION);
       set(from + (target - from) * easeOut(p));
-      frame = p < 1 ? nextFrame(step) : 0;
+      frame = p < 1 ? requestAnimationFrame(step) : 0;
       if (!frame) running.delete(stop);
     };
     running.add(stop);
-    frame = nextFrame(step);
+    frame = requestAnimationFrame(step);
   };
   const place = async (block: ViewRef, placement: Placement, first: boolean) => {
     if (first && !horizontal) {
@@ -90,10 +91,6 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     const scroll = ctl.scroll();
     if (!scroll || !ctl.content) return;
     const [b, s, c] = await Promise.all([block.measure(), scroll.measure(), ctl.content.measure()]);
-    if (webBuild && s && c && !horizontal) {
-      const g = globalThis as unknown as { innerHeight?: number; document?: { documentElement?: { clientHeight?: number } } };
-      console.log(`[scroll] viewport ${Math.round(s.bounds.size.height)} content ${Math.round(c.bounds.size.height)} window ${g.innerHeight} doc ${g.document?.documentElement?.clientHeight}`);
-    }
     if (!b || !s || !c) return;
     const axis = horizontal ? "x" : "y";
     const length = horizontal ? "width" : "height";
