@@ -188,7 +188,7 @@ package() {
     rsync -a --exclude bin --exclude obj --exclude lib "$HERE/service/" "$work/service/"
     mkdir -p "$work/service/lib"
     cp "$out/libreel_tizen_core.so" "$work/service/lib/"
-    sed -i.bak "s/ version=\"[^\"]*\"/ version=\"$ver\"/" "$work/service/tizen-manifest.xml" && rm "$work/service/tizen-manifest.xml.bak"
+    sed -i.bak "/<manifest /s/ version=\"[^\"]*\"/ version=\"$ver\"/" "$work/service/tizen-manifest.xml" && rm "$work/service/tizen-manifest.xml.bak"
     dotnet build "$work/service/ReelCore.csproj" -c Release -v:m -nologo
     local tpk; tpk="$(find "$work/service/bin/Release" -name '*.tpk' | head -n 1)"
     [ -n "$tpk" ] || die "no .tpk built"
