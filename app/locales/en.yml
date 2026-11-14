@@ -94,16 +94,16 @@ release:
   pack: "season pack %{size}"
   fast: starts in seconds
   note:
-    starts_fastest: Starts fastest
-    plays_now: Plays now
-    needs: "Needs %{mbit} Mbit/s"
-    slow_start: Slow start
-    few_sharing: Few people sharing
+    starts_fast: Starts fast
+    needs: "Needs %{mbit} Mbit/s internet"
+    slow_start: May take a while to start
+    few_sharing: Few people sharing, may not start
 
 releases:
   title: Releases
   title_episode: "Releases of %{episode}"
-  found: "%{count} found, fastest to start first"
+  found: "%{count} found, the best of each quality first"
+  more: "Show %{count} more"
   state:
     no_source: Add a search source in Settings to find releases.
     searching: Searching your source…

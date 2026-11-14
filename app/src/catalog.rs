@@ -620,27 +620,12 @@ fn releases_json(key: &str, info: &Info) -> Vec<Value> {
     let releases = releases_of(key);
     let (minutes, episodes) = length_of(key, info);
     let pick = chosen(key, &releases, minutes, episodes);
-    let mut order: Vec<usize> = (0..releases.len()).collect();
-    order.sort_by_key(|&i| std::cmp::Reverse(peers(&releases[i])));
+    let order = release_order(&releases, pick);
     order
         .iter()
-        .enumerate()
-        .map(|(rank, &i)| {
+        .map(|&(i, top)| {
             let r = &releases[i];
             let (p, m) = (peers(r), mbit(r, minutes, episodes));
-            let note = if Some(i) == pick {
-                "plays_now"
-            } else if m > 15 {
-                "needs"
-            } else if p < 10 {
-                "few_sharing"
-            } else if rank == 0 {
-                "starts_fastest"
-            } else if p < 30 {
-                "slow_start"
-            } else {
-                "plays_now"
-            };
             json!({
                 "index": i,
                 "quality": quality(r),
@@ -651,14 +636,56 @@ fn releases_json(key: &str, info: &Info) -> Vec<Value> {
                 "tracks": [],
                 "peers": p,
                 "bars": bars(p),
-                "note": note,
+                "note": start_note(p, m),
                 "mbit": m,
                 "selected": Some(i) == pick,
                 "pack": r["seasonPack"] == true,
                 "indexer": r["indexer"],
+                "top": top,
             })
         })
         .collect()
+}
+
+/// How a release will start, from the people sharing it and the speed it needs:
+/// "starts_fast", "needs" (a fast connection, `mbit`), "slow_start", "few_sharing".
+fn start_note(peers: u64, mbit: u64) -> &'static str {
+    if peers < 10 {
+        "few_sharing"
+    } else if mbit > 15 {
+        "needs"
+    } else if peers < 50 {
+        "slow_start"
+    } else {
+        "starts_fast"
+    }
+}
+
+/// The list's order, each with whether it is in the short list: first the
+/// most shared release of each quality (and the one Play uses), best quality
+/// first; then the rest, most shared first.
+fn release_order(releases: &[Value], pick: Option<usize>) -> Vec<(usize, bool)> {
+    let mut by_peers: Vec<usize> = (0..releases.len()).collect();
+    by_peers.sort_by_key(|&i| std::cmp::Reverse(peers(&releases[i])));
+    // A quality is the resolution, HDR or not.
+    let mut seen: Vec<(String, bool)> = Vec::new();
+    let mut top: Vec<usize> = Vec::new();
+    for &i in &by_peers {
+        let info = &releases[i]["info"];
+        let kind = (quality(&releases[i]), info["hdr"] == true || info["dolby_vision"] == true);
+        if !seen.contains(&kind) {
+            seen.push(kind);
+            top.push(i);
+        }
+    }
+    if let Some(p) = pick
+        && !top.contains(&p)
+    {
+        top.push(p);
+    }
+    top.sort_by_key(|&i| (std::cmp::Reverse(quality_rank(&releases[i])), std::cmp::Reverse(peers(&releases[i]))));
+    let rest = by_peers.into_iter().filter(|i| !top.contains(i));
+    top.iter().map(|&i| (i, true)).chain(rest.map(|i| (i, false))).collect()
 }
 
 /// The release line: the one Play uses, `fast` when it starts in seconds.
@@ -1243,3 +1270,29 @@ static TEST_SOURCE: Mutex<Option<bool>> = Mutex::new(None);
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod release_order_tests {
+    use super::*;
+
+    fn r(resolution: u64, hdr: bool, seeders: u64) -> Value {
+        json!({ "info": { "resolution": resolution, "hdr": hdr }, "seeders": seeders })
+    }
+
+    #[test]
+    fn the_short_list_has_the_most_shared_of_each_quality_best_first() {
+        let rs = [r(1080, false, 500), r(2160, true, 90), r(1080, false, 900), r(720, false, 40), r(2160, true, 300), r(2160, false, 10)];
+        let order = release_order(&rs, None);
+        let top: Vec<usize> = order.iter().filter(|(_, t)| *t).map(|(i, _)| *i).collect();
+        assert_eq!(top, vec![4, 5, 2, 3], "4K HDR, 4K, 1080p, 720p: the most shared of each");
+        let rest: Vec<usize> = order.iter().filter(|(_, t)| !*t).map(|(i, _)| *i).collect();
+        assert_eq!(rest, vec![0, 1], "then the rest, most shared first");
+    }
+
+    #[test]
+    fn the_release_play_uses_is_always_in_the_short_list() {
+        let rs = [r(1080, false, 500), r(1080, false, 20)];
+        let order = release_order(&rs, Some(1));
+        assert!(order.iter().all(|(_, top)| *top));
+    }
+}

@@ -72,7 +72,7 @@ test("the remote goes from the releases to the cast, then More like this, which 
   await app.keyboard.press("up"); // the cast
   await app.keyboard.press("up"); // the release the focus left
   await app.keyboard.press("enter");
-  expect(chosen).toEqual([2]);
+  expect(chosen).toEqual([1]); // the last row, 720p (index 1)
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });

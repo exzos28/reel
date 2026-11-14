@@ -197,7 +197,7 @@ fn a_film_screen_below_the_hero() {
 }
 
 #[test]
-fn releases_from_the_search_fastest_first() {
+fn releases_from_the_search_best_quality_first() {
     let _g = fresh(true, true);
     seed_matrix();
     // The title screen starts the search; it runs.
@@ -216,14 +216,17 @@ fn releases_from_the_search_fastest_first() {
     assert_eq!(t["releasesState"], "done");
     let r = t["releases"].as_array().unwrap();
     let names: Vec<_> = r.iter().map(|x| x["quality"].as_str().unwrap()).collect();
-    assert_eq!(names, vec!["720p", "1080p", "4K", "SD"]);
-    assert_eq!(r[0]["note"], "starts_fastest");
+    // One of each quality: all in the short list, best first.
+    assert_eq!(names, vec!["4K", "1080p", "720p", "SD"]);
+    assert!(r.iter().all(|x| x["top"] == true));
+    assert_eq!(r[0]["note"], "needs");
     // 8 GB over 136 min is 9 Mbit/s and 120 share: the best that plays now.
     assert_eq!(r[1]["selected"], true);
+    assert_eq!(r[1]["note"], "starts_fast");
     assert_eq!(r[1]["mbit"], 9);
     assert_eq!(r[1]["source"], "BluRay");
     assert_eq!(r[1]["group"], "The.Matrix.1999.1080p.BluRay.x264");
-    assert_eq!(r[2]["note"], "needs");
+    assert_eq!(r[2]["note"], "starts_fast");
     assert_eq!(r[3]["note"], "few_sharing");
     assert_eq!(r[3]["bars"], 1);
     assert_eq!(t["release"]["quality"], "1080p");

@@ -99,6 +99,8 @@ export interface Release {
   /** A season pack. */
   pack: boolean;
   indexer: string | null;
+  /** In the short list (the most shared of its quality, or the one Play uses). */
+  top: boolean;
 }
 
 /** Where the search for releases is (key under `releases.state.*` except "done"). */

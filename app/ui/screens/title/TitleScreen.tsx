@@ -6,7 +6,7 @@
 // and Right switch the season; OK on a release makes it the one Play uses,
 // on an episode plays it; Down past the list walks the cast row, then More
 // like this, where OK opens the title. Back goes one level up.
-import { computed, View } from "nsh";
+import { computed, signal, View } from "nsh";
 import { t } from "nsh/i18n";
 import {
   chooseRelease, episodeCode, episodes, releasesText, title as titleOf, toggleList, type Episode, type Title,
@@ -36,12 +36,23 @@ export function TitleScreen(props: { id: string }) {
   const eps = computed<Episode[]>(() => (isShow() ? episodes(props.id, season()) : []));
   const seasonCount = () => (data().seasonList ?? []).length;
   /** Rows under the tabs: episodes of a show, releases of a film. */
-  const listLength = () => (isShow() ? eps().length : data().releases.length);
+  /** Releases: the short list until Show more, then all (the short list comes first). */
+  const expanded = signal(false);
+  const shownReleases = () => (expanded() ? data().releases : data().releases.filter((r) => r.top));
+  const moreReleases = () => data().releases.length - shownReleases().length;
+  /** Rows of the release list: the releases, then Show more when there are more. */
+  const releaseRows = () => shownReleases().length + (moreReleases() > 0 ? 1 : 0);
+  const searching = () => data().releasesState === "searching";
+  /** OK on a release row: choose it; on Show more: show the rest. */
+  const pressRelease = (i: number) => (i < shownReleases().length ? choose(i) : expanded.set(true));
+  const listLength = () => (isShow() ? eps().length : releaseRows());
   const cast = () => data().cast;
   const similar = () => data().similar;
   const playEpisode = (e: Episode) => play({ id: e.id, season: e.season, episode: e.number, title: data() });
   const choose = (i: number) => chooseRelease(props.id, data().releases[i].index);
   /** A show lists the releases of the episode Play starts, above the seasons. */
+  /** A show's release list is shown while searching too (grey rows); the remote stops on it once it has rows. */
+  const showReleaseList = () => isShow() && (data().releases.length > 0 || searching());
   const showReleases = () => isShow() && data().releases.length > 0;
   const releasesTitle = () => {
     const p = data().play;
@@ -108,8 +119,8 @@ export function TitleScreen(props: { id: string }) {
       releases: {
         up: () => (releaseAt() > 0 ? releaseAt.set(releaseAt() - 1) : zone.set("actions")),
         down: () =>
-          releaseAt() < data().releases.length - 1 ? releaseAt.set(releaseAt() + 1) : zone.set("tabs"),
-        enter: () => choose(releaseAt()),
+          releaseAt() < releaseRows() - 1 ? releaseAt.set(releaseAt() + 1) : zone.set("tabs"),
+        enter: () => pressRelease(releaseAt()),
       },
       tabs: {
         left: () => season.set(Math.max(season() - 1, 1)),
@@ -123,7 +134,7 @@ export function TitleScreen(props: { id: string }) {
       list: {
         up: () => (item() > 0 ? item.set(item() - 1) : zone.set(isShow() ? "tabs" : "actions")),
         down: () => (item() < listLength() - 1 ? item.set(item() + 1) : below(null)),
-        enter: () => (isShow() ? playEpisode(eps()[item()]) : choose(item())),
+        enter: () => (isShow() ? playEpisode(eps()[item()]) : pressRelease(item())),
       },
       cast: {
         left: () => castAt.set(clamp(castAt() - 1, cast().length - 1)),
@@ -158,28 +169,34 @@ export function TitleScreen(props: { id: string }) {
         when={isShow()}
         else={
           <ReleaseList
-            releases={() => data().releases}
+            releases={shownReleases}
             header={() => releasesText(data())}
+            loading={searching}
+            more={moreReleases}
+            onMore={() => expanded.set(true)}
             focused={(i) => listFocus() === i}
             follow={page.follow}
             onPress={(i) => {
               enterList(i);
-              choose(i);
+              pressRelease(i);
             }}
           />
         }
       >
-        <If when={showReleases()}>
+        <If when={showReleaseList()}>
           <ReleaseList
-            releases={() => data().releases}
+            releases={shownReleases}
             title={releasesTitle}
             header={() => releasesText(data())}
+            loading={searching}
+            more={moreReleases}
+            onMore={() => expanded.set(true)}
             focused={(i) => zone() === "releases" && releaseAt() === i}
             follow={page.follow}
             onPress={(i) => {
               zone.set("releases");
               releaseAt.set(i);
-              choose(i);
+              pressRelease(i);
             }}
           />
         </If>

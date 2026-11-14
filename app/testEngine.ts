@@ -65,7 +65,7 @@ export const HOME = [
 ];
 
 const release = (index: number, quality: string, source: string, group: string, size: string, peers: number, bars: number, note: string, mbit: number, selected = false) => ({
-  index, quality, source, group, size, tracks: [], peers, bars, note, mbit, selected, pack: false, indexer: "test",
+  index, quality, source, group, size, tracks: [], peers, bars, note, mbit, selected, pack: false, indexer: "test", top: true,
 });
 
 /** What a title screen shows below the hero (a film's). */
@@ -96,9 +96,9 @@ export const INCEPTION_TITLE = {
   similar: [DUNE, ARRIVAL],
   releasesState: "done",
   releases: [
-    release(1, "720p", "WEB", "Inception.2010.720p.WEB", "2 GB", 655, 4, "starts_fastest", 2),
-    release(0, "1080p", "BluRay", "Inception.2010.1080p.BluRay.x264", "8 GB", 412, 4, "plays_now", 8, true),
     release(2, "4K", "Remux", "Inception.2010.2160p.UHD.BluRay.REMUX", "60 GB", 38, 3, "needs", 58),
+    release(0, "1080p", "BluRay", "Inception.2010.1080p.BluRay.x264", "8 GB", 412, 4, "starts_fast", 8, true),
+    release(1, "720p", "WEB", "Inception.2010.720p.WEB", "2 GB", 655, 4, "starts_fast", 2),
   ],
 };
 
