@@ -49,3 +49,54 @@ export function mapRemoteBack() {
     }
   }
 }
+
+/** The app's console warnings and errors, and uncaught errors, sent to the TV core's log
+ * (`GET http://<TV>:47392/logs`, "app (web UI)"): the TV has no console to read. */
+export function forwardConsole() {
+  const g = globalThis as unknown as {
+    console: Record<string, (...a: unknown[]) => void>;
+    addEventListener?: (t: string, f: (e: { message?: string; reason?: unknown }) => void) => void;
+    fetch?: (url: string, init: Record<string, unknown>) => Promise<unknown>;
+  };
+  const send = g.fetch;
+  if (!send) return;
+  let queue: string[] = [];
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const flush = () => {
+    timer = null;
+    const body = queue.join("\n");
+    queue = [];
+    // text/plain: a simple request to the core's other port, no preflight.
+    send("http://127.0.0.1:47392/app-log", { method: "POST", headers: { "Content-Type": "text/plain" }, body }).catch(() => {});
+  };
+  const note = (level: string, args: unknown[]) => {
+    const text = args.map((a) => (a instanceof Error ? `${a.message} ${a.stack ?? ""}` : typeof a === "string" ? a : JSON.stringify(a))).join(" ");
+    queue.push(`${new Date().toISOString()} ${level} ${text}`);
+    if (!timer) timer = setTimeout(flush, 500);
+  };
+  for (const level of ["warn", "error", "log"]) {
+    const original = g.console[level];
+    g.console[level] = (...a: unknown[]) => {
+      note(level, a);
+      original?.apply(g.console, a);
+    };
+  }
+  g.addEventListener?.("error", (e) => note("uncaught", [e.message]));
+  g.addEventListener?.("unhandledrejection", (e) => note("unhandled", [e.reason]));
+}
+
+/** Tells the TV shell the app has drawn (its splash goes then, not while the page is
+ * still white). After two frames: the first one has been painted. */
+export function tellShellReady() {
+  const g = globalThis as unknown as { top?: { postMessage(m: unknown, o: string): void } | null; requestAnimationFrame?: (f: () => void) => void };
+  const raf = g.requestAnimationFrame ?? ((f: () => void) => setTimeout(f, 16));
+  raf(() =>
+    raf(() => {
+      try {
+        g.top?.postMessage({ reel: "ready" }, "*");
+      } catch {
+        // no shell above (a browser)
+      }
+    }),
+  );
+}

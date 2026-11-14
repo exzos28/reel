@@ -22,6 +22,9 @@ pub const LOGS_PORT: u16 = 47_392;
 const CORE_LOG_TAIL: u64 = 512 * 1024;
 
 static SHELL_LOG: Mutex<String> = Mutex::new(String::new());
+/// The app's own lines (its console's warnings and errors), newest last.
+static APP_LOG: Mutex<Vec<String>> = Mutex::new(Vec::new());
+const APP_LOG_LINES: usize = 2000;
 static STARTED: Once = Once::new();
 
 /// Serves the logs on a thread of its own, once per process; a busy port is logged, not fatal.
@@ -53,16 +56,21 @@ pub fn serve_once(data_dir: PathBuf) {
 }
 
 fn router(data_dir: PathBuf) -> Router {
-    Router::new().route("/logs", get(logs)).route("/shell-log", post(shell_log)).with_state(data_dir)
+    Router::new()
+        .route("/logs", get(logs))
+        .route("/shell-log", post(shell_log))
+        .route("/app-log", post(app_log))
+        .with_state(data_dir)
 }
 
 async fn logs(State(data_dir): State<PathBuf>) -> impl IntoResponse {
     let shell = SHELL_LOG.lock().unwrap_or_else(|e| e.into_inner()).clone();
     let text = format!(
-        "=== startup-error.txt ===\n{}\n=== core.log (end) ===\n{}\n=== TV app (shell) ===\n{}\n",
+        "=== startup-error.txt ===\n{}\n=== core.log (end) ===\n{}\n=== TV app (shell) ===\n{}\n=== app (web UI) ===\n{}\n",
         read(&data_dir.join("startup-error.txt"), u64::MAX),
         read(&data_dir.join("core.log"), CORE_LOG_TAIL),
         shell,
+        APP_LOG.lock().unwrap_or_else(|e| e.into_inner()).join("\n"),
     );
     ([(header::CONTENT_TYPE, "text/plain; charset=utf-8")], redact(&text))
 }
@@ -73,6 +81,18 @@ async fn shell_log(ConnectInfo(peer): ConnectInfo<SocketAddr>, body: String) -> 
         return StatusCode::FORBIDDEN;
     }
     *SHELL_LOG.lock().unwrap_or_else(|e| e.into_inner()) = body.chars().take(256 * 1024).collect();
+    StatusCode::NO_CONTENT
+}
+
+/// Lines of the app's console, appended; only from the TV itself.
+async fn app_log(ConnectInfo(peer): ConnectInfo<SocketAddr>, body: String) -> impl IntoResponse {
+    if !peer.ip().is_loopback() {
+        return StatusCode::FORBIDDEN;
+    }
+    let mut log = APP_LOG.lock().unwrap_or_else(|e| e.into_inner());
+    log.extend(body.lines().map(|l| l.chars().take(2000).collect::<String>()));
+    let over = log.len().saturating_sub(APP_LOG_LINES);
+    log.drain(..over);
     StatusCode::NO_CONTENT
 }
 

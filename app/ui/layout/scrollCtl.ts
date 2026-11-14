@@ -4,7 +4,7 @@
 // ease-out (a jump when the viewer asks for less motion). Only arrow keys
 // move them this way: a pointer press that moves the focus, the wheel and
 // the trackpad leave the offset to the viewer.
-import { effect, reduceMotion, signal, type ScrollRef, type ViewRef } from "nsh";
+import { effect, platform, reduceMotion, signal, type ScrollRef, type ViewRef } from "nsh";
 import { keyed } from "../focus/keys";
 import { ringRoom } from "../theme";
 import { anchorOffset, easeOut, nearestOffset } from "./anchor";
@@ -46,12 +46,20 @@ export interface ScrollCtl {
  * the viewport's start, given the viewport's length. A page opens where it
  * was left (`memory` names it) or at its top: opening a screen never scrolls
  * it to its focus, so switching screens does not make it jump. */
+/** The next animation step. On the web build (a Samsung TV) the app's code runs in a
+ * frame the browser does not draw, where requestAnimationFrame may never call back: a
+ * timer drives the steps there instead. */
+const webBuild = platform.os === "web";
+const nextFrame = (f: (now: number) => void): number =>
+  webBuild ? (setTimeout(() => f(performance.now()), 16) as unknown as number) : requestAnimationFrame(f);
+const cancelFrame = (id: number) => (webBuild ? clearTimeout(id as unknown as ReturnType<typeof setTimeout>) : cancelAnimationFrame(id));
+
 export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number) => number; memory?: string }): ScrollCtl {
   const horizontal = !!opts.horizontal;
   let frame = 0;
   let at = 0;
   const stop = () => {
-    if (frame) cancelAnimationFrame(frame);
+    if (frame) cancelFrame(frame);
     frame = 0;
     running.delete(stop);
   };
@@ -60,6 +68,7 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     ctl.scroll()?.scrollTo(horizontal ? { x: v, animated: false } : { y: v, animated: false });
   };
   const go = (target: number, animate: boolean) => {
+    if (webBuild) console.log(`[scroll] ${horizontal ? "x" : "y"} ${Math.round(at)} → ${Math.round(target)}${ctl.scroll() ? "" : " (no scroll view)"}`);
     stop();
     if (!animate || reduceMotion() || Math.abs(target - at) < 1) return set(target);
     const from = at;
@@ -67,11 +76,11 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     const step = (now: number) => {
       const p = Math.min(1, (now - t0) / DURATION);
       set(from + (target - from) * easeOut(p));
-      frame = p < 1 ? requestAnimationFrame(step) : 0;
+      frame = p < 1 ? nextFrame(step) : 0;
       if (!frame) running.delete(stop);
     };
     running.add(stop);
-    frame = requestAnimationFrame(step);
+    frame = nextFrame(step);
   };
   const place = async (block: ViewRef, placement: Placement, first: boolean) => {
     if (first && !horizontal) {
@@ -81,6 +90,10 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     const scroll = ctl.scroll();
     if (!scroll || !ctl.content) return;
     const [b, s, c] = await Promise.all([block.measure(), scroll.measure(), ctl.content.measure()]);
+    if (webBuild && s && c && !horizontal) {
+      const g = globalThis as unknown as { innerHeight?: number; document?: { documentElement?: { clientHeight?: number } } };
+      console.log(`[scroll] viewport ${Math.round(s.bounds.size.height)} content ${Math.round(c.bounds.size.height)} window ${g.innerHeight} doc ${g.document?.documentElement?.clientHeight}`);
+    }
     if (!b || !s || !c) return;
     const axis = horizontal ? "x" : "y";
     const length = horizontal ? "width" : "height";

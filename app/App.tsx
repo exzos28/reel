@@ -13,7 +13,7 @@ import { fpsEnabled, keymap, mount, platform, setColorScheme, setFpsEnabled, Vie
 import { BackHandler } from "nsh/mobile";
 import { currentWindow, isAvailable as hasWindows } from "nsh/desktop";
 import { remote } from "./ui/native";
-import { mapRemoteBack } from "./ui/tvKeys";
+import { forwardConsole, mapRemoteBack, tellShellReady } from "./ui/tvKeys";
 import { AboutScreen } from "./ui/screens/about/AboutScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
@@ -33,7 +33,10 @@ import { videoUnderUi } from "./ui/VideoSurface";
 
 setColorScheme("dark");
 // The web build runs on a Samsung TV: its remote's Back becomes Escape.
-if (remote) mapRemoteBack();
+if (remote) {
+  mapRemoteBack();
+  forwardConsole();
+}
 // A phone and a tablet keep a stack per tab (design/navigation.md, "History model").
 useTabStacks(isTouch);
 loadSettings().catch((e) => console.warn("could not load settings", e));
@@ -115,3 +118,5 @@ function App() {
 }
 
 mount(App);
+// On the TV: the shell's splash goes once the first frame is drawn.
+if (remote) tellShellReady();

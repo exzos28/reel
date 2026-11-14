@@ -155,6 +155,11 @@
     }
   };
 
+  // The app has drawn its first frame: the splash goes.
+  window.addEventListener('message', function (e) {
+    if (e.origin === BASE && e.data && e.data.reel === 'ready') hideSplash();
+  });
+
   // The sender is NSH's app realm, a frame inside our iframe, so it is checked by origin.
   window.addEventListener('message', function (e) {
     var msg = e.data;
@@ -186,11 +191,10 @@
     frame.id = 'app';
     frame.src = BASE + '/ui/index.html?reelToken=' + token;
     document.body.appendChild(frame);
-    frame.addEventListener('load', function () {
-      frame.focus();
-      // The web runtime starts the app after the page loads: a moment more, then away.
-      setTimeout(hideSplash, 700);
-    });
+    frame.addEventListener('load', function () { frame.focus(); });
+    // The splash stays until the app says it has drawn (the page is white until the web
+    // runtime has started it); at most 20 s, should that never come.
+    setTimeout(hideSplash, 20000);
   }
 
   /** The splash goes (it fades), and the page turns transparent for the video plane. */
