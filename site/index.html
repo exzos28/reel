@@ -38,7 +38,7 @@
     <div class="hero-text">
       <h1 id="hero-title">Pick a film. It plays in seconds.</h1>
       <p class="lead">reel is a source-available app with a torrent engine built in. It streams the film while it fetches it, so you never wait for a download. Made for the TV and the remote, and for phones, tablets and computers too.</p>
-      <p class="note">reel comes with no content and no sources. You connect your own search source.</p>
+      <p class="note">reel comes with no content and no sources. It works with any search source that speaks the Torznab standard: Jackett, Prowlarr or any other. You connect your own.</p>
       <div class="actions">
         <a class="btn primary" href="#platforms">Get reel</a>
         <!-- Placeholder: the repository is private for now; this URL works once it is public. -->
@@ -92,7 +92,7 @@
           <div class="m-ok"><svg viewBox="0 0 24 24" class="i"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Connected. It searches by IMDb id.</div>
         </div>
         <h3>Add your search source</h3>
-        <p>In Settings, enter the Torznab address of a search service you run yourself, such as Jackett or Prowlarr, and its API key. reel has no source of its own and never adds one.</p>
+        <p>In Settings, enter the Torznab address of any search source, such as Jackett or Prowlarr on your computer or a Torznab-compatible service, and its API key. reel has no source of its own and never adds one.</p>
       </li>
       <li class="step">
         <div class="mock mock-release" aria-hidden="true">
@@ -121,6 +121,11 @@
   <div class="wrap">
     <h2 id="features-title">What it does</h2>
     <ul class="features">
+      <li>
+        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></svg>
+        <h3>Any Torznab source</h3>
+        <p>reel speaks Torznab, the open search standard of Jackett, Prowlarr and other indexers. Any provider that answers in it works: add its address and key, and reel checks it and says how it searches.</p>
+      </li>
       <li>
         <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>
         <h3>Streams, never downloads</h3>
@@ -159,7 +164,7 @@
       <li>
         <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
         <h3>Browse and search</h3>
-        <p>Movies, shows and anime, filtered by genre, years and country, sorted by popularity, rating or date. The grid keeps loading as you scroll. Search covers all three.</p>
+        <p>Movies, series, cartoons and anime, filtered by genre, years and country, sorted by popularity, rating or date. The grid keeps loading as you scroll. Search covers them all.</p>
       </li>
       <li>
         <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.5 2.5 2.5 13.5 0 16M12 4c-2.5 2.5-2.5 13.5 0 16"/></svg>
@@ -294,7 +299,7 @@
     </details>
     <details>
       <summary>What is a search source?</summary>
-      <p>A search service that answers in the Torznab format, which you run and configure yourself, for example Jackett or Prowlarr on your computer or home server. You give reel its address and API key.</p>
+      <p>Any search service that answers in the Torznab format, the open standard of torrent indexers: Jackett or Prowlarr on your computer or home server, or any other Torznab-compatible provider. You give reel its address and API key; reel does not depend on any one of them.</p>
     </details>
     <details>
       <summary>Is there an official or recommended search source?</summary>
