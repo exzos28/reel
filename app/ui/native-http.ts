@@ -155,6 +155,8 @@ export const Catalog: CatalogModule = {
   episodeReleases: s("Catalog", "episodeReleases"),
   startAt: s("Catalog", "startAt"),
   saveProgress: s("Catalog", "saveProgress"),
+  search: s("Catalog", "search"),
+  rememberSearch: s("Catalog", "rememberSearch"),
 };
 
 export const Settings: SettingsModule = {
