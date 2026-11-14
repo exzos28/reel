@@ -4,6 +4,7 @@
 // OK chooses (or opens About), Back closes. A click chooses too; the source
 // fields take text (on a TV, entering it from a phone comes later).
 import { keymap, signal, Text, View, type ViewRef, type ViewStyle } from "nsh";
+import { Engine } from "../../native";
 import { t } from "nsh/i18n";
 import { clamp } from "../../focus/memory";
 import { rowStyle } from "../../kit/Row";
@@ -11,7 +12,7 @@ import { labelText, metaText } from "../../kit/text";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
 import { PageHeader } from "../../layout/TopBar";
-import { openAbout } from "../../nav";
+import { handleBack, openAbout } from "../../nav";
 import {
   bufferChoices, chooseBuffer, chooseContentLanguage, contentLanguage, contentLanguages, toggleStreamDetails,
 } from "../../preferences";
@@ -48,7 +49,17 @@ const pageStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: s
 /** Back from About finds the focus on its row. */
 let backFromAbout = false;
 
-export function SettingsScreen(props: { freeBytes: () => number | null; onClose: () => void }) {
+/** Free space on this device (bytes) as Settings opens; null until the core answers. */
+function readFreeSpace() {
+  const free = signal<number | null>(null);
+  Promise.resolve(Engine.checkSpace())
+    .then((s) => free.set(JSON.parse(s).free))
+    .catch(() => free.set(null));
+  return free;
+}
+
+export function SettingsScreen() {
+  const freeBytes = readFreeSpace();
   /** The focus goes through the languages, the buffer sizes, then to About. */
   const langs = () => contentLanguages().length;
   const bufferAt = () => langs();
@@ -72,7 +83,6 @@ export function SettingsScreen(props: { freeBytes: () => number | null; onClose:
       else if (f < bufferAt()) chooseContentLanguage(contentLanguages()[f].tag);
       else chooseBuffer(bufferChoices()[f - bufferAt()].mb);
     },
-    escape: props.onClose,
   });
 
   /** The page shows the focused row whole. */
@@ -80,9 +90,9 @@ export function SettingsScreen(props: { freeBytes: () => number | null; onClose:
   return (
     <Screen ctl={page}>
       <View style={pageStyle()}>
-        <PageHeader title={() => t("settings.title")} focused={() => false} onBack={props.onClose} />
+        <PageHeader title={() => t("settings.title")} focused={() => false} onBack={handleBack} />
         <LanguageSection focusedAt={focus} onFocus={(i) => focus.set(i)} />
-        <BufferSection freeBytes={props.freeBytes} focusedAt={() => focus() - bufferAt()} onFocus={(i) => focus.set(bufferAt() + i)} />
+        <BufferSection freeBytes={freeBytes} focusedAt={() => focus() - bufferAt()} onFocus={(i) => focus.set(bufferAt() + i)} />
         <DetailsSection focused={() => focus() === detailsAt()} onFocus={() => focus.set(detailsAt())} />
         <SourceSection />
         <Text style={metaText()}>{t("settings.hint")}</Text>

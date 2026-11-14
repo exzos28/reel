@@ -1,17 +1,14 @@
-// The top-level screens (Home, Movies, Shows, Anime). Each has the same nav at
-// the top of its content (layout/Screen), scrolling with the page.
+// The nav's destinations (Home, Movies, Shows, Anime, Search, Settings): the
+// roots of the history, one shown at a time.
 import { View } from "nsh";
-import { route, type Destination } from "../nav";
+import { route } from "../nav";
 import { BrowseScreen } from "./browse/BrowseScreen";
 import { HomeScreen } from "./home/HomeScreen";
-
-const TOP_LEVEL: Destination[] = ["home", "movies", "shows", "anime"];
-
-/** Whether `name` is a screen under the shared nav. */
-export const isTopLevel = (name: string) => TOP_LEVEL.includes(name as Destination);
+import { SearchScreen } from "./search/SearchScreen";
+import { SettingsScreen } from "./settings/SettingsScreen";
 
 export function TopLevel() {
-  const current = () => route().name as Destination;
+  const current = () => route().name;
   return (
     <View style={{ flex: 1 }}>
       <If when={current() === "home"}>
@@ -25,6 +22,12 @@ export function TopLevel() {
       </If>
       <If when={current() === "anime"}>
         <BrowseScreen page="anime" />
+      </If>
+      <If when={current() === "search"}>
+        <SearchScreen />
+      </If>
+      <If when={current() === "settings"}>
+        <SettingsScreen />
       </If>
     </View>
   );

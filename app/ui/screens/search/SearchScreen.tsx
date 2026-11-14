@@ -4,8 +4,8 @@
 // catalog's revision. Remote: the screen opens on the field with its
 // keyboard up; OK on the field brings the keyboard back (a TV's on-screen
 // one), Down goes into the recent searches or the results, Up comes back,
-// OK on a card opens its title, Back leaves.
-import { computed, keymap, Text, View, type InputRef, type ViewStyle } from "nsh";
+// OK on a card opens its title, Back closes the keyboard, then leaves.
+import { computed, keymap, signal, Text, View, type InputRef, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { rememberSearch, search, type SearchAnswer } from "../../catalog";
 import { byKeys } from "../../focus/keys";
@@ -16,7 +16,7 @@ import { BackButton } from "../../layout/BackButton";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
 import { backInTitleBar } from "../../layout/TopBar";
-import { back, openTitle } from "../../nav";
+import { handleBack, onBack, openTitle } from "../../nav";
 import { density, safe, u } from "../../theme";
 import { HomeShelf } from "../home/HomeShelf";
 import { cols, query, recentAt, row, zone } from "./focus";
@@ -49,6 +49,8 @@ export function SearchScreen() {
   const setCol = (r: number, c: number) => cols.set(r, c, sections()[r].items.length - 1);
 
   let input: InputRef | undefined;
+  /** The field has the input's focus: a keyboard is up (a TV's on-screen one) or typing goes to it. */
+  const typing = signal(false);
   const type = () => input?.focus();
   const toField = (typing: boolean) => {
     zone.set("field");
@@ -56,6 +58,7 @@ export function SearchScreen() {
   };
   const leaveField = (to: "recent" | "results") => {
     input?.blur();
+    typing.set(false);
     zone.set(to);
   };
   /** Down from the field: the recent searches, else the first row of results. */
@@ -111,8 +114,10 @@ export function SearchScreen() {
   keymap.bind(byKeys({ up: run("up"), down: run("down") }), { repeat: true, when: "always" });
   keymap.bind(byKeys({ left: run("left"), right: run("right") }), { repeat: true });
   keymap.bind({ enter: run("enter") });
-  // Back leaves from the field too (an input keeps Escape otherwise).
-  keymap.bind({ escape: back }, { when: "always" });
+  // Back reaches the field too (an input keeps Escape otherwise): it closes
+  // the keyboard first, then leaves.
+  keymap.bind({ escape: handleBack }, { when: "always" });
+  onBack(() => typing() && (input?.blur(), typing.set(false), true));
 
   /** The page puts the focused row in its upper third. */
   const page = scroller({ anchor: (viewport) => viewport / 3, memory: "search" });
@@ -122,14 +127,18 @@ export function SearchScreen() {
       <View ref={page.follow(() => zone() !== "results", "start")} style={topStyle()}>
         <View style={inRow(u(24))}>
           <If when={!backInTitleBar}>
-            <BackButton focused={() => false} onPress={back} />
+            <BackButton focused={() => false} onPress={handleBack} />
           </If>
           <SearchField
             value={query}
             focused={() => zone() === "field"}
             onChange={(text) => query.set(text)}
             onSubmit={submit}
-            onFocus={() => zone.set("field")}
+            onFocus={() => {
+              zone.set("field");
+              typing.set(true);
+            }}
+            onBlur={() => typing.set(false)}
             onRef={(r) => {
               input = r;
               if (zone() === "field") r.focus();

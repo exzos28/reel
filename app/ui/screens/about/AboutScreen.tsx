@@ -2,10 +2,11 @@
 // requires its logo with its notice: the logo is TMDB's official one
 // (themoviedb.org/about/logos-attribution, "blue short", its CSS class
 // written as a fill); the notice and the other sources come from the core
-// (`Meta.attribution()`). Back closes it.
-import { Image, keymap, Text, View, type ImageStyle, type TextStyle, type ViewStyle } from "nsh";
+// (`Meta.attribution()`). Back closes it (the app's Back).
+import { Image, Text, View, type ImageStyle, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { Meta } from "../../native";
+import { handleBack } from "../../nav";
 import { bodyText, labelText, metaText, sectionTitle } from "../../kit/text";
 import { PageHeader } from "../../layout/TopBar";
 import { colors, safe, u } from "../../theme";
@@ -44,12 +45,11 @@ function Source(props: { source: () => Attribution }) {
   );
 }
 
-export function AboutScreen(props: { onClose: () => void }) {
+export function AboutScreen() {
   const sources = JSON.parse(Meta.attribution()) as Attribution[];
-  keymap.bind({ escape: props.onClose });
   return (
     <View style={pageStyle()}>
-      <PageHeader title={() => t("settings.about.title")} focused={() => false} onBack={props.onClose} />
+      <PageHeader title={() => t("settings.about.title")} focused={() => false} onBack={handleBack} />
       <Text style={sectionTitle()}>{t("settings.about.data")}</Text>
       <View style={listStyle()}>
         <Each of={sources} key={(s) => s.provider}>

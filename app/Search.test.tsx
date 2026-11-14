@@ -49,10 +49,12 @@ test("typing shows the results in rows; Down, OK opens a title; Back comes back,
   expect(app.texts()).toContain("Continue watching");
 });
 
-test("Up from the first row goes back to the field; Back from the field leaves", async () => {
+test("Up from the first row goes back to the field; Back closes its keyboard, then leaves", async () => {
   const app = await searchScreen(SEARCH_DUNE);
   await app.keyboard.press("down");
-  await app.keyboard.press("up");
+  await app.keyboard.press("up"); // the field, typing (a phone's keyboard comes up)
+  await app.keyboard.press("escape");
+  expect(app.shows("search-field")).toBe(true);
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });

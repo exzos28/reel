@@ -1,5 +1,5 @@
-import { View, type JSX, type ViewStyle } from "nsh";
-import { go, route, type Destination } from "../nav";
+import { effect, View, type JSX, type ViewStyle } from "nsh";
+import { go, section, toTop } from "../nav";
 import { colors, safe, u } from "../theme";
 import { NavBar } from "./NavBar";
 import { NAV } from "./navItems";
@@ -16,6 +16,13 @@ const navStyle: ViewStyle = { position: "absolute", top: 0, left: 0, right: 0, z
  * the nav at the top of its content: the same component at the same place on
  * every one of them, scrolling with the page. */
 export function Screen(props: { ctl: ScrollCtl; bottom?: number; nav?: boolean; children: JSX.Element }) {
+  // The destination chosen again in the nav: its page goes back to the top.
+  let seen = toTop();
+  effect(() => {
+    if (toTop() === seen) return;
+    seen = toTop();
+    props.ctl.scroll()?.scrollTo({ y: 0, animated: true });
+  });
   return (
     <Scroller ctl={props.ctl} style={screenStyle()}>
       <View style={{ paddingBottom: safe().y + u(props.bottom ?? 0) }}>
@@ -23,7 +30,7 @@ export function Screen(props: { ctl: ScrollCtl; bottom?: number; nav?: boolean; 
         <If when={props.nav}>
           <View style={navStyle}>
             <NavBar
-              current={() => route().name as Destination}
+              current={section}
               focused={() => navFocus().at()}
               onPick={(i) => go(NAV[i].id)}
             />

@@ -19,6 +19,7 @@ import { BACK_SIZE, BackButton, Icon } from "./components";
 import { streamDetails } from "./preferences";
 import { cachedAhead, duration, firstFrame, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
 import { alpha, colors, focusRing, font, radius, safe, type, u } from "./theme";
+import { onBack } from "./nav";
 import { SubtitleOverlay } from "./SubtitleOverlay";
 import { playerTracks, type TrackOption } from "./tracks";
 import { VideoSurface, videoUnderUi, type SurfaceRef } from "./VideoSurface";
@@ -238,15 +239,17 @@ export function Player() {
       },
       () => (cardButton() === 0 ? playNext() : dismissed.set(true)),
     ),
-    escape: () => {
-      if (card()) dismissed.set(true);
-      else if (panel()) panel.set(false);
-      // On a problem the stage covers everything: Back leaves at once.
-      else if (started() && overlay() && !failed()) hide();
-      // A window that fills the screen is left first (as Escape does in macOS apps).
-      else if (fullscreen()) setFullscreen(false);
-      else stop();
-    },
+  });
+  // Back, in this order: the Up next card, the tracks panel, the controls, full screen, the player.
+  onBack(() => {
+    if (card()) dismissed.set(true);
+    else if (panel()) panel.set(false);
+    // On a problem the stage covers everything: Back leaves at once.
+    else if (started() && overlay() && !failed()) hide();
+    // A window that fills the screen is left first (as Escape does in macOS apps).
+    else if (fullscreen()) setFullscreen(false);
+    else stop();
+    return true;
   });
 
   /** What cannot play, with what to do; null while it can. */

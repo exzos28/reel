@@ -18,7 +18,7 @@ import { useZones } from "../../focus/zones";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
 import { backInTitleBar, FloatingBack } from "../../layout/TopBar";
-import { back, openTitle } from "../../nav";
+import { handleBack, openTitle } from "../../nav";
 import { pickReleaseFor, play, playing } from "../../playback";
 import { u } from "../../theme";
 import { AboutBlock, hasAbout } from "./AboutBlock";
@@ -166,7 +166,7 @@ export function TitleScreen(props: { id: string }) {
   useZones(
     zone,
     {
-      back: { down: () => zone.set("actions"), enter: back },
+      back: { down: () => zone.set("actions"), enter: handleBack },
       actions: {
         left: () => action.set(Math.max(action() - 1, 0)),
         right: () => action.set(Math.min(action() + 1, actionCount() - 1)),
@@ -211,7 +211,7 @@ export function TitleScreen(props: { id: string }) {
       },
     },
     // Back closes the release panel first.
-    () => (panelOpen() ? closePanel() : back()),
+    () => panelOpen() && (closePanel(), true),
   );
 
   const listFocus = () => (zone() === "list" ? item() : null);
@@ -219,7 +219,7 @@ export function TitleScreen(props: { id: string }) {
   return (
     <View style={{ flex: 1 }}>
     <Screen ctl={page} bottom={40}>
-      <FloatingBack focused={() => zone() === "back"} onPress={back} />
+      <FloatingBack focused={() => zone() === "back"} onPress={handleBack} />
       <View ref={page.follow(() => zone() === "back" || zone() === "actions", "start")}>
         <TitleHero
           data={data}

@@ -4,7 +4,7 @@
 // the pills (left/right along them), Down again to the grid, which moves by
 // rows and columns (Up from its first row: the pills). OK on a pill opens its
 // panel on the right (Up/Down, OK picks, Back closes); OK on a card opens the
-// title. Back goes Home. A new grid puts the grid's focus on its first card.
+// title. Back closes the panel, then goes Home. A new grid puts the grid's focus on its first card.
 import { computed, effect, Text, untracked, View } from "nsh";
 import { t } from "nsh/i18n";
 import { browse, chooseFilter, type Summary } from "../../catalog";
@@ -17,7 +17,7 @@ import { NAV } from "../../layout/navItems";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
 import { showNav } from "../../layout/navState";
-import { back, go, openTitle } from "../../nav";
+import { go, openTitle } from "../../nav";
 import { safe, u } from "../../theme";
 import { BrowseHeader } from "./BrowseHeader";
 import { FilterBar } from "./FilterBar";
@@ -128,7 +128,7 @@ export function BrowseScreen(props: { page: Page }) {
       },
     },
     // Back closes a filter's panel first.
-    () => (zone() === "panel" ? closePanel() : back()),
+    () => zone() === "panel" && (closePanel(), true),
   );
 
   const openTrending = (i: number) => {
