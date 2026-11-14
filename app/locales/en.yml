@@ -351,3 +351,10 @@ settings:
     free: "%{free} free on this device"
     default: (default)
 
+
+menu:
+  settings: Settings…
+  edit: Edit
+  go: Go
+  back: Back
+  window: Window

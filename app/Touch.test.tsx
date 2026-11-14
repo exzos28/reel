@@ -62,6 +62,7 @@ test("phone: the release button opens the releases in a bottom sheet; ✕ closes
   await app.press("1080p BluRay · 8 GB · 412 people sharing"); // the release button
   expect(app.texts()).toContain("3 found, the best of each quality first");
   await app.press("label:Close");
+  await app.wait(600); // the sheet slides away
   expect(app.texts()).not.toContain("3 found, the best of each quality first");
   await app.press("label:Back");
   expect(app.texts()).toContain("All movies");
