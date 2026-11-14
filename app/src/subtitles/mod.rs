@@ -174,7 +174,7 @@ impl SubOption {
             SubOption::Off => json!({ "key": "off", "kind": "off", "selected": selected }),
             SubOption::Embedded(t) => json!({
                 "key": self.key(), "kind": "embedded", "language": t.language, "title": t.title,
-                "codec": t.codec, "forced": t.forced, "selected": selected,
+                "codec": t.codec, "detail": tracks::detail(t), "forced": t.forced, "selected": selected,
             }),
             SubOption::External(f) => json!({
                 "key": self.key(), "kind": "external", "language": f.language, "title": f.label,
@@ -256,7 +256,7 @@ pub fn menu(job: u32, key: &str, embedded: Option<&Embedded>) -> Value {
                 .map(|(i, t)| {
                     json!({
                         "key": format!("a:{}", t.id), "kind": "embedded", "language": t.language, "title": t.title,
-                        "codec": t.codec, "channels": t.channels, "selected": Some(i) == at,
+                        "codec": t.codec, "channels": t.channels, "detail": tracks::detail(t), "selected": Some(i) == at,
                     })
                 })
                 .collect();

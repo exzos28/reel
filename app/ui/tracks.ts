@@ -14,6 +14,8 @@ export interface TrackOption {
   title?: string | null;
   codec?: string | null;
   channels?: string | null;
+  /** The technical part of the note as the core words it: "AC3 5.1", "SRT". */
+  detail?: string | null;
   format?: string;
   forced?: boolean;
   selected: boolean;

@@ -513,20 +513,21 @@ function TracksPanel(props: {
             style={{
               flexDirection: "row", alignItems: "center", justifyContent: "space-between",
               minHeight: u(o().sub ? 74 : 60), paddingHorizontal: u(16), borderRadius: radius(), borderCurve: "continuous",
-              backgroundColor: props.focused(col, i()) || isSelected(col, i(), o().selected) ? colors.card() : "transparent",
-              ...focusRing(props.focused(col, i())),
+              // Rows in a panel sit close together, so focus is a fill, not the ring
+              // (Direction 3: focused = snow fill with ink text; selected = card fill + check).
+              backgroundColor: props.focused(col, i()) ? colors.snow() : isSelected(col, i(), o().selected) ? colors.card() : "transparent",
             }}
           >
             <View style={{ flexShrink: 1 }}>
-              <Text style={{ ...type.label(), color: isSelected(col, i(), o().selected) || props.focused(col, i()) ? colors.snow() : colors.soft() }}>
+              <Text style={{ ...type.label(), color: props.focused(col, i()) ? colors.ink() : isSelected(col, i(), o().selected) ? colors.snow() : colors.soft() }}>
                 {o().main}
               </Text>
               <If when={o().sub}>
-                <Text style={{ fontFamily: font, fontSize: u(19), color: colors.ash(), marginTop: u(2) }}>{o().sub}</Text>
+                <Text style={{ fontFamily: font, fontSize: u(19), color: props.focused(col, i()) ? alpha(colors.ink(), 0.7) : colors.ash(), marginTop: u(2) }}>{o().sub}</Text>
               </If>
             </View>
             <If when={isSelected(col, i(), o().selected)}>
-              <Icon src={() => checkIcon} size={24} />
+              <Icon src={() => checkIcon} size={24} color={() => (props.focused(col, i()) ? colors.ink() : colors.snow())} />
             </If>
           </View>
         )}
@@ -569,7 +570,8 @@ function trackNote(o: TrackOption) {
   const parts = [
     o.language ? o.title : null,
     o.forced ? t("tracks.forced") : null,
-    o.kind === "external" ? t("tracks.from_torrent") : [o.codec?.toUpperCase(), o.channels].filter(Boolean).join(" "),
+    // The core words the technical part ("AC3 5.1", "SRT").
+    o.kind === "external" ? t("tracks.from_torrent") : o.detail,
   ].filter((p): p is string => !!p);
   return parts.length ? parts.join(" · ") : undefined;
 }

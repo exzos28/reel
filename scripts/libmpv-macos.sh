@@ -36,7 +36,10 @@ EOF
     echo "$checksum  $zip" | shasum -a 256 -c - >/dev/null
     rm -rf "$CACHE/xc/$name"
     unzip -q "$zip" -d "$CACHE/xc/$name"
-    lib="$(find "$CACHE/xc/$name" -path '*macos-*' -type f \( -name '*.a' -o -perm -u+x \) ! -name '*.plist' | grep -v '/Headers/' | head -1)"
+    # The macOS slice: a .a, or a framework whose binary is a static archive at
+    # <Name>.framework/Versions/A/<Name> (no extension, not executable).
+    lib="$(find "$CACHE/xc/$name" -path '*macos-*' -type f \( -name '*.a' -o -path '*.framework/Versions/A/*' \) \
+      ! -path '*/Headers/*' ! -path '*/Modules/*' ! -path '*/Resources/*' ! -name '*.plist' | head -1)"
     [ -n "$lib" ] || { echo "no macOS slice in $name" >&2; exit 1; }
     archives+=("$lib")
   done < "$CACHE/targets.tsv"
