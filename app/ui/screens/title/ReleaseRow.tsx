@@ -36,6 +36,7 @@ export function ReleaseRow(props: {
   narrow?: boolean;
 }) {
   const r = props.release;
+  if (props.narrow && density !== "ten-foot") return <NarrowRow {...props} />;
   return (
     <View
       ref={props.viewRef}
@@ -69,6 +70,51 @@ export function ReleaseRow(props: {
         </If>
         <Text style={fontText(23, r().selected ? colors.snow() : colors.ash())}>{noteText(r())}</Text>
       </View>
+    </View>
+  );
+}
+
+const narrowStyle = (selected: boolean, focused: boolean): ViewStyle => ({
+  ...rowStyle(selected, focused, u(8)),
+  flexDirection: "column",
+  alignItems: "stretch",
+  paddingHorizontal: u(22),
+  paddingVertical: u(14),
+});
+
+/** A release in a narrow panel (desktop, touch): two lines and its name.
+ * Quality and source (a check when it is the one Play uses); size, people
+ * sharing and the note; the release's own name, one line. */
+function NarrowRow(props: { release: () => Release; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
+  const r = props.release;
+  return (
+    <View
+      ref={props.viewRef}
+      role="button"
+      accessibilityLabel={`${r().quality} ${r().source}`}
+      accessibilityState={{ selected: r().selected }}
+      onPress={props.onPress}
+      hoverStyle={{ backgroundColor: colors.raise() }}
+      style={narrowStyle(r().selected, props.focused())}
+    >
+      <View style={row(u(14))}>
+        <Badge text={r().quality} size={19} />
+        <Text style={{ ...oneLine, flex: 1, ...fontText(24, colors.snow(), 600) }}>{r().source}</Text>
+        <If when={r().selected}>
+          <Icon src={() => checkIcon} size={22} />
+        </If>
+      </View>
+      <View style={{ ...row(u(14)), flexWrap: "wrap" }}>
+        <Text style={fontText(22, colors.ash())}>{r().size}</Text>
+        <View style={row(u(8))}>
+          <SignalBars bars={r().bars} />
+          <Text style={fontText(22, colors.ash())}>{t("release.sharing_short", { count: r().peers })}</Text>
+        </View>
+        <Text style={fontText(22, r().selected ? colors.snow() : colors.ash())}>{noteText(r())}</Text>
+      </View>
+      <If when={r().group}>
+        <Text style={{ ...oneLine, ...fontText(20, colors.dim()) }}>{r().group}</Text>
+      </If>
     </View>
   );
 }
