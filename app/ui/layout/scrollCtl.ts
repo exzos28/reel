@@ -3,16 +3,14 @@
 // to the upper third), shown whole with room for the focus ring, in a short
 // ease-out (a jump when the viewer asks for less motion). Only arrow keys
 // move them this way: a pointer press that moves the focus, the wheel and
-// the trackpad leave the offset to the viewer.
-import { effect, platform, reduceMotion, signal, type ScrollRef, type ViewRef } from "nsh";
+// the trackpad leave the offset to the viewer. Where to go is decided here;
+// going there is the platform's scroll driver's (scrollDriver.ts).
+import { effect, reduceMotion, signal, type ScrollRef, type ViewRef } from "nsh";
 import { keyed } from "../focus/keys";
 import { perf } from "../perf";
-import { glide } from "./webScroll";
 import { density, ringRoom, safe } from "../theme";
-import { anchorOffset, easeOut, nearestOffset } from "./anchor";
-
-/** How long a keyed scroll takes, ms. */
-const DURATION = 200;
+import { anchorOffset, nearestOffset } from "./anchor";
+import { scrollDriver } from "./scrollDriver";
 
 /** Where a followed block goes: to the anchor, only as far as needed to show
  * it whole, or to the start of the content. */
@@ -42,7 +40,7 @@ export interface ScrollCtl {
   /** @internal The scroll view and its content, set by `Scroller`. */
   scroll: ReturnType<typeof signal<ScrollRef | undefined>>;
   content?: ViewRef;
-  /** @internal The scroll view's `testID`: the web build glides its element (webScroll). */
+  /** @internal The scroll view's `testID`: a TV's web build finds its element by it (scrollDriver.slide). */
   domId: string;
 }
 
@@ -52,65 +50,37 @@ let scrollers = 0;
  * the viewport's start, given the viewport's length. A page opens where it
  * was left (`memory` names it) or at its top: opening a screen never scrolls
  * it to its focus, so switching screens does not make it jump. */
-/** The web build (a Samsung TV): the app's code runs in a frame the browser does not
- * draw, where requestAnimationFrame never calls back and steps sent one by one arrive in
- * bursts; the browser's own smooth scrolling animates there instead. */
-const webBuild = platform.os === "web";
-
 export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number) => number; memory?: string }): ScrollCtl {
   const horizontal = !!opts.horizontal;
-  let frame = 0;
-  let at = 0;
+  const remember = (offset: number) => {
+    ctl.offset.set(offset);
+    if (opts.memory) offsets.set(opts.memory, offset);
+  };
+  const domId = `scroll-${++scrollers}`;
+  const driver = scrollDriver({ horizontal, domId, scroll: () => ctl.scroll(), rest: remember });
   const stop = () => {
-    if (frame) cancelAnimationFrame(frame);
-    frame = 0;
+    driver.stop();
     running.delete(stop);
   };
-  const set = (v: number) => {
-    at = v;
-    ctl.scroll()?.scrollTo(horizontal ? { x: v, animated: false } : { y: v, animated: false });
-  };
   const go = (target: number, animate: boolean) => {
-    stop();
-    if (!animate || reduceMotion() || Math.abs(target - at) < 1) return set(target);
-    if (webBuild) {
-      if (trace) {
-        trace.target = target;
-        console.log(`[perf] scroll: measured in ${Math.round((trace.measured ?? trace.t0) - trace.t0)} ms, ${Math.round(at)} → ${Math.round(target)}`);
-      }
-      at = target;
-      if (!glide(ctl.domId, horizontal, target)) ctl.scroll()?.scrollTo(horizontal ? { x: target, animated: true } : { y: target, animated: true });
-      return;
-    }
-    const from = at;
-    const t0 = performance.now();
-    const step = (now: number) => {
-      const p = Math.min(1, (now - t0) / DURATION);
-      set(from + (target - from) * easeOut(p));
-      frame = p < 1 ? requestAnimationFrame(step) : 0;
-      if (!frame) running.delete(stop);
-    };
-    running.add(stop);
-    frame = requestAnimationFrame(step);
+    const glide = animate && !reduceMotion() && Math.abs(target - driver.at()) >= 1;
+    if (glide) running.add(stop);
+    driver.to(target, glide);
   };
-  /** A --perf build: when the page's keyed scroll was asked for, measured, sent and reached. */
-  let trace: { t0: number; measured?: number; target?: number; frames: number } | null = null;
-  let resting: ReturnType<typeof setTimeout> | undefined;
   const place = async (block: ViewRef, placement: Placement, first: boolean) => {
-    if (perf.on && !horizontal && !first) trace = { t0: performance.now(), frames: 0 };
     if (first && !horizontal) {
       go(opts.memory ? (offsets.get(opts.memory) ?? 0) : 0, false);
       return;
     }
+    const t0 = performance.now();
     const scroll = ctl.scroll();
     if (!scroll || !ctl.content) return;
     const [b, s, c] = await Promise.all([block.measure(), scroll.measure(), ctl.content.measure()]);
     if (!b || !s || !c) return;
-    if (trace) trace.measured = performance.now();
     const axis = horizontal ? "x" : "y";
     const length = horizontal ? "width" : "height";
     const current = s.pagePosition[axis] - c.pagePosition[axis];
-    if (!frame) at = current;
+    driver.sync(current);
     const start = b.pagePosition[axis] - c.pagePosition[axis];
     const geometry = {
       start,
@@ -127,43 +97,18 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
       placement === "start" ? 0
       : placement === "nearest" && !fixedLine ? nearestOffset(geometry, current)
       : anchorOffset({ ...geometry, anchor: opts.anchor(geometry.viewport) });
+    if (perf.on && !horizontal && !first) {
+      console.log(`[perf] scroll ${Math.round(current)} → ${Math.round(target)}: sent ${Math.round(performance.now() - t0)} ms after the key`);
+    }
     go(target, !first);
   };
   const ctl: ScrollCtl = {
     horizontal,
-    domId: `scroll-${++scrollers}`,
+    domId,
     offset: signal(0),
     remember(offset) {
-      // A TV's browser: every scrolled frame would wake what watches the offset (lazy blocks
-      // measure themselves), on the thread that draws the frames. The offset is passed on
-      // once the scroll rests (150 ms without a frame) instead.
-      if (webBuild) {
-        if (trace?.target != null) {
-          trace.frames++;
-          if (Math.abs(offset - trace.target) < 1) {
-            console.log(`[perf] scroll: there ${Math.round(performance.now() - trace.t0)} ms after the key, ${trace.frames} scroll events`);
-            trace = null;
-          }
-        }
-        if (!frame) at = offset;
-        if (opts.memory) offsets.set(opts.memory, offset);
-        if (resting) clearTimeout(resting);
-        resting = setTimeout(() => {
-          resting = undefined;
-          ctl.offset.set(offset);
-        }, 150);
-        return;
-      }
-      if (trace?.target != null) {
-        trace.frames++;
-        if (Math.abs(offset - trace.target) < 1) {
-          console.log(`[perf] scroll: there ${Math.round(performance.now() - trace.t0)} ms after the key, ${trace.frames} scroll events`);
-          trace = null;
-        }
-      }
-      ctl.offset.set(offset);
-      if (!frame) at = offset;
-      if (opts.memory) offsets.set(opts.memory, offset);
+      remember(offset);
+      driver.sync(offset);
     },
     scroll: signal<ScrollRef | undefined>(),
     follow(when, placement = "anchor") {
