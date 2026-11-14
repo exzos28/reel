@@ -754,7 +754,6 @@ pub(crate) fn spawn(task: impl std::future::Future<Output = ()> + Send + 'static
 }
 
 /// Buckets the scrubber is cut into.
-const TIMELINE_BUCKETS: usize = 200;
 
 /// What the scrubber draws for the job's video at `position` of `duration`
 /// seconds: `{"ranges": [[from, to], …] (0..1 of the film, ready), "ahead":
@@ -764,9 +763,13 @@ pub fn timeline(job: u32, position: f64, duration: f64) -> Value {
     let Some(core) = CORE.get() else { return empty };
     let Some(Job::Ready(handle, _)) = core.jobs.lock().unwrap().get(&job).cloned() else { return empty };
     let Some(file) = video_file(&handle, job) else { return empty };
-    let Some(buckets) = file_buckets(core, &handle, file, TIMELINE_BUCKETS) else { return empty };
-    let ranges: Vec<[f64; 2]> = timeline::ready_ranges(&buckets).into_iter().map(|(a, b)| [a, b]).collect();
-    json!({ "ranges": ranges, "ahead": timeline::ready_ahead(&buckets, position, duration) })
+    let Some(layout) = file_layout(&handle, file) else { return empty };
+    // Exactly the pieces on disk now (evicted ones are not "have" any more): the scrubber never
+    // shows a stretch as ready that is not.
+    let Ok((have, _)) = core.api.api_dump_haves(handle.id().into()) else { return empty };
+    let ready = layout.ranges(|piece| have.get(piece as usize).is_some_and(|b| *b));
+    let ranges: Vec<[f64; 2]> = ready.iter().map(|&(a, b)| [a, b]).collect();
+    json!({ "ranges": ranges, "ahead": timeline::ready_ahead(&ready, position, duration) })
 }
 
 /// Percent (0..=100) of the first `START_BYTES` of file `file` (all of a
@@ -791,17 +794,6 @@ fn file_layout(handle: &Arc<librqbit::ManagedTorrent>, file: usize) -> Option<La
         .ok()?
 }
 
-/// File `file` of the torrent cut into `n` equal byte ranges, each the
-/// fraction in the cache (whole verified pieces only: evicted ones are not).
-/// None when unknown.
-fn file_buckets(core: &Core, handle: &Arc<librqbit::ManagedTorrent>, file: usize, n: usize) -> Option<Vec<f64>> {
-    let layout = file_layout(handle, file)?;
-    // Not live yet (still checking the files on disk): nothing downloaded.
-    let Ok((have, _)) = core.api.api_dump_haves(handle.id().into()) else {
-        return Some(vec![0.0; n.max(1)]);
-    };
-    Some(layout.buckets(|piece| have.get(piece as usize).is_some_and(|b| *b), n))
-}
 
 /// Where a file lies in its torrent's pieces.
 #[derive(Clone, Copy)]
@@ -830,34 +822,30 @@ impl Layout {
         (ready.min(end) - self.file_offset) * 100 / want
     }
 
-    /// The file cut into `n` equal byte ranges (at least 1), each the fraction
-    /// of its bytes that lie in pieces `have` says are downloaded.
-    fn buckets(&self, have: impl Fn(u32) -> bool, n: usize) -> Vec<f64> {
-        let n = n.max(1);
+
+    /// The stretches of the file whose pieces are all in, as `(from, to)` in 0..1 of the
+    /// file, neighbours merged: exact, piece by piece.
+    fn ranges(&self, have: impl Fn(u32) -> bool) -> Vec<(f64, f64)> {
         if self.file_length == 0 || self.piece_length == 0 {
-            return vec![0.0; n];
+            return Vec::new();
         }
-        (0..n)
-            .map(|i| {
-                let start = self.file_offset + self.file_length * i as u64 / n as u64;
-                let end = self.file_offset + self.file_length * (i as u64 + 1) / n as u64;
-                if end <= start {
-                    // More buckets than bytes: the bucket is as full as the piece its byte is in.
-                    return if have((start / self.piece_length) as u32) { 1.0 } else { 0.0 };
+        let (start, end) = (self.file_offset, self.file_offset + self.file_length);
+        let span = self.file_length as f64;
+        let mut out: Vec<(f64, f64)> = Vec::new();
+        let mut piece = start / self.piece_length;
+        while piece * self.piece_length < end {
+            if have(piece as u32) {
+                let from = (piece * self.piece_length).max(start) - start;
+                let to = ((piece + 1) * self.piece_length).min(end).min(self.total_length) - start;
+                let (from, to) = (from as f64 / span, to as f64 / span);
+                match out.last_mut() {
+                    Some(last) if (last.1 - from).abs() < 1e-12 => last.1 = to,
+                    _ => out.push((from, to)),
                 }
-                let mut got = 0;
-                let mut piece = start / self.piece_length;
-                while piece * self.piece_length < end {
-                    let p_start = piece * self.piece_length;
-                    let p_end = (p_start + self.piece_length).min(self.total_length);
-                    if have(piece as u32) {
-                        got += p_end.min(end).saturating_sub(p_start.max(start));
-                    }
-                    piece += 1;
-                }
-                got as f64 / (end - start) as f64
-            })
-            .collect()
+            }
+            piece += 1;
+        }
+        out
     }
 }
 
@@ -907,13 +895,16 @@ mod tests {
     }
 
     #[test]
-    fn buckets_of_a_file_inside_the_torrent() {
-        // Pieces of 100 bytes; the file is bytes 50..450 (pieces 0..=4).
+    fn ranges_are_exactly_the_pieces_in() {
+        // Pieces of 100 bytes; the file is bytes 50..450 (pieces 0..=4, 400 bytes).
         let l = Layout { piece_length: 100, total_length: 500, file_offset: 50, file_length: 400 };
-        // Pieces 1 and 2 (bytes 100..300) downloaded.
-        let b = l.buckets(|p| p == 1 || p == 2, 4);
-        // Buckets: 50..150 (half), 150..250 (full), 250..350 (half), 350..450 (none).
-        assert_eq!(b, vec![0.5, 1.0, 0.5, 0.0]);
+        // Pieces 1 and 2 (bytes 100..300 = file 50..250) and 4 (400..450 = file 350..400).
+        assert_eq!(l.ranges(|p| p == 1 || p == 2 || p == 4), vec![(0.125, 0.625), (0.875, 1.0)]);
+        assert_eq!(l.ranges(|_| true), vec![(0.0, 1.0)]);
+        assert!(l.ranges(|_| false).is_empty());
+        // A short last piece of the torrent.
+        let short = Layout { piece_length: 100, total_length: 250, file_offset: 0, file_length: 250 };
+        assert_eq!(short.ranges(|p| p == 2), vec![(0.8, 1.0)]);
     }
 
     #[test]
@@ -931,23 +922,6 @@ mod tests {
         assert_eq!(small.start_percent(|p| p == 0, 400), 66);
         assert_eq!(small.start_percent(|_| true, 400), 100);
         assert_eq!(Layout { file_length: 0, ..small }.start_percent(|_| true, 400), 0);
-    }
-
-    #[test]
-    fn buckets_all_and_nothing() {
-        let l = Layout { piece_length: 16, total_length: 1000, file_offset: 0, file_length: 1000 };
-        assert!(l.buckets(|_| true, 200).iter().all(|f| (*f - 1.0).abs() < 1e-9));
-        assert!(l.buckets(|_| false, 200).iter().all(|f| *f == 0.0));
-        assert_eq!(l.buckets(|_| true, 0).len(), 1);
-    }
-
-    #[test]
-    fn buckets_short_last_piece_and_more_buckets_than_bytes() {
-        // The last piece (bytes 200..250) is shorter than the others.
-        let l = Layout { piece_length: 100, total_length: 250, file_offset: 0, file_length: 250 };
-        assert_eq!(l.buckets(|p| p == 2, 5), vec![0.0, 0.0, 0.0, 0.0, 1.0]);
-        let tiny = Layout { piece_length: 1, total_length: 2, file_offset: 0, file_length: 2 };
-        assert_eq!(tiny.buckets(|p| p == 1, 4), vec![0.0, 0.0, 1.0, 1.0]);
     }
 
     /// Sintel (Blender Foundation, CC BY 3.0): the open test torrent WebTorrent uses.

@@ -188,6 +188,9 @@ fn track_value(value: Option<&Value>) -> String {
 
 impl Drop for Player {
     fn drop(&mut self) {
+        // Silence first: tearing mpv down takes a moment, and it would play what it has
+        // buffered meanwhile (the viewer has already left the player).
+        self.command(&["stop"]);
         self.shared.stop.store(true, Ordering::Relaxed);
         unsafe { (self.lib.wakeup)(self.raw.0) };
         if let Some(t) = self.thread.take() {
