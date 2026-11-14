@@ -282,9 +282,10 @@ details p { padding: 0 0 1.25rem; color: var(--soft); max-width: 42rem; }
 .credits a { color: var(--soft); }
 
 /* Platforms: logos under the hero's buttons. */
-.logos { list-style: none; margin: 2rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 1.25rem 1.75rem; }
-.logos li { display: flex; align-items: center; gap: 0.6rem; color: var(--snow); }
-.logos svg { width: 1.75rem; height: 1.75rem; flex: none; fill: currentColor; }
+.logos { list-style: none; margin: 2rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, max-content); gap: 1.25rem 2.25rem; }
+@media (min-width: 520px) { .logos { grid-template-columns: repeat(3, max-content); } }
+.logos li { display: flex; align-items: center; gap: 0.75rem; color: var(--snow); }
+.logos svg { width: 1.9rem; height: 1.9rem; flex: none; fill: currentColor; }
 .logos svg.line { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .logos svg .cut { fill: var(--ink); }
 .logos svg .stroke { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
