@@ -25,9 +25,17 @@ const leftFadeStyle = (): ViewStyle => ({
   backgroundImage: `linear-gradient(90deg, ${colors.ink()} 0%, ${alpha(colors.ink(), 0)} 100%)`,
 });
 const textBlockStyle = (top: number): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(top), gap: u(14), maxWidth: u(1300) });
+/** Steady: the text stands on the hero's bottom, so the actions keep their place whatever
+ * the title's lines (it grows upwards into the room `top` leaves). */
+const steadyBlockStyle = (top: number, height: number): ViewStyle => ({
+  ...textBlockStyle(0), height: u(height), justifyContent: "flex-end", paddingBottom: u(height - top - HERO_TEXT_ROOM),
+});
 /** The hero's own height: at least the backdrop's, or (`fit`) only what its text needs. */
 const heroStyle = (height: number, fit: boolean): ViewStyle => (fit ? {} : { minHeight: u(height) });
 const ABOUT_LINES = 3;
+/** A steady hero's text block, from `top` to its actions' bottom (TV pixels): a one-line
+ * title, the meta, genres, three lines of about and the actions. */
+const HERO_TEXT_ROOM = 444;
 /** `steady`: always the height of its three lines, so what is under it stays put as the text changes. */
 const aboutStyle = (steady: boolean): TextStyle => {
   const body = bodyText(colors.soft());
@@ -63,7 +71,8 @@ export function Hero(props: {
   /** As tall as its text (the backdrop still fades out under what follows),
    * so a title screen's next block starts right under the actions. */
   fit?: boolean;
-  /** The about keeps the height of three lines (Home: the hero follows the focus). */
+  /** The about keeps the height of three lines and the text stands on the hero's bottom
+   * (Home: the hero follows the focus, its buttons stay put). */
   steadyAbout?: boolean;
   children: JSX.Element;
 }) {
@@ -71,7 +80,7 @@ export function Hero(props: {
   return (
     <View style={heroStyle(props.height, !!props.fit)}>
       <Backdrop item={s} height={props.height} left={props.backdropLeft ?? 0} />
-      <View style={textBlockStyle(props.top)}>
+      <View style={props.steadyAbout ? steadyBlockStyle(props.top, props.height) : textBlockStyle(props.top)}>
         <Text style={logotypeStyle(props.titleSize)}>{titleText(s())}</Text>
         <MetaLine item={s} />
         <Text style={{ ...metaText(), fontSize: u(24) }}>{genresText(s())}</Text>
