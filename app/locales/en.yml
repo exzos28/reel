@@ -102,6 +102,7 @@ release:
 
 releases:
   title: Releases
+  title_episode: "Releases of %{episode}"
   found: "%{count} found, fastest to start first"
   state:
     no_source: Add a search source in Settings to find releases.

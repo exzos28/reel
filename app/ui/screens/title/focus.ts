@@ -3,7 +3,7 @@
 import { signal } from "nsh";
 import { stack } from "../../nav";
 
-export type Zone = "back" | "actions" | "tabs" | "list" | "cast" | "similar";
+export type Zone = "back" | "actions" | "releases" | "tabs" | "list" | "cast" | "similar";
 
 let shownId = "";
 export const zone = signal<Zone>("actions");
@@ -14,6 +14,8 @@ export const item = signal(0);
 /** The focused person in the cast row, title in More like this. */
 export const castAt = signal(0);
 export const similarAt = signal(0);
+/** A show's focused release (of the episode Play starts). */
+export const releaseAt = signal(0);
 
 type Saved = [Zone, number, number, number, number, number];
 /** Where the focus was on the titles under the one shown (More like this
@@ -37,4 +39,5 @@ export function focusTitle(id: string, startSeason: number) {
   item.set(i);
   castAt.set(c);
   similarAt.set(m);
+  releaseAt.set(0);
 }

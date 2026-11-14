@@ -7,8 +7,9 @@
 // on an episode plays it; Down past the list walks the cast row, then More
 // like this, where OK opens the title. Back goes one level up.
 import { computed, View } from "nsh";
+import { t } from "nsh/i18n";
 import {
-  chooseRelease, episodes, releasesText, title as titleOf, toggleList, type Episode, type Title,
+  chooseRelease, episodeCode, episodes, releasesText, title as titleOf, toggleList, type Episode, type Title,
 } from "../../catalog";
 import { clamp } from "../../focus/memory";
 import { useZones } from "../../focus/zones";
@@ -22,7 +23,7 @@ import { AboutBlock, hasAbout } from "./AboutBlock";
 import { LazyBlock } from "../../layout/LazyBlock";
 import { CastRow } from "./CastRow";
 import { DetailsBlock, hasDetails } from "./DetailsBlock";
-import { action, castAt, focusTitle, item, season, similarAt, zone, type Zone } from "./focus";
+import { action, castAt, focusTitle, item, releaseAt, season, similarAt, zone, type Zone } from "./focus";
 import { ReleaseList } from "./ReleaseList";
 import { SeriesEpisodes } from "./SeriesEpisodes";
 import { SimilarShelf } from "./SimilarShelf";
@@ -40,6 +41,14 @@ export function TitleScreen(props: { id: string }) {
   const similar = () => data().similar;
   const playEpisode = (e: Episode) => play({ id: e.id, season: e.season, episode: e.number, title: data() });
   const choose = (i: number) => chooseRelease(props.id, data().releases[i].index);
+  /** A show lists the releases of the episode Play starts, above the seasons. */
+  const showReleases = () => isShow() && data().releases.length > 0;
+  const releasesTitle = () => {
+    const p = data().play;
+    return p.season != null && p.episode != null
+      ? t("releases.title_episode", { episode: episodeCode(p.season, p.episode) })
+      : t("releases.title");
+  };
   const actions = [() => play({ ...data().play, title: data() }), () => toggleList(props.id)];
   /** Where the focus lands in a season's episodes: where the viewer is, else the first. */
   const firstItem = () => {
@@ -89,16 +98,23 @@ export function TitleScreen(props: { id: string }) {
         // On a Mac Back is in the title bar, out of the remote's reach (Esc goes back).
         up: () => !backInTitleBar && zone.set("back"),
         down: () => {
-          if (isShow()) zone.set("tabs");
+          if (showReleases()) zone.set("releases");
+          else if (isShow()) zone.set("tabs");
           else if (listLength() > 0) enterList(0);
           else below(null);
         },
         enter: () => actions[action()](),
       },
+      releases: {
+        up: () => (releaseAt() > 0 ? releaseAt.set(releaseAt() - 1) : zone.set("actions")),
+        down: () =>
+          releaseAt() < data().releases.length - 1 ? releaseAt.set(releaseAt() + 1) : zone.set("tabs"),
+        enter: () => choose(releaseAt()),
+      },
       tabs: {
         left: () => season.set(Math.max(season() - 1, 1)),
         right: () => season.set(Math.min(season() + 1, seasonCount())),
-        up: () => zone.set("actions"),
+        up: () => zone.set(showReleases() ? "releases" : "actions"),
         down: () => {
           if (listLength() > 0) enterList(firstItem());
           else below(null);
@@ -153,6 +169,20 @@ export function TitleScreen(props: { id: string }) {
           />
         }
       >
+        <If when={showReleases()}>
+          <ReleaseList
+            releases={() => data().releases}
+            title={releasesTitle}
+            header={() => releasesText(data())}
+            focused={(i) => zone() === "releases" && releaseAt() === i}
+            follow={page.follow}
+            onPress={(i) => {
+              zone.set("releases");
+              releaseAt.set(i);
+              choose(i);
+            }}
+          />
+        </If>
         <SeriesEpisodes
           data={data}
           episodes={eps}

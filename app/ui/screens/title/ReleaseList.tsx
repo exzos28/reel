@@ -10,13 +10,15 @@ import { ReleaseRow } from "./ReleaseRow";
 export function ReleaseList(props: {
   releases: () => Release[];
   header: () => string;
+  /** The section's title ("Releases" by default). */
+  title?: () => string;
   focused: (i: number) => boolean;
   follow: Follow;
   onPress: (i: number) => void;
 }) {
   return (
     <View style={{ paddingHorizontal: safe().x, marginTop: u(40) }}>
-      <SectionHeader title={() => t("releases.title")} note={props.header} />
+      <SectionHeader title={props.title ?? (() => t("releases.title"))} note={props.header} />
       <View style={{ gap: u(12), marginTop: u(20) }}>
         <Each of={props.releases()} key={(r) => r.index}>
           {(r, i) => (
