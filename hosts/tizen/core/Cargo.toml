@@ -1,0 +1,30 @@
+[package]
+name = "reel-tizen-core"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "reel's Rust core for Samsung TVs: app/'s modules over HTTP on 127.0.0.1"
+
+[lib]
+# cdylib: libreel_tizen_core.so, loaded by the .NET service (service/). rlib: for the desktop
+# server (src/main.rs) and the tests.
+name = "reel_tizen_core"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "reel-core"
+path = "src/main.rs"
+
+[dependencies]
+reel-app = { path = "../../../app" }
+reel-rpc = { path = "../rpc" }
+axum.workspace = true
+tokio.workspace = true
+serde_json.workspace = true
+libc = "0.2"
+
+# librqbit's default features hash with OpenSSL (crypto-hash) on Linux. The TV has no OpenSSL
+# we can rely on (soname, version), so until app/ switches librqbit to `rust-tls`
+# (docs/tizen.md, "Changes in app/"), OpenSSL is built from source and linked in statically.
+[target.'cfg(target_os = "linux")'.dependencies]
+openssl = { version = "0.10", features = ["vendored"] }

@@ -1,0 +1,25 @@
+# The Tizen host's Rust side: the reel core (app/'s crate) served to the TV's web UI over
+# HTTP on 127.0.0.1. See docs/tizen.md.
+[workspace]
+resolver = "3"
+members = ["rpc", "core"]
+
+[workspace.package]
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+# Same versions and features as app/'s tree already has (librqbit's http-api), so nothing new is built.
+axum = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "net", "macros", "io-util", "time", "sync"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Serves the web build (precompressed .br/.gz as nsh writes them).
+tower-http = { version = "0.6", features = ["fs"] }
+
+[profile.release]
+# The TV has little RAM and flash: a small, stripped library.
+opt-level = "s"
+lto = "thin"
+strip = true
+panic = "unwind"

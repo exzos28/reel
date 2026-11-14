@@ -203,6 +203,9 @@ mod tests {
         assert_eq!(cues[1].start, 61.25);
         assert_eq!(cues[2].text, "Lights & bells.");
         assert_eq!(cues[2].start, 3600.0 + 2.0);
+        // Windows line ends (git may store the fixture with LF ones).
+        let crlf = parse(Format::Srt, "1\r\n00:00:01,000 --> 00:00:02,000\r\nHi\r\nthere\r\n\r\n2\r\n00:00:03,000 --> 00:00:04,000\r\nBye\r\n");
+        assert_eq!(crlf.iter().map(|c| c.text.as_str()).collect::<Vec<_>>(), ["Hi\nthere", "Bye"]);
     }
 
     #[test]

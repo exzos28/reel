@@ -2,7 +2,7 @@
 // the stack; a title opens on top of it; Back goes one level up.
 import { signal } from "nsh";
 
-export type Destination = "home" | "movies" | "shows" | "search" | "settings";
+export type Destination = "home" | "movies" | "shows" | "anime" | "search" | "settings";
 export type Route = { name: Destination } | { name: "title"; id: string };
 
 export const stack = signal<Route[]>([{ name: "home" }]);

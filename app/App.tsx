@@ -2,15 +2,16 @@
 // density on a TV, regular on a Mac, compact on a phone) and by the mouse.
 // Only one screen is mounted at a time, so only its keys are bound; the
 // screens keep their focus in their own modules, so Back finds it again.
+// Home, Movies, Shows and Anime share one nav (screens/TopLevel.tsx).
 import { effect, mount, setColorScheme, signal, View } from "nsh";
 import { Engine } from "app/native";
-import { Browse, Search } from "./ui/Browse";
-import { Home } from "./ui/Home";
+import { SearchScreen } from "./ui/screens/search/SearchScreen";
+import { SettingsScreen } from "./ui/screens/settings/SettingsScreen";
+import { TitleScreen } from "./ui/screens/title/TitleScreen";
+import { isTopLevel, TopLevel } from "./ui/screens/TopLevel";
 import { back, route } from "./ui/nav";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
-import { Settings } from "./ui/Settings";
-import { Title } from "./ui/Title";
 import { loadSettings } from "./ui/preferences";
 import { colors } from "./ui/theme";
 
@@ -33,23 +34,17 @@ function App() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.ink() }}>
       <If when={!playing()} else={<Player />}>
-        <If when={r().name === "home"}>
-          <Home />
-        </If>
-        <If when={r().name === "movies"}>
-          <Browse page="movies" />
-        </If>
-        <If when={r().name === "shows"}>
-          <Browse page="shows" />
+        <If when={isTopLevel(r().name)}>
+          <TopLevel />
         </If>
         <If when={r().name === "search"}>
-          <Search />
+          <SearchScreen />
         </If>
         <If when={r().name === "settings"}>
-          <Settings freeBytes={freeBytes} onClose={back} />
+          <SettingsScreen freeBytes={freeBytes} onClose={back} />
         </If>
         <If when={r().name === "title" ? (r() as { id: string }).id : null}>
-          {(id) => <Title id={id()} />}
+          {(id) => <TitleScreen id={id()} />}
         </If>
       </If>
     </View>

@@ -1,0 +1,37 @@
+# Project type [web_app, test_runner]
+project_type: web_app
+
+# Default profile, Tizen API version
+profile: tv-samsung
+api_version: "10.0"
+
+# Build type [Debug/ Release/ Test]
+build_type: Release
+
+# Output name for application
+output_name: reel
+
+# Output path for build
+output_path: ""
+
+# Enable size optimization of wgt for web workspace
+opt: false
+
+# Signing profile: "" = active profile, "." = the SDK's default (Apps2Samsung re-signs anyway)
+signing_profile: ""
+
+# list of certs in web project (.trust-anchor)
+trust_anchor: []
+
+# list of files in web project (.html,.css etc) and resources
+files: []
+
+# list of files to exclude based on the matched patterns
+excludes:
+  - \.wgt
+  - tizen_web_project.yaml
+
+# The core service: building this project also builds it and packs both into one hybrid .wgt,
+# as tizen-os-ambilight does.
+deps:
+  - ../service

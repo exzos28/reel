@@ -73,11 +73,16 @@ fn job_files(job: u32) -> Option<Vec<SubFile>> {
             state.loaded.insert(f.id, Loaded::Pending);
         }
     }
-    for file in found.clone() {
-        let handle = handle.clone();
-        engine::spawn(async move {
+    // One after another: each is a reader of the engine's ring buffer, which
+    // splits its readahead among readers, so the video keeps most of it.
+    let files = found.clone();
+    engine::spawn(async move {
+        for file in files {
+            if !JOBS.lock().unwrap().contains_key(&job) {
+                return; // the film was closed
+            }
             let result = tokio::time::timeout(FETCH_TIMEOUT, async {
-                let mut stream = handle.stream(file.id).await?;
+                let mut stream = handle.clone().stream(file.id).await?;
                 let mut bytes = Vec::new();
                 stream.read_to_end(&mut bytes).await?;
                 anyhow::Ok(bytes)
@@ -94,8 +99,8 @@ fn job_files(job: u32) -> Option<Vec<SubFile>> {
             if let Some(state) = JOBS.lock().unwrap().get_mut(&job) {
                 state.loaded.insert(file.id, loaded);
             }
-        });
-    }
+        }
+    });
     Some(found)
 }
 
@@ -376,6 +381,41 @@ mod tests {
         assert_eq!(m["apply"]["subtitle"], "no");
         assert_eq!(progress::subtitle_pref("tmdb:movie:1").as_deref(), Some("off"));
         forget(0);
+    }
+
+    /// Sintel's open torrent carries .srt files in several languages. Needs
+    /// the network: `cargo test -- --ignored smoke_sintel_subtitles --nocapture`.
+    #[test]
+    #[ignore]
+    fn smoke_sintel_subtitles() {
+        use std::time::Instant;
+        // Sintel (Blender Foundation, CC BY 3.0), as in the engine's smoke test.
+        const SINTEL: &str = "magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Fexplodie.org%3A6969&xs=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2Fsintel.torrent";
+        let job = engine::add(SINTEL).expect("added");
+        let started = Instant::now();
+        let files = loop {
+            let l = list(job);
+            if l["state"] == "ready" {
+                break l["files"].clone();
+            }
+            assert!(started.elapsed() < Duration::from_secs(120), "no metadata");
+            std::thread::sleep(Duration::from_millis(500));
+        };
+        println!("files after {:?}: {files}", started.elapsed());
+        let en = files.as_array().unwrap().iter().find(|f| f["language"] == "en").expect("an English file");
+        let id = en["id"].as_u64().unwrap() as u32;
+        let cue = loop {
+            let c = cues(job, id as usize, 0.0, 900.0);
+            if c["state"] == "ready" {
+                break c;
+            }
+            assert_ne!(c["state"], "failed", "{c}");
+            assert!(started.elapsed() < Duration::from_secs(240), "not fetched");
+            std::thread::sleep(Duration::from_millis(500));
+        };
+        println!("fetched after {:?}: {} cues in the first 15 min", started.elapsed(), cue["cues"].as_array().unwrap().len());
+        assert!(!cue["cues"].as_array().unwrap().is_empty());
+        engine::close(job);
     }
 
     #[test]

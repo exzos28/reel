@@ -1005,6 +1005,8 @@ pub fn browse(page: &str) -> Value {
     let shows = page == "shows";
     let tmdb = tmdb_on();
     let (trending, all) = match (tmdb, shows) {
+        // Anime comes from AniList, with or without a TMDB key.
+        _ if page == "anime" => ("anime", "anime-popular"),
         (true, false) => ("movie", "movie-popular"),
         (true, true) => ("tv", "tv-popular"),
         (false, true) => ("anime", "anime-popular"),

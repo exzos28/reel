@@ -1,0 +1,4 @@
+# The same patched librqbit as app/ (vendor/librqbit, see REEL_PATCH.md): app/.cargo/config.toml
+# only applies to builds started in app/, and this is a workspace of its own.
+[patch.crates-io]
+librqbit = { path = "../../vendor/librqbit" }

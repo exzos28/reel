@@ -51,7 +51,7 @@ test("Settings: from the nav, choose a buffer size, back", async () => {
   const app = await app_();
   await app.keyboard.press("up"); // hero
   await app.keyboard.press("up"); // nav, on Home
-  for (let i = 0; i < 4; i++) await app.keyboard.press("right"); // Movies, Shows, Search, Settings
+  for (let i = 0; i < 5; i++) await app.keyboard.press("right"); // Movies, Shows, Anime, Search, Settings
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Playback buffer");
   expect(app.texts()).toContain("10 GB free on this device");
@@ -170,3 +170,46 @@ test("in a Mac window the screens lay out with all their columns", async () => {
   expect(app.texts()).toContain("All shows");
 });
 
+
+test("Home, Movies, Shows and Anime share one nav whose pills keep their size", async () => {
+  const app = await app_(NATIVE, { platform: "macos", width: 1440, height: 900 });
+  const pills = ["Home", "Movies", "Shows", "Anime"];
+  /** What decides a pill's width: its label's size and weight (selected changes only the colour). */
+  const sizes = () => pills.map((p) => {
+    const s = app.spanStyle(`label:${p} >> text:${p}`);
+    return [s.fontSize, s.fontWeight];
+  });
+  const onHome = sizes();
+  expect(new Set(onHome.map((s) => s.join())).size).toBe(1);
+  for (const page of ["Movies", "Shows", "Anime", "Home"]) {
+    await app.press(`label:${page}`);
+    expect(app.count("label:Home")).toBe(1);
+    expect(app.count("label:Settings")).toBe(1);
+    expect(sizes()).toEqual(onHome);
+    // It is not in the screen's scroll view, so it never moves with it.
+    await expect(app.scroll("label:Home", 200)).rejects.toMatchObject({ code: "ERR_NSH_TEST_NOT_FOUND" });
+  }
+});
+
+test("the nav opens Anime after Shows: its trending row and all anime", async () => {
+  const app = await app_();
+  await app.keyboard.press("up");
+  await app.keyboard.press("up");
+  for (let i = 0; i < 3; i++) await app.keyboard.press("right"); // Movies, Shows, Anime
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("Seasonal hits and all-time favourites");
+  expect(app.texts()).toContain("Trending this season");
+  expect(app.texts()).toContain("All anime");
+  await app.keyboard.press("enter"); // the first in the row
+  expect(app.texts()).toContain("Releases");
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("All anime");
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("Continue watching");
+});
+
+test("in a Mac window the Anime pill opens the Anime page", async () => {
+  const app = await app_(NATIVE, { platform: "macos", width: 1440, height: 900 });
+  await app.press("label:Anime");
+  expect(app.texts()).toContain("All anime");
+});

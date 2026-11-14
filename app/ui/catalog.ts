@@ -144,7 +144,7 @@ const read = <T>(json: () => string): T => {
 };
 
 export const home = () => read<Shelf[]>(() => Catalog.home());
-export const browse = (page: "movies" | "shows") =>
+export const browse = (page: "movies" | "shows" | "anime") =>
   read<{ trending: Summary[]; all: Summary[] }>(() => Catalog.browse(page));
 export const title = (id: string) => read<Title | null>(() => Catalog.title(id));
 export const episodes = (show: string, season: number) => read<Episode[]>(() => Catalog.episodes(show, season));
