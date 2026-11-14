@@ -58,7 +58,8 @@ function Bar(props: { ctl: ScrollCtl; shown: () => boolean }) {
  * the content is. */
 export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; onScroll?: (e: ScrollEvent) => void; children: JSX.Element }) {
   const c = props.ctl;
-  const bar = density === "regular";
+  // Our thin bar for pages; rows of cards have arrows instead (Shelf).
+  const bar = density === "regular" && !c.horizontal;
   const shown = signal(false);
   let hide = 0;
   const poke = () => {
