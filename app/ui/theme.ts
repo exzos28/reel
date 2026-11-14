@@ -1,7 +1,7 @@
 // Direction 3, "Minimal" (design/directions.md): black, white and grey; the
 // film is the only colour on screen. Colors come from nsh.json's theme via
 // token(); sizes are written in TV pixels and scaled by density.
-import { computed, token, windowSize, type TextStyle, type ViewStyle } from "nsh";
+import { computed, platform, token, windowSize, type TextStyle, type ViewStyle } from "nsh";
 import geist from "../fonts/Geist.ttf";
 import { chrome, sideInset } from "./layout/chrome";
 
@@ -48,6 +48,8 @@ export function alpha(color: string, opacity: number) {
  *   reflows the layout (shelves scroll) instead of zooming it. */
 export type Density = "ten-foot" | "regular" | "compact";
 export const density: Density = chrome === "tv" ? "ten-foot" : chrome === "phone" ? "compact" : "regular";
+/** The web build (a Samsung TV's browser): its painting is the bottleneck. */
+const webView = platform.os === "web";
 
 const FIXED = { regular: 0.66, compact: 0.45 } as const;
 const scale = computed(() => (density === "ten-foot" ? windowSize().width / 1920 : FIXED[density]));
@@ -94,7 +96,9 @@ export function focusRing(focused: boolean, lift: "card" | "row" | "button" = "b
     outlineWidth: focused ? Math.max(2, u(3)) : 0,
     outlineOffset: u(5),
     outlineColor: colors.snow(),
-    boxShadow: focused ? `0 ${u(20)}px ${u(50)}px ${alpha(colors.ink(), 0.7)}` : "none",
+    // No blurred shadow in the TV's web view: repainting it on every scrolled frame is
+    // the most a TV's browser struggles with; the ring and the lift show the focus.
+    boxShadow: focused && !webView ? `0 ${u(20)}px ${u(50)}px ${alpha(colors.ink(), 0.7)}` : "none",
     transform: focused ? moved : "none",
     // The ring and its shadow draw over the neighbours (a row of pills, tabs).
     zIndex: focused ? 2 : 0,

@@ -385,12 +385,18 @@ struct Info {
 
 /// Backdrop sizes: the hero's and a 16:9 card's; posters (2:3).
 const STILL_W: u32 = 1280;
+/// A TV's browser decodes and repaints a smaller still more easily: w780, scaled up.
+const STILL_W_TV: u32 = 780;
+
+fn still_width() -> u32 {
+    if crate::sources::compat::profile().device() == Some("tv") { STILL_W_TV } else { STILL_W }
+}
 const CARD_W: u32 = 780;
 const POSTER_W: u32 = 342;
 const THUMB_W: u32 = 300;
 
 fn images(info: &mut Info, v: &Value) {
-    info.still = image_url(&v["backdrop"], STILL_W);
+    info.still = image_url(&v["backdrop"], still_width());
     info.card = image_url(&v["backdrop"], CARD_W);
     info.poster = image_url(&v["poster"], POSTER_W);
     info.paper = text(&v["poster"]["color"]).or_else(|| text(&v["backdrop"]["color"]));

@@ -17,7 +17,7 @@ import { rowStyle } from "../../kit/Row";
 import { labelText, pageTitle } from "../../kit/text";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
-import { go, onBack, openAbout } from "../../nav";
+import { go, goFromNav, onBack, openAbout } from "../../nav";
 import {
   bufferChoices, chooseBuffer, chooseContentLanguage, contentLanguage, contentLanguages, toggleStreamDetails,
 } from "../../preferences";
@@ -128,7 +128,7 @@ export function SettingsScreen() {
   keymap.bind({
     enter: () => {
       if (picker()) return pick(pickAt());
-      if (onNav()) return go(NAV[navAt()].id);
+      if (onNav()) return goFromNav(NAV[navAt()].id);
       const f = focus();
       if (f === aboutAt()) about();
       else if (f === detailsAt()) toggleStreamDetails();

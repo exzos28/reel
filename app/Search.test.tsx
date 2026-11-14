@@ -12,6 +12,7 @@ async function searchScreen(answer: object, extra: Record<string, unknown> = {})
   await app.keyboard.press("up"); // nav, on Home
   for (let i = 0; i < 4; i++) await app.keyboard.press("right"); // Movies, Shows, Anime, Search
   await app.keyboard.press("enter");
+  await app.keyboard.press("down"); // chosen in the nav, the focus stays there: down to the field
   return app;
 }
 

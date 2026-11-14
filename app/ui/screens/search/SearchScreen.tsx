@@ -19,7 +19,7 @@ import { NAV } from "../../layout/navItems";
 import { showNav } from "../../layout/navState";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
-import { go, handleBack, onBack, openTitle } from "../../nav";
+import { go, goFromNav, handleBack, onBack, openTitle } from "../../nav";
 import { density, safe, u } from "../../theme";
 import { HomeShelf } from "../home/HomeShelf";
 import { cols, navAt, query, recentAt, row, zone } from "./focus";
@@ -108,7 +108,7 @@ export function SearchScreen() {
       left: () => navAt.set(clamp(navAt() - 1, NAV.length - 1)),
       right: () => navAt.set(clamp(navAt() + 1, NAV.length - 1)),
       down: () => toField(typesAtOnce),
-      enter: () => go(NAV[navAt()].id),
+      enter: () => goFromNav(NAV[navAt()].id),
     },
     field: { up: toNav, down: below, enter: type },
     recent: {

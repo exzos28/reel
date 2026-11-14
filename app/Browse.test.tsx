@@ -26,6 +26,8 @@ async function movies(native: Record<string, {} | null>, options: Record<string,
   await app.keyboard.press("right"); // Movies
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("All movies");
+  // A destination chosen in the nav keeps the focus there: into the page, on Trending.
+  if (!options.platform) await app.keyboard.press("down");
   return app;
 }
 

@@ -18,7 +18,7 @@ import { NAV } from "../../layout/navItems";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
 import { showNav } from "../../layout/navState";
-import { go, openTitle } from "../../nav";
+import { go, goFromNav, openTitle } from "../../nav";
 import { safe, u } from "../../theme";
 import { BrowseHeader } from "./BrowseHeader";
 import { FilterBar } from "./FilterBar";
@@ -98,7 +98,7 @@ export function BrowseScreen(props: { page: Page }) {
         left: () => nav.set(clamp(nav() - 1, NAV.length - 1)),
         right: () => nav.set(clamp(nav() + 1, NAV.length - 1)),
         down: () => zone.set("trending"),
-        enter: () => go(NAV[nav()].id),
+        enter: () => goFromNav(NAV[nav()].id),
       },
       trending: {
         left: () => trend.set(clamp(trend() - 1, data().trending.length - 1)),

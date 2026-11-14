@@ -46,6 +46,22 @@ export function reselect(name: Destination) {
 
 /** Opens a nav destination: its own stack (a tab's kept one, or a new one);
  * the current one chosen again goes back to its root. */
+/** The destination just chosen in the nav with the keys: it opens with the focus
+ * still in the nav, on its item (not where its page was left). */
+let chosenInNav: Destination | null = null;
+
+export function goFromNav(name: Destination) {
+  chosenInNav = name;
+  go(name);
+}
+
+/** Whether the page now showing was just chosen in the nav (asked once). */
+export function takeChosenInNav(name: Destination): boolean {
+  const was = chosenInNav === name;
+  chosenInNav = null;
+  return was;
+}
+
 export function go(name: Destination) {
   if (section() === name) return reselect(name);
   if (tabStacks) {

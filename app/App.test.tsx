@@ -75,6 +75,7 @@ test("the nav opens Movies; a poster opens its film with the releases found; Bac
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Discover the latest and greatest films");
   expect(app.texts()).toContain("All movies");
+  await app.keyboard.press("down"); // from the nav into Trending
   await app.keyboard.press("right");
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
@@ -124,6 +125,7 @@ async function series(native: Native = { ...ENGINE, ...SHOW }) {
   await app.keyboard.press("right"); // Shows
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Current & upcoming");
+  await app.keyboard.press("down"); // from the nav into the row
   await app.keyboard.press("enter"); // the first in the row
   return app;
 }
@@ -232,6 +234,7 @@ test("the nav opens Anime after Shows: its trending row and all anime", async ()
   expect(app.texts()).toContain("Seasonal hits and all-time favourites");
   expect(app.texts()).toContain("Trending this season");
   expect(app.texts()).toContain("All anime");
+  await app.keyboard.press("down"); // from the nav into the row
   await app.keyboard.press("enter"); // the first in the row
   expect(app.texts()).toContain("Add to list");
   await app.keyboard.press("escape");
@@ -300,12 +303,28 @@ test("TV: OK on the current destination in the nav keeps the page, at its root",
   await app.keyboard.press("up");
   await app.keyboard.press("up");
   await app.keyboard.press("right"); // Movies
-  await app.keyboard.press("enter");
-  await app.keyboard.press("escape"); // the focus to Movies in the nav
+  await app.keyboard.press("enter"); // the focus stays on Movies in the nav
   await app.keyboard.press("enter"); // Movies again
   expect(app.texts()).toContain("All movies");
   await app.keyboard.press("escape"); // on the nav: Home
   expect(app.texts()).toContain("Continue watching");
+});
+
+test("TV: a destination chosen in the nav keeps the focus on it; Right goes on to the next one", async () => {
+  const app = await app_();
+  await app.keyboard.press("up");
+  await app.keyboard.press("up"); // the nav, on Home
+  await app.keyboard.press("right"); // Movies
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("All movies");
+  await app.keyboard.press("right"); // still in the nav: Shows
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("All shows");
+  await app.keyboard.press("down"); // into the page
+  await app.keyboard.press("up");
+  await app.keyboard.press("left"); // back in the nav, on Movies
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("All movies");
 });
 
 test("Mac: the releases open in a sheet under the window bar; Esc closes it, then goes back", async () => {

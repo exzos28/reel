@@ -6,7 +6,7 @@
 // the trackpad leave the offset to the viewer.
 import { effect, platform, reduceMotion, signal, type ScrollRef, type ViewRef } from "nsh";
 import { keyed } from "../focus/keys";
-import { ringRoom } from "../theme";
+import { density, ringRoom, safe } from "../theme";
 import { anchorOffset, easeOut, nearestOffset } from "./anchor";
 
 /** How long a keyed scroll takes, ms. */
@@ -102,7 +102,8 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
       end: start + b.bounds.size[length],
       viewport: s.bounds.size[length],
       content: c.bounds.size[length],
-      pad: ringRoom(),
+      // On a TV a block is kept clear of the title-safe edge too (the set may crop it).
+      pad: density === "ten-foot" ? Math.max(ringRoom(), safe().y) : ringRoom(),
     };
     const target =
       placement === "start" ? 0

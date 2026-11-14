@@ -9,7 +9,7 @@ import { NAV } from "../../layout/navItems";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
 import { showNav } from "../../layout/navState";
-import { go, openTitle } from "../../nav";
+import { go, goFromNav, openTitle } from "../../nav";
 import { play } from "../../playback";
 import { u } from "../../theme";
 import { cols, heroAt, navAt, row, zone } from "./focus";
@@ -58,7 +58,7 @@ export function HomeScreen() {
       left: () => navAt.set(Math.max(navAt() - 1, 0)),
       right: () => navAt.set(Math.min(navAt() + 1, NAV.length - 1)),
       down: () => zone.set("hero"),
-      enter: () => go(NAV[navAt()].id),
+      enter: () => goFromNav(NAV[navAt()].id),
     },
     hero: {
       left: () => heroAt.set(Math.max(heroAt() - 1, 0)),

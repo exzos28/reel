@@ -7,10 +7,12 @@
 import { exitAsked } from "../layout/ExitDialog";
 import { chrome, isDesktop } from "../layout/chrome";
 import { forgetScroll, type ScrollCtl } from "../layout/scrollCtl";
-import { go, onPageBack, section } from "../nav";
+import { go, onPageBack, section, takeChosenInNav } from "../nav";
 import { navAt as homeNavAt, zone as homeZone } from "../screens/home/focus";
 
 export function useRootBack(page: { ctl: ScrollCtl; onNav: () => boolean; toNav: () => void }) {
+  // Chosen in the nav with the keys: the focus stays there, on this page's item.
+  if (takeChosenInNav(section())) page.toNav();
   onPageBack(() => {
     if (isDesktop) return true;
     if (chrome !== "tv") return false;
