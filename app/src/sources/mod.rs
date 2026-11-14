@@ -306,7 +306,9 @@ fn fit(info: &release::ReleaseInfo, query: &Query) -> u8 {
 }
 
 /// Deduplicated (by infohash, else link), what does not fit dropped, best first:
-/// people sharing, then how well it fits, then picture quality, then more people.
+/// people sharing, then how well it fits, then the picture size, then more people, and
+/// only then the source (a 4K remux with 80 people is not over a 4K WEB-DL with 2000: for
+/// streaming the swarm matters more, and a remux is several times the bitrate).
 fn rank(items: &[Item], query: &Query) -> (Vec<Value>, Vec<Value>) {
     let profile = compat::profile();
     let mut hidden = Vec::new();
@@ -314,7 +316,7 @@ fn rank(items: &[Item], query: &Query) -> (Vec<Value>, Vec<Value>) {
     // then 0 means "unknown", not "nobody sharing".
     let seeders_known = items.iter().any(|it| it.seeders.unwrap_or(0) > 0);
     let mut seen = HashSet::new();
-    let mut rows: Vec<(u8, u8, u32, u32, Value)> = Vec::new();
+    let mut rows: Vec<(u8, u8, u32, u32, u32, Value)> = Vec::new();
     for it in items {
         let key = it.infohash.clone().or_else(|| it.link.clone()).unwrap_or_else(|| it.title.clone());
         if it.magnet.is_none() && it.link.is_none() {
@@ -330,12 +332,12 @@ fn rank(items: &[Item], query: &Query) -> (Vec<Value>, Vec<Value>) {
             continue;
         }
         let seeders = if seeders_known { it.seeders.unwrap_or(0) } else { 1 };
-        let quality = release::quality_score(&info);
         rows.push((
             (seeders > 0) as u8,
             fit,
-            quality,
+            release::resolution_score(&info),
             seeders,
+            release::source_score(&info),
             json!({
                 "id": key,
                 "title": it.title,
@@ -353,8 +355,8 @@ fn rank(items: &[Item], query: &Query) -> (Vec<Value>, Vec<Value>) {
             }),
         ));
     }
-    rows.sort_by(|a, b| (b.0, b.1, b.2, b.3).cmp(&(a.0, a.1, a.2, a.3)));
-    (rows.into_iter().map(|r| r.4).collect(), hidden)
+    rows.sort_by(|a, b| (b.0, b.1, b.2, b.3, b.4).cmp(&(a.0, a.1, a.2, a.3, a.4)));
+    (rows.into_iter().map(|r| r.5).collect(), hidden)
 }
 
 #[cfg(test)]
@@ -403,6 +405,17 @@ mod tests {
         assert_eq!(r[0]["source"], "https://indexer.example/dl/1.torrent", "the .torrent before the magnet");
         assert_eq!(r[1]["source"], "https://indexer.example/dl/2.torrent");
         assert_eq!(r[2]["seeders"], 0);
+    }
+
+    #[test]
+    fn in_one_picture_size_more_people_sharing_win_over_the_source() {
+        let q = Query::Movie { imdb: None, title: "Film".into(), year: None };
+        let item = |t: &str, s: u32| Item { title: t.into(), link: Some(format!("https://indexer.example/{t}")), seeders: Some(s), ..Default::default() };
+        let r = rank(&[item("Film 2160p Remux HEVC", 82), item("Film 2160p WEB-DL HEVC", 2231), item("Film 1080p BluRay", 5000)], &q).0;
+        let titles: Vec<&str> = r.iter().map(|x| x["title"].as_str().unwrap()).collect();
+        assert_eq!(titles, ["Film 2160p WEB-DL HEVC", "Film 2160p Remux HEVC", "Film 1080p BluRay"]);
+        let tie = rank(&[item("Film 1080p WEB", 10), item("Film 1080p BluRay", 10)], &q).0;
+        assert_eq!(tie[0]["title"], "Film 1080p BluRay", "equal people: the better source");
     }
 
     #[test]

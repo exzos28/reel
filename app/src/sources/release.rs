@@ -123,22 +123,30 @@ pub fn parse(name: &str) -> ReleaseInfo {
 
 /// How good the picture is, for ranking (higher is better); unknown is low.
 pub fn quality_score(info: &ReleaseInfo) -> u32 {
-    let res = match info.resolution {
+    resolution_score(info) + source_score(info)
+}
+
+/// The picture size alone: what ranks releases first (people sharing come next, then the source).
+pub fn resolution_score(info: &ReleaseInfo) -> u32 {
+    match info.resolution {
         Some(2160) => 40,
         Some(1080) => 30,
         Some(720) => 20,
         Some(576 | 480) => 10,
         _ => 5,
-    };
-    let source = match info.source {
+    }
+}
+
+/// Remux over BluRay over WEB…: only between releases equal in size and people sharing.
+pub fn source_score(info: &ReleaseInfo) -> u32 {
+    match info.source {
         Some("remux") => 5,
         Some("bluray") => 4,
         Some("web") => 3,
         Some("hdtv") => 2,
         Some("dvd") => 1,
         _ => 0,
-    };
-    res + source
+    }
 }
 
 #[cfg(test)]
