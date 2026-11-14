@@ -159,6 +159,14 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         let (key,): (String,) = args(a)?;
         ret(Catalog::episode_releases(key))
     })
+    .sync("Catalog", "search", |a| {
+        let (query,): (String,) = args(a)?;
+        ret(Catalog::search(query))
+    })
+    .sync("Catalog", "rememberSearch", |a| {
+        let (query,): (String,) = args(a)?;
+        ret(Catalog::remember_search(query))
+    })
     .sync("Catalog", "toggleList", |a| {
         let (id,): (String,) = args(a)?;
         ret(Catalog::toggle_list(id))

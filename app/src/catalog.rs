@@ -29,6 +29,7 @@ use serde_json::{Value, json};
 use crate::{metadata, progress, settings, sources};
 
 mod details;
+mod search;
 
 // ---- Ids.
 
@@ -1381,6 +1382,18 @@ impl Catalog {
     /// Adds `id` to the user's list or takes it off: whether it is on it now.
     pub fn toggle_list(id: String) -> bool {
         toggle_list(&id)
+    }
+
+    /// The search screen for `query` (see `catalog::search::search`):
+    /// `{"query","state","tmdb","recent","sections":[{"id","items":[summary…]}]}`.
+    /// Asks in the background once the query rests; read again on `revision()`.
+    pub fn search(query: String) -> String {
+        search::search(&query).to_string()
+    }
+
+    /// Keeps `query` among the recent searches (submitted, or a title opened from it).
+    pub fn remember_search(query: String) {
+        search::remember(&query)
     }
 
     /// Makes release `index` the one Play uses for `id`.
