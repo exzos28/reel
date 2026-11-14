@@ -22,9 +22,4 @@ axum.workspace = true
 tokio.workspace = true
 serde_json.workspace = true
 libc = "0.2"
-
-# librqbit's default features hash with OpenSSL (crypto-hash) on Linux. The TV has no OpenSSL
-# we can rely on (soname, version), so until app/ switches librqbit to `rust-tls`
-# (docs/tizen.md, "Changes in app/"), OpenSSL is built from source and linked in statically.
-[target.'cfg(target_os = "linux")'.dependencies]
-openssl = { version = "0.10", features = ["vendored"] }
+# No OpenSSL: app/ builds librqbit and reqwest with rustls, so the TV needs no system TLS library.

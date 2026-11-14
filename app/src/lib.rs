@@ -1,26 +1,46 @@
 //! reel's Rust side: what `App.tsx` imports from `app/native`.
 
+//!
+//! NSH's web target builds this crate for wasm32, where librqbit, tokio networking and sqlite
+//! do not build. There only the pure modules (`Fmt`, `VideoEngine`) are registered; on a TV
+//! the web UI reaches the others over HTTP from the core (`ui/native.ts`, docs/tizen.md).
+//! New native modules follow the same rule: `#[cfg(not(target_arch = "wasm32"))]`.
+
+#[cfg(not(target_arch = "wasm32"))]
 mod buffer;
+#[cfg(not(target_arch = "wasm32"))]
 mod catalog;
+#[cfg(not(target_arch = "wasm32"))]
 mod disk;
+#[cfg(not(target_arch = "wasm32"))]
 mod engine;
+#[cfg(not(target_arch = "wasm32"))]
 mod metadata;
+#[cfg(not(target_arch = "wasm32"))]
 mod progress;
+#[cfg(not(target_arch = "wasm32"))]
 mod settings;
+#[cfg(not(target_arch = "wasm32"))]
 mod sources;
+#[cfg(not(target_arch = "wasm32"))]
 mod subtitles;
+#[cfg(not(target_arch = "wasm32"))]
 mod timeline;
 #[cfg(target_os = "macos")]
 mod mpv;
 
 use nsh_core::prelude::*;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub use catalog::Catalog;
+#[cfg(not(target_arch = "wasm32"))]
 pub use metadata::Meta;
 
 #[native_module("app/native")]
 fn native(registry: &mut Registry) {
-    registry.module::<Fmt>().module::<Engine>().module::<Catalog>().module::<Settings>().module::<Sources>().module::<Meta>().module::<VideoEngine>();
+    registry.module::<Fmt>().module::<VideoEngine>();
+    #[cfg(not(target_arch = "wasm32"))]
+    registry.module::<Engine>().module::<Catalog>().module::<Settings>().module::<Sources>().module::<Meta>();
 }
 
 /// The mpv video view (`reel/mpv`), where libmpv is found.
@@ -30,9 +50,11 @@ fn components(components: &nsh_platform_macos::Components) {
 }
 
 /// The built-in torrent server (librqbit). Results are JSON strings.
+#[cfg(not(target_arch = "wasm32"))]
 #[module]
 pub struct Engine;
 
+#[cfg(not(target_arch = "wasm32"))]
 #[module]
 impl Engine {
     /// Starts playing `id` from the catalog (a title, or an episode
@@ -116,6 +138,7 @@ impl Engine {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn parse_embedded(json: &str) -> Option<subtitles::tracks::Embedded> {
     (!json.is_empty()).then(|| serde_json::from_str(json).ok()).flatten()
 }
@@ -146,9 +169,11 @@ impl VideoEngine {
 }
 
 /// The user's settings, kept on the device.
+#[cfg(not(target_arch = "wasm32"))]
 #[module]
 pub struct Settings;
 
+#[cfg(not(target_arch = "wasm32"))]
 #[module]
 impl Settings {
     /// Loads the settings from `data_dir` (the app's data directory, empty
@@ -200,9 +225,11 @@ impl Settings {
 
 /// Finding releases on the user's own source (Torznab). Searches run in the
 /// background: start one, then poll `result`.
+#[cfg(not(target_arch = "wasm32"))]
 #[module]
 pub struct Sources;
 
+#[cfg(not(target_arch = "wasm32"))]
 #[module]
 impl Sources {
     /// Searches for a film or an episode. `request` is JSON
