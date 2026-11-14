@@ -392,12 +392,19 @@ fn still_width() -> u32 {
     if crate::sources::compat::profile().device() == Some("tv") { STILL_W_TV } else { STILL_W }
 }
 const CARD_W: u32 = 780;
+/// A TV's card is 352 px wide at 1x: w500 (13 KB, 0.14 MP decoded) is enough; w780 is for
+/// a desktop's 2x screen.
+const CARD_W_TV: u32 = 500;
+
+fn card_width() -> u32 {
+    if crate::sources::compat::profile().device() == Some("tv") { CARD_W_TV } else { CARD_W }
+}
 const POSTER_W: u32 = 342;
 const THUMB_W: u32 = 300;
 
 fn images(info: &mut Info, v: &Value) {
     info.still = image_url(&v["backdrop"], still_width());
-    info.card = image_url(&v["backdrop"], CARD_W);
+    info.card = image_url(&v["backdrop"], card_width());
     info.poster = image_url(&v["poster"], POSTER_W);
     info.paper = text(&v["poster"]["color"]).or_else(|| text(&v["backdrop"]["color"]));
 }
