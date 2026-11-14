@@ -201,3 +201,16 @@ mod tests {
         assert!(quality_score(&parse("x 1080p web")) > quality_score(&parse("x 720p bluray")));
     }
 }
+
+#[cfg(test)]
+mod tracker_names {
+    use super::parse;
+
+    #[test]
+    fn ranges_as_jackett_writes_them() {
+        let i = parse("Квест Вижна / VisionQuest / S1E1-8 of 8 [2026, WEB-DL 1080p]");
+        assert_eq!((i.season, i.episodes.clone()), (Some(1), (1..=8).collect::<Vec<u16>>()));
+        let i = parse("12 12 12 / S1E1 of 8 (Карен Мейн) [2026, WEB-DL 1080p]");
+        assert_eq!((i.season, i.episodes.clone()), (Some(1), vec![1]), "an ongoing season: only what is out");
+    }
+}
