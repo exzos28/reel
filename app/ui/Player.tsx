@@ -133,7 +133,9 @@ export function Player() {
   const row = signal<Row>("scrubber");
   const button = signal(PLAY_BUTTON);
   /** The buttons this device has: full screen only where the app has a window. */
-  const buttons: ButtonId[] = platform.desktop ? [...BUTTONS] : BUTTONS.filter((b) => b !== "fullscreen");
+  // A window can go full screen; a TV (its web build counts as a desktop) and touch cannot.
+  const windowed = platform.desktop && chrome !== "tv";
+  const buttons: ButtonId[] = windowed ? [...BUTTONS] : BUTTONS.filter((b) => b !== "fullscreen");
   /** The window fills the screen (desktops). Left as it was found when the player closes. */
   // The window, taken while rendering: NSH's currentWindow() throws in handlers.
   const win = platform.desktop ? currentWindow() : null;
@@ -275,7 +277,7 @@ export function Player() {
     { repeat: true },
   );
   // F: full screen, as in other players.
-  if (platform.desktop) keymap.bind({ f: () => setFullscreen(!fullscreen()) });
+  if (windowed) keymap.bind({ f: () => setFullscreen(!fullscreen()) });
   keymap.bind({
     up: key((shown) => (panel() ? movePanel(0, -1) : shown && row.set("scrubber"))),
     down: key((shown) => (panel() ? movePanel(0, 1) : shown && row.set("buttons"))),
