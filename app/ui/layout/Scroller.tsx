@@ -58,7 +58,7 @@ function Bar(props: { ctl: ScrollCtl; shown: () => boolean }) {
  * the content is. */
 export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; onScroll?: (e: ScrollEvent) => void; children: JSX.Element }) {
   const c = props.ctl;
-  // Our thin bar for pages; rows of cards have arrows instead (Shelf).
+  // Our thin bar for pages only: rows of cards show none (a trackpad, the keys and the focus move them).
   const bar = density === "regular" && !c.horizontal;
   const shown = signal(false);
   let hide = 0;

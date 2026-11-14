@@ -38,12 +38,6 @@ export interface ScrollCtl {
   /** @internal The scroll view and its content, set by `Scroller`. */
   scroll: ReturnType<typeof signal<ScrollRef | undefined>>;
   content?: ViewRef;
-  /** The scrollable length beyond the viewport (points), once measured (`measure`). */
-  room: ReturnType<typeof signal<number>>;
-  /** Measures the viewport and the content (sets `room`). */
-  measure(): Promise<void>;
-  /** Scrolls about a viewport forward (1) or back (-1), animated: the mouse's arrows. */
-  page(dir: 1 | -1): Promise<void>;
 }
 
 /** A scroll view's follower. `anchor` is where a block's start sits, from
@@ -104,26 +98,8 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
       : anchorOffset({ ...geometry, anchor: opts.anchor(geometry.viewport) });
     go(target, !first);
   };
-  let viewport = 0;
-  const measure = async () => {
-    const scroll = ctl.scroll();
-    if (!scroll || !ctl.content) return;
-    const [s, c] = await Promise.all([scroll.measure(), ctl.content.measure()]);
-    if (!s || !c) return;
-    const length = horizontal ? "width" : "height";
-    viewport = s.bounds.size[length];
-    ctl.room.set(Math.max(0, c.bounds.size[length] - viewport));
-  };
   const ctl: ScrollCtl = {
     horizontal,
-    room: signal(0),
-    measure,
-    async page(dir) {
-      await measure();
-      // A little less than a viewport, so the last card of a page shows again.
-      const target = Math.min(Math.max(at + dir * viewport * 0.85, 0), ctl.room() ?? 0);
-      go(target, true);
-    },
     offset: signal(0),
     remember(offset) {
       ctl.offset.set(offset);

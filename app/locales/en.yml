@@ -11,8 +11,6 @@ nav:
   back: Back
 
 shelf:
-  previous: Previous
-  next: Next
   continue: Continue watching
   trending_movies: Trending movies
   trending_shows: Trending shows
