@@ -253,3 +253,17 @@ test("by default the player keeps the stream's details to itself", async () => {
   expect(app.shows("scrubber")).toBe(true);
   expect(app.texts()).not.toContain("streaming at 3.4 MB/s from 37 people");
 });
+
+test("Mac: the Back in the window bar's slot closes the player, while it starts and while it plays", async () => {
+  for (const engine of [{ ...NATIVE, ...DETAILS, "Engine.status": JSON.stringify({ phase: "resolving", stage: "finding" }) }, { ...NATIVE, ...STILL, ...DETAILS, "Engine.status": status, "Engine.timeline": timeline }]) {
+    const app = await openApp({ clock: {}, platform: "macos", width: 1440, height: 900, modules: { "app/native": engine } });
+    await app.press("label:Movies");
+    await app.press("label:Inception >> nth=0");
+    await app.press("Resume 41:12");
+    await app.wait(600);
+    expect(app.shows("stage") || app.shows("scrubber")).toBe(true);
+    await app.press("label:Back to Inception");
+    expect(app.shows("stage")).toBe(false);
+    expect(app.shows("scrubber")).toBe(false);
+  }
+});

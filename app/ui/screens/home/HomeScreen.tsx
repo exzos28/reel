@@ -13,7 +13,7 @@ import { go, goFromNav, openTitle } from "../../nav";
 import { play } from "../../playback";
 import { u } from "../../theme";
 import { cols, heroAt, navAt, row, zone } from "./focus";
-import { HomeHero } from "./HomeHero";
+import { HOME_HERO, HomeHero } from "./HomeHero";
 import { HomeShelf } from "./HomeShelf";
 
 /** How long the focus rests before the hero shows it. */
@@ -84,7 +84,7 @@ export function HomeScreen() {
   };
 
   return (
-    <Screen ctl={page} nav hero={780}>
+    <Screen ctl={page} nav hero={HOME_HERO.height}>
       <View ref={page.follow(() => zone() !== "shelves", "start")}>
         <HomeHero
           item={hero}

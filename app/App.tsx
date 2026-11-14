@@ -9,7 +9,7 @@
 // on a desktop, one window bar over every page (layout/WindowBar.tsx); on
 // touch, each tab's native stack with the phone's tab bar or the tablet's top
 // row (layout/TouchStack.tsx, layout/TouchNav.tsx).
-import { fpsEnabled, keymap, mount, platform, setColorScheme, setFpsEnabled, View } from "nsh";
+import { fpsEnabled, keymap, mount, platform, setColorScheme, setFpsEnabled, View, type ViewStyle } from "nsh";
 import { BackHandler } from "nsh/mobile";
 import { currentWindow, isAvailable as hasWindows } from "nsh/desktop";
 import { remote } from "./ui/native";
@@ -24,7 +24,7 @@ import { PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
 import { TouchStack } from "./ui/layout/TouchStack";
 import { bindDesktopKeys } from "./ui/layout/desktopKeys";
 import { ExitDialog } from "./ui/layout/ExitDialog";
-import { BAR_HEIGHT, WindowBar } from "./ui/layout/WindowBar";
+import { BAR_HEIGHT, barBackBox, WindowBar } from "./ui/layout/WindowBar";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
 import { loadSettings } from "./ui/preferences";
@@ -71,6 +71,19 @@ function OneScreen() {
   ];
 }
 
+/** The player has no bar: its top still drags the window, around its Back (a strip over
+ * Back would take its clicks). */
+function PlayerDragStrips() {
+  const b = barBackBox(false);
+  const strip = (x: ViewStyle): ViewStyle => ({ position: "absolute", top: 0, height: BAR_HEIGHT, zIndex: 10, ...x });
+  return (
+    <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: BAR_HEIGHT, pointerEvents: "box-none" }}>
+      <View desktop={{ windowDrag: true }} style={strip({ left: 0, width: b.left })} />
+      <View desktop={{ windowDrag: true }} style={strip({ left: b.left + b.width, right: 0 })} />
+    </View>
+  );
+}
+
 function App() {
   // ⌘⇧F (Ctrl+Shift+F elsewhere): NSH's performance monitor, to see where frames drop.
   keymap.bind("mod+shift+f", () => setFpsEnabled(!fpsEnabled()));
@@ -107,7 +120,7 @@ function App() {
         <If
           when={!playing()}
           // The player has no bar: its top still drags the window.
-          else={<View desktop={{ windowDrag: true }} style={{ position: "absolute", top: 0, left: 0, right: 0, height: BAR_HEIGHT, zIndex: 10 }} />}
+          else={<PlayerDragStrips />}
         >
           <WindowBar />
         </If>
