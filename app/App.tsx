@@ -3,7 +3,8 @@
 // Only one screen is mounted at a time, so only its keys are bound; the
 // screens keep their focus in their own modules, so Back finds it again.
 // Home, Movies, Shows and Anime share one nav (screens/TopLevel.tsx).
-import { effect, mount, setColorScheme, signal, View } from "nsh";
+import { effect, mount, platform, setColorScheme, signal, View } from "nsh";
+import { currentWindow, titleBar } from "nsh/desktop";
 import { Engine } from "app/native";
 import { AboutScreen } from "./ui/screens/about/AboutScreen";
 import { SearchScreen } from "./ui/screens/search/SearchScreen";
@@ -20,6 +21,9 @@ setColorScheme("dark");
 loadSettings().catch((e) => console.warn("could not load settings", e));
 
 function App() {
+  // On the Mac the window has no grey title bar: the app's own background (the
+  // hero's still) runs up to the top edge, under the traffic lights.
+  if (platform.os === "macos") currentWindow().set({ titleBar: { style: "hidden" } });
   const playing = () => status().phase !== "idle";
   /** Free space for the Settings screen, read when it opens. */
   const freeBytes = signal<number | null>(null);
@@ -34,6 +38,11 @@ function App() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.ink() }}>
+      {/* Where the title bar was: dragging there moves the window, a double click zooms it. */}
+      <View
+        desktop={{ windowDrag: true }}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, height: titleBar().height, zIndex: 10 }}
+      />
       <If when={!playing()} else={<Player />}>
         <If when={isTopLevel(r().name)}>
           <TopLevel />

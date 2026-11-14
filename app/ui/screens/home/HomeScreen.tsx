@@ -27,7 +27,7 @@ export function HomeScreen() {
   const heroActions = [playFocused, () => toggleList(focused().id)];
 
   /** The page puts the focused shelf in its upper third. */
-  const page = scroller({ anchor: (viewport) => viewport / 3 });
+  const page = scroller({ anchor: (viewport) => viewport / 3, memory: "home" });
 
   showNav(() => (zone() === "nav" ? navAt() : null));
   useZones(zone, {

@@ -30,7 +30,7 @@ export function BrowseScreen(props: { page: Page }) {
   const count = () => data().all.length;
 
   /** The page puts the focused grid row in its upper third. */
-  const page = scroller({ anchor: (viewport) => viewport / 3 });
+  const page = scroller({ anchor: (viewport) => viewport / 3, memory: `browse:${props.page}` });
 
   showNav(() => (zone() === "nav" ? nav() : null));
   useZones(

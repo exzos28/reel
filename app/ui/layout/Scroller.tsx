@@ -77,6 +77,7 @@ export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; onScroll?: 
         bounces={false}
         scrollEventThrottle={16}
         onScroll={(e: ScrollEvent) => {
+          c.remember(c.horizontal ? e.offset.x : e.offset.y);
           poke();
           props.onScroll?.(e);
         }}

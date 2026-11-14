@@ -20,6 +20,8 @@ export type Placement = "anchor" | "nearest" | "start";
 export type Follow = (when: () => boolean) => (r: ViewRef) => void;
 
 const running = new Set<() => void>();
+/** Where each remembered page was left (`scroller({ memory })`). */
+const offsets = new Map<string, number>();
 /** The viewer took over (wheel, trackpad, drag): every keyed scroll stops. */
 export const stopAll = () => running.forEach((stop) => stop());
 
@@ -29,14 +31,18 @@ export interface ScrollCtl {
    * `when` turns true by a key; the first time (the screen opening, or
    * coming back to it), it only shows it, at once. */
   follow(when: () => boolean, placement?: Placement): (r: ViewRef) => void;
+  /** @internal Where the view is now, from `Scroller`'s scroll events. */
+  remember(offset: number): void;
   /** @internal The scroll view and its content, set by `Scroller`. */
   scroll: ReturnType<typeof signal<ScrollRef | undefined>>;
   content?: ViewRef;
 }
 
 /** A scroll view's follower. `anchor` is where a block's start sits, from
- * the viewport's start, given the viewport's length. */
-export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number) => number }): ScrollCtl {
+ * the viewport's start, given the viewport's length. A page opens where it
+ * was left (`memory` names it) or at its top: opening a screen never scrolls
+ * it to its focus, so switching screens does not make it jump. */
+export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number) => number; memory?: string }): ScrollCtl {
   const horizontal = !!opts.horizontal;
   let frame = 0;
   let at = 0;
@@ -64,6 +70,10 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     frame = requestAnimationFrame(step);
   };
   const place = async (block: ViewRef, placement: Placement, first: boolean) => {
+    if (first && !horizontal) {
+      go(opts.memory ? (offsets.get(opts.memory) ?? 0) : 0, false);
+      return;
+    }
     const scroll = ctl.scroll();
     if (!scroll || !ctl.content) return;
     const [b, s, c] = await Promise.all([block.measure(), scroll.measure(), ctl.content.measure()]);
@@ -82,12 +92,16 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     };
     const target =
       placement === "start" ? 0
-      : placement === "nearest" || (first && !horizontal) ? nearestOffset(geometry, current)
+      : placement === "nearest" ? nearestOffset(geometry, current)
       : anchorOffset({ ...geometry, anchor: opts.anchor(geometry.viewport) });
     go(target, !first);
   };
   const ctl: ScrollCtl = {
     horizontal,
+    remember(offset) {
+      if (!frame) at = offset;
+      if (opts.memory) offsets.set(opts.memory, offset);
+    },
     scroll: signal<ScrollRef | undefined>(),
     follow(when, placement = "anchor") {
       let ref: ViewRef | undefined;

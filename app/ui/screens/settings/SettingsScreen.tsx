@@ -71,7 +71,7 @@ export function SettingsScreen(props: { freeBytes: () => number | null; onClose:
   });
 
   /** The page shows the focused row whole. */
-  const page = scroller({ anchor: (viewport) => viewport / 3 });
+  const page = scroller({ anchor: (viewport) => viewport / 3, memory: "settings" });
   return (
     <Screen ctl={page}>
       <View style={pageStyle()}>
