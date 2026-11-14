@@ -1069,6 +1069,10 @@ pub fn title(id: &str) -> Value {
     let info = Info { id: id.to_owned(), ..from_title(&t) };
     let w = where_in(&info);
     ensure_search(&w.key, &info);
+    // Play starts sooner when the release's link is already opened.
+    if let PlaySource::Ready(source, _) = play_source(&w.key) {
+        crate::engine::prefetch(&source);
+    }
     let mut v = summary(&info);
     v["releases"] = json!(releases_json(&w.key, &info));
     v["releasesState"] = json!(releases_state(&w.key));

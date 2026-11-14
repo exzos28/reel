@@ -16,7 +16,8 @@ use crate::{buffer, catalog, disk, sources, timeline};
 
 use anyhow::Context;
 use librqbit::{
-    AddTorrent, AddTorrentOptions, Api, Session,
+    AddTorrent, AddTorrentOptions, Api, ConnectionOptions, ListenerMode, ListenerOptions,
+    PeerConnectionOptions, Session, SessionOptions,
     http_api::HttpApi,
 };
 use librqbit_dualstack_sockets::{BindOpts, TcpListener};
@@ -110,7 +111,7 @@ fn core() -> anyhow::Result<&'static Core> {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).with_context(|| format!("creating {}", dir.display()))?;
     let (session, port, api) = rt.block_on(async {
-        let session = Session::new(dir).await.context("creating the torrent session")?;
+        let session = Session::new_with_opts(dir, session_options()).await.context("creating the torrent session")?;
         let listener = TcpListener::bind_tcp(SocketAddr::from(([127, 0, 0, 1], 0)), BindOpts::default())
             .context("binding the stream server")?;
         let port = listener.bind_addr().port();
@@ -292,6 +293,30 @@ pub fn timing_log() -> PathBuf {
     std::env::temp_dir().join("reel-timings.log")
 }
 
+/// Tuned for starting fast from a big swarm: most addresses trackers give are
+/// behind NAT or gone, so a short connect timeout frees slots for the ones
+/// that answer; more slots; uTP too (many peers behind NAT only take uTP).
+fn session_options() -> SessionOptions {
+    SessionOptions {
+        listen: Some(ListenerOptions {
+            mode: ListenerMode::TcpAndUtp,
+            ..Default::default()
+        }),
+        connect: Some(ConnectionOptions {
+            peer_opts: Some(PeerConnectionOptions {
+                connect_timeout: Some(std::time::Duration::from_secs(3)),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }),
+        peer_limit: Some(PEER_LIMIT),
+        ..Default::default()
+    }
+}
+
+/// Peers connected or being connected per torrent (librqbit's default is 128).
+const PEER_LIMIT: usize = 300;
+
 fn log_line(line: &str) {
     use std::io::Write;
     eprintln!("reel timing {line}");
@@ -338,7 +363,52 @@ fn time_peers(job: u32, p: &Value, speed: f64) {
     log_line(&line);
 }
 
+// ---- Prefetch: the source's link is opened while the title screen shows -----
+
+/// A source link being opened, or opened: Play awaits it instead of asking the
+/// source again (Jackett takes seconds per link, it opens the tracker's page).
+type Prefetched = Arc<tokio::sync::OnceCell<Result<Fetched, String>>>;
+/// The links prefetched, oldest first (a few: the titles last looked at).
+static PREFETCHED: Mutex<Vec<(String, Prefetched)>> = Mutex::new(Vec::new());
+const PREFETCH_KEEP: usize = 8;
+
+fn prefetched(url: &str) -> (Prefetched, bool) {
+    let mut all = PREFETCHED.lock().unwrap();
+    if let Some((_, cell)) = all.iter().find(|(u, _)| u == url) {
+        return (cell.clone(), false);
+    }
+    let cell = Prefetched::default();
+    all.push((url.to_owned(), cell.clone()));
+    if all.len() > PREFETCH_KEEP {
+        all.remove(0);
+    }
+    (cell, true)
+}
+
+async fn fetch_once(url: &str) -> Result<Fetched, String> {
+    let (cell, _) = prefetched(url);
+    let r = cell.get_or_init(|| async { fetch_torrent(url).await.map_err(|e| format!("{e:#}")) }).await.clone();
+    if r.is_err() {
+        // A failure is not kept: Play asks again.
+        PREFETCHED.lock().unwrap().retain(|(u, _)| u != url);
+    }
+    r
+}
+
+/// Opens `url` (a source's http(s) link) in the background, once.
+pub fn prefetch(url: &str) {
+    if !(url.starts_with("http://") || url.starts_with("https://")) || !prefetched(url).1 {
+        return;
+    }
+    let Ok(core) = core() else { return };
+    let url = url.to_owned();
+    core.rt.spawn(async move {
+        let _ = fetch_once(&url).await;
+    });
+}
+
 /// What a source's http(s) link turned out to be.
+#[derive(Clone)]
 enum Fetched {
     /// A .torrent file.
     Torrent(Vec<u8>),
@@ -411,7 +481,7 @@ fn add_to(core: &Core, job: u32, url: &str) {
             ..Default::default()
         };
         let add = if url.starts_with("http://") || url.starts_with("https://") {
-            match fetch_torrent(&url).await {
+            match fetch_once(&url).await.map_err(anyhow::Error::msg) {
                 Ok(Fetched::Torrent(bytes)) => {
                     time_step(job, "source gave a .torrent");
                     Ok(AddTorrent::from_bytes(bytes))
