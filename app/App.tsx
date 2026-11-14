@@ -9,8 +9,8 @@
 // on a desktop, one window bar over every page (layout/WindowBar.tsx); on
 // touch, each tab's native stack with the phone's tab bar or the tablet's top
 // row (layout/TouchStack.tsx, layout/TouchNav.tsx).
-import { fpsEnabled, keymap, mount, platform, setColorScheme, setFpsEnabled, View, type ViewStyle } from "nsh";
-import { currentWindow, isAvailable as hasWindows } from "nsh/desktop";
+import { fpsEnabled, keymap, mount, setColorScheme, setFpsEnabled, View } from "nsh";
+import { setupWindow, WindowFrame } from "./ui/platform/window";
 import { appDrawn, bindPlatformInput, mapPlatformKeys } from "./ui/platform/remote";
 import { startDiagnostics } from "./ui/platform/diagnostics";
 import { AboutScreen } from "./ui/screens/about/AboutScreen";
@@ -18,11 +18,11 @@ import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
 import { canGoBack, closeFirst, go, handleBack, isRoot, route, section, useTabStacks } from "./ui/nav";
 import { screenFor } from "./ui/screens/RouteScreen";
-import { chrome, isDesktop, isTouch } from "./ui/layout/chrome";
+import { chrome } from "./ui/layout/chrome";
+import { caps } from "./ui/platform";
 import { PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
 import { TouchStack } from "./ui/layout/TouchStack";
 import { ExitDialog } from "./ui/layout/ExitDialog";
-import { BAR_HEIGHT, barBackBox, WindowBar } from "./ui/layout/WindowBar";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
 import { loadSettings } from "./ui/preferences";
@@ -34,7 +34,7 @@ setColorScheme("dark");
 mapPlatformKeys();
 startDiagnostics();
 // A phone and a tablet keep a stack per tab (design/navigation.md, "History model").
-useTabStacks(isTouch);
+useTabStacks(caps.touch);
 loadSettings().catch((e) => console.warn("could not load settings", e));
 
 /** Android's system back on touch: what is open closes first; a pushed page
@@ -67,25 +67,11 @@ function OneScreen() {
   ];
 }
 
-/** The player has no bar: its top still drags the window, around its Back (a strip over
- * Back would take its clicks). */
-function PlayerDragStrips() {
-  const b = barBackBox(false);
-  const strip = (x: ViewStyle): ViewStyle => ({ position: "absolute", top: 0, height: BAR_HEIGHT, zIndex: 10, ...x });
-  return (
-    <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: BAR_HEIGHT, pointerEvents: "box-none" }}>
-      <View desktop={{ windowDrag: true }} style={strip({ left: 0, width: b.left })} />
-      <View desktop={{ windowDrag: true }} style={strip({ left: b.left + b.width, right: 0 })} />
-    </View>
-  );
-}
-
 function App() {
   // ⌘⇧F (Ctrl+Shift+F elsewhere): NSH's performance monitor, to see where frames drop.
   keymap.bind("mod+shift+f", () => setFpsEnabled(!fpsEnabled()));
-  // The window has no system title bar: the window bar is reel's own, the
-  // hero's still running up to the top edge under it and the window's controls.
-  if (isDesktop && hasWindows) currentWindow().set({ titleBar: { style: "hidden", height: BAR_HEIGHT } });
+  // A desktop's window has no system title bar: the window bar is reel's own.
+  setupWindow();
   // Back: Escape (a TV remote's Back arrives as Escape), through what is open first.
   keymap.bind({ escape: handleBack });
   // The platform's own: a desktop's shortcuts and menu, Android's system back.
@@ -100,7 +86,7 @@ function App() {
       onMouseUp={(e) => e.button === "back" && handleBack()}
     >
       <If when={!playing()} else={<Player />}>
-        <If when={isTouch} else={<OneScreen />}>
+        <If when={caps.touch} else={<OneScreen />}>
           <TouchStack page={screenFor} />
         </If>
         <If when={chrome === "phone"}>
@@ -110,15 +96,8 @@ function App() {
           <TabletTopRow />
         </If>
       </If>
-      <If when={isDesktop}>
-        <If
-          when={!playing()}
-          // The player has no bar: its top still drags the window.
-          else={<PlayerDragStrips />}
-        >
-          <WindowBar />
-        </If>
-      </If>
+      {/* A desktop's window bar (the player's drag strips while a film plays). */}
+      <WindowFrame playing={playing} />
       <ExitDialog />
     </View>
   );
