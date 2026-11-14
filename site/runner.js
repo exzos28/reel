@@ -10,7 +10,7 @@
   var LINE = css.getPropertyValue("--line").trim() || "#262626";
   var INK = css.getPropertyValue("--ink").trim() || "#0F0F0F";
   var RED = css.getPropertyValue("--red").trim() || "#E5383B";
-  var H = 120, GROUND = 100, SPEED = 0.22, GRAV = 0.0024, JUMP = -0.66, DINO_X = 90;
+  var H = 150, GROUND = 128, SPEED = 0.22, GRAV = 0.0024, JUMP = -0.56, DINO_X = 90;
   var w = 0, y = 0, vy = 0, step = 0, cacti = [], clouds = [], last = 0;
   var still = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   function size() {

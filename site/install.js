@@ -1,18 +1,17 @@
 // Install: one device at a time. The visitor's own device is picked first; the tabs pick
-// another. Without this script every device's row shows.
+// another. The device is guessed in <head> before the first paint (data-dev); CSS shows its row.
 (function () {
   var tabs = document.querySelectorAll(".get-tabs [data-p]");
   var panels = document.querySelectorAll(".get-panel[data-p]");
   if (!tabs.length) return;
-  document.documentElement.classList.add("js");
   function pick(p, focus) {
+    document.documentElement.setAttribute("data-dev", p);
     tabs.forEach(function (t) {
       var on = t.getAttribute("data-p") === p;
       t.setAttribute("aria-selected", on ? "true" : "false");
       t.tabIndex = on ? 0 : -1;
       if (on && focus) t.focus();
     });
-    panels.forEach(function (x) { x.classList.toggle("on", x.getAttribute("data-p") === p); });
   }
   function guess() {
     var ua = navigator.userAgent || "";
@@ -33,5 +32,5 @@
       pick(tabs[(i + d + tabs.length) % tabs.length].getAttribute("data-p"), true);
     });
   });
-  pick(guess());
+  pick(document.documentElement.getAttribute("data-dev") || guess());
 })();

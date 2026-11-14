@@ -277,8 +277,10 @@ details p { padding: 0 0 1.25rem; color: var(--soft); max-width: 42rem; }
 .get-tabs svg .stroke { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
 .get-panel { margin-top: 1.25rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; }
 .get-note { color: var(--ash); }
-.js .get-panel:not(.on) { display: none; }
-.get-panel.tizen { display: block; }
+/* One row: the device picked in data-dev (set in <head> before the first paint). */
+[data-dev] .get-panel { display: none; }
+[data-dev=tizen] #get-tizen, [data-dev=android] #get-android, [data-dev=mac] #get-mac, [data-dev=ios] #get-ios, [data-dev=windows] #get-windows, [data-dev=linux] #get-linux { display: flex; }
+[data-dev=tizen] #get-tizen { display: block; }
 .get-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; counter-reset: step; max-width: 62rem; }
 @media (min-width: 760px) { .get-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; } }
 .get-steps li { counter-increment: step; display: grid; align-content: start; gap: 0.35rem; }
@@ -287,4 +289,4 @@ details p { padding: 0 0 1.25rem; color: var(--soft); max-width: 42rem; }
 .get-steps span { color: var(--soft); font-size: 0.95rem; }
 .get-steps .btn { justify-self: start; margin-top: 0.5rem; }
 .foot .wrap { display: grid; gap: 1.5rem; }
-.runner { display: block; width: 100%; height: 120px; }
+.runner { display: block; width: 100%; height: 150px; }
