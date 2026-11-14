@@ -7,6 +7,7 @@
 import { effect, platform, reduceMotion, signal, type ScrollRef, type ViewRef } from "nsh";
 import { keyed } from "../focus/keys";
 import { perf } from "../perf";
+import { glide } from "./webScroll";
 import { density, ringRoom, safe } from "../theme";
 import { anchorOffset, easeOut, nearestOffset } from "./anchor";
 
@@ -41,7 +42,11 @@ export interface ScrollCtl {
   /** @internal The scroll view and its content, set by `Scroller`. */
   scroll: ReturnType<typeof signal<ScrollRef | undefined>>;
   content?: ViewRef;
+  /** @internal The scroll view's `testID`: the web build glides its element (webScroll). */
+  domId: string;
 }
+
+let scrollers = 0;
 
 /** A scroll view's follower. `anchor` is where a block's start sits, from
  * the viewport's start, given the viewport's length. A page opens where it
@@ -74,7 +79,7 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
         console.log(`[perf] scroll: measured in ${Math.round((trace.measured ?? trace.t0) - trace.t0)} ms, ${Math.round(at)} → ${Math.round(target)}`);
       }
       at = target;
-      ctl.scroll()?.scrollTo(horizontal ? { x: target, animated: true } : { y: target, animated: true });
+      if (!glide(ctl.domId, horizontal, target)) ctl.scroll()?.scrollTo(horizontal ? { x: target, animated: true } : { y: target, animated: true });
       return;
     }
     const from = at;
@@ -126,6 +131,7 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
   };
   const ctl: ScrollCtl = {
     horizontal,
+    domId: `scroll-${++scrollers}`,
     offset: signal(0),
     remember(offset) {
       // A TV's browser: every scrolled frame would wake what watches the offset (lazy blocks
