@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0F0F0F">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/Geist.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="stylesheet" href="style.css?v=20261115f">
+<link rel="stylesheet" href="style.css?v=20261115k">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -19,8 +19,8 @@
     <a class="wordmark" href="#" aria-label="reel, back to the top">reel</a>
     <nav aria-label="Sections">
       <ul class="top-links">
-        <li><a href="#how">How it works</a></li>
         <li><a href="#install">Install</a></li>
+        <li><a href="#how">How it works</a></li>
       </ul>
     </nav>
     <!-- Placeholder: the repository is private for now; this URL works once it is public. -->
@@ -97,8 +97,45 @@
   </div>
 </section>
 
+<section id="install" class="band" aria-labelledby="install-title">
+  <div class="wrap">
+    <h2 id="install-title">Install</h2>
+    <!-- The files come with the first release; until then these links lead nowhere. -->
+    <div class="get-tabs" role="tablist" aria-label="Device">
+      <button type="button" role="tab" data-p="tizen" aria-controls="get-tizen"><svg viewBox="0 0 24 24" aria-hidden="true" class="line"><rect x="2.5" y="4.5" width="19" height="12.5" rx="1.5"/><path d="M8 20.5h8M12 17v3.5"/></svg><span>Samsung TV</span></button>
+      <button type="button" role="tab" data-p="android" aria-controls="get-android"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 18.5a8.5 8.5 0 0 1 17 0z"/><path d="m6.3 9.2-1.7-2.9M17.7 9.2l1.7-2.9" class="stroke"/><circle cx="8.9" cy="14.4" r="1.15" class="cut"/><circle cx="15.1" cy="14.4" r="1.15" class="cut"/></svg><span>Android</span></button>
+      <button type="button" role="tab" data-p="mac" aria-controls="get-mac"><svg viewBox="2.6 1.6 18.8 18.8" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.15-2.8.85-3.5.85-.75 0-1.85-.83-3.05-.8C6.9 7.48 5 8.9 5 12.3c0 2 .75 4.1 1.65 5.4.8 1.1 1.5 2.05 2.55 2 1-.04 1.4-.66 2.65-.66 1.2 0 1.55.66 2.65.64 1.1-.02 1.8-1 2.45-2 .78-1.12 1.1-2.22 1.12-2.28-.02-.01-1.67-.65-1.67-2.7zM14.3 5.9c.57-.69.95-1.64.85-2.6-.82.03-1.81.55-2.4 1.24-.53.6-.99 1.58-.86 2.51.91.07 1.84-.46 2.41-1.15z"/></svg><span>Mac</span></button>
+      <button type="button" role="tab" data-p="ios" aria-controls="get-ios"><svg viewBox="0 0 24 24" aria-hidden="true" class="line"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg><span>iPhone & iPad</span></button>
+      <button type="button" role="tab" data-p="windows" aria-controls="get-windows"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5 11 4.5v7H4zM12.5 4.3 20 3.2v8.3h-7.5zM4 12.9h7v7l-7-1zM12.5 12.9H20v8l-7.5-1.1z"/></svg><span>Windows</span></button>
+      <button type="button" role="tab" data-p="linux" aria-controls="get-linux"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c-2.2 0-3.5 1.8-3.5 4.3 0 1.4-.55 2.4-1.45 3.6C5.8 12 5 13.7 5 15.6c0 1.15.35 2.15.95 2.95l-1.1 1.55c-.3.42 0 .9.5.9h13.3c.5 0 .8-.48.5-.9l-1.1-1.55c.6-.8.95-1.8.95-2.95 0-1.9-.8-3.6-2.05-5.2-.9-1.2-1.45-2.2-1.45-3.6 0-2.5-1.3-4.3-3.5-4.3z"/><ellipse cx="12" cy="15.3" rx="3.1" ry="3.9" class="cut"/><circle cx="10.6" cy="6.6" r=".8" class="cut"/><circle cx="13.4" cy="6.6" r=".8" class="cut"/></svg><span>Linux</span></button>
+    </div>
+    <div class="get-panel" id="get-mac" role="tabpanel" data-p="mac">
+      <a class="btn primary" href="downloads/reel-macos.zip">Download for Mac</a><span class="get-note">Apple silicon and Intel</span>
+    </div>
+    <div class="get-panel" id="get-ios" role="tabpanel" data-p="ios">
+      <a class="btn primary" href="downloads/altstore.json">Add to AltStore</a><span class="get-note">Needs <a href="https://altstore.io">AltStore</a></span>
+    </div>
+    <div class="get-panel" id="get-windows" role="tabpanel" data-p="windows">
+      <a class="btn primary" href="downloads/reel-windows-setup.exe">Download for Windows</a>
+    </div>
+    <div class="get-panel" id="get-linux" role="tabpanel" data-p="linux">
+      <a class="btn primary" href="downloads/reel-linux.tar.gz">Download for Linux</a><span class="get-note">GTK 4.14 or newer</span>
+    </div>
+    <div class="get-panel" id="get-android" role="tabpanel" data-p="android">
+      <a class="btn primary" href="downloads/reel-android.apk">Download APK</a><span class="get-note">Phone, tablet, TV</span>
+    </div>
+    <div class="get-panel tizen" id="get-tizen" role="tabpanel" data-p="tizen">
+      <ol class="get-steps">
+        <li><b>Turn on Developer mode</b><span>On the TV, open Apps and press 1 2 3 4 5 on the remote. Switch Developer mode on and type your computer's IP address.</span></li>
+        <li><b>Open Apps2Samsung</b><span>Install <a href="https://github.com/Vincent-Fournier/Apps2Samsung">Apps2Samsung</a> on your computer, open it and choose your TV.</span></li>
+        <li><b>Install reel</b><span>Download the package and install it on the TV with Apps2Samsung.</span><a class="btn primary" href="downloads/reel-tv.wgt">Download for Samsung TV</a></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
 <!-- How it works -->
-<section id="how" class="band" aria-labelledby="how-title">
+<section id="how" aria-labelledby="how-title">
   <div class="wrap">
     <h2 id="how-title">How it works</h2>
     <p class="section-lead">Three steps, and the first one you do once.</p>
@@ -137,48 +174,6 @@
 
 <!-- Platforms -->
 <!-- Source and privacy -->
-<section id="install" aria-labelledby="install-title">
-  <div class="wrap">
-    <h2 id="install-title">Installation</h2>
-    <p class="section-lead">Pick your device.</p>
-    <!-- The files come with the first release; until then these links lead nowhere. -->
-    <ul class="gets">
-      <li class="get">
-        <div class="get-head"><svg viewBox="2.6 1.6 18.8 18.8" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.15-2.8.85-3.5.85-.75 0-1.85-.83-3.05-.8C6.9 7.48 5 8.9 5 12.3c0 2 .75 4.1 1.65 5.4.8 1.1 1.5 2.05 2.55 2 1-.04 1.4-.66 2.65-.66 1.2 0 1.55.66 2.65.64 1.1-.02 1.8-1 2.45-2 .78-1.12 1.1-2.22 1.12-2.28-.02-.01-1.67-.65-1.67-2.7zM14.3 5.9c.57-.69.95-1.64.85-2.6-.82.03-1.81.55-2.4 1.24-.53.6-.99 1.58-.86 2.51.91.07 1.84-.46 2.41-1.15z"/></svg><span>Mac<small>Apple silicon and Intel</small></span></div>
-        <a class="btn primary" href="downloads/reel-macos.zip">Download for Mac</a>
-      </li>
-      <li class="get">
-        <div class="get-head"><svg viewBox="2.6 1.6 18.8 18.8" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.15-2.8.85-3.5.85-.75 0-1.85-.83-3.05-.8C6.9 7.48 5 8.9 5 12.3c0 2 .75 4.1 1.65 5.4.8 1.1 1.5 2.05 2.55 2 1-.04 1.4-.66 2.65-.66 1.2 0 1.55.66 2.65.64 1.1-.02 1.8-1 2.45-2 .78-1.12 1.1-2.22 1.12-2.28-.02-.01-1.67-.65-1.67-2.7zM14.3 5.9c.57-.69.95-1.64.85-2.6-.82.03-1.81.55-2.4 1.24-.53.6-.99 1.58-.86 2.51.91.07 1.84-.46 2.41-1.15z"/></svg><span>iPhone and iPad<small>Installed with AltStore</small></span></div>
-        <a class="btn primary" href="downloads/altstore.json">Add to AltStore</a><p class="get-note">Needs <a href="https://altstore.io">AltStore</a> on the device.</p>
-      </li>
-      <li class="get">
-        <div class="get-head"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5 11 4.5v7H4zM12.5 4.3 20 3.2v8.3h-7.5zM4 12.9h7v7l-7-1zM12.5 12.9H20v8l-7.5-1.1z"/></svg><span>Windows<small>Installer</small></span></div>
-        <a class="btn primary" href="downloads/reel-windows-setup.exe">Download for Windows</a>
-      </li>
-      <li class="get">
-        <div class="get-head"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c-2.2 0-3.5 1.8-3.5 4.3 0 1.4-.55 2.4-1.45 3.6C5.8 12 5 13.7 5 15.6c0 1.15.35 2.15.95 2.95l-1.1 1.55c-.3.42 0 .9.5.9h13.3c.5 0 .8-.48.5-.9l-1.1-1.55c.6-.8.95-1.8.95-2.95 0-1.9-.8-3.6-2.05-5.2-.9-1.2-1.45-2.2-1.45-3.6 0-2.5-1.3-4.3-3.5-4.3z"/><ellipse cx="12" cy="15.3" rx="3.1" ry="3.9" class="cut"/><circle cx="10.6" cy="6.6" r=".8" class="cut"/><circle cx="13.4" cy="6.6" r=".8" class="cut"/></svg><span>Linux<small>GTK 4.14 or newer</small></span></div>
-        <a class="btn primary" href="downloads/reel-linux.tar.gz">Download for Linux</a>
-      </li>
-      <li class="get">
-        <div class="get-head"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 18.5a8.5 8.5 0 0 1 17 0z"/><path d="m6.3 9.2-1.7-2.9M17.7 9.2l1.7-2.9" class="stroke"/><circle cx="8.9" cy="14.4" r="1.15" class="cut"/><circle cx="15.1" cy="14.4" r="1.15" class="cut"/></svg><span>Android<small>Phone, tablet, TV</small></span></div>
-        <a class="btn primary" href="downloads/reel-android.apk">Download APK</a>
-      </li>
-      <li class="get">
-        <div class="get-head"><svg viewBox="0 0 24 24" aria-hidden="true" class="line"><rect x="2.5" y="4.5" width="19" height="12.5" rx="1.5"/><path d="M8 20.5h8M12 17v3.5"/></svg><span>Samsung TV<small>Tizen</small></span></div>
-        <a class="btn primary" href="downloads/reel-tv.wgt">Download for Samsung TV</a>
-        <details class="get-steps">
-          <summary>Install with <a href="https://github.com/Vincent-Fournier/Apps2Samsung">Apps2Samsung</a></summary>
-          <ol class="numbered">
-        <li><b>On the TV:</b> Apps → press 1 2 3 4 5 → Developer mode on, your computer's IP as Host PC IP. Restart the TV.</li>
-        <li><b>On the computer:</b> open Apps2Samsung and pick the TV.</li>
-        <li><b>Install</b> the package below with Apps2Samsung (the first time, sign in to Samsung once).</li>
-              </ol>
-        </details>
-      </li>
-    </ul>
-  </div>
-</section>
-
 <!-- Hidden until it is decided how open the code is (docs/todo.md). -->
 <section id="privacy" class="band" aria-labelledby="privacy-title" hidden>
   <div class="wrap split">
@@ -206,17 +201,13 @@
 </main>
 
 <footer class="foot">
-  <div class="wrap foot-grid">
-    <div>
-      <div class="wordmark">reel</div>
-      <!-- Placeholder: the repository is private for now; this URL works once it is public. -->
-    </div>
-    <div class="credits">
-      <p>This product uses the TMDB API but is not endorsed or certified by TMDB. Film and series data from <a href="https://www.themoviedb.org">The Movie Database (TMDB)</a>.</p>
-      <p>Anime data from <a href="https://anilist.co">AniList</a> and <a href="https://jikan.moe">Jikan</a>, an unofficial MyAnimeList API. Anime ID mapping from <a href="https://github.com/Fribb/anime-lists">Fribb's anime-lists</a>.</p>
-      <p>Set in <a href="https://vercel.com/font">Geist</a>, under the SIL Open Font License. Pictures of the app on this page are drawings; the titles in them are public-domain films.</p>
-    </div>
+  <div class="wrap">
+    <div class="wordmark">reel</div>
+    <!-- The funny part: reel's own little dinosaur runs and hops the cacti by itself. -->
+    <canvas id="runner" class="runner" height="120" aria-hidden="true"></canvas>
   </div>
 </footer>
+<script src="install.js?v=20261115" defer></script>
+<script src="runner.js?v=20261115b" defer></script>
 </body>
 </html>
