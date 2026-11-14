@@ -133,8 +133,12 @@ pub fn load(data_dir: Option<&Path>) -> Value {
         "bufferMB": saved.buffer_mb,
         "streamDetails": saved.stream_details,
         "source": source_json(&saved),
+        // Only the sizes this device has room for (the smallest always).
         "bufferChoices": BUFFER_CHOICES
             .iter()
+            .enumerate()
+            .filter(|(i, c)| *i == 0 || engine::buffer_fits(**c as u64))
+            .map(|(_, c)| c)
             .map(|c| json!({ "mb": c, "default": *c == DEFAULT_BUFFER_MB }))
             .collect::<Vec<_>>(),
     })
@@ -275,5 +279,11 @@ mod tests {
 
         std::fs::remove_dir_all(&dir).unwrap();
         engine::set_buffer_mb(DEFAULT_BUFFER_MB as u64);
+    }
+
+    #[test]
+    fn only_buffers_the_device_has_room_for_are_offered() {
+        assert!(engine::buffer_fits(1));
+        assert!(!engine::buffer_fits(1 << 30), "a petabyte fits nowhere");
     }
 }

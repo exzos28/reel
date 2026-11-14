@@ -93,6 +93,14 @@ pub fn check_space() -> Value {
     }
 }
 
+/// Whether a buffer of `mb` fits on this device next to the reserve (true when the free
+/// space cannot be read): a TV has about a gigabyte to spare, a computer far more.
+pub fn buffer_fits(mb: u64) -> bool {
+    let dir = cache_dir();
+    let _ = std::fs::create_dir_all(&dir);
+    disk::free_bytes(&dir).map_or(true, |free| (mb + RESERVE_MB) * MIB <= free)
+}
+
 /// Free space fell under the reserve while playing.
 fn low_space() -> bool {
     disk::free_bytes(&cache_dir()).is_ok_and(|free| free < RESERVE_MB * MIB)
