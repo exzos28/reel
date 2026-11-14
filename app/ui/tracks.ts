@@ -3,7 +3,7 @@
 // the tracks panel, what the video view applies, and the subtitle line our
 // overlay shows. This only asks and keeps the answers in signals.
 import { cleanup, computed, effect, signal } from "nsh";
-import { Engine } from "app/native";
+import { Engine } from "./native";
 import { currentJob, playing, position, status } from "./playback";
 
 export interface TrackOption {

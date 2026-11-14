@@ -5,7 +5,7 @@
 // locales/ under the keys the core names).
 import { signal } from "nsh";
 import { t } from "nsh/i18n";
-import { Catalog, Fmt } from "app/native";
+import { Catalog, Fmt } from "./native";
 
 /** What Play starts for a title: a film, or an episode of a show (id
  * `<show>:s<season>e<episode>`). `start`: where the viewer stopped, seconds. */

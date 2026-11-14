@@ -1,6 +1,6 @@
 import { Text, View, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
-import { Fmt } from "app/native";
+import { Fmt } from "../../native";
 import type { BufferChoice } from "../../preferences";
 import { Icon } from "../../kit/Icon";
 import { rowStyle } from "../../kit/Row";

@@ -3,8 +3,7 @@
 // the screens.
 import { signal } from "nsh";
 import { setLocale } from "nsh/i18n";
-import process from "process";
-import { Settings, Sources } from "app/native";
+import { dataDir, Settings, Sources } from "./native";
 
 export interface BufferChoice {
   mb: number;
@@ -34,7 +33,7 @@ export const bufferChoices = signal<BufferChoice[]>([]);
 
 /** Loads the settings from the core and applies the language. */
 export async function loadSettings() {
-  const s = JSON.parse(await Settings.load(process.dataDir ?? ""));
+  const s = JSON.parse(await Settings.load(dataDir()));
   bufferMB.set(s.bufferMB);
   bufferChoices.set(s.bufferChoices);
   streamDetails.set(!!s.streamDetails);

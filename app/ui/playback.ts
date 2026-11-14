@@ -4,7 +4,7 @@
 // only asks it twice a second, reports the position every 10 s and on stop,
 // and keeps the answers in signals for the screens.
 import { signal } from "nsh";
-import { Catalog, Engine } from "app/native";
+import { Catalog, Engine } from "./native";
 import type { PlayTarget, Summary } from "./catalog";
 
 /** What plays: a film, or an episode of a show (`title` is the show). */

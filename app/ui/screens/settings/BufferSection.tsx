@@ -1,7 +1,7 @@
 // Playback: how much of a film is kept ahead, and the free space for it.
 import { Text, View } from "nsh";
 import { t } from "nsh/i18n";
-import { Fmt } from "app/native";
+import { Fmt } from "../../native";
 import { bodyText, metaText, sectionTitle } from "../../kit/text";
 import { bufferChoices, bufferMB, chooseBuffer } from "../../preferences";
 import { colors, u } from "../../theme";

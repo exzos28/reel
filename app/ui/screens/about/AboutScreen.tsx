@@ -5,7 +5,7 @@
 // (`Meta.attribution()`). Back closes it.
 import { Image, keymap, Text, View, type ImageStyle, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
-import { Meta } from "app/native";
+import { Meta } from "../../native";
 import { bodyText, labelText, metaText, sectionTitle } from "../../kit/text";
 import { PageHeader } from "../../layout/TopBar";
 import { colors, safe, u } from "../../theme";

@@ -5,7 +5,7 @@
 // Home, Movies, Shows and Anime share one nav (screens/TopLevel.tsx).
 import { effect, fpsEnabled, keymap, mount, platform, setColorScheme, setFpsEnabled, signal, View } from "nsh";
 import { currentWindow, titleBar } from "nsh/desktop";
-import { Engine } from "app/native";
+import { Engine } from "./ui/native";
 import { AboutScreen } from "./ui/screens/about/AboutScreen";
 import { SearchScreen } from "./ui/screens/search/SearchScreen";
 import { SettingsScreen } from "./ui/screens/settings/SettingsScreen";
