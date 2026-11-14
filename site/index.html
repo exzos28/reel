@@ -21,7 +21,7 @@
       <ul class="top-links">
         <li><a href="#how">How it works</a></li>
         <li><a href="#features">Features</a></li>
-        <li><a href="#platforms">Platforms</a></li>
+        <li><a href="#tv">Try it</a></li>
         <li><a href="#faq">FAQ</a></li>
       </ul>
     </nav>
@@ -40,10 +40,36 @@
       <p class="lead">reel is a source-available app with a torrent engine built in. It streams the film while it fetches it, so you never wait for a download. Made for the TV and the remote, and for phones, tablets and computers too.</p>
       <p class="note">reel comes with no content and no sources. It works with any search source that speaks the Torznab standard: Jackett, Prowlarr or any other. You connect your own.</p>
       <div class="actions">
-        <a class="btn primary" href="#platforms">Get reel</a>
-        <!-- Placeholder: the repository is private for now; this URL works once it is public. -->
+        <!-- Placeholder: the repository is private for now; these URLs work once it is public. -->
+        <a class="btn primary" href="https://github.com/exzos28/reel/releases">Get reel</a>
         <a class="btn secondary" href="https://github.com/exzos28/reel">Source code</a>
       </div>
+      <ul id="platforms" class="logos" aria-label="Platforms">
+        <li title="macOS, iPhone and iPad: build from source; iPhone and iPad install with AltStore">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.15-2.8.85-3.5.85-.75 0-1.85-.83-3.05-.8C6.9 7.48 5 8.9 5 12.3c0 2 .75 4.1 1.65 5.4.8 1.1 1.5 2.05 2.55 2 1-.04 1.4-.66 2.65-.66 1.2 0 1.55.66 2.65.64 1.1-.02 1.8-1 2.45-2 .78-1.12 1.1-2.22 1.12-2.28-.02-.01-1.67-.65-1.67-2.7zM14.3 5.9c.57-.69.95-1.64.85-2.6-.82.03-1.81.55-2.4 1.24-.53.6-.99 1.58-.86 2.51.91.07 1.84-.46 2.41-1.15z"/></svg>
+          <span>Apple<small>macOS · iPhone · iPad</small></span>
+        </li>
+        <li title="Windows: build from source">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5 11 4.5v7H4zM12.5 4.3 20 3.2v8.3h-7.5zM4 12.9h7v7l-7-1zM12.5 12.9H20v8l-7.5-1.1z"/></svg>
+          <span>Windows</span>
+        </li>
+        <li title="Linux: build from source (GTK 4.14 or newer)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c-2.2 0-3.5 1.8-3.5 4.3 0 1.4-.55 2.4-1.45 3.6C5.8 12 5 13.7 5 15.6c0 1.15.35 2.15.95 2.95l-1.1 1.55c-.3.42 0 .9.5.9h13.3c.5 0 .8-.48.5-.9l-1.1-1.55c.6-.8.95-1.8.95-2.95 0-1.9-.8-3.6-2.05-5.2-.9-1.2-1.45-2.2-1.45-3.6 0-2.5-1.3-4.3-3.5-4.3z"/><ellipse cx="12" cy="15.3" rx="3.1" ry="3.9" class="cut"/><circle cx="10.6" cy="6.6" r=".8" class="cut"/><circle cx="13.4" cy="6.6" r=".8" class="cut"/></svg>
+          <span>Linux</span>
+        </li>
+        <li title="Samsung TVs on Tizen: in testing, installed with Apps2Samsung">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="line"><rect x="2.5" y="4.5" width="19" height="12.5" rx="1.5"/><path d="M8 20.5h8M12 17v3.5"/></svg>
+          <span>Samsung TV<small>in testing</small></span>
+        </li>
+        <li title="Android and Android TV: coming">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 17a6.5 6.5 0 0 1 13 0z"/><path d="m7.6 9.6-1.3-2.2M16.4 9.6l1.3-2.2" class="stroke"/><circle cx="9.4" cy="13.6" r=".9" class="cut"/><circle cx="14.6" cy="13.6" r=".9" class="cut"/></svg>
+          <span>Android<small>soon · also TV</small></span>
+        </li>
+        <li title="Web: coming (a browser cannot run the torrent engine itself)">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="line"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.6 2.6 14.4 0 17M12 3.5c-2.6 2.6-2.6 14.4 0 17"/></svg>
+          <span>Web<small>soon</small></span>
+        </li>
+      </ul>
     </div>
 
     <figure class="tv" aria-label="Drawing of reel's home screen on a TV">
@@ -52,7 +78,7 @@
           <div class="ui-backdrop"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
           <div class="ui-logo">reel</div>
           <div class="ui-nav">
-            <span class="ui-pills"><span class="sel">Home</span><span>Movies</span><span>Shows</span><span>Anime</span></span>
+            <span class="ui-pills"><span class="sel">Home</span><span>Movies</span><span>Series</span><span>Anime</span></span>
             <span class="ui-round"><svg viewBox="0 0 24 24" class="i"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></span>
           </div>
           <div class="ui-info">
@@ -120,56 +146,61 @@
 <section id="features" aria-labelledby="features-title">
   <div class="wrap">
     <h2 id="features-title">What it does</h2>
+    <div class="lead-features">
+      <article class="lead-card">
+        <div class="lead-text">
+          <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></svg></span>
+          <h3>Any Torznab source</h3>
+          <p>reel speaks Torznab, the open search standard of Jackett, Prowlarr and other indexers. Add the address and key of any provider that answers in it; reel checks it and says how it searches.</p>
+        </div>
+        <div class="lead-visual" aria-hidden="true">
+          <div class="chips"><span>Jackett</span><span>Prowlarr</span><span>Any Torznab</span></div>
+          <div class="field">http://192.168.1.10:9117/…/torznab/api</div>
+          <div class="ok"><svg viewBox="0 0 24 24" class="i"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Connected. It searches by IMDb id.</div>
+        </div>
+      </article>
+      <article class="lead-card">
+        <div class="lead-text">
+          <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg></span>
+          <h3>Streams, never downloads</h3>
+          <p>No downloads screen and no waiting for a file: the engine keeps only a buffer of the film, up to the size you set. If you like, the player shows how fast it comes and how much is ready ahead.</p>
+        </div>
+        <div class="lead-visual" aria-hidden="true">
+          <div class="bar"><span class="played"></span><span class="ready"></span><span class="ready far"></span></div>
+          <div class="stats"><span><b>12.4</b> MB/s</span><span><b>86</b> people</span><span><b>4 min</b> ready</span></div>
+        </div>
+      </article>
+    </div>
     <ul class="features">
       <li>
-        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></svg>
-        <h3>Any Torznab source</h3>
-        <p>reel speaks Torznab, the open search standard of Jackett, Prowlarr and other indexers. Any provider that answers in it works: add its address and key, and reel checks it and says how it searches.</p>
-      </li>
-      <li>
-        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>
-        <h3>Streams, never downloads</h3>
-        <p>There is no downloads screen. The engine keeps only a buffer of the film on the device, up to the size you set.</p>
-      </li>
-      <li>
-        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8"/></svg>
+        <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8"/></svg></span>
         <h3>Continue watching</h3>
-        <p>Every film and episode resumes where you stopped. Watched episodes get a mark.</p>
+        <p>Every film and episode resumes where you stopped; watched episodes get a mark.</p>
       </li>
       <li>
-        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><rect x="4" y="5" width="16" height="4" rx="1"/><rect x="4" y="11" width="16" height="4" rx="1"/><path d="M4 18.5h10"/></svg>
+        <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><rect x="4" y="5" width="16" height="4" rx="1"/><rect x="4" y="11" width="16" height="4" rx="1"/><path d="M4 18.5h10"/></svg></span>
         <h3>Seasons and episodes</h3>
-        <p>Season tabs and an episode list for every series. Near the end of an episode, the next one is ready to start.</p>
+        <p>Season tabs and episode lists; near the end of one, the next is ready.</p>
       </li>
       <li>
-        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="m9 12 2 2 4-4"/></svg>
+        <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="m9 12 2 2 4-4"/></svg></span>
         <h3>Only what your device plays</h3>
-        <p>Releases with audio, video or HDR formats the device cannot play are left out, per device, so a film does not fail to start because of its format.</p>
+        <p>Releases in formats the device cannot play are left out, so a film does not fail to start.</p>
       </li>
       <li>
-        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="M7 14h4M13 14h4M7 11h2M11 11h6"/></svg>
-        <h3>Subtitles and audio tracks</h3>
-        <p>Pick the audio track and subtitles, from the video or from subtitle files in the release. Your subtitle choice is kept per title.</p>
+        <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="M7 14h4M13 14h4M7 11h2M11 11h6"/></svg></span>
+        <h3>Subtitles and audio</h3>
+        <p>Tracks from the video or subtitle files from the release; your choice is kept per title.</p>
       </li>
       <li>
-        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M4 18h3v-4H4zM10.5 18h3V10h-3zM17 18h3V6h-3z"/></svg>
-        <h3>Stream details</h3>
-        <p>See how fast the film is coming, from how many people, and how many minutes are ready ahead. Off if you prefer a clean screen.</p>
+        <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></span>
+        <h3>Movies, series, cartoons, anime</h3>
+        <p>Filter by genre, years and country; the grid keeps loading. Anime from AniList and Jikan.</p>
       </li>
       <li>
-        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><path d="M12 3.5 14.6 9l5.9.7-4.4 4 1.2 5.8L12 16.6l-5.3 2.9 1.2-5.8-4.4-4L9.4 9z"/></svg>
-        <h3>Anime</h3>
-        <p>A separate anime catalog from AniList and Jikan, with trending this season and all-time lists.</p>
-      </li>
-      <li>
-        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
-        <h3>Browse and search</h3>
-        <p>Movies, series, cartoons and anime, filtered by genre, years and country, sorted by popularity, rating or date. The grid keeps loading as you scroll. Search covers them all.</p>
-      </li>
-      <li>
-        <svg viewBox="0 0 24 24" class="i" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.5 2.5 2.5 13.5 0 16M12 4c-2.5 2.5-2.5 13.5 0 16"/></svg>
+        <span class="badge-i"><svg viewBox="0 0 24 24" class="i" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.5 2.5 2.5 13.5 0 16M12 4c-2.5 2.5-2.5 13.5 0 16"/></svg></span>
         <h3>Titles in your language</h3>
-        <p>Titles, descriptions and episode names come in the language you choose. reel searches releases by the title in that language, then by the original.</p>
+        <p>Names and descriptions in the language you choose, and releases searched by it too.</p>
       </li>
     </ul>
   </div>
@@ -177,90 +208,39 @@
 
 <!-- TV first -->
 <section id="tv" class="band" aria-labelledby="tv-title">
-  <div class="wrap split">
-    <div>
-      <h2 id="tv-title">Made for the TV first</h2>
-      <p class="section-lead">reel is designed for a room with the lights down and a remote in hand. Phones, tablets and computers get the same app with layouts of their own.</p>
-      <ul class="ticks">
-        <li>Everything works with the four arrows, OK and Back.</li>
-        <li>Focus is a white ring that lifts the item, the same on every screen.</li>
-        <li>Back goes one level up, closes panels first, and asks before leaving the app.</li>
-        <li>Large type and few items per row, readable from the couch.</li>
-      </ul>
+  <div class="wrap">
+    <h2 id="tv-title">Made for the remote</h2>
+    <p class="section-lead">Four arrows, OK and Back. Try it.</p>
+    <div class="rd" id="remote-demo" tabindex="0" aria-label="A small reel screen: use the arrow keys, Enter and Escape, or the remote's buttons">
+      <div class="rd-tv" aria-hidden="true">
+        <div class="rd-rows">
+          <div class="rd-row"><b>Continue watching</b><div class="rd-cards"></div></div>
+          <div class="rd-row"><b>Silent classics</b><div class="rd-cards"></div></div>
+          <div class="rd-row"><b>Science fiction</b><div class="rd-cards"></div></div>
+        </div>
+        <div class="rd-open" hidden><div class="rd-open-title"></div><div class="rd-open-play">▶ Play</div><div class="rd-open-hint">Back to close</div></div>
+      </div>
+      <div class="rd-remote">
+        <button type="button" data-k="up" aria-label="Up">▲</button>
+        <button type="button" data-k="left" aria-label="Left">◀</button>
+        <button type="button" data-k="ok" class="rd-ok">OK</button>
+        <button type="button" data-k="right" aria-label="Right">▶</button>
+        <button type="button" data-k="down" aria-label="Down">▼</button>
+        <button type="button" data-k="back" class="rd-back">Back</button>
+      </div>
     </div>
-    <div class="tizen">
-      <h3>Samsung TVs (Tizen)</h3>
-      <p>reel runs on Samsung TVs as a sideloaded app, never through the Samsung store. The first test TV is a 2024 model on Tizen 9; other models are not tested yet.</p>
+    <details class="install">
+      <summary>Install on a Samsung TV</summary>
       <ol class="numbered">
         <li>On the TV, open Apps, press 1 2 3 4 5 on the remote and turn on Developer mode, with your computer's IP as Host PC IP. Restart the TV.</li>
         <li>On that computer, open <a href="https://github.com/Vincent-Fournier/Apps2Samsung">Apps2Samsung</a> and pick the TV.</li>
         <li>Install the reel <code>.wgt</code> package. Apps2Samsung signs it for your TV.</li>
       </ol>
-    </div>
+    </details>
   </div>
 </section>
 
 <!-- Platforms -->
-<section id="platforms" aria-labelledby="platforms-title">
-  <div class="wrap">
-    <h2 id="platforms-title">Platforms</h2>
-    <p class="section-lead">reel is not in any app store. Packages will be published on GitHub Releases; until then, you build it from source.</p>
-    <ul class="platforms">
-      <li class="pf">
-        <h3>macOS</h3>
-        <p class="status s-src">Build from source</p>
-        <p>An <code>.app</code> for Apple silicon or Intel. Packages on GitHub Releases from the first release.</p>
-      </li>
-      <li class="pf">
-        <h3>Windows</h3>
-        <p class="status s-src">Build from source</p>
-        <p>A <code>.zip</code> and an installer. Packages on GitHub Releases from the first release.</p>
-      </li>
-      <li class="pf">
-        <h3>Linux</h3>
-        <p class="status s-src">Build from source</p>
-        <p>A <code>.tar.gz</code> for distributions with GTK 4.14 or newer. Packages on GitHub Releases from the first release.</p>
-      </li>
-      <li class="pf">
-        <h3>iOS</h3>
-        <p class="status s-src">Build from source</p>
-        <p>The App Store does not accept torrent clients, so reel is for sideloading: build and sign it yourself.</p>
-      </li>
-      <li class="pf">
-        <h3>iPadOS</h3>
-        <p class="status s-src">Build from source</p>
-        <p>The same universal build as iPhone, with a layout for the larger screen. Sideloading only.</p>
-      </li>
-      <li class="pf">
-        <h3>Samsung TV (Tizen)</h3>
-        <p class="status s-test">In testing</p>
-        <p>A <code>.wgt</code> package, installed with Apps2Samsung. Being tested on a 2024 TV.</p>
-      </li>
-      <li class="pf">
-        <h3>Android</h3>
-        <p class="status s-wip">In progress</p>
-        <p>The Android build is set up in CI but does not pass yet. It will come as an <code>.apk</code> on GitHub Releases.</p>
-      </li>
-      <li class="pf">
-        <h3>Android TV</h3>
-        <p class="status s-plan">Planned</p>
-        <p>The TV layout and remote control are ready in the app; an Android TV package is not built yet.</p>
-      </li>
-      <li class="pf">
-        <h3>Web</h3>
-        <p class="status s-plan">Planned</p>
-        <p>A browser cannot run the torrent engine. The web build today is only the interface of the Samsung TV app.</p>
-      </li>
-    </ul>
-    <ul class="legend" aria-label="What the statuses mean">
-      <li><span class="status s-src">Build from source</span> builds today from the repository</li>
-      <li><span class="status s-test">In testing</span> builds and is being tried on a real device</li>
-      <li><span class="status s-wip">In progress</span> started, does not build yet</li>
-      <li><span class="status s-plan">Planned</span> no build yet</li>
-    </ul>
-  </div>
-</section>
-
 <!-- Source and privacy -->
 <section id="privacy" class="band" aria-labelledby="privacy-title">
   <div class="wrap split">
@@ -348,5 +328,6 @@
     </div>
   </div>
 </footer>
+<script src="remote-demo.js" defer></script>
 </body>
 </html>

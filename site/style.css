@@ -193,12 +193,34 @@ svg.i { width: 1.5rem; height: 1.5rem; stroke: currentColor; fill: none; stroke-
 .m-times { display: flex; justify-content: space-between; color: var(--ash); font-size: 0.8125rem; }
 
 /* Features */
-.features { list-style: none; margin: 2.5rem 0 0; padding: 0; display: grid; gap: 2.25rem 2rem; }
+/* What it does: two lead cards with a small picture each, then six compact ones. */
+.badge-i { display: inline-grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 0.75rem; background: var(--raise); color: var(--snow); }
+.badge-i svg.i { width: 1.25rem; height: 1.25rem; }
+.lead-features { margin-top: 2.5rem; display: grid; gap: 1rem; }
+@media (min-width: 900px) { .lead-features { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.lead-card { display: flex; flex-direction: column; justify-content: space-between; gap: 1.75rem; padding: 1.75rem; border-radius: 1rem; background: var(--card); border: 1px solid var(--line); }
+.lead-card h3 { margin-top: 1rem; font-size: 1.35rem; }
+.lead-card p { margin-top: 0.5rem; color: var(--soft); max-width: 34rem; }
+.lead-visual { display: grid; gap: 0.75rem; padding: 1.1rem; border-radius: 0.75rem; background: var(--ink); border: 1px solid var(--line); font-size: 0.9rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.chips span { padding: 0.3rem 0.7rem; border-radius: 999px; background: var(--raise); color: var(--snow); }
+.chips span:last-child { background: transparent; border: 1px dashed var(--ash); color: var(--soft); }
+.lead-visual .field { padding: 0.6rem 0.8rem; border-radius: 0.5rem; background: var(--card); color: var(--soft); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lead-visual .ok { display: flex; align-items: center; gap: 0.4rem; color: var(--snow); }
+.lead-visual .ok svg.i { width: 1.1rem; height: 1.1rem; color: #4ade80; }
+.bar { position: relative; height: 0.4rem; border-radius: 999px; background: var(--raise); overflow: hidden; }
+.bar span { position: absolute; top: 0; bottom: 0; border-radius: 999px; }
+.bar .played { left: 0; width: 34%; background: var(--red); }
+.bar .ready { left: 34%; width: 22%; background: var(--ash); }
+.bar .ready.far { left: 70%; width: 9%; }
+.stats { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; color: var(--ash); }
+.stats b { color: var(--snow); font-weight: 600; }
+.features { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: 1rem; }
 @media (min-width: 640px) { .features { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1000px) { .features { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.features svg { color: var(--snow); }
-.features h3 { margin-top: 0.75rem; }
-.features p { margin-top: 0.4rem; color: var(--soft); }
+.features li { padding: 1.4rem; border-radius: 1rem; background: var(--card); border: 1px solid var(--line); }
+.features h3 { margin-top: 0.9rem; }
+.features p { margin-top: 0.35rem; color: var(--soft); }
 
 /* Two columns */
 .split { display: grid; gap: 2.5rem; }
@@ -257,3 +279,46 @@ details p { padding: 0 0 1.25rem; color: var(--soft); max-width: 42rem; }
 .foot-grid > div:first-child p { margin-top: 0.75rem; }
 .credits { display: grid; gap: 0.75rem; color: var(--ash); max-width: 46rem; }
 .credits a { color: var(--soft); }
+
+/* Platforms: logos under the hero's buttons. */
+.logos { list-style: none; margin: 2rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 1.25rem 1.75rem; }
+.logos li { display: flex; align-items: center; gap: 0.6rem; color: var(--snow); }
+.logos svg { width: 1.75rem; height: 1.75rem; flex: none; fill: currentColor; }
+.logos svg.line { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.logos svg .cut { fill: var(--ink); }
+.logos svg .stroke { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.logos span { display: flex; flex-direction: column; font-weight: 600; line-height: 1.2; }
+.logos small { font-weight: 400; font-size: 0.78rem; color: var(--ash); }
+
+/* Made for the remote: a small screen and a remote you can press. */
+.rd { margin-top: 2rem; display: grid; gap: 1.5rem; align-items: center; outline: none; }
+@media (min-width: 900px) { .rd { grid-template-columns: minmax(0, 1fr) auto; gap: 3rem; } }
+.rd:focus-visible .rd-tv { box-shadow: 0 0 0 2px var(--snow); }
+.rd-tv { --card: clamp(7rem, 16vw, 11rem); --gap: 0.9rem; --rowh: calc(var(--card) * 0.5625 + 3.4rem); position: relative; height: calc(var(--rowh) * 2.2); overflow: hidden; border-radius: 1rem; border: 1px solid var(--line); background: var(--ink); padding: 1.25rem 0 0 1.5rem; }
+.rd-rows { transition: transform 260ms cubic-bezier(.22,.8,.3,1); }
+.rd-row { height: var(--rowh); }
+.rd-row b { display: block; font-size: 0.85rem; color: var(--ash); margin-bottom: 0.55rem; transition: color 200ms; }
+.rd-row.on b { color: var(--snow); }
+.rd-cards { display: flex; gap: var(--gap); transition: transform 260ms cubic-bezier(.22,.8,.3,1); }
+.rd-card { flex: none; width: var(--card); aspect-ratio: 16 / 9; border-radius: 0.5rem; display: flex; align-items: flex-end; padding: 0.5rem; background: linear-gradient(160deg, hsl(var(--h) 35% 32%), hsl(var(--h) 30% 14%)); transition: transform 200ms, box-shadow 200ms; }
+.rd-card span { font-size: 0.75rem; font-weight: 600; color: var(--snow); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rd-card.focus { transform: scale(1.06); box-shadow: 0 0 0 3px var(--snow); }
+.rd-open { position: absolute; inset: 0; display: grid; place-content: center; gap: 0.75rem; text-align: center; background: rgb(15 15 15 / 0.92); }
+.rd-open[hidden] { display: none; }
+.rd-open-title { font-size: 1.6rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.rd-open-play { justify-self: center; padding: 0.5rem 1.1rem; border-radius: 0.5rem; background: var(--snow); color: var(--ink); font-weight: 600; }
+.rd-open-hint { font-size: 0.8rem; color: var(--ash); }
+.rd-remote { justify-self: center; display: grid; grid-template-columns: repeat(3, 3.25rem); grid-template-rows: repeat(3, 3.25rem) auto; gap: 0.4rem; padding: 1.25rem; border-radius: 2rem; background: var(--card); border: 1px solid var(--line); }
+.rd-remote button { border: 0; border-radius: 50%; background: var(--raise); color: var(--snow); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.rd-remote button:hover { background: #3a3a3a; }
+.rd-remote button:focus-visible { outline: 2px solid var(--snow); outline-offset: 2px; }
+.rd-remote [data-k=up] { grid-area: 1 / 2; }
+.rd-remote [data-k=left] { grid-area: 2 / 1; }
+.rd-remote .rd-ok { grid-area: 2 / 2; background: var(--snow); color: var(--ink); font-weight: 700; }
+.rd-remote [data-k=right] { grid-area: 2 / 3; }
+.rd-remote [data-k=down] { grid-area: 3 / 2; }
+.rd-remote .rd-back { grid-area: 4 / 1 / 4 / 4; margin-top: 0.6rem; height: 2.5rem; border-radius: 1.25rem; }
+.install { margin-top: 2rem; color: var(--soft); }
+.install summary { cursor: pointer; color: var(--snow); font-weight: 600; }
+.install ol { margin-top: 1rem; }
+@media (prefers-reduced-motion: reduce) { .rd-rows, .rd-cards, .rd-card { transition: none; } }
