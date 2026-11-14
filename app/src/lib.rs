@@ -5,19 +5,6 @@
 //! the others over HTTP from the core (`ui/native.ts`, docs/tizen.md).
 //! New native modules follow the same rule: `#[cfg(not(target_arch = "wasm32"))]`.
 
-// The engine inside the app (cargo feature `engine`): adapters behind `Playback`.
-#[cfg(all(feature = "engine", not(target_arch = "wasm32")))]
-mod buffer;
-#[cfg(all(feature = "engine", not(target_arch = "wasm32")))]
-mod disk;
-#[cfg(all(feature = "engine", not(target_arch = "wasm32")))]
-mod engine;
-#[cfg(all(feature = "engine", not(target_arch = "wasm32")))]
-mod local_engine;
-#[cfg(all(feature = "engine", not(target_arch = "wasm32")))]
-mod sources;
-#[cfg(all(feature = "engine", not(target_arch = "wasm32")))]
-mod subtitles;
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg_attr(feature = "engine", allow(dead_code))]
 mod no_engine;

@@ -4,8 +4,10 @@
 #   scripts/build.sh <target>
 #
 # Targets:
-#   check          nsh check (cargo check of app/ + TypeScript)
-#   test           nsh test (cargo test of app/, then the *.test.tsx files, headless)
+#   check          nsh check (cargo check of app/ + TypeScript), and app/ built without
+#                  the engine (--no-default-features)
+#   test           cargo test of the domain and engine crates, then nsh test (cargo test
+#                  of app/, then the *.test.tsx files, headless)
 #   macos          .app, zipped                       (macOS)
 #   linux          directory + .tar.gz                (Linux, GTK 4.14+)
 #   windows        directory .zip (+ setup.exe when Inno Setup 6 is installed)  (Windows)
@@ -85,10 +87,14 @@ need nsh "run scripts/install-nsh.sh"
 case "$target" in
   check)
     nsh check .
+    # Builds without the torrent engine must keep compiling (app/ARCHITECTURE.md).
+    cargo build --locked --no-default-features -p reel-app
     ;;
 
   test)
     mkdir -p "$out"
+    # nsh test runs reel-app's own tests; the workspace's other crates are tested here.
+    cargo test --locked -p reel-domain -p reel-engine
     nsh test . --junit "$out/junit.xml"
     ;;
 

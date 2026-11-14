@@ -15,7 +15,7 @@ pub fn playback() -> &'static dyn Playback {
     PLAYBACK
         .get_or_init(|| {
             #[cfg(feature = "engine")]
-            let p: Box<dyn Playback> = Box::new(crate::local_engine::Local::new(std::sync::Arc::new(host::AppHost)));
+            let p: Box<dyn Playback> = Box::new(reel_engine::Local::new(std::sync::Arc::new(host::AppHost)));
             #[cfg(not(feature = "engine"))]
             let p: Box<dyn Playback> = Box::new(crate::no_engine::NoEngine::default());
             p

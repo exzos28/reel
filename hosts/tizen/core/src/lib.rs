@@ -19,7 +19,7 @@ pub use table::registry;
 pub const DEFAULT_PORT: u16 = 47_391;
 
 /// The player profile on a Samsung TV (AVPlay: no DTS, no TrueHD, no Dolby-Vision-only
-/// releases; MKV and MP4 play): what `Sources` filters releases by (app/src/sources/compat.rs).
+/// releases; MKV and MP4 play): what `Sources` filters releases by (app/domain/src/compat.rs).
 pub const TIZEN_PROFILE: &str = "tizen";
 
 /// What the core needs from its host.
@@ -48,7 +48,7 @@ pub struct Running {
 /// Binds the port now (so a busy port is reported to the caller) and serves on a thread of
 /// its own with its own runtime.
 pub fn start(config: Config) -> Result<Running, String> {
-    // The engine puts its cache in the temp dir (app/src/engine.rs `cache_dir`). Set before
+    // The engine puts its cache in the temp dir (app/engine/src/engine.rs `cache_dir`). Set before
     // the engine starts; see docs/tizen.md for the app/ change that makes this a parameter.
     // SAFETY: called once, before this library starts any thread; the host's own threads
     // (the .NET runtime) do not read TMPDIR.

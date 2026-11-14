@@ -6,13 +6,13 @@ license = "PolyForm-Noncommercial-1.0.0"
 publish = false
 
 [workspace]
-members = ["domain"]
+members = ["domain", "engine"]
 
 [features]
 default = ["engine"]
 # The torrent engine inside the app (librqbit, the ring-buffer cache, the Torznab source).
 # Without it `Playback` answers that there is no engine on this device (app/ARCHITECTURE.md).
-engine = []
+engine = ["dep:reel-engine"]
 
 [dependencies]
 nsh-core = "0.5.0"
@@ -25,28 +25,22 @@ serde = { version = "1", features = ["derive"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # Domain types and ports (app/ARCHITECTURE.md).
 reel-domain = { path = "domain" }
-# rustls (ring) instead of OpenSSL: the TV has no OpenSSL to link against.
-librqbit = { version = "9.1.0", default-features = false, features = ["http-api", "http-api-client", "rust-tls", "tracing-subscriber-utils"] }
-anyhow = "1"
-librqbit-dualstack-sockets = "0.7"
-# Piece indices for the ring-buffer storage (the version librqbit uses).
-librqbit-core = { version = "9.1.0", default-features = false }
-tokio = { version = "1", features = ["rt-multi-thread", "time", "sync", "io-util"] }
-libc = "0.2"
+# The engine inside the app (feature `engine`): librqbit, the ring-buffer cache, the Torznab
+# source (app/engine). The vendored librqbit is patched in by .cargo/config.toml.
+reel-engine = { path = "engine", optional = true }
+tokio = { version = "1", features = ["rt-multi-thread", "time", "sync", "io-util", "fs"] }
 reqwest = { version = "0.13", default-features = false, features = ["json", "query", "default-tls"] }
 # Shrinking providers' one-size pictures for a TV (src/thumbs.rs).
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 # The QR code on the TV that opens its settings page on a phone (src/hosted).
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 rusqlite = { version = "0.42", features = ["bundled"] }
-quick-xml = "0.41"
-regex = "1"
-encoding_rs = "0.8"
 # Pairing codes and sessions of the hosted settings page (src/hosted); already in the tree.
 getrandom = "0.3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # The mpv video view (`src/mpv`): a native component on NSH's AppKit host.
+libc = "0.2"
 nsh-platform-macos = { version = "0.5.0", default-features = false }
 objc2 = "0.6"
 objc2-foundation = "0.3"

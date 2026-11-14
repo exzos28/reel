@@ -116,7 +116,7 @@ How the pieces fit:
 - Leaving the app goes the same way: after "Exit reel?" the UI posts `{reel:"exit"}` and the shell calls `tizen.application.getCurrentApplication().exit()`.
 
 Integration in app/:
-- The core says what draws the video: `VideoEngine.kind()` answers `"avplay"` under the `tizen` profile, which the TV's core sets at start (`Profile::host_video`, app/src/sources/compat.rs).
+- The core says what draws the video: `VideoEngine.kind()` answers `"avplay"` under the `tizen` profile, which the TV's core sets at start (`Profile::host_video`, app/domain/src/compat.rs).
 - `ui/VideoSurface.tsx` then mounts `ui/AvplaySurface.tsx`: the same props, events and `seek` as the mpv and `<Video>` views, driving AVPlay through `ui/avplay.ts`. It maps `loaded` to `onLoad` and `onTracks`, `time` to `onProgress`, `buffering` to `onBuffer`, `ended` and `error`; pause, seek and the audio track go back as ops (ops wait for `loaded`). Volume is the TV's.
 - Tracks: the surface hands AVPlay's tracks to the core as `{"avplay": [...]}` and the core reads them (`tracks::from_avplay`): audio tracks with language, codec and channels; AVPlay's text tracks are left out, since the shell does not pass on their text (`onsubtitlechange`). The release's subtitle files show in the UI's own overlay as everywhere.
 - While a video plays, the app's root, the player screen and the page's `html`/`body` (this frame's and the NSH page's) are transparent; the stage and the overlays keep their backgrounds.

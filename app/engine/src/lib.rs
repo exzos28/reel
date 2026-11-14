@@ -1,11 +1,25 @@
-//! The engine inside the app behind `Playback`: librqbit with the ring-buffer cache, the
-//! Torznab search source, and the subtitles read from the torrent that plays.
+//! reel's local engine, the adapter behind `Playback` (app/ARCHITECTURE.md):
+//!
+//! - `engine`: the librqbit session and its stream server on 127.0.0.1, the jobs, warm-up,
+//!   prefetch, a torrent's file list, the timing log;
+//! - `buffer`: the ring-buffer storage that keeps only a window of the film on disk;
+//! - `disk`: free space where the cache lives;
+//! - `sources`: the user's Torznab source (search, ranking, caps);
+//! - `subtitles`: subtitle files read from the torrent that plays.
+//!
+//! It knows nothing of the catalog: what a catalog key plays and where the viewer stopped
+//! come from the `PlaybackHost` it is built with.
+
+mod buffer;
+mod disk;
+mod engine;
+mod sources;
+mod subtitles;
 
 use std::sync::Arc;
 
 use serde_json::Value;
 
-use crate::{engine, sources, subtitles};
 use reel_domain::{
     play::Files,
     ports::{Playback, PlaybackHost},

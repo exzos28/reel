@@ -1,0 +1,25 @@
+[package]
+name = "reel-engine"
+# Kept equal to reel-app's: the search source's User-Agent says it ("reel/0.1.0").
+version = "0.1.0"
+edition = "2024"
+license = "PolyForm-Noncommercial-1.0.0"
+publish = false
+description = "reel's local engine: librqbit, the ring-buffer cache and the Torznab source, behind Playback"
+
+# Native only: reel-app depends on it outside wasm32 (app/Cargo.toml).
+[dependencies]
+reel-domain = { path = "../domain" }
+serde_json = "1"
+# rustls (ring) instead of OpenSSL: the TV has no OpenSSL to link against. The vendored,
+# patched copy (vendor/librqbit/REEL_PATCH.md) comes in through app/.cargo/config.toml and
+# hosts/tizen/.cargo/config.toml.
+librqbit = { version = "9.1.0", default-features = false, features = ["http-api", "http-api-client", "rust-tls", "tracing-subscriber-utils"] }
+anyhow = "1"
+librqbit-dualstack-sockets = "0.7"
+# Piece indices for the ring-buffer storage (the version librqbit uses).
+librqbit-core = { version = "9.1.0", default-features = false }
+tokio = { version = "1", features = ["rt-multi-thread", "time", "sync", "io-util"] }
+libc = "0.2"
+reqwest = { version = "0.13", default-features = false, features = ["json", "query", "default-tls"] }
+quick-xml = "0.41"

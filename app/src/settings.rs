@@ -413,6 +413,8 @@ mod tests {
         playback().set_buffer_mb(DEFAULT_BUFFER_MB as u64);
     }
 
+    /// The engine's cache measures the disk; without the engine every size is offered.
+    #[cfg(feature = "engine")]
     #[test]
     fn only_buffers_the_device_has_room_for_are_offered() {
         assert!(playback().buffer_fits(1));
