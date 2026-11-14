@@ -64,49 +64,34 @@ GET /ui/…    the web build (no token), precompressed .br/.gz served as is
 - **Token.** The shell generates a token on every launch and passes it to the service in the AppControl. A service that is already running gets the new token. Other apps and web pages on the TV can reach 127.0.0.1 as well, but without the token they get 401. The UI receives the token in its URL (`/ui/index.html?reelToken=…`).
 - **Data dir.** `Settings.load(dataDir)` and `Meta.init(dataDir)` accept only the core's own data dir (`info.dataDir`) or `""`. Any other path is a path on a different machine, so the call fails with 400 instead of the core silently swapping in its own dir.
 - **Player profile.** The service starts the core with profile `tizen` (`TIZEN_PROFILE`, applied through `Sources::set_profile` before the server starts). That means no DTS, no TrueHD, no Dolby-Vision-only releases; MKV and MP4 are fine. `info.profile` shows the active profile. The UI must not call `Sources.setProfile` on the TV. The desktop binary takes `--profile tizen` to filter releases the same way.
-- **Cache.** The engine puts its cache under `temp_dir()`. On the TV that may be a small RAM disk, so the core sets `TMPDIR` to the app's `cache/` before the engine starts. Change 6 below replaces this with a parameter.
+- **Cache.** The engine puts its cache under `temp_dir()`. On the TV that may be a small RAM disk, so the core sets `TMPDIR` to the app's `cache/` before the engine starts. Item 7 of [app/ on the web](#app-on-the-web) would replace this with a parameter.
 - **Desktop.** `cargo run -p reel-tizen-core --bin reel-core -- --ui-dir out/web --profile tizen` serves the same API and UI on a Mac (from `hosts/tizen`), for testing in a browser.
 
-## Changes in app/ (for the main session)
+## app/ on the web
 
-1–3 were tried on a copy of app/: `nsh package . --target web` then succeeded (7.4 MB; the first build of the web runtime takes about 2 min).
+NSH's web target compiles app/'s crate to wasm32. The TV's UI is that web build, served by the core, and it takes the core's modules over HTTP.
 
-1. **Cargo.toml: native-only dependencies, and rustls for librqbit.** The second part drops OpenSSL. Today librqbit's default `sha1-crypto-hash` links OpenSSL on Linux, and `hosts/tizen/core` builds a vendored copy to compensate; remove that dependency there once this lands.
-   ```toml
-   [dependencies]
-   nsh-core = "0.5.0"
-   serde_json = "1"
-   serde = { version = "1", features = ["derive"] }
+1. **Cargo.toml.** Only `nsh-core`, `serde` and `serde_json` are shared. Everything else sits under `[target.'cfg(not(target_arch = "wasm32"))'.dependencies]`. librqbit uses `rust-tls` (ring for SHA-1, rustls for HTTPS) instead of OpenSSL, so neither the core nor any other Linux or Android build needs OpenSSL for it.
+2. **src/lib.rs.** Every `mod` and the native modules (`Engine`, `Catalog`, `Settings`, `Sources`, `Meta`) are `#[cfg(not(target_arch = "wasm32"))]`. On wasm32 only `Fmt` and `VideoEngine` are registered; both are pure, and `VideoEngine.kind()` answers `"native"` there. New native modules follow the same rule, and need a line in `hosts/tizen/core/src/table.rs` (its test `matches_the_declarations`) and in `ui/native-http.ts` (typed with the generated interfaces, so `nsh check` fails when one is missing).
+3. **The C compiler for wasm32.** The web runtime depends on `zstd-sys`, which compiles C. Apple's clang has no wasm32 backend, so `hosts/tizen/build.sh` sets `CC_wasm32_unknown_unknown` and `AR_wasm32_unknown_unknown` to Homebrew LLVM's clang and llvm-ar. CI uses Ubuntu's `clang-18` and `llvm-18`. By hand:
+   ```sh
+   cd app && CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/llvm-ar nsh package . --target web
+   ```
+   The first build of the web runtime takes about 2 min. The output is 7.6 MB, of which the wasm is 6 MB (1.7 MB as .br).
+4. **`ui/native.ts` is the only place that imports `app/native`.** It uses a namespace import, because on the web `app/native` exports only what the wasm crate registered. On the web (`platform.os === "web"`) it takes `Engine`, `Catalog`, `Settings`, `Sources` and `Meta` from `ui/native-http.ts`; elsewhere it takes them from the crate. `Fmt` and `VideoEngine` always come from the crate. The rest of the UI imports from `ui/native.ts`, except `VideoSurface.tsx`, which imports `VideoEngine` directly, and `Player.tsx`, whose `Catalog` must still move to `./native` (see [Player](#player)).
+5. **Calls stay synchronous.** The UI calls many methods synchronously, for example `Catalog.home()` inside a `computed`. `native-http.ts` therefore sends a synchronous `XMLHttpRequest` for every sync method, and an asynchronous one for the Promise-returning ones (`Meta.trending/title/season/search`, which may wait for the network).
+   - Why it works: NSH's web runtime runs the app's JS in the browser's own engine, in a same-origin iframe (`browser/realm.js`), which has `XMLHttpRequest`. Chromium 120 still allows a synchronous XHR on the main thread and only logs a deprecation warning; it blocks only during page dismissal.
+   - Why this way: the core answers on 127.0.0.1 in about a millisecond, so the alternative was rejected. Making every call async would mean rewriting the UI's derived state for no gain on a loopback.
+   - The exception is the first `Engine.open`, which starts the engine and can block up to about a second.
+6. **Startup.** When `ui/native.ts` loads on the web, it reads `GET /health` synchronously, with the token from `?reelToken=` found up the frame chain. That way the modules work before the first call, and a missing token or a core that is down fails at startup with a clear message. `Settings.load` gets `dataDir()` from `ui/native.ts`: the core's `info.dataDir` on the web, `process.dataDir` elsewhere. The UI never calls `Sources.setProfile`; the core already runs with the `tizen` profile.
+7. *(Optional, cleaner)* Add `engine::set_cache_dir(path)` (or a `Settings` method) so the host passes the cache dir explicitly instead of the core setting `TMPDIR`.
 
-   [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-   librqbit = { version = "9.1.0", default-features = false, features = ["http-api", "http-api-client", "rust-tls", "tracing-subscriber-utils"] }
-   anyhow = "1"
-   librqbit-dualstack-sockets = "0.7"
-   tokio = { version = "1", features = ["rt-multi-thread", "time", "sync"] }
-   libc = "0.2"
-   reqwest = …   # and rusqlite, quick-xml, regex: everything except nsh-core/serde/serde_json
-   ```
-2. **src/lib.rs: put every `mod`, the `pub use`s and the `Engine`/`Settings`/`Sources` structs and impls under `#[cfg(not(target_arch = "wasm32"))]`.** On wasm32, only `Fmt` is registered:
-   ```rust
-   registry.module::<Fmt>();
-   #[cfg(not(target_arch = "wasm32"))]
-   registry.module::<Engine>().module::<Catalog>().module::<Settings>().module::<Sources>().module::<Meta>();
-   ```
-   New native modules follow the same rule.
-3. **Building the web runtime needs a clang that targets wasm32.** The runtime depends on `zstd-sys`, which compiles C. Apple's clang has no wasm32 backend, so use `CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/clang` (`hosts/tizen/build.sh` sets this). On Linux CI, use a clang with the wasm32 target.
-4. **`ui/native.ts`, the only place that imports `app/native`.** On the web, `app/native` resolves (through an import map) to a facade that exports only what the wasm crate registered. A named import such as `import { Engine } from "app/native"` would fail to link there, so use a namespace import:
-   ```ts
-   import * as local from "app/native";
-   import * as http from "./native-http";        // hosts/tizen/bridge/native-http.ts, moved here
-   const tv = http.onTv();
-   export const Engine = tv ? http.Engine : local.Engine;
-   // … Catalog, Settings, Sources, Meta the same; Fmt can stay local.Fmt
-   ```
-   Then replace `from "app/native"` with `from "./native"` in App.tsx and ui/* (playback.ts, catalog.ts, preferences.ts, Player.tsx, Settings.tsx, testEngine.ts …).
-   Sync methods use a synchronous XHR, so call sites stay as they are. This works because NSH's web runtime runs the app's JS in a same-origin browser iframe (`browser/realm.js`), which has `XMLHttpRequest`.
-5. **Startup on the TV.** Call `await http.connect()` before the first module call. Wherever `process.dataDir` is passed to `Settings.load` and `Meta.init`, pass `http.coreDataDir()` instead when `tv` is set.
-6. *(Optional, cleaner)* Add `engine::set_cache_dir(path)` (or a `Settings` method) so the host passes the cache dir explicitly instead of the core setting `TMPDIR`.
-7. **Player:** see the next section.
+To try the web build on a Mac against the desktop core (from `hosts/tizen`, after the web build above):
+```sh
+cargo run -p reel-tizen-core --bin reel-core -- --port 47491 --token <16+ chars> --ui-dir ../../app/.nsh/out/reel --profile tizen
+# open http://127.0.0.1:47491/ui/index.html?reelToken=<token>
+```
+Home then loads its shelves over `/rpc`. A core built without `REEL_TMDB_TOKEN` shows only the AniList shelves.
 
 ## Player
 
@@ -140,7 +125,7 @@ Integration in app/:
 hosts/tizen/build.sh check                      # toolchain report
 hosts/tizen/build.sh core                       # out/libreel_tizen_core.so (armv7, softfp-compatible)
 hosts/tizen/build.sh package --shell-only       # out/reel-tv-v<version>.wgt with the diagnostics screen
-hosts/tizen/build.sh package                    # with the NSH web build (needs changes 1–4)
+hosts/tizen/build.sh package                    # with the NSH web build
 ```
 
 What `package` does:
@@ -163,7 +148,8 @@ Missing on this Mac (sizes measured from the download servers):
 
 ### CI
 
-- Call `hosts/tizen/build.sh package --shell-only` now; drop `--shell-only` once changes 1–4 are in.
+- A push runs `hosts/tizen/build.sh package` (with the web build); run the workflow by hand with `shell_only` for the diagnostics screen.
+- The web build needs the `wasm32-unknown-unknown` Rust target, nsh (`.github/actions/setup-nsh`) and a clang with wasm32 (`clang-18`, `llvm-18` from apt).
 - Linux runner setup can copy ambilight's `tv-package.yml`:
   - `actions/setup-dotnet` 8.0.x;
   - Samsung's `workload-install.sh -d $DOTNET_ROOT`;

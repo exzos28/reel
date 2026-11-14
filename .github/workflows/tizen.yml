@@ -3,28 +3,27 @@ name: Tizen package
 # Builds the TV hybrid package (web launcher + .NET service hosting the Rust core) with
 # hosts/tizen/build.sh, the way tizen-os-ambilight's tv-package.yml does. The package is signed
 # with the Tizen SDK's default certificate; Apps2Samsung re-signs it for each TV.
-# --shell-only until the app/ changes for the web build land (docs/tizen.md, "Changes in app/"):
-# the TV then shows a diagnostics screen that checks each step and plays Sintel through AVPlay.
+# A push builds the full package: the NSH web build of app/ (wasm32) served by the core. Run it by
+# hand with shell_only for the diagnostics screen instead, which checks each step on the TV and
+# plays Sintel through AVPlay.
 on:
   workflow_dispatch:
     inputs:
       shell_only:
         description: Diagnostics shell only (no NSH web build)
         type: boolean
-        default: true
+        default: false
   push:
     branches: [main]
     paths:
       - hosts/tizen/**
-      - app/src/**
-      - app/Cargo.toml
-      - app/Cargo.lock
+      - app/**
       - .github/workflows/tizen.yml
   workflow_call:
     inputs:
       shell_only:
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: read
@@ -37,15 +36,15 @@ jobs:
     env:
       TIZEN_SDK: /home/runner/tizen-sdk
       CARGO_TERM_COLOR: always
-      # A push has no inputs (and `inputs.shell_only == false` holds for a missing
-      # one): it builds the diagnostics shell, as the inputs' default does.
-      SHELL_ONLY: ${{ github.event_name == 'push' || inputs.shell_only }}
+      # A push has no inputs: a missing one is not `true`, so it builds the full package.
+      SHELL_ONLY: ${{ inputs.shell_only == true }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: armv7-unknown-linux-gnueabi
+          # wasm32: NSH's web build of app/ (the TV's UI).
+          targets: armv7-unknown-linux-gnueabi,wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -97,6 +96,17 @@ jobs:
         if: env.SHELL_ONLY != 'true'
         with:
           rust-cache-key: tizen-web
+
+      # NSH's web runtime compiles C (zstd-sys) for wasm32: a clang with that backend and its
+      # llvm-ar (build.sh takes llvm-ar from the clang's directory).
+      - name: Install clang for wasm32
+        if: env.SHELL_ONLY != 'true'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q clang-18 llvm-18
+          echo "CC_wasm32_unknown_unknown=/usr/lib/llvm-18/bin/clang" >> "$GITHUB_ENV"
+          echo 'int x;' | /usr/lib/llvm-18/bin/clang --target=wasm32-unknown-unknown -c -x c - -o /dev/null
+          ls -l /usr/lib/llvm-18/bin/llvm-ar
 
       # Informational: `package` itself fails on whatever it needs and lacks.
       - name: Check the tools

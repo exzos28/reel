@@ -146,8 +146,8 @@ build_web() {
     local tmp; tmp="$(mktemp -d)"
     if ! (cd "$APP" && nsh package . --target web -o "$tmp"); then
         rm -rf "$tmp"
-        die "the NSH web build of app/ failed. Until app/ builds for wasm32 and takes its modules from
-the core over HTTP (docs/tizen.md, \"Changes in app/\"), use: $0 package --shell-only"
+        die "the NSH web build of app/ failed (native-only code must stay out of wasm32, see
+docs/tizen.md, \"app/ on the web\"); for the diagnostics screen only: $0 package --shell-only"
     fi
     # nsh writes <out>/<app name>/index.html.
     local index; index="$(find "$tmp" -maxdepth 2 -name index.html | head -n 1)"
