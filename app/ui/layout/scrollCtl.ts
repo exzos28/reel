@@ -6,6 +6,7 @@
 // the trackpad leave the offset to the viewer.
 import { effect, platform, reduceMotion, signal, type ScrollRef, type ViewRef } from "nsh";
 import { keyed } from "../focus/keys";
+import { perf } from "../perf";
 import { density, ringRoom, safe } from "../theme";
 import { anchorOffset, easeOut, nearestOffset } from "./anchor";
 
@@ -68,6 +69,10 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     stop();
     if (!animate || reduceMotion() || Math.abs(target - at) < 1) return set(target);
     if (webBuild) {
+      if (trace) {
+        trace.target = target;
+        console.log(`[perf] scroll: measured in ${Math.round((trace.measured ?? trace.t0) - trace.t0)} ms, ${Math.round(at)} → ${Math.round(target)}`);
+      }
       at = target;
       ctl.scroll()?.scrollTo(horizontal ? { x: target, animated: true } : { y: target, animated: true });
       return;
@@ -83,7 +88,11 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     running.add(stop);
     frame = requestAnimationFrame(step);
   };
+  /** A --perf build: when the page's keyed scroll was asked for, measured, sent and reached. */
+  let trace: { t0: number; measured?: number; target?: number; frames: number } | null = null;
+  let resting: ReturnType<typeof setTimeout> | undefined;
   const place = async (block: ViewRef, placement: Placement, first: boolean) => {
+    if (perf.on && !horizontal && !first) trace = { t0: performance.now(), frames: 0 };
     if (first && !horizontal) {
       go(opts.memory ? (offsets.get(opts.memory) ?? 0) : 0, false);
       return;
@@ -92,6 +101,7 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     if (!scroll || !ctl.content) return;
     const [b, s, c] = await Promise.all([block.measure(), scroll.measure(), ctl.content.measure()]);
     if (!b || !s || !c) return;
+    if (trace) trace.measured = performance.now();
     const axis = horizontal ? "x" : "y";
     const length = horizontal ? "width" : "height";
     const current = s.pagePosition[axis] - c.pagePosition[axis];
@@ -118,6 +128,33 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     horizontal,
     offset: signal(0),
     remember(offset) {
+      // A TV's browser: every scrolled frame would wake what watches the offset (lazy blocks
+      // measure themselves), on the thread that draws the frames. The offset is passed on
+      // once the scroll rests (150 ms without a frame) instead.
+      if (webBuild) {
+        if (trace?.target != null) {
+          trace.frames++;
+          if (Math.abs(offset - trace.target) < 1) {
+            console.log(`[perf] scroll: there ${Math.round(performance.now() - trace.t0)} ms after the key, ${trace.frames} scroll events`);
+            trace = null;
+          }
+        }
+        if (!frame) at = offset;
+        if (opts.memory) offsets.set(opts.memory, offset);
+        if (resting) clearTimeout(resting);
+        resting = setTimeout(() => {
+          resting = undefined;
+          ctl.offset.set(offset);
+        }, 150);
+        return;
+      }
+      if (trace?.target != null) {
+        trace.frames++;
+        if (Math.abs(offset - trace.target) < 1) {
+          console.log(`[perf] scroll: there ${Math.round(performance.now() - trace.t0)} ms after the key, ${trace.frames} scroll events`);
+          trace = null;
+        }
+      }
       ctl.offset.set(offset);
       if (!frame) at = offset;
       if (opts.memory) offsets.set(opts.memory, offset);

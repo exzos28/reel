@@ -3,6 +3,8 @@
 // code runs in a frame of the same origin as NSH's page, so it listens on every document it
 // can reach (the TV shell above them is another origin and is skipped).
 
+import { perf } from "./perf";
+
 const TIZEN_BACK = 10009;
 
 // The web's DOM, as far as this file uses it (the project has no DOM types).
@@ -119,6 +121,7 @@ export function perfProbe() {
     }
   };
   if (!`${query(g)}${query(g.parent)}`.includes("reelPerf=1")) return;
+  perf.on = true;
   const PO = g.PerformanceObserver;
   const types = PO?.supportedEntryTypes ?? [];
   console.log(`[perf] on; entry types: ${types.join(",") || "none"}`);
