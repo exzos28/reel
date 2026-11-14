@@ -1,29 +1,47 @@
-import { Text, View } from "nsh";
+import { Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { playLabel, releaseLine, releasesText, type Title } from "../../catalog";
 import { Hero } from "../../layout/Hero";
-import { actionsRow, ListButton, PlayButton, ReleaseButton, TrailerButton } from "../../layout/HeroActions";
-import { colors, type, u } from "../../theme";
+import { actionsRow, PlayButton, ReleaseButton, TrailerButton } from "../../layout/HeroActions";
+import { rounded } from "../../kit/shape";
+import { alpha, colors, type, u } from "../../theme";
 
-/** The hero's actions, left to right as the remote walks them: Play, the
- * list, the trailer when there is one, the release last (once the core
- * knows the release Play uses). */
-export type HeroAction = "play" | "list" | "trailer" | "release";
-export const heroActions = (title: Title): HeroAction[] => [
-  "play",
-  "list",
-  ...(title.trailer ? (["trailer"] as const) : []),
-  ...(title.release ? (["release"] as const) : []),
-];
+/** The hero's action row, left to right as the remote walks it: Play, then
+ * the trailer when there is one. Add to list is the page's header action
+ * (`ListToggle`); the release button has its own line under the row. */
+export type HeroAction = "play" | "trailer";
+export const heroActions = (title: Title): HeroAction[] => ["play", ...(title.trailer ? (["trailer"] as const) : [])];
 
-/** The hero of a film or a show: Play, Add to list, Trailer (when there is
- * one), and the release Play uses as a button that opens the releases (while
- * searching or with none, a line that says so). `focusedAt`: the index of
- * the focused action in `heroActions`. */
+/** The release row's place: the button's height and its margin over it, so
+ * nothing moves when the release arrives. */
+const rowPlace = (): ViewStyle => ({ height: u(60), marginTop: u(16), justifyContent: "center" });
+const releasesNote = (): TextStyle => ({ ...type.meta(), fontSize: u(22), color: colors.ash() });
+/** The release row while the release is not known yet: the button's size,
+ * pulsing as the release list's skeleton does. */
+const skeletonStyle = (): ViewStyle => ({
+  ...rowPlace(),
+  width: u(560),
+  ...rounded(),
+  backgroundColor: alpha(colors.snow(), 0.05),
+  animationName: "pulse",
+  animationDuration: 1400,
+  animationIterationCount: "infinite",
+  animationFrameRate: 30,
+});
+
+/** The release is still coming: the search runs, or releases are found and
+ * the one Play uses is not picked yet. */
+const releasePending = (title: Title) =>
+  !title.release && (title.releasesState === "searching" || (title.releasesState === "done" && title.releases.length > 0));
+
+/** The hero of a film or a show: Play and Trailer (when there is one), then
+ * the release Play uses as a button that opens the releases (while searching
+ * or with none, a line that says so). `focusedAt`: the index of the focused
+ * action in `heroActions`; `releaseFocused`: the release button. */
 export function TitleHero(props: {
   data: () => Title;
   focusedAt: () => number | null;
+  releaseFocused: () => boolean;
   onPlay: () => void;
-  onToggle: () => void;
   onTrailer: () => void;
   onReleases: () => void;
 }) {
@@ -42,24 +60,29 @@ export function TitleHero(props: {
       top={show() ? 150 : 176}
       fit
     >
-      <View style={actionsRow(true)}>
+      <View style={actionsRow(false)}>
         <PlayButton label={() => playLabel(props.data())} focused={focused("play")} onPress={props.onPlay} />
-        <ListButton
-          inList={() => props.data().inList}
-          addKey="title.add_to_list"
-          focused={focused("list")}
-          onPress={props.onToggle}
-        />
         <If when={props.data().trailer}>
           <TrailerButton focused={focused("trailer")} onPress={props.onTrailer} />
         </If>
-        <If
-          when={props.data().release}
-          else={<Text style={{ ...type.meta(), fontSize: u(22), color: colors.ash(), marginLeft: u(12) }}>{releasesText(props.data())}</Text>}
-        >
-          <ReleaseButton name={() => line().name} rest={() => line().rest} focused={focused("release")} onPress={props.onReleases} />
-        </If>
       </View>
+      {/* Its own row under the actions: the button, a skeleton while it is coming
+          (not focusable), or the line saying why there is none, all the same height. */}
+      <If when={!props.data().release && releasePending(props.data())}>
+        <View testID="release-row-skeleton" style={{ flexDirection: "row" }}>
+          <View style={skeletonStyle()} />
+        </View>
+      </If>
+      <If when={!props.data().release && !releasePending(props.data())}>
+        <View style={rowPlace()}>
+          <Text style={releasesNote()}>{releasesText(props.data())}</Text>
+        </View>
+      </If>
+      <If when={props.data().release}>
+        <View style={{ flexDirection: "row" }}>
+          <ReleaseButton name={() => line().name} rest={() => line().rest} focused={props.releaseFocused} onPress={props.onReleases} />
+        </View>
+      </If>
     </Hero>
   );
 }

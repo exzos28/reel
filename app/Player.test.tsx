@@ -1,8 +1,8 @@
 // The player's own controls, on a stand-in engine and a still video view
 // (STILL: it plays its first frame at once and stands still, so the time
 // stays where seeks put it); and the stage before the first frame.
-import { expect, open, test } from "nsh/test";
-import { episode, NATIVE, STILL } from "./testEngine";
+import { expect, test } from "nsh/test";
+import { episode, NATIVE, STILL, openApp } from "./testEngine";
 
 const status = JSON.stringify({
   phase: "ready",
@@ -22,7 +22,7 @@ const DETAILS = {
 };
 
 async function playing() {
-  const app = await open("./App.tsx", {
+  const app = await openApp({
     clock: {},
     modules: { "app/native": { ...NATIVE, ...STILL, ...DETAILS, "Engine.status": status, "Engine.timeline": timeline } },
   });
@@ -34,7 +34,7 @@ async function playing() {
 
 /** Play on Dune with the engine answering `engine` and the video never loading. */
 async function waiting(engine: Record<string, unknown>) {
-  const app = await open("./App.tsx", {
+  const app = await openApp({
     clock: {},
     modules: { "app/native": { ...NATIVE, ...DETAILS, "Engine.status": JSON.stringify(engine) } },
   });
@@ -73,7 +73,7 @@ test("connected, the stage counts the film's start in until the video loads", as
   const starting = await waiting(JSON.parse(status));
   expect(starting.texts()).toContain("Starting");
   noControls(starting);
-  await starting.press("label:Back");
+  await starting.keyboard.press("escape"); // the remote's Back
   expect(starting.texts()).toContain("Continue watching");
 });
 
@@ -187,8 +187,6 @@ test("the buttons work with the mouse", async () => {
   expect(app.texts()).toContain("0:10");
   await app.press("label:Pause");
   expect(app.shows("label:Play")).toBe(true);
-  await app.press("label:Back");
-  expect(app.texts()).toContain("Continue watching");
 });
 
 test("escape hides the overlay first, then leaves the player", async () => {
@@ -211,12 +209,13 @@ test("hidden, the remote is back on the scrubber", async () => {
 const nextEpisode = JSON.stringify(episode(3, "Old Story"));
 
 async function nearTheEnd() {
-  const app = await open("./App.tsx", {
+  const app = await openApp({
     clock: {},
     // The core offers the next episode (as it does in the last 40 s).
     modules: { "app/native": { ...NATIVE, ...STILL, "Engine.status": status, "Engine.timeline": timeline, "Catalog.upNext": nextEpisode } },
   });
   await app.keyboard.press("right"); // Attack on Titan
+  await app.waitFor("Resume S3:E2"); // the hero follows once the focus rests
   await app.press("Resume S3:E2");
   await app.wait(600);
   return app;
@@ -244,7 +243,7 @@ test("Watch credits dismisses Up next and brings the controls back", async () =>
 });
 
 test("by default the player keeps the stream's details to itself", async () => {
-  const app = await open("./App.tsx", {
+  const app = await openApp({
     clock: {},
     modules: { "app/native": { ...NATIVE, ...STILL, "Engine.status": status, "Engine.timeline": timeline } },
   });

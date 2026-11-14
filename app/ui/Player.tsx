@@ -9,16 +9,21 @@
 // buttons on the buttons row), Up/Down switch rows, Escape closes the
 // panel, then hides the overlay, then leaves. Near the end of an episode
 // the Up next card (tv-player-end.html) takes the remote instead.
-import { cleanup, computed, effect, Image, keymap, platform, signal, Text, View, type ImageAsset } from "nsh";
+import { cleanup, computed, effect, Image, keymap, platform, safeArea, signal, Text, View, type ImageAsset, type ViewStyle } from "nsh";
 import { currentWindow } from "nsh/desktop";
 import { BufferingNote, PlayerStage, type StageLine } from "./PlayerStage";
 import { t } from "nsh/i18n";
 import { Catalog, Fmt } from "./native";
 import { episodeCode, episodeText, runtime, titleText, type Episode, type Release } from "./catalog";
-import { BACK_SIZE, BackButton, Icon } from "./components";
+import { Icon } from "./components";
+import { rounded } from "./kit/shape";
+import plusIcon from "./icons/plus.svg";
 import { streamDetails } from "./preferences";
 import { cachedAhead, duration, firstFrame, readAt, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
 import { alpha, colors, focusRing, font, radius, safe, type, u } from "./theme";
+import { chrome, isDesktop, isTouch } from "./layout/chrome";
+import { BarBack, barBackBox } from "./layout/WindowBar";
+import { onBack } from "./nav";
 import { SubtitleOverlay } from "./SubtitleOverlay";
 import { playerTracks, type TrackOption } from "./tracks";
 import { VideoSurface, videoUnderUi, type SurfaceRef } from "./VideoSurface";
@@ -40,6 +45,49 @@ const SEEK_S = 10;
 const STALL_MS = 300;
 
 type Row = "scrubber" | "buttons";
+/** The desktop's Back over the picture: the bar's, on a dark fill. */
+const PLAYER_BACK_FILL = "#2A2A2AD9";
+/** Where it sits: the bar's Back slot, or (20, 12) in full screen. */
+const barBackSlot = (full: boolean): ViewStyle => {
+  const b = barBackBox(full);
+  return { position: "absolute", top: b.top, left: b.left, zIndex: 3 };
+};
+/** Touch's ✕, points: 44 on a tablet at (24, 24), 40 on a phone at the
+ * landscape safe area's left (x 62 beside a Dynamic Island). */
+const CLOSE = chrome === "tablet" ? 44 : 40;
+const touchCorner = () =>
+  chrome === "tablet" ? { top: 24, left: 24 } : { top: Math.max(18, safeArea().top), left: Math.max(20, safeArea().left) };
+const closeDisc = (): ViewStyle => ({
+  width: CLOSE,
+  height: CLOSE,
+  ...rounded(999),
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: PLAYER_BACK_FILL,
+});
+
+/** ✕ (touch): leaves the player. */
+function CloseButton(props: { onPress: () => void }) {
+  return (
+    <View role="button" accessibilityLabel={t("player.close")} onPress={props.onPress} style={closeDisc()}>
+      <View style={{ transform: "rotate(45deg)" }}>
+        <Icon src={() => plusIcon} size={17 / u(1)} />
+      </View>
+    </View>
+  );
+}
+
+/** The title block's place: beside the desktop's Back or touch's ✕, at the safe area's corner on a TV. */
+const topRowStyle = (full: boolean): ViewStyle => ({
+  position: "absolute",
+  top: isDesktop ? barBackBox(full).top : isTouch ? touchCorner().top : safe().y,
+  left: isDesktop ? barBackBox(full).left + barBackBox(full).width + 12 : isTouch ? touchCorner().left : safe().x,
+  right: safe().x,
+  flexDirection: "row",
+  alignItems: "flex-start",
+  gap: u(24),
+});
+
 const BUTTONS = ["back", "play", "forward", "tracks", "fullscreen"] as const;
 type ButtonId = (typeof BUTTONS)[number];
 const PLAY_BUTTON = 1;
@@ -240,15 +288,18 @@ export function Player() {
       },
       () => (cardButton() === 0 ? playNext() : dismissed.set(true)),
     ),
-    escape: () => {
-      if (card()) dismissed.set(true);
-      else if (panel()) panel.set(false);
-      // On a problem the stage covers everything: Back leaves at once.
-      else if (started() && overlay() && !failed()) hide();
-      // A window that fills the screen is left first (as Escape does in macOS apps).
-      else if (fullscreen()) setFullscreen(false);
-      else stop();
-    },
+  });
+  // Back, in this order: the Up next card, the tracks panel, the controls (a
+  // TV's: restarting a torrent is slow), full screen, the player.
+  onBack(() => {
+    if (card()) dismissed.set(true);
+    else if (panel()) panel.set(false);
+    // On a problem the stage covers everything: Back leaves at once.
+    else if (chrome === "tv" && started() && overlay() && !failed()) hide();
+    // A window that fills the screen is left first (as Escape does in macOS apps).
+    else if (fullscreen()) setFullscreen(false);
+    else stop();
+    return true;
   });
 
   /** What cannot play, with what to do; null while it can. */
@@ -349,6 +400,8 @@ export function Player() {
         // A double click on the picture: full screen, as in other players.
         if (e?.clickCount === 2) setFullscreen(!fullscreen());
       }}
+      // Touch: a swipe down closes the player, as a full-screen cover does.
+      onPanEnd={(e) => isTouch && !e.cancelled && (e.translation.y > 120 || e.velocity.y > 800) && stop()}
       focusable={false}
     >
       <If when={ready()}>
@@ -407,14 +460,21 @@ export function Player() {
           />
         )}
       </If>
-      <If when={staged()}>
-        <View style={{ position: "absolute", top: safe().y, left: safe().x }}>
-          <BackButton
-            focused={() => false}
+      {/* A desktop's Back keeps the window bar's slot (at the corner in full screen). */}
+      <If when={isDesktop && (staged() || (overlay() && !card()))}>
+        <View style={barBackSlot(fullscreen())}>
+          <BarBack
             onPress={stop}
-            label={() => t("player.back")}
-            background={() => alpha(colors.card(), 0.8)}
+            enabled={() => true}
+            tip={() => (what() ? t("nav.back_to", { page: titleText(what()!.title) }) : t("player.back"))}
+            background={PLAYER_BACK_FILL}
           />
+        </View>
+      </If>
+      {/* A TV has no Back on screen: the remote's Back key is it. */}
+      <If when={staged() && isTouch}>
+        <View style={{ position: "absolute", ...touchCorner() }}>
+          <CloseButton onPress={stop} />
         </View>
       </If>
 
@@ -429,15 +489,12 @@ export function Player() {
           }}
         />
         {/* Top: back, title, the episode or release, what the engine is doing. */}
-        <View style={{ position: "absolute", top: safe().y, left: safe().x, right: safe().x, flexDirection: "row", alignItems: "flex-start", gap: u(24) }}>
-          <BackButton
-            focused={() => false}
-            onPress={stop}
-            label={() => t("player.back")}
-            background={() => alpha(colors.card(), 0.8)}
-          />
-          {/* The title's first line centred on the button; more lines go below. */}
-          <View style={{ gap: u(4), flexShrink: 1, marginTop: (u(BACK_SIZE) - u(34) * 1.25) / 2 }}>
+        <View style={topRowStyle(fullscreen())}>
+          <If when={isTouch}>
+            <CloseButton onPress={stop} />
+          </If>
+          {/* The title's first line centred on the ✕ (a TV's at the safe area's corner); more lines go below. */}
+          <View style={{ gap: u(4), flexShrink: 1, marginTop: isTouch ? (CLOSE - u(34) * 1.25) / 2 : 0 }}>
             <Text style={{ fontFamily: font, fontSize: u(34), fontWeight: 600, color: colors.snow() }}>
               {what() ? titleText(what()!.title) : ""}
             </Text>

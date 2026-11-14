@@ -2,6 +2,7 @@
 // the engine, and the catalog as the core answers it from the metadata
 // layer (no network). A stand-in answers every call the same, so each
 // test picks the title and the episodes its screen shows.
+import { open, type OpenOptions } from "nsh/test";
 
 /** Engine calls every test needs: a film opens as job 1 and there is room. */
 export const ENGINE = {
@@ -220,3 +221,18 @@ export const SEARCH_DUNE = {
     { id: "anime", items: [FRIEREN] },
   ],
 };
+
+/** Opens the app as the tests drive it: a TV (Android TV's 1920×1080 screen,
+ * the core saying it is a TV) driven by the remote's arrows, OK and Back,
+ * unless `options` names another platform (a Mac window, a phone, a tablet). */
+export function openApp(options: OpenOptions = {}) {
+  if (options.platform) return open("./App.tsx", options);
+  const native = { ...(options.modules?.["app/native"] ?? NATIVE), "Settings.device": "tv" };
+  return open("./App.tsx", {
+    platform: "android",
+    width: 1920,
+    height: 1080,
+    ...options,
+    modules: { ...options.modules, "app/native": native },
+  });
+}

@@ -1,5 +1,5 @@
-import { expect, open, test } from "nsh/test";
-import { BROWSE_ALL, BROWSE_TRENDING, browseFilters, NATIVE, SEVERANCE } from "./testEngine";
+import { expect, test } from "nsh/test";
+import { BROWSE_ALL, BROWSE_TRENDING, browseFilters, NATIVE, SEVERANCE, openApp } from "./testEngine";
 
 /** A browse page with `picked` filter options selected (the grid as the core
  * answers it for them: only Severance once anything is picked); the choices
@@ -20,7 +20,7 @@ function page(picked: string[] = []) {
 }
 
 async function movies(native: Record<string, {} | null>, options: Record<string, unknown> = {}) {
-  const app = await open("./App.tsx", { ...options, modules: { "app/native": native } });
+  const app = await openApp({ ...options, modules: { "app/native": native } });
   await app.keyboard.press("up"); // hero
   await app.keyboard.press("up"); // nav, on Home
   await app.keyboard.press("right"); // Movies
@@ -50,7 +50,9 @@ test("remote: Down reaches the pills, OK opens Genres, OK toggles and it stays o
   await app.keyboard.press("escape");
   expect(app.shows("id:filter-panel")).toBe(false);
   expect(app.texts()).toContain("All movies");
-  // Back again leaves the page.
+  // Back again takes the focus to the nav, then leaves the page.
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("All movies");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });

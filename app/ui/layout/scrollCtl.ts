@@ -22,6 +22,8 @@ export type Follow = (when: () => boolean) => (r: ViewRef) => void;
 const running = new Set<() => void>();
 /** Where each remembered page was left (`scroller({ memory })`). */
 const offsets = new Map<string, number>();
+/** The page remembered as `memory` opens at its top next time. */
+export const forgetScroll = (memory: string) => offsets.delete(memory);
 /** The viewer took over (wheel, trackpad, drag): every keyed scroll stops. */
 export const stopAll = () => running.forEach((stop) => stop());
 

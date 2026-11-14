@@ -1,11 +1,11 @@
 // The Search screen on the core's answers (`Catalog.search` stands in: it
 // answers the same whatever is typed, so each test picks the answer).
-import { expect, open, test } from "nsh/test";
-import { NATIVE, SEARCH_DUNE, SEARCH_RECENT } from "./testEngine";
+import { expect, test } from "nsh/test";
+import { NATIVE, SEARCH_DUNE, SEARCH_RECENT, openApp } from "./testEngine";
 
 /** Home, then the nav's Search. */
 async function searchScreen(answer: object, extra: Record<string, unknown> = {}) {
-  const app = await open("./App.tsx", {
+  const app = await openApp({
     modules: { "app/native": { ...NATIVE, "Catalog.search": JSON.stringify(answer), "Catalog.rememberSearch": null, ...extra } },
   });
   await app.keyboard.press("up"); // hero
@@ -45,14 +45,30 @@ test("typing shows the results in rows; Down, OK opens a title; Back comes back,
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Arrival");
   expect(app.texts()).toContain("Movies");
+  await app.keyboard.press("escape"); // the focus to Search in the nav
+  expect(app.texts()).toContain("Arrival");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });
 
-test("Up from the first row goes back to the field; Back from the field leaves", async () => {
+test("Up from the first row goes back to the field; Back from the field goes to the nav, then Home", async () => {
   const app = await searchScreen(SEARCH_DUNE);
   await app.keyboard.press("down");
   await app.keyboard.press("up");
+  await app.keyboard.press("escape");
+  expect(app.shows("search-field")).toBe(true);
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("Continue watching");
+});
+
+test("OK on the field brings the keyboard up; Back closes it first, then leaves", async () => {
+  const app = await searchScreen(SEARCH_DUNE);
+  await app.keyboard.press("down");
+  await app.keyboard.press("up");
+  await app.keyboard.press("enter"); // the TV's keyboard
+  await app.keyboard.press("escape"); // closes it
+  await app.keyboard.press("escape"); // the nav
+  expect(app.shows("search-field")).toBe(true);
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });

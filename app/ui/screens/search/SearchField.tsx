@@ -27,6 +27,7 @@ export function SearchField(props: {
   onChange: (text: string) => void;
   onSubmit: () => void;
   onFocus: () => void;
+  onBlur: () => void;
   onRef: (r: InputRef) => void;
 }) {
   return (
@@ -39,6 +40,7 @@ export function SearchField(props: {
         onChange={(e) => props.onChange(e.value)}
         onSubmit={props.onSubmit}
         onFocus={props.onFocus}
+        onBlur={props.onBlur}
         placeholder={t("search.placeholder")}
         returnKeyType="search"
         autoCapitalize="none"

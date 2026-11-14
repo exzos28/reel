@@ -1,78 +1,115 @@
 // reel: the screens, driven by arrow keys, OK and Back like a remote (TV
-// density on a TV, regular on a Mac, compact on a phone) and by the mouse.
-// Only one screen is mounted at a time, so only its keys are bound; the
-// screens keep their focus in their own modules, so Back finds it again.
-// Home, Movies, Shows and Anime share one nav (screens/TopLevel.tsx).
-import { effect, fpsEnabled, keymap, mount, platform, setColorScheme, setFpsEnabled, signal, View } from "nsh";
-import { currentWindow, titleBar } from "nsh/desktop";
-import { Engine, remote } from "./ui/native";
+// density on a TV, regular on a desktop and a tablet, compact on a phone) and
+// by the mouse. On a TV and a desktop only one screen is mounted at a time, so
+// only its keys are bound (a touch stack keeps the pages under the top one);
+// the screens keep their focus in their own modules, so Back finds it again.
+// The nav's destinations are the roots (screens/TopLevel.tsx); Back
+// goes through one handler (ui/nav.ts `handleBack`), whatever key or button.
+// The frame around the screens is the platform family's (layout/chrome.ts):
+// on a desktop, one window bar over every page (layout/WindowBar.tsx); on
+// touch, each tab's native stack with the phone's tab bar or the tablet's top
+// row (layout/TouchStack.tsx, layout/TouchNav.tsx).
+import { fpsEnabled, keymap, mount, platform, setColorScheme, setFpsEnabled, View } from "nsh";
+import { BackHandler } from "nsh/mobile";
+import { currentWindow, isAvailable as hasWindows } from "nsh/desktop";
+import { remote } from "./ui/native";
 import { mapRemoteBack } from "./ui/tvKeys";
 import { AboutScreen } from "./ui/screens/about/AboutScreen";
-import { SearchScreen } from "./ui/screens/search/SearchScreen";
-import { SettingsScreen } from "./ui/screens/settings/SettingsScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
-import { isTopLevel, TopLevel } from "./ui/screens/TopLevel";
-import { back, route } from "./ui/nav";
+import { TopLevel } from "./ui/screens/TopLevel";
+import { canGoBack, closeFirst, go, handleBack, isRoot, route, section, useTabStacks } from "./ui/nav";
+import { screenFor } from "./ui/screens/RouteScreen";
+import { chrome, isDesktop, isTouch } from "./ui/layout/chrome";
+import { PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
+import { TouchStack } from "./ui/layout/TouchStack";
+import { bindDesktopKeys } from "./ui/layout/desktopKeys";
+import { ExitDialog } from "./ui/layout/ExitDialog";
+import { BAR_HEIGHT, WindowBar } from "./ui/layout/WindowBar";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
 import { loadSettings } from "./ui/preferences";
-import { backInTitleBar, TITLE_BAR_HEIGHT, TitleBarBack } from "./ui/layout/TopBar";
 import { colors } from "./ui/theme";
 import { videoUnderUi } from "./ui/VideoSurface";
 
 setColorScheme("dark");
 // The web build runs on a Samsung TV: its remote's Back becomes Escape.
 if (remote) mapRemoteBack();
+// A phone and a tablet keep a stack per tab (design/navigation.md, "History model").
+useTabStacks(isTouch);
 loadSettings().catch((e) => console.warn("could not load settings", e));
+
+/** Android's system back on touch: what is open closes first; a pushed page
+ * pops natively (the stack's own back); another tab's root goes Home; Home
+ * leaves the app (the system's convention on phones). */
+function systemBack(): boolean {
+  if (closeFirst()) return true;
+  if (canGoBack()) return false;
+  if (section() !== "home") {
+    go("home");
+    return true;
+  }
+  return false;
+}
+
+/** The screens on a TV and a desktop: the top route only. */
+function OneScreen() {
+  const r = route;
+  return [
+    <If when={isRoot(r().name)}>
+      <TopLevel />
+    </If>,
+    <If when={r().name === "about"}>
+      <AboutScreen />
+    </If>,
+    // Keyed by the id: a title opened from another one (More like this) is a new screen.
+    <Each of={r().name === "title" ? [(r() as { id: string }).id] : []} key={(id) => id}>
+      {(id) => <TitleScreen id={id()} />}
+    </Each>,
+  ];
+}
 
 function App() {
   // ⌘⇧F (Ctrl+Shift+F elsewhere): NSH's performance monitor, to see where frames drop.
   keymap.bind("mod+shift+f", () => setFpsEnabled(!fpsEnabled()));
-  // On the Mac the window has no grey title bar: the app's own background (the
-  // hero's still) runs up to the top edge, under the traffic lights.
-  if (platform.os === "macos") currentWindow().set({ titleBar: { style: "hidden", height: TITLE_BAR_HEIGHT } });
+  // The window has no system title bar: the window bar is reel's own, the
+  // hero's still running up to the top edge under it and the window's controls.
+  if (isDesktop && hasWindows) currentWindow().set({ titleBar: { style: "hidden", height: BAR_HEIGHT } });
+  // Back: Escape (a TV remote's Back arrives as Escape), through what is open first.
+  keymap.bind({ escape: handleBack });
+  if (isDesktop) bindDesktopKeys();
+  if (isTouch && platform.os === "android") BackHandler.on("press", systemBack);
+  // Android TV: the remote's Back is the system back, not an Escape key.
+  if (chrome === "tv" && platform.os === "android") BackHandler.on("press", () => (handleBack(), true));
   const playing = () => status().phase !== "idle";
-  /** Free space for the Settings screen, read when it opens. */
-  const freeBytes = signal<number | null>(null);
-  effect(() => {
-    if (route().name !== "settings") return;
-    freeBytes.set(null);
-    Promise.resolve(Engine.checkSpace())
-      .then((s) => freeBytes.set(JSON.parse(s).free))
-      .catch(() => freeBytes.set(null));
-  });
-  const r = route;
 
   return (
     // While a film plays under the UI (AVPlay on a TV), the app paints no background over it.
-    <View style={{ flex: 1, backgroundColor: playing() && videoUnderUi() ? "transparent" : colors.ink() }}>
-      {/* Where the title bar was: dragging there moves the window, a double click zooms it. */}
-      <View
-        desktop={{ windowDrag: true }}
-        style={{ position: "absolute", top: 0, left: 0, right: 0, height: titleBar().height, zIndex: 10 }}
-      />
-      {/* On a Mac, Back sits in the title bar beside the traffic lights. */}
-      <If when={backInTitleBar && !playing() && !isTopLevel(r().name)}>
-        <TitleBarBack onPress={back} />
-      </If>
+    <View
+      style={{ flex: 1, backgroundColor: playing() && videoUnderUi() ? "transparent" : colors.ink() }}
+      // The mouse's back button (button 4).
+      onMouseUp={(e) => e.button === "back" && handleBack()}
+    >
       <If when={!playing()} else={<Player />}>
-        <If when={isTopLevel(r().name)}>
-          <TopLevel />
+        <If when={isTouch} else={<OneScreen />}>
+          <TouchStack page={screenFor} />
         </If>
-        <If when={r().name === "search"}>
-          <SearchScreen />
+        <If when={chrome === "phone"}>
+          <PhoneTabBar />
         </If>
-        <If when={r().name === "settings"}>
-          <SettingsScreen freeBytes={freeBytes} onClose={back} />
+        <If when={chrome === "tablet"}>
+          <TabletTopRow />
         </If>
-        <If when={r().name === "about"}>
-          <AboutScreen onClose={back} />
-        </If>
-        {/* Keyed by the id: a title opened from another one (More like this) is a new screen. */}
-        <Each of={r().name === "title" ? [(r() as { id: string }).id] : []} key={(id) => id}>
-          {(id) => <TitleScreen id={id()} />}
-        </Each>
       </If>
+      <If when={isDesktop}>
+        <If
+          when={!playing()}
+          // The player has no bar: its top still drags the window.
+          else={<View desktop={{ windowDrag: true }} style={{ position: "absolute", top: 0, left: 0, right: 0, height: BAR_HEIGHT, zIndex: 10 }} />}
+        >
+          <WindowBar />
+        </If>
+      </If>
+      <ExitDialog />
     </View>
   );
 }

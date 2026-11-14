@@ -1,9 +1,9 @@
-import { expect, open, test } from "nsh/test";
-import { AOT_S3, ENGINE, episode, INCEPTION_NO_SOURCE, NATIVE, release, SHOW } from "./testEngine";
+import { expect, test } from "nsh/test";
+import { AOT_S3, ENGINE, episode, INCEPTION_NO_SOURCE, NATIVE, release, SHOW, openApp } from "./testEngine";
 
 type Native = Record<string, {} | null>;
 const app_ = (native: Native = NATIVE, options: Record<string, unknown> = {}) =>
-  open("./App.tsx", { ...options, modules: { "app/native": native } });
+  openApp({ ...options, modules: { "app/native": native } });
 
 test("home starts on Continue watching and the hero follows the focus", async () => {
   const app = await app_();
@@ -11,7 +11,7 @@ test("home starts on Continue watching and the hero follows the focus", async ()
   expect(app.texts()).toContain("Resume 41:12");
   expect(app.texts()).toContain("Action, Science Fiction");
   await app.keyboard.press("right");
-  expect(app.texts()).toContain("2013–2023");
+  await app.waitFor("2013–2023"); // the hero follows once the focus rests
   expect(app.texts()).toContain("Resume S3:E2");
   await app.keyboard.press("down");
   expect(app.texts()).toContain("Trending movies");
@@ -33,8 +33,8 @@ test("pressing Play opens the player", async () => {
   // The engine as it is while it looks for the film's metadata.
   const app = await app_({ ...NATIVE, "Engine.status": '{"phase":"resolving","stage":"finding"}' });
   await app.press("Resume 41:12");
-  expect(app.shows("label:Back")).toBe(true);
   expect(app.texts()).toContain("Finding people sharing this film");
+  expect(app.shows("label:Back")).toBe(false); // on a TV, the remote's Back key
 });
 
 test("without room for the buffer, the film does not start and says why", async () => {
@@ -58,6 +58,8 @@ test("Settings: from the nav, choose a buffer size, back", async () => {
   await app.keyboard.press("down");
   await app.keyboard.press("enter");
   expect(app.shows("label:Selected")).toBe(true);
+  await app.keyboard.press("escape"); // the focus to Settings in the nav
+  expect(app.texts()).toContain("Playback buffer");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });
@@ -73,8 +75,7 @@ test("the nav opens Movies; a poster opens its film with the releases found; Bac
   await app.keyboard.press("right");
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
-  await app.keyboard.press("right");
-  await app.keyboard.press("right"); // the release button
+  await app.keyboard.press("down"); // the release button, under the actions
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Releases");
   expect(app.texts()).toContain("3 found, the best of each quality first");
@@ -87,7 +88,9 @@ test("the nav opens Movies; a poster opens its film with the releases found; Bac
   await app.keyboard.press("down"); // the grid
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("2 h 28 min");
-  await app.keyboard.press("escape");
+  await app.keyboard.press("escape"); // Movies, on the card
+  await app.keyboard.press("escape"); // the top, the focus on Movies in the nav
+  expect(app.texts()).toContain("All movies");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });
@@ -169,7 +172,7 @@ test("in a Mac window the screens lay out with all their columns", async () => {
   expect(app.texts()).toContain("All movies");
   await app.press("label:Dune >> nth=0");
   expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
-  for (let i = 0; i < 2; i++) await app.keyboard.press("right");
+  await app.keyboard.press("down"); // the release button
   await app.keyboard.press("enter"); // the releases panel, with all its columns
   expect(app.texts()).toContain("60 GB");
   await app.keyboard.press("escape");
@@ -179,7 +182,7 @@ test("in a Mac window the screens lay out with all their columns", async () => {
 });
 
 
-test("Home, Movies, Shows and Anime have the same nav, scrolling with the page, whose pills keep their size", async () => {
+test("Home, Movies, Shows and Anime have the same nav in the window bar, whose pills keep their size", async () => {
   const app = await app_(NATIVE, { platform: "macos", width: 1440, height: 900 });
   const pills = ["Home", "Movies", "Shows", "Anime"];
   /** What decides a pill's width: its label's size and weight (selected changes only the colour). */
@@ -194,10 +197,27 @@ test("Home, Movies, Shows and Anime have the same nav, scrolling with the page, 
     expect(app.count("label:Home")).toBe(1);
     expect(app.count("label:Settings")).toBe(1);
     expect(sizes()).toEqual(onHome);
-    // It is in the screen's own scroll view (it scrolls away with the page),
-    // so a scroll from it reaches that view rather than finding none.
-    await app.scroll("label:Home", 200).catch((e) => expect(e.code).not.toBe("ERR_NSH_TEST_NOT_FOUND"));
   }
+});
+
+test("Mac: Back in the window bar is disabled on a root, goes back from a title; ⌘[ and Esc go back, never past a root", async () => {
+  const app = await app_(NATIVE, { platform: "macos", width: 1440, height: 900 });
+  await expect(app.press("label:Back")).rejects.toMatchObject({ code: "ERR_NSH_TEST_DISABLED" });
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
+  expect(app.shows("label:Add to list")).toBe(true); // the page's action, in the bar
+  await app.press("label:Back to Movies");
+  expect(app.texts()).toContain("All movies");
+  await app.press("label:Dune >> nth=0");
+  await app.keyboard.press("mod+[");
+  expect(app.texts()).toContain("All movies");
+  await app.press("label:Dune >> nth=0");
+  await app.keyboard.press("escape");
+  await app.keyboard.press("escape"); // on a root: stays
+  expect(app.texts()).toContain("All movies");
+  await app.keyboard.press("mod+1");
+  expect(app.texts()).toContain("Continue watching");
 });
 
 test("the nav opens Anime after Shows: its trending row and all anime", async () => {
@@ -213,6 +233,7 @@ test("the nav opens Anime after Shows: its trending row and all anime", async ()
   expect(app.texts()).toContain("Add to list");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("All anime");
+  await app.keyboard.press("escape"); // the nav
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });
@@ -250,4 +271,50 @@ test("an episode not in its season's release opens the releases of that episode;
   await app.keyboard.press("enter"); // its only release
   expect(chosen).toEqual([["tmdb:tv:1429:s3e3", 4]]);
   expect(app.texts()).toContain("S3:E3 · Old Story");
+});
+
+test("TV: Back on Home takes the focus to the nav, then asks to exit; Stay and Back close the question", async () => {
+  const app = await app_();
+  await app.keyboard.press("down"); // a shelf
+  await app.keyboard.press("escape"); // the top, the focus on Home in the nav
+  expect(app.shows("exit-dialog")).toBe(false);
+  await app.keyboard.press("escape");
+  expect(app.shows("exit-dialog")).toBe(true);
+  expect(app.texts()).toContain("Exit reel?");
+  expect(app.texts()).toContain("Anything playing stops. What you watched is kept.");
+  await app.keyboard.press("escape"); // closes it
+  expect(app.shows("exit-dialog")).toBe(false);
+  await app.keyboard.press("escape");
+  expect(app.shows("exit-dialog")).toBe(true);
+  await app.keyboard.press("left"); // Stay is focused already
+  await app.keyboard.press("enter");
+  expect(app.shows("exit-dialog")).toBe(false);
+  expect(app.texts()).toContain("Continue watching");
+});
+
+test("TV: OK on the current destination in the nav keeps the page, at its root", async () => {
+  const app = await app_();
+  await app.keyboard.press("up");
+  await app.keyboard.press("up");
+  await app.keyboard.press("right"); // Movies
+  await app.keyboard.press("enter");
+  await app.keyboard.press("escape"); // the focus to Movies in the nav
+  await app.keyboard.press("enter"); // Movies again
+  expect(app.texts()).toContain("All movies");
+  await app.keyboard.press("escape"); // on the nav: Home
+  expect(app.texts()).toContain("Continue watching");
+});
+
+test("Mac: the releases open in a sheet under the window bar; Esc closes it, then goes back", async () => {
+  const app = await app_(NATIVE, { platform: "macos", width: 1440, height: 900 });
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  await app.keyboard.press("down"); // the release button
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("3 found, the best of each quality first");
+  expect(app.shows("label:Close")).toBe(true);
+  await app.keyboard.press("escape");
+  expect(app.texts()).not.toContain("3 found, the best of each quality first");
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("All movies");
 });

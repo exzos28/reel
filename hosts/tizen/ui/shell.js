@@ -11,6 +11,7 @@
 //    document, and the page is cross-origin to it): the page posts {reel:"avplay", op, …} to
 //    window.top, the shell answers the sender with {reel:"avplay-event", type, …}. Protocol:
 //    docs/tizen.md, "Player".
+// 4. Leaves the app when the page asks ({reel:"exit"}: the viewer confirmed "Exit reel?").
 //
 // Plain ES2017, no build step: it has to run before anything else is known to work.
 (function () {
@@ -157,7 +158,12 @@
   // The sender is NSH's app realm, a frame inside our iframe, so it is checked by origin.
   window.addEventListener('message', function (e) {
     var msg = e.data;
-    if (!frame || e.origin !== BASE || !msg || msg.reel !== 'avplay') return;
+    if (!frame || e.origin !== BASE || !msg) return;
+    if (msg.reel === 'exit') {
+      try { tizen.application.getCurrentApplication().exit(); } catch (err) { /* not on a TV */ }
+      return;
+    }
+    if (msg.reel !== 'avplay') return;
     var sender = e.source;
     var emit = function (event) {
       event.reel = 'avplay-event';

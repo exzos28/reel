@@ -1,4 +1,5 @@
-// A hero's actions: the white Play and the grey list toggle.
+// A hero's actions: the white Play, the grey list toggle and Trailer, and
+// the release button on its own line under them.
 import { Text, View, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { Button } from "../kit/Button";
@@ -11,7 +12,7 @@ import chevronIcon from "../icons/chevron.svg";
 import trailerIcon from "../icons/trailer.svg";
 import { Icon } from "../kit/Icon";
 import { rounded } from "../kit/shape";
-import { colors, focusRing } from "../theme";
+import { alpha, colors, focusRing } from "../theme";
 
 /** The row they sit in; `wrap`: with the release line beside them. */
 export const actionsRow = (wrap: boolean): ViewStyle =>
@@ -40,12 +41,13 @@ export function TrailerButton(props: { focused: () => boolean; onPress: () => vo
 }
 
 const releaseButtonStyle = (focused: boolean): ViewStyle => ({
-  ...row(u(12)),
+  ...row(u(14)),
   height: u(60),
+  marginTop: u(16),
   paddingHorizontal: u(24),
   ...rounded(),
-  backgroundColor: colors.card(),
-  ...focusRing(focused),
+  backgroundColor: alpha(colors.raise(), 0.7),
+  ...focusRing(focused, "row"),
 });
 
 /** The release Play uses, as a button that opens the list of the others:
@@ -53,11 +55,11 @@ const releaseButtonStyle = (focused: boolean): ViewStyle => ({
 export function ReleaseButton(props: { name: () => string; rest: () => string; focused: () => boolean; onPress: () => void }) {
   return (
     <View role="button" onPress={props.onPress} hoverStyle={{ backgroundColor: colors.raise() }} style={releaseButtonStyle(props.focused())}>
-      <Text style={{ fontSize: u(22), color: colors.ash() }}>
+      <Text style={{ fontSize: u(24), color: colors.ash() }}>
         <Text style={{ fontWeight: 600, color: colors.snow() }}>{props.name()}</Text>
         {props.rest() ? ` · ${props.rest()}` : ""}
       </Text>
-      <Icon src={() => chevronIcon} size={22} color={() => colors.soft()} />
+      <Icon src={() => chevronIcon} size={22} color={() => colors.snow()} />
     </View>
   );
 }
