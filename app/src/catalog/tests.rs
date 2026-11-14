@@ -2,7 +2,7 @@
 //! mapped by its own code): no network.
 
 use super::*;
-use crate::metadata::discover::Sort;
+use reel_domain::discover::Sort;
 use crate::metadata::{
     provider::{MapCx, TitleSource},
     tmdb::{ImageConfig, Tmdb},
@@ -641,7 +641,7 @@ fn live_browse_pages() {
     let _g = fresh(crate::metadata::tmdb::build_key().is_some(), false);
     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
     for n in [1, 2] {
-        let text = rt.block_on(metadata::discover(DiscoverKind::Movie, Filter::default(), "en".into(), n));
+        let text = rt.block_on(crate::metadata::discover(DiscoverKind::Movie, Filter::default(), "en".into(), n));
         let envelope: Value = serde_json::from_str(&text).unwrap();
         println!("page {n}: {} items, more {}", list_of(&envelope["data"]["items"]).len(), envelope["data"]["more"]);
         land(&movies_page(n), &envelope, u64::MAX);
@@ -779,7 +779,7 @@ fn live_home() {
     *TEST_TMDB.lock().unwrap() = None;
     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
     for kind in ["movie", "tv", "movie-popular", "tv-popular", "anime"] {
-        let text = rt.block_on(metadata::trending(kind.into(), "en".into()));
+        let text = rt.block_on(crate::metadata::trending(kind.into(), "en".into()));
         land(&Call::Trending(kind), &serde_json::from_str(&text).unwrap(), u64::MAX);
     }
     let shelves = home();

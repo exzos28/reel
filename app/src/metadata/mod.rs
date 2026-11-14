@@ -59,6 +59,7 @@ use anilist::Anilist;
 use animemap::AnimeIds;
 use cache::{Cache, Freshness, freshness, now};
 use discover::{DiscoverKind, Filter};
+use reel_domain::ports::Answer;
 use http::Limiter;
 use id::MetaId;
 use jikan::Jikan;
@@ -227,7 +228,7 @@ fn refresh_in_background(req: Request) {
         match fetch_store(&req).await {
             Ok(_) => {
                 svc.revision.fetch_add(1, Ordering::Relaxed);
-                crate::catalog::notify_changed();
+                notify_change();
             }
             Err(e) => eprintln!("reel meta: refreshing {}: {e:?}", req.key),
         }
@@ -313,7 +314,7 @@ fn ensure_anime_lists() {
             Ok(changed) => {
                 if changed {
                     svc.revision.fetch_add(1, Ordering::Relaxed);
-                crate::catalog::notify_changed();
+                notify_change();
                 }
             }
             Err(e) => {
@@ -896,83 +897,72 @@ pub async fn search(query: String, language: String) -> String {
     run(search_work(query, language)).await
 }
 
-// ---- The NSH module ----------------------------------------------------
+// ---- The adapter behind `Metadata` ---------------------------------------
 
-use nsh_core::prelude::*;
+/// Who is told when a background refresh stored newer data (set by `Providers::new`).
+static ON_CHANGE: OnceLock<fn()> = OnceLock::new();
 
-/// Movie, series and anime metadata: TMDB, AniList, Jikan (MAL score), tied
-/// by the Fribb anime ID lists, cached in SQLite. Results are JSON strings.
-///
-/// The data calls (`trending`, `title`, `season`, `search`) return Promises
-/// that never block the UI: they answer from the cache at once when they
-/// can (a stale answer, `"stale": true`, is refreshed in the background, and
-/// `revision()` goes up when the refresh lands, so poll it and ask again);
-/// only a cache miss waits for the network (15 s timeout, rate limits per
-/// source). Each resolves to `{"data","stale","fetchedAt","error","warnings","revision"}`.
-/// `language` is a BCP 47 tag ("en", "pl-PL"): text comes from the source in
-/// that language when it has it.
-#[module]
-pub struct Meta;
+fn notify_change() {
+    if let Some(f) = ON_CHANGE.get() {
+        f();
+    }
+}
 
-#[module]
-impl Meta {
-    /// Opens the cache in `data_dir` (`process.dataDir`; empty: in memory)
-    /// and starts the anime lists download when due. The status (see `status`).
-    pub fn init(data_dir: String) -> String {
-        let dir = (!data_dir.is_empty()).then(|| std::path::PathBuf::from(data_dir));
-        init(dir.as_deref()).to_string()
+/// TMDB, AniList and Jikan behind the cache, as the `Metadata` port. The state is
+/// process-wide; building it again keeps the first `on_change`.
+pub struct Providers;
+
+impl Providers {
+    /// `on_change`: called whenever a background refresh stored newer data.
+    pub fn new(on_change: fn()) -> Providers {
+        let _ = ON_CHANGE.set(on_change);
+        Providers
+    }
+}
+
+impl reel_domain::ports::Metadata for Providers {
+    fn init(&self, data_dir: Option<&Path>) -> Value {
+        init(data_dir)
     }
 
-    /// Uses the user's own TMDB key (v4 read access token or v3 key) instead
-    /// of the project one; empty clears it. Kept in memory. The status.
-    pub fn set_tmdb_key(key: String) -> String {
-        set_tmdb_key(&key).to_string()
+    fn set_tmdb_key(&self, key: &str) -> Value {
+        set_tmdb_key(key)
     }
 
-    /// Which sources work: `{"tmdb":{"configured","requiresKey","capabilities",
-    /// "key":"user"|"build"|null},"anilist","jikan":{"configured","requiresKey","capabilities"},
-    /// "animeLists":{"entries","fetchedAt","updating"},"cache":{"persistent"},"revision"}`.
-    pub fn status() -> String {
-        status().to_string()
+    fn status(&self) -> Value {
+        status()
     }
 
-    /// Goes up whenever a background refresh stored newer data: ask again
-    /// for what is on screen when it changes.
-    pub fn revision() -> f64 {
-        revision() as f64
+    fn revision(&self) -> u64 {
+        revision()
     }
 
-    /// What the About/Credits screen must show: `[{"provider","name","url",
-    /// "notice","logoRequired","license"}]` (TMDB's notice is required, with its logo).
-    pub fn attribution() -> String {
-        attribution().to_string()
+    fn attribution(&self) -> Value {
+        attribution()
     }
 
-    /// A home shelf: `kind` is "movie" | "tv" (TMDB trending this week),
-    /// "movie-popular" | "tv-popular" (TMDB discover), "anime" (AniList
-    /// trending) | "anime-popular" (AniList, this season). `data`:
-    /// `{"items":[TitleCard]}`.
-    pub async fn trending(kind: String, language: String) -> String {
-        trending(kind, language).await
+    fn trending(&self, kind: String, language: String) -> Answer {
+        Box::pin(trending(kind, language))
     }
 
-    /// A title by our ID ("tmdb:movie:603", "tmdb:tv:1399", "anilist:21"):
-    /// `data` is a Title. An AniList ID the anime lists tie to one TMDB title
-    /// answers with that title (its `id` is the TMDB one).
-    pub async fn title(id: String, language: String) -> String {
-        title(id, language).await
+    fn title(&self, id: String, language: String) -> Answer {
+        Box::pin(title(id, language))
     }
 
-    /// TMDB season `season` (0 = specials) of a series: `data` is a Season
-    /// with its episodes.
-    pub async fn season(id: String, season: u32, language: String) -> String {
-        self::season(id, season, language).await
+    fn season(&self, id: String, season: u32, language: String) -> Answer {
+        Box::pin(self::season(id, season, language))
     }
 
-    /// Search: `data` is `{"sections":[{"source":"tmdb"|"anilist","items":[TitleCard]}]}`;
-    /// an anime TMDB found is not repeated under AniList.
-    pub async fn search(query: String, language: String) -> String {
-        search(query, language).await
+    fn search(&self, query: String, language: String) -> Answer {
+        Box::pin(search(query, language))
+    }
+
+    fn discover(&self, kind: DiscoverKind, filter: Filter, language: String, page: u32) -> Answer {
+        Box::pin(discover(kind, filter, language, page))
+    }
+
+    fn filter_options(&self, kind: DiscoverKind, language: String) -> Answer {
+        Box::pin(filter_options(kind, language))
     }
 }
 

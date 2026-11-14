@@ -26,8 +26,11 @@ use std::time::{Duration, Instant};
 use nsh_core::prelude::*;
 use serde_json::{Value, json};
 
-use crate::metadata::discover::{DiscoverKind, Filter};
-use crate::{metadata, progress, settings, wiring::playback};
+use crate::{
+    progress, settings,
+    wiring::{metadata, playback},
+};
+use reel_domain::discover::{DiscoverKind, Filter};
 use reel_domain::{compat, episode};
 
 mod details;
@@ -74,7 +77,7 @@ struct Slot {
     /// Answered at least once.
     loaded: bool,
     loading: bool,
-    /// `metadata::revision()` when it was asked: newer data may be there after.
+    /// `metadata().revision()` when it was asked: newer data may be there after.
     meta_rev: u64,
     /// When the last answer had no data: retried after a while.
     failed_at: Option<Instant>,
@@ -145,7 +148,7 @@ pub fn language_changed() {
 
 /// What the UI polls: changes of the catalog's own and of `Meta`.
 pub fn revision() -> u64 {
-    REV.load(Ordering::Relaxed) + metadata::revision()
+    REV.load(Ordering::Relaxed) + metadata().revision()
 }
 
 /// The catalog's runtime; also what `settings::changed` waits on.
@@ -170,7 +173,7 @@ pub fn init(data_dir: Option<&std::path::Path>) {
     *DATA_DIR.lock().unwrap() = data_dir.map(ToOwned::to_owned);
     progress::init(data_dir);
     if META_STARTED.load(Ordering::Acquire) && data_dir.is_some() {
-        metadata::init(data_dir);
+        metadata().init(data_dir);
     }
     bump();
 }
@@ -179,14 +182,14 @@ pub fn init(data_dir: Option<&std::path::Path>) {
 fn start_meta() {
     if !META_STARTED.swap(true, Ordering::AcqRel) {
         let dir = DATA_DIR.lock().unwrap().clone();
-        metadata::init(dir.as_deref());
+        metadata().init(dir.as_deref());
     }
 }
 
 /// The data of `call` as far as known. Starts asking when there is no
 /// answer yet, when `Meta` has refreshed something since, or a while after a failure.
 fn meta(call: &Call) -> Option<Value> {
-    let rev = metadata::revision();
+    let rev = metadata().revision();
     let mut slots = SLOTS.0.lock().unwrap();
     let slot = slots.entry(call.key()).or_default();
     let due = !slot.loading
@@ -236,11 +239,11 @@ fn ask(call: Call, rev: u64) {
     runtime().spawn(async move {
         let lang = settings::content_language();
         let text = match &call {
-            Call::Trending(kind) => metadata::trending(kind.to_string(), lang).await,
-            Call::Title(id) => metadata::title(id.clone(), lang).await,
-            Call::Season(id, n) => metadata::season(id.clone(), *n, lang).await,
-            Call::Discover(kind, f, n) => metadata::discover(*kind, f.clone(), lang, *n).await,
-            Call::FilterOptions(kind) => metadata::filter_options(*kind, lang).await,
+            Call::Trending(kind) => metadata().trending(kind.to_string(), lang).await,
+            Call::Title(id) => metadata().title(id.clone(), lang).await,
+            Call::Season(id, n) => metadata().season(id.clone(), *n, lang).await,
+            Call::Discover(kind, f, n) => metadata().discover(*kind, f.clone(), lang, *n).await,
+            Call::FilterOptions(kind) => metadata().filter_options(*kind, lang).await,
         };
         let envelope: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
         if !envelope["error"].is_null() {
@@ -253,7 +256,7 @@ fn ask(call: Call, rev: u64) {
 /// Tests answer by `seed`; nothing goes to the network.
 #[cfg(test)]
 fn ask(_call: Call, _rev: u64) {
-    let _ = (runtime, start_meta, metadata::discover, metadata::filter_options);
+    let _ = (runtime, start_meta);
 }
 
 /// Stores an answer (`{"data",…}` as `Meta` resolves it).
@@ -287,7 +290,7 @@ fn tmdb_on() -> bool {
     if let Some(on) = *TEST_TMDB.lock().unwrap() {
         return on;
     }
-    metadata::status()["tmdb"]["configured"].as_bool().unwrap_or(false)
+    metadata().status()["tmdb"]["configured"].as_bool().unwrap_or(false)
 }
 
 // ---- Reading the metadata model (`metadata::model`, camelCase JSON).

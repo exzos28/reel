@@ -14,8 +14,8 @@ use std::time::{Duration, Instant};
 use serde_json::Value;
 
 use super::{Call, SLOTS, ask, bump, list_of, meta};
-use crate::metadata;
-use crate::metadata::discover::{DiscoverKind, Filter};
+use crate::wiring::metadata;
+use reel_domain::discover::{DiscoverKind, Filter};
 
 /// How many pages of each (catalog, filter key) the grid shows: those asked for so far.
 static PAGES: LazyLock<Mutex<HashMap<(DiscoverKind, String), u32>>> = LazyLock::new(Default::default);
@@ -136,7 +136,7 @@ pub fn more(kind: DiscoverKind, filter: &Filter) -> bool {
 
 /// Asks `call` again now.
 fn retry(call: &Call) {
-    let rev = metadata::revision();
+    let rev = metadata().revision();
     let mut slots = SLOTS.0.lock().unwrap();
     let slot = slots.entry(call.key()).or_default();
     if slot.loading {

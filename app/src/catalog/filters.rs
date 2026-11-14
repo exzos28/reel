@@ -10,7 +10,7 @@ use std::sync::{LazyLock, Mutex};
 use serde_json::{Value, json};
 
 use super::details::country;
-use crate::metadata::discover::{
+use reel_domain::discover::{
     ANIMATION, ANIME_COUNTRIES, COUNTRIES, DECADES, DiscoverKind, Filter, NOT_SERIES, OLDER, Sort,
 };
 

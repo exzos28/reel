@@ -6,7 +6,7 @@
 
 use std::sync::OnceLock;
 
-use reel_domain::ports::Playback;
+use reel_domain::ports::{Metadata, Playback};
 
 /// Finding and playing releases: the engine inside the app (cargo feature `engine`, on by
 /// default), else `NoEngine`, whose answers say there is no engine on this device.
@@ -21,6 +21,13 @@ pub fn playback() -> &'static dyn Playback {
             p
         })
         .as_ref()
+}
+
+/// Titles and the rest: TMDB, AniList and Jikan behind the cache. A background refresh
+/// that stored something new wakes whoever waits on the catalog.
+pub fn metadata() -> &'static dyn Metadata {
+    static METADATA: OnceLock<Box<dyn Metadata>> = OnceLock::new();
+    METADATA.get_or_init(|| Box::new(crate::metadata::Providers::new(crate::catalog::notify_changed))).as_ref()
 }
 
 /// What the engine asks the application.

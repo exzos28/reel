@@ -114,7 +114,7 @@ fn start(query: String, lang: String, key: String) -> Option<tokio::task::AbortH
     let task = runtime().spawn(async move {
         tokio::time::sleep(DEBOUNCE).await;
         start_meta();
-        let text = metadata::search(query, lang).await;
+        let text = metadata().search(query, lang).await;
         let envelope: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
         if !envelope["error"].is_null() {
             eprintln!("reel catalog: search: {}", envelope["error"]);

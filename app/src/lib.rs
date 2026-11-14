@@ -45,9 +45,7 @@ use nsh_core::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub use catalog::Catalog;
 #[cfg(not(target_arch = "wasm32"))]
-pub use metadata::Meta;
-#[cfg(not(target_arch = "wasm32"))]
-use wiring::playback;
+use wiring::{metadata, playback};
 
 #[native_module("app/native")]
 fn native(registry: &mut Registry) {
@@ -296,6 +294,84 @@ impl Hosted {
     /// where the page is not served.
     pub fn link() -> String {
         hosted::link().to_string()
+    }
+}
+
+/// Movie, series and anime metadata: TMDB, AniList, Jikan (MAL score), tied
+/// by the Fribb anime ID lists, cached in SQLite. Results are JSON strings.
+///
+/// The data calls (`trending`, `title`, `season`, `search`) return Promises
+/// that never block the UI: they answer from the cache at once when they
+/// can (a stale answer, `"stale": true`, is refreshed in the background, and
+/// `revision()` goes up when the refresh lands, so poll it and ask again);
+/// only a cache miss waits for the network (15 s timeout, rate limits per
+/// source). Each resolves to `{"data","stale","fetchedAt","error","warnings","revision"}`.
+/// `language` is a BCP 47 tag ("en", "pl-PL"): text comes from the source in
+/// that language when it has it.
+#[cfg(not(target_arch = "wasm32"))]
+#[module]
+pub struct Meta;
+
+#[cfg(not(target_arch = "wasm32"))]
+#[module]
+impl Meta {
+    /// Opens the cache in `data_dir` (`process.dataDir`; empty: in memory)
+    /// and starts the anime lists download when due. The status (see `status`).
+    pub fn init(data_dir: String) -> String {
+        let dir = (!data_dir.is_empty()).then(|| std::path::PathBuf::from(data_dir));
+        metadata().init(dir.as_deref()).to_string()
+    }
+
+    /// Uses the user's own TMDB key (v4 read access token or v3 key) instead
+    /// of the project one; empty clears it. Kept in memory. The status.
+    pub fn set_tmdb_key(key: String) -> String {
+        metadata().set_tmdb_key(&key).to_string()
+    }
+
+    /// Which sources work: `{"tmdb":{"configured","requiresKey","capabilities",
+    /// "key":"user"|"build"|null},"anilist","jikan":{"configured","requiresKey","capabilities"},
+    /// "animeLists":{"entries","fetchedAt","updating"},"cache":{"persistent"},"revision"}`.
+    pub fn status() -> String {
+        metadata().status().to_string()
+    }
+
+    /// Goes up whenever a background refresh stored newer data: ask again
+    /// for what is on screen when it changes.
+    pub fn revision() -> f64 {
+        metadata().revision() as f64
+    }
+
+    /// What the About/Credits screen must show: `[{"provider","name","url",
+    /// "notice","logoRequired","license"}]` (TMDB's notice is required, with its logo).
+    pub fn attribution() -> String {
+        metadata().attribution().to_string()
+    }
+
+    /// A home shelf: `kind` is "movie" | "tv" (TMDB trending this week),
+    /// "movie-popular" | "tv-popular" (TMDB discover), "anime" (AniList
+    /// trending) | "anime-popular" (AniList, this season). `data`:
+    /// `{"items":[TitleCard]}`.
+    pub async fn trending(kind: String, language: String) -> String {
+        metadata().trending(kind, language).await
+    }
+
+    /// A title by our ID ("tmdb:movie:603", "tmdb:tv:1399", "anilist:21"):
+    /// `data` is a Title. An AniList ID the anime lists tie to one TMDB title
+    /// answers with that title (its `id` is the TMDB one).
+    pub async fn title(id: String, language: String) -> String {
+        metadata().title(id, language).await
+    }
+
+    /// TMDB season `season` (0 = specials) of a series: `data` is a Season
+    /// with its episodes.
+    pub async fn season(id: String, season: u32, language: String) -> String {
+        metadata().season(id, season, language).await
+    }
+
+    /// Search: `data` is `{"sections":[{"source":"tmdb"|"anilist","items":[TitleCard]}]}`;
+    /// an anime TMDB found is not repeated under AniList.
+    pub async fn search(query: String, language: String) -> String {
+        metadata().search(query, language).await
     }
 }
 
