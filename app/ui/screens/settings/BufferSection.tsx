@@ -1,13 +1,18 @@
-// Playback: how much of a film is kept ahead, and the free space for it.
+// Playback: how much of a film is kept around where it plays, and the free space
+// for it. One row with the size in effect; the sizes open in a drawer.
 import { Text, View } from "nsh";
 import { t } from "nsh/i18n";
 import { Fmt } from "../../native";
 import { bodyText, metaText, sectionTitle } from "../../kit/text";
-import { bufferChoices, bufferMB, chooseBuffer } from "../../preferences";
+import type { Choice } from "../../layout/ChoicePanel";
+import { bufferChoices, bufferMB } from "../../preferences";
 import { colors, u } from "../../theme";
-import { BufferRow } from "./BufferRow";
+import { PickerRow } from "./PickerRow";
 
-export function BufferSection(props: { freeBytes: () => number | null; focusedAt: () => number; onFocus: (i: number) => void }) {
+const MIB = 1024 * 1024;
+const sizeText = (mb: number) => Fmt.size(mb * MIB);
+
+export function BufferSection(props: { freeBytes: () => number | null; focused: () => boolean; onOpen: () => void }) {
   return [
     <View style={{ gap: u(10), maxWidth: u(980) }}>
       <Text style={sectionTitle()}>{t("settings.buffer.title")}</Text>
@@ -16,20 +21,14 @@ export function BufferSection(props: { freeBytes: () => number | null; focusedAt
         {props.freeBytes() == null ? "" : t("settings.buffer.free", { free: Fmt.size(props.freeBytes()!) })}
       </Text>
     </View>,
-    <View style={{ gap: u(12), maxWidth: u(720) }}>
-      <Each of={bufferChoices()} key={(c) => c.mb}>
-        {(choice, i) => (
-          <BufferRow
-            choice={choice}
-            selected={() => bufferMB() === choice().mb}
-            focused={() => props.focusedAt() === i()}
-            onPress={() => {
-              props.onFocus(i());
-              chooseBuffer(choice().mb);
-            }}
-          />
-        )}
-      </Each>
-    </View>,
+    <PickerRow label={t("settings.buffer.title")} value={() => sizeText(bufferMB())} focused={props.focused} onOpen={props.onOpen} />,
   ];
 }
+
+/** The sizes this device has room for, as the drawer lists them ("256 MB (default)"). */
+export const bufferChoiceList = (): Choice[] =>
+  bufferChoices().map((c) => ({
+    key: String(c.mb),
+    text: c.default ? `${sizeText(c.mb)}  ${t("settings.buffer.default")}` : sizeText(c.mb),
+    selected: c.mb === bufferMB(),
+  }));

@@ -22,7 +22,7 @@ import {
   bufferChoices, chooseBuffer, chooseContentLanguage, contentLanguage, contentLanguages, toggleStreamDetails,
 } from "../../preferences";
 import { colors, safe, u } from "../../theme";
-import { BufferSection } from "./BufferSection";
+import { BufferSection, bufferChoiceList } from "./BufferSection";
 import { DetailsSection } from "./DetailsSection";
 import { languageChoices, LanguageSection } from "./LanguageSection";
 import { ChoicePanel } from "../../layout/ChoicePanel";
@@ -68,27 +68,35 @@ function readFreeSpace() {
 
 export function SettingsScreen() {
   const freeBytes = readFreeSpace();
-  /** The focus goes through the language row, the buffer sizes, then to About. */
-  const bufferAt = () => 1;
-  const detailsAt = () => bufferAt() + bufferChoices().length;
-  const aboutAt = () => detailsAt() + 1;
+  /** The focus goes through the language row, the buffer row, stream details, then About. */
+  const LANGUAGE_AT = 0;
+  const BUFFER_AT = 1;
+  const detailsAt = () => 2;
+  const aboutAt = () => 3;
   const focus = signal(backFromAbout ? aboutAt() : 0);
-  /** The language panel is open, its focus on `langAt`. */
-  const langOpen = signal(false);
-  const langAt = signal(0);
-  const openLang = () => {
-    focus.set(0);
+  /** The drawer of choices open (the language's or the buffer's), its focus on `pickAt`. */
+  const picker = signal<"language" | "buffer" | null>(null);
+  const pickAt = signal(0);
+  const choices = () => (picker() === "buffer" ? bufferChoiceList() : languageChoices());
+  const open = (which: "language" | "buffer") => {
+    focus.set(which === "language" ? LANGUAGE_AT : BUFFER_AT);
     onNav.set(false);
-    langAt.set(Math.max(0, contentLanguages().findIndex((l) => l.tag === contentLanguage())));
-    langOpen.set(true);
+    picker.set(which);
+    pickAt.set(Math.max(0, choices().findIndex((c) => c.selected)));
   };
-  const pickLang = (i: number) => {
-    const l = contentLanguages()[i];
-    if (l) chooseContentLanguage(l.tag);
-    langOpen.set(false);
+  const pick = (i: number) => {
+    const which = picker();
+    if (which === "language") {
+      const l = contentLanguages()[i];
+      if (l) chooseContentLanguage(l.tag);
+    } else if (which === "buffer") {
+      const c = bufferChoices()[i];
+      if (c) chooseBuffer(c.mb);
+    }
+    picker.set(null);
   };
-  // Back closes the panel first.
-  onBack(() => (langOpen() ? (langOpen.set(false), true) : false));
+  // Back closes the drawer first.
+  onBack(() => (picker() ? (picker.set(null), true) : false));
   backFromAbout = false;
   const about = () => {
     focus.set(aboutAt());
@@ -109,11 +117,9 @@ export function SettingsScreen() {
   keymap.bind(
     {
       up: () =>
-        langOpen() ? langAt.set(Math.max(langAt() - 1, 0)) : onNav() ? undefined : focus() === 0 ? toNav() : move(-1),
+        picker() ? pickAt.set(Math.max(pickAt() - 1, 0)) : onNav() ? undefined : focus() === 0 ? toNav() : move(-1),
       down: () =>
-        langOpen()
-          ? langAt.set(Math.min(langAt() + 1, contentLanguages().length - 1))
-          : onNav() ? onNav.set(false) : move(1),
+        picker() ? pickAt.set(Math.min(pickAt() + 1, choices().length - 1)) : onNav() ? onNav.set(false) : move(1),
       left: () => onNav() && navAt.set(clamp(navAt() - 1, NAV.length - 1)),
       right: () => onNav() && navAt.set(clamp(navAt() + 1, NAV.length - 1)),
     },
@@ -121,13 +127,13 @@ export function SettingsScreen() {
   );
   keymap.bind({
     enter: () => {
-      if (langOpen()) return pickLang(langAt());
+      if (picker()) return pick(pickAt());
       if (onNav()) return go(NAV[navAt()].id);
       const f = focus();
       if (f === aboutAt()) about();
       else if (f === detailsAt()) toggleStreamDetails();
-      else if (f < bufferAt()) openLang();
-      else chooseBuffer(bufferChoices()[f - bufferAt()].mb);
+      else if (f === LANGUAGE_AT) open("language");
+      else if (f === BUFFER_AT) open("buffer");
     },
   });
 
@@ -143,20 +149,20 @@ export function SettingsScreen() {
         <If when={!isTouch}>
           <Text style={pageTitle()}>{t("settings.title")}</Text>
         </If>
-        <LanguageSection focused={() => at() === 0 && !langOpen()} onOpen={openLang} />
-        <BufferSection freeBytes={freeBytes} focusedAt={() => at() - bufferAt()} onFocus={(i) => focus.set(bufferAt() + i)} />
+        <LanguageSection focused={() => at() === LANGUAGE_AT && !picker()} onOpen={() => open("language")} />
+        <BufferSection freeBytes={freeBytes} focused={() => at() === BUFFER_AT && !picker()} onOpen={() => open("buffer")} />
         <DetailsSection focused={() => at() === detailsAt()} onFocus={() => focus.set(detailsAt())} />
         <SourceSection />
         <AboutRow focused={() => at() === aboutAt()} viewRef={page.follow(() => at() === aboutAt(), "nearest")} onPress={about} />
       </View>
     </Screen>
-      <If when={langOpen()}>
+      <If when={picker()}>
         <ChoicePanel
-          title={() => t("settings.language.title")}
-          choices={languageChoices}
-          focusedAt={langAt}
-          onPick={pickLang}
-          onClose={() => langOpen.set(false)}
+          title={() => t(picker() === "buffer" ? "settings.buffer.title" : "settings.language.title")}
+          choices={choices}
+          focusedAt={pickAt}
+          onPick={pick}
+          onClose={() => picker.set(null)}
         />
       </If>
     </View>

@@ -47,7 +47,7 @@ test("without room for the buffer, the film does not start and says why", async 
   expect(app.texts()).toContain("Free up space on this device or lower the buffer size in Settings.");
 });
 
-test("Settings: from the nav, choose a buffer size, back", async () => {
+test("Settings: from the nav, the buffer row opens the sizes in a drawer; pick one, back", async () => {
   const app = await app_();
   await app.keyboard.press("up"); // hero
   await app.keyboard.press("up"); // nav, on Home
@@ -55,9 +55,12 @@ test("Settings: from the nav, choose a buffer size, back", async () => {
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Playback buffer");
   expect(app.texts()).toContain("10 GB free on this device");
+  await app.keyboard.press("down"); // from the language row to the buffer row
+  await app.keyboard.press("enter"); // its sizes in a drawer
+  expect(app.shows("id:choice-panel")).toBe(true);
   await app.keyboard.press("down");
-  await app.keyboard.press("enter");
-  expect(app.shows("label:Selected")).toBe(true);
+  await app.keyboard.press("enter"); // picks one and closes
+  expect(app.shows("id:choice-panel")).toBe(false);
   await app.keyboard.press("escape"); // the focus to Settings in the nav
   expect(app.texts()).toContain("Playback buffer");
   await app.keyboard.press("escape");
