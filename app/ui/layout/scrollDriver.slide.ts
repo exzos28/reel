@@ -62,8 +62,7 @@ export function slideDriver(host: DriverHost): ScrollDriver {
     stop: () => {},
     moving: () => resting !== undefined,
     at: () => at,
-    sync: (offset) => {
-      if (resting === undefined) at = offset;
-    },
+    // NSH's measures do not see the transform: where the content is, only the driver knows.
+    sync: () => {},
   };
 }
