@@ -209,6 +209,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         no_args(&a)?;
         ret(Meta::attribution())
     })
+    .r#async("Catalog", "changed", |a| async move {
+        let (after,): (f64,) = args(a)?;
+        ret(Catalog::changed(after).await)
+    })
     .r#async("Meta", "trending", |a| async move {
         let (kind, language): (String, String) = args(a)?;
         ret(Meta::trending(kind, language).await)

@@ -225,6 +225,7 @@ fn refresh_in_background(req: Request) {
         match fetch_store(&req).await {
             Ok(_) => {
                 svc.revision.fetch_add(1, Ordering::Relaxed);
+                crate::catalog::notify_changed();
             }
             Err(e) => eprintln!("reel meta: refreshing {}: {e:?}", req.key),
         }
@@ -310,6 +311,7 @@ fn ensure_anime_lists() {
             Ok(changed) => {
                 if changed {
                     svc.revision.fetch_add(1, Ordering::Relaxed);
+                crate::catalog::notify_changed();
                 }
             }
             Err(e) => {

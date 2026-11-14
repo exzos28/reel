@@ -654,3 +654,21 @@ fn live_home() {
     }
     assert!(shelves.as_array().unwrap().iter().any(|s| s["id"] == "trending_movies" || s["id"] == "no_tmdb"));
 }
+
+#[test]
+fn changed_answers_the_moment_the_revision_moves() {
+    let _g = fresh(true, false);
+    let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+    bump();
+    let now = revision();
+    assert!(rt.block_on(changed(now - 1)) >= now, "already past: at once");
+    let started = std::time::Instant::now();
+    let waiter = std::thread::spawn(move || {
+        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+        rt.block_on(changed(now))
+    });
+    std::thread::sleep(Duration::from_millis(100));
+    bump();
+    assert!(waiter.join().unwrap() > now);
+    assert!(started.elapsed() < Duration::from_secs(5), "woken by the change, not the timeout");
+}

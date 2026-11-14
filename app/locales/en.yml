@@ -235,7 +235,7 @@ browse:
     popular: Most popular
     top_rated: Top rated
     newest: Newest
-    clear: Clear
+    any: Any
   state:
     loading: Loading…
     empty: Nothing matches these filters.

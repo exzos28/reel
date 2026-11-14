@@ -115,6 +115,39 @@ static REV: AtomicU64 = AtomicU64::new(0);
 
 pub(crate) fn bump() {
     REV.fetch_add(1, Ordering::Relaxed);
+    notify_changed();
+}
+
+/// Wakes whoever waits in `changed` (the catalog's or Meta's revision went up).
+static CHANGED: tokio::sync::Notify = tokio::sync::Notify::const_new();
+
+pub(crate) fn notify_changed() {
+    CHANGED.notify_waiters();
+}
+
+/// How long `changed` waits before answering with the same revision.
+const CHANGED_WAIT: Duration = Duration::from_secs(25);
+
+/// The revision once it is past `after` (at once if it already is), or the same one after
+/// `CHANGED_WAIT`: the UI waits on it instead of polling, so new data shows the moment
+/// it lands.
+pub async fn changed(after: u64) -> u64 {
+    let waiting = runtime().spawn(async move {
+        let deadline = tokio::time::Instant::now() + CHANGED_WAIT;
+        loop {
+            let notified = CHANGED.notified();
+            tokio::pin!(notified);
+            notified.as_mut().enable();
+            let now = revision();
+            if now > after {
+                return now;
+            }
+            if tokio::time::timeout_at(deadline, notified).await.is_err() {
+                return revision();
+            }
+        }
+    });
+    waiting.await.unwrap_or_else(|_| revision())
 }
 
 /// The content language changed: everything asked so far was in the old one.
@@ -1398,6 +1431,12 @@ pub struct Catalog;
 
 #[module]
 impl Catalog {
+    /// The revision once it is past `after`, or the same after a while: what the UI
+    /// waits on to read again the moment something changed.
+    pub async fn changed(after: f64) -> f64 {
+        changed(after as u64).await as f64
+    }
+
     /// Goes up when anything the catalog shows changed (an answer landed, a
     /// search finished, progress was saved): read again.
     pub fn revision() -> f64 {

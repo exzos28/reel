@@ -143,6 +143,7 @@ export const Engine: EngineModule = {
 
 export const Catalog: CatalogModule = {
   revision: s("Catalog", "revision"),
+  changed: a("Catalog", "changed"),
   home: s("Catalog", "home"),
   browse: s("Catalog", "browse"),
   chooseFilter: s("Catalog", "chooseFilter"),

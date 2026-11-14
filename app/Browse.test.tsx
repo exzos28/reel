@@ -41,7 +41,7 @@ test("remote: Down reaches the pills, OK opens Genres, OK toggles and it stays o
   await app.keyboard.press("down"); // Drama
   // The Clear row is on top of the choices (the focused row draws last, over its neighbours).
   const texts = app.texts();
-  expect(texts.lastIndexOf("Clear")).toBe(texts.lastIndexOf("Crime") - 1);
+  expect(texts.lastIndexOf("Any")).toBe(texts.lastIndexOf("Crime") - 1);
   await app.keyboard.press("enter");
   await app.keyboard.press("down"); // Crime
   await app.keyboard.press("enter");
@@ -109,7 +109,7 @@ test("Sort by is a pill with the same panel, without Clear", async () => {
   await app.keyboard.press("right"); // stays on the last
   await app.keyboard.press("enter");
   expect(app.shows("id:filter-panel")).toBe(true);
-  expect(app.texts()).not.toContain("Clear");
+  expect(app.texts()).not.toContain("Any");
   expect(app.texts()).toContain("Newest");
   await app.keyboard.press("down"); // Top rated
   await app.keyboard.press("enter");

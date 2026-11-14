@@ -1,5 +1,5 @@
 // A filter's choices in a panel over the right of a browse page, as the
-// release panel is on the title screen: a Clear row (not for the order), then
+// release panel is on the title screen: an Any row (not for the order), then
 // one row per choice; the picked ones are lighter with a check. OK picks
 // (genres toggle, the panel stays open); Back or a press outside closes it.
 import { Text, View, type ViewRef, type ViewStyle } from "nsh";
@@ -30,11 +30,13 @@ const optionStyle = (selected: boolean, focused: boolean): ViewStyle => ({
   justifyContent: "space-between",
 });
 
-/** The Clear row: its empty id clears the group (`browse.option.clear`). */
-const CLEAR: FilterOption = { id: "", name: null, key: "clear", n: null, selected: false };
+/** The Any row: its empty id clears the group (`browse.option.any`); it is the one
+ * selected while nothing in the group is. */
+const ANY: FilterOption = { id: "", name: null, key: "any", n: null, selected: false };
 
-/** The rows of `group`'s panel, the Clear row first when it has one. */
-export const panelRows = (group: FilterGroup): FilterOption[] => (group.clear ? [CLEAR, ...group.options] : group.options);
+/** The rows of `group`'s panel, the Any row first when it has one. */
+export const panelRows = (group: FilterGroup): FilterOption[] =>
+  group.clear ? [{ ...ANY, selected: !group.options.some((o) => o.selected) }, ...group.options] : group.options;
 
 function OptionRow(props: {
   text: () => string;

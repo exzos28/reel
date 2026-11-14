@@ -185,17 +185,29 @@ export interface Shelf {
 
 /** Bumped when the core's catalog changes (data arrived, a search finished,
  * the list, a chosen release, progress), so what reads the catalog reads it
- * again. The core counts its changes in `Catalog.revision()`; asked each second. */
+ * again. The core counts its changes in `Catalog.revision()`; `Catalog.changed(seen)`
+ * answers the moment it goes past `seen`, so new data shows at once. */
 const version = signal(0);
 let seen = -1;
-const check = () => {
-  const r = Number(Catalog.revision());
+const saw = (r: number) => {
   if (r !== seen) {
     seen = r;
     version.set(version() + 1);
   }
 };
-setInterval(check, 1000);
+saw(Number(Catalog.revision()));
+async function watch() {
+  for (;;) {
+    try {
+      saw(Number(await Catalog.changed(seen)));
+    } catch {
+      // A core without `changed` (tests' stand-ins): ask once a second instead.
+      await new Promise((r) => setTimeout(r, 1000));
+      saw(Number(Catalog.revision()));
+    }
+  }
+}
+void watch();
 /** The last answer of each call: when the core answers the same JSON again
  * (most revisions change something elsewhere), the same object comes back,
  * so nothing that shows it updates. */
