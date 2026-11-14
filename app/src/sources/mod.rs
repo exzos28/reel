@@ -148,7 +148,7 @@ pub fn start_check(source: Source) -> u32 {
         CAPS.lock().unwrap().get_or_insert_with(HashMap::new).remove(&source.url);
         let state = match caps(&source).await {
             Ok(c) => State::Done(json!({ "caps": { "movieImdb": c.movie_imdb, "tvImdb": c.tv_imdb, "tvSeasonEp": c.tv_season_ep } })),
-            Err(e) => State::Failed(format!("{e:#}")),
+            Err(e) => State::Failed(crate::engine::redact(&format!("{e:#}"))),
         };
         set(job, state);
     });
@@ -162,7 +162,7 @@ pub fn start_search(source: Source, request: Request) -> u32 {
     runtime().spawn(async move {
         let state = match search(&source, &request).await {
             Ok((releases, hidden)) => State::Done(json!({ "releases": releases, "hidden": hidden })),
-            Err(e) => State::Failed(format!("{e:#}")),
+            Err(e) => State::Failed(crate::engine::redact(&format!("{e:#}"))),
         };
         set(job, state);
     });

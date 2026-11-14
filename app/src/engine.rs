@@ -280,6 +280,60 @@ fn with_open_trackers(url: &str) -> String {
     out
 }
 
+/// What a source's http(s) link turned out to be.
+enum Fetched {
+    /// A .torrent file.
+    Torrent(Vec<u8>),
+    /// A magnet the link redirects to (Jackett does so for trackers that only give magnets).
+    Magnet(String),
+}
+
+/// Opens a source's link ourselves, so a redirect to a magnet works (the
+/// torrent library's own HTTP fetch stops at it).
+async fn fetch_torrent(url: &str) -> anyhow::Result<Fetched> {
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(30))
+        .build()?;
+    let mut current = url.to_owned();
+    for _ in 0..5 {
+        let resp = client.get(&current).send().await?;
+        let status = resp.status();
+        if status.is_redirection() {
+            let location = resp
+                .headers()
+                .get(reqwest::header::LOCATION)
+                .and_then(|v| v.to_str().ok())
+                .ok_or_else(|| anyhow::anyhow!("the source redirected without saying where"))?;
+            if location.starts_with("magnet:") {
+                return Ok(Fetched::Magnet(location.to_owned()));
+            }
+            current = reqwest::Url::parse(&current)?.join(location)?.to_string();
+            continue;
+        }
+        if !status.is_success() {
+            anyhow::bail!("the source answered HTTP {}", status.as_u16());
+        }
+        let body = resp.bytes().await?;
+        if body.starts_with(b"magnet:") {
+            return Ok(Fetched::Magnet(String::from_utf8_lossy(&body).trim().to_owned()));
+        }
+        return Ok(Fetched::Torrent(body.to_vec()));
+    }
+    anyhow::bail!("the source redirected too many times")
+}
+
+/// An error as the viewer may see it: no keys, no long links.
+pub fn redact(message: &str) -> String {
+    use std::sync::LazyLock;
+    static KEY: LazyLock<regex::Regex> =
+        LazyLock::new(|| regex::Regex::new(r"(?i)\b((?:jackett_)?api_?key|passkey|pk|token)=[^&\s]+").unwrap());
+    static URL: LazyLock<regex::Regex> =
+        LazyLock::new(|| regex::Regex::new(r"(https?)://([^/\s?]+)[^\s]*").unwrap());
+    let no_keys = KEY.replace_all(message, "$1=…");
+    URL.replace_all(&no_keys, "$1://$2/…").into_owned()
+}
+
 fn add_to(core: &Core, job: u32, url: &str) {
     core.jobs.lock().unwrap().insert(job, Job::Resolving);
     let (session, jobs, url) = (core.session.clone(), core.jobs.clone(), with_open_trackers(url));
@@ -295,7 +349,19 @@ fn add_to(core: &Core, job: u32, url: &str) {
             storage_factory: Some(storage.boxed()),
             ..Default::default()
         };
-        let result = session.add_torrent(AddTorrent::from_url(&url), Some(options)).await;
+        let add = if url.starts_with("http://") || url.starts_with("https://") {
+            match fetch_torrent(&url).await {
+                Ok(Fetched::Torrent(bytes)) => Ok(AddTorrent::from_bytes(bytes)),
+                Ok(Fetched::Magnet(magnet)) => Ok(AddTorrent::from_url(with_open_trackers(&magnet))),
+                Err(e) => Err(e),
+            }
+        } else {
+            Ok(AddTorrent::from_url(url.clone()))
+        };
+        let result = match add {
+            Ok(add) => session.add_torrent(add, Some(options)).await,
+            Err(e) => Err(e),
+        };
         let state = match result {
             Ok(response) => match response.into_handle() {
                 Some(handle) => {
@@ -311,7 +377,7 @@ fn add_to(core: &Core, job: u32, url: &str) {
                 }
                 None => Job::Failed("the torrent was only listed".into()),
             },
-            Err(e) => Job::Failed(format!("{e:#}")),
+            Err(e) => Job::Failed(redact(&format!("{e:#}"))),
         };
         // Closed while it was being added: let it go.
         let orphan = {
@@ -563,6 +629,15 @@ mod tests {
     use std::time::{Duration, Instant};
 
     use super::{Layout, with_open_trackers};
+
+    #[test]
+    fn errors_hide_keys_and_links() {
+        let m = "GET http://127.0.0.1:9117/dl/rutracker/?jackett_apikey=z53secret&path=Q2Z&file=x returned 302 Found";
+        let r = super::redact(m);
+        assert!(!r.contains("z53secret") && !r.contains("path=Q2Z"), "{r}");
+        assert!(r.contains("http://127.0.0.1:9117/…"), "{r}");
+        assert_eq!(super::redact("announce?pk=abc&x=1"), "announce?pk=…&x=1");
+    }
 
     #[test]
     fn magnets_get_open_trackers_once() {
