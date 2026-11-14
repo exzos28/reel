@@ -57,6 +57,7 @@ impl Request {
     fn query_for(&self, title: &str, imdb: Option<String>) -> Query {
         match (self.season, self.episode) {
             (Some(season), Some(episode)) => Query::Episode { imdb, title: title.to_owned(), season, episode },
+            (Some(season), None) => Query::Season { imdb, title: title.to_owned(), season },
             _ => Query::Movie { imdb, title: title.to_owned(), year: self.year },
         }
     }
@@ -208,7 +209,8 @@ async fn search(source: &Source, request: &Request) -> anyhow::Result<(Vec<Value
                 // A source that cannot search the way asked may answer with its
                 // latest releases instead: only those about this title count.
                 found.extend(items.into_iter().filter(|it| is_about(&it.title, &names, request.year, request.season.is_none())));
-                if rank(&found, &query).0.iter().any(|r| r["seeders"].as_u64().unwrap_or(0) > 0) {
+                // A season asks every query: packs and single episodes come from different ones.
+                if !matches!(query, Query::Season { .. }) && rank(&found, &query).0.iter().any(|r| r["seeders"].as_u64().unwrap_or(0) > 0) {
                     break;
                 }
             }
@@ -269,6 +271,15 @@ fn fit(info: &release::ReleaseInfo, query: &Query) -> u8 {
             Some(_) if info.episodes.is_empty() => 1,
             _ => 0,
         },
+        // A season: its packs first (no episodes named, or several), then single
+        // episodes; a name without a season may hold it too (a show's only one).
+        Query::Season { season, .. } => match info.season {
+            Some(s) if s != *season => 0,
+            Some(_) if info.episodes.len() != 1 => 2,
+            Some(_) => 1,
+            None if info.episodes.is_empty() => 1,
+            None => 0,
+        },
     }
 }
 
@@ -316,7 +327,7 @@ fn rank(items: &[Item], query: &Query) -> (Vec<Value>, Vec<Value>) {
                 "peers": it.peers,
                 "indexer": it.indexer,
                 "info": info,
-                "seasonPack": fit == 1,
+                "seasonPack": if matches!(query, Query::Season { .. }) { info.episodes.len() != 1 } else { fit == 1 },
             }),
         ));
     }
@@ -327,6 +338,19 @@ fn rank(items: &[Item], query: &Query) -> (Vec<Value>, Vec<Value>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_season_lists_its_packs_first_then_its_episodes() {
+        let q = Query::Season { imdb: None, title: "Show".into(), season: 1 };
+        let item = |t: &str| Item { title: t.into(), link: Some(format!("https://indexer.example/{t}")), seeders: Some(5), ..Default::default() };
+        let items = [item("Show S01E03 1080p"), item("Show S01 1080p"), item("Show S02 1080p"), item("Show S01E01-08 of 08 1080p")];
+        let r = rank(&items, &q).0;
+        let titles: Vec<&str> = r.iter().map(|x| x["title"].as_str().unwrap()).collect();
+        assert_eq!(titles.len(), 3, "not season 2");
+        assert!(!titles.contains(&"Show S02 1080p"));
+        assert_eq!(titles[2], "Show S01E03 1080p", "a single episode after the packs");
+        assert!(r[0]["seasonPack"] == true && r[2]["seasonPack"] == false);
+    }
 
     #[test]
     fn only_releases_about_the_title_count() {

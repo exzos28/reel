@@ -12,6 +12,8 @@ use reqwest::Url;
 pub enum Query {
     Movie { imdb: Option<String>, title: String, year: Option<u16> },
     Episode { imdb: Option<String>, title: String, season: u16, episode: u16 },
+    /// Everything of a show's season: whole-season packs and single episodes.
+    Season { imdb: Option<String>, title: String, season: u16 },
 }
 
 /// One result as the indexer lists it.
@@ -97,6 +99,17 @@ pub fn search_urls(endpoint: &str, key: Option<&str>, query: &Query, caps: &Caps
             urls.push(url(&[("t", "search".into()), ("q", format!("{title} S{season:02}E{episode:02}"))])?);
             // Whole-season packs hold the episode too.
             urls.push(url(&[("t", "search".into()), ("q", format!("{title} S{season:02}"))])?);
+        }
+        Query::Season { imdb, title, season } => {
+            if let (Some(id), true) = (imdb, caps.tv_imdb) {
+                urls.push(url(&[("t", "tvsearch".into()), ("imdbid", imdb_digits(id)), ("season", season.to_string())])?);
+            }
+            if caps.tv_season_ep {
+                urls.push(url(&[("t", "tvsearch".into()), ("q", title.clone()), ("season", season.to_string())])?);
+            }
+            urls.push(url(&[("t", "search".into()), ("q", format!("{title} S{season:02}"))])?);
+            // Trackers often name a season only in words ("Сезон 1"), or not at all.
+            urls.push(url(&[("t", "search".into()), ("q", title.clone())])?);
         }
     }
     Ok(urls)
