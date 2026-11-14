@@ -2,3 +2,4 @@
 .idea/
 .env
 dev/jackett/config/
+logs/

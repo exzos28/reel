@@ -3,6 +3,7 @@
 //! loads this library and calls [`reel_core_start`]; `src/main.rs` serves the same on a
 //! desktop, to run the web build in a browser against it.
 
+mod logs;
 mod table;
 
 use std::{
@@ -161,6 +162,8 @@ pub unsafe extern "C" fn reel_core_start(
             // SAFETY: the caller's contract.
             log_to(&unsafe { string(log_path, "log_path")? })?;
         }
+        // Up before the core, so a core that does not start can still say why.
+        logs::serve_once(PathBuf::from(&data_dir));
         if let Some(running) = RUNNING.get() {
             running.token.set(&token)?;
             return Ok(1);

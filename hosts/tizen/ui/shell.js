@@ -1,6 +1,6 @@
 // The reel TV app's shell (docs/tizen.md):
 //
-// 1. Starts the core service of this package (`<packageId>.Core`) with an AppControl that
+// 1. Starts the core service of this package (the other app in it) with an AppControl that
 //    carries a fresh token, and waits for GET http://127.0.0.1:47391/health.
 // 2. Loads the NSH web build in a full-screen iframe from the core itself,
 //    http://127.0.0.1:47391/ui/index.html?reelToken=…: NSH's web runtime fetch()es its wasm
@@ -33,17 +33,32 @@
 
   // ---- the core ----
 
-  function serviceAppId() {
-    return tizen.application.getCurrentApplication().appInfo.packageId + '.Core';
+  // The core service's app id: the other app of this package. The .NET packaging names it after
+  // the project (ReelTizen1.ReelCore), whatever tizen-manifest.xml says, so it is looked up.
+  var coreId = null;
+  function serviceAppId() { return coreId || '(not found yet)'; }
+
+  function findCore() {
+    return new Promise(function (resolve, reject) {
+      var me = tizen.application.getCurrentApplication().appInfo;
+      tizen.application.getAppsInfo(function (apps) {
+        var mine = apps.filter(function (a) { return a.packageId === me.packageId && a.id !== me.id; });
+        if (!mine.length) return reject(new Error('no other app in package ' + me.packageId));
+        coreId = mine[0].id;
+        resolve(coreId);
+      }, function (e) { reject(new Error(e.name + ': ' + e.message)); });
+    });
   }
 
   function launchCore() {
-    return new Promise(function (resolve, reject) {
-      var control = new tizen.ApplicationControl(
-        'http://tizen.org/appcontrol/operation/default', null, null, null,
-        [new tizen.ApplicationControlData('command', ['start']), new tizen.ApplicationControlData('token', [token])]
-      );
-      tizen.application.launchAppControl(control, serviceAppId(), resolve, function (e) { reject(new Error(e.name + ': ' + e.message)); });
+    return findCore().then(function (id) {
+      return new Promise(function (resolve, reject) {
+        var control = new tizen.ApplicationControl(
+          'http://tizen.org/appcontrol/operation/default', null, null, null,
+          [new tizen.ApplicationControlData('command', ['start']), new tizen.ApplicationControlData('token', [token])]
+        );
+        tizen.application.launchAppControl(control, id, function () { resolve(id); }, function (e) { reject(new Error(e.name + ': ' + e.message)); });
+      });
     });
   }
 
@@ -170,12 +185,38 @@
     li.textContent = text;
     steps.appendChild(li);
     return {
-      ok: function (detail) { li.className = 'ok'; if (detail) li.textContent += ': ' + detail; },
-      fail: function (e) { li.className = 'fail'; li.textContent += ': ' + (e && e.message || e); }
+      ok: function (detail) { li.className = 'ok'; if (detail) li.textContent += ': ' + detail; note('OK ' + li.textContent); },
+      fail: function (e) { li.className = 'fail'; li.textContent += ': ' + (e && e.message || e); note('FAIL ' + li.textContent); }
     };
   }
 
-  function say(line) { log.textContent = (line + '\n' + log.textContent).slice(0, 4000); }
+  function say(line) {
+    log.textContent = (line + '\n' + log.textContent).slice(0, 4000);
+    note(line);
+  }
+
+  // ---- the shell's own log, kept by the core for GET http://<TV>:47392/logs ----
+
+  var LOGS = 'http://127.0.0.1:47392';
+  var journal = [];
+  var pending = null;
+  // Sends the whole journal (the core keeps the last copy), batched; while the core is not up
+  // it tries again every 3 s.
+  function flush(delay) {
+    if (pending) return;
+    pending = setTimeout(function () {
+      pending = null;
+      fetch(LOGS + '/shell-log', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: journal.join('\n') })
+        .catch(function () { flush(3000); });
+    }, delay);
+  }
+  function note(line) {
+    journal.push(new Date().toISOString() + ' ' + line);
+    if (journal.length > 500) journal.shift();
+    flush(500);
+  }
+  window.addEventListener('error', function (e) { note('js error: ' + e.message + ' at ' + e.filename + ':' + e.lineno); });
+  window.addEventListener('unhandledrejection', function (e) { note('unhandled rejection: ' + (e.reason && e.reason.message || e.reason)); });
 
   function diagnostics(info) {
     document.getElementById('diag').classList.remove('hidden');
@@ -224,9 +265,12 @@
   // ---- start ----
 
   registerMediaKeys();
+  // Shown at once: the page is transparent over the video plane, so nothing on it is a black screen.
+  if (!window.REEL_WEB) document.getElementById('diag').classList.remove('hidden');
+  note('shell ' + navigator.userAgent);
   var launch = step('start the core service');
   launchCore()
-    .then(function () { launch.ok(serviceAppId()); })
+    .then(function (id) { launch.ok(id); })
     .catch(function (e) { launch.fail(e); }) // still poll: the service may already run
     .then(function () {
       var h = step('GET ' + BASE + '/health');

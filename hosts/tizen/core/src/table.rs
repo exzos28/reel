@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 
-use reel_app::{Catalog, Engine, Fmt, Meta, Settings, Sources};
+use reel_app::{Catalog, Engine, Fmt, Meta, Settings, Sources, VideoEngine};
 use reel_rpc::{Error, Registry, args, no_args, ret};
 
 /// `Settings.load` and `Meta.init` take the host's data dir (`process.dataDir` on native
@@ -48,6 +48,32 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Engine", "close", |a| {
         let (job,): (u32,) = args(a)?;
         ret(Engine::close(job))
+    })
+    .sync("Engine", "firstFrame", |a| {
+        let (job,): (u32,) = args(a)?;
+        ret(Engine::first_frame(job))
+    })
+    .sync("Engine", "subtitles", |a| {
+        let (job,): (u32,) = args(a)?;
+        ret(Engine::subtitles(job))
+    })
+    .sync("Engine", "cues", |a| {
+        let (job, id, from, to): (u32, u32, f64, f64) = args(a)?;
+        ret(Engine::cues(job, id, from, to))
+    })
+    .sync("Engine", "tracks", |a| {
+        let (job, id, embedded): (u32, String, String) = args(a)?;
+        ret(Engine::tracks(job, id, embedded))
+    })
+    .sync("Engine", "chooseTrack", |a| {
+        let (job, id, embedded, choice): (u32, String, String, String) = args(a)?;
+        ret(Engine::choose_track(job, id, embedded, choice))
+    });
+
+    // What draws the video: on a TV the shell's AVPlay, never this core's player.
+    r.sync("VideoEngine", "kind", |a| {
+        no_args(&a)?;
+        ret(VideoEngine::kind())
     });
 
     let host = data_dir.clone();
@@ -66,6 +92,14 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Settings", "setLanguage", |a| {
         let (tag,): (String,) = args(a)?;
         ret(Settings::set_language(tag))
+    })
+    .sync("Settings", "setContentLanguage", |a| {
+        let (tag,): (String,) = args(a)?;
+        ret(Settings::set_content_language(tag))
+    })
+    .sync("Settings", "setStreamDetails", |a| {
+        let (on,): (bool,) = args(a)?;
+        ret(Settings::set_stream_details(on))
     });
 
     r.sync("Sources", "search", |a| {
@@ -116,6 +150,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Catalog", "tracks", |a| {
         let (id,): (String,) = args(a)?;
         ret(Catalog::tracks(id))
+    })
+    .sync("Catalog", "episodeReleases", |a| {
+        let (key,): (String,) = args(a)?;
+        ret(Catalog::episode_releases(key))
     })
     .sync("Catalog", "toggleList", |a| {
         let (id,): (String,) = args(a)?;
@@ -179,6 +217,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Fmt", "size", |a| {
         let (bytes,): (f64,) = args(a)?;
         ret(Fmt::size(bytes))
+    })
+    .sync("Fmt", "speed", |a| {
+        let (mib_per_s,): (f64,) = args(a)?;
+        ret(Fmt::speed(mib_per_s))
     })
     .sync("Fmt", "hoursMinutes", |a| {
         let (minutes,): (u32,) = args(a)?;
