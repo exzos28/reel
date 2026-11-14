@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The TV core built in Docker, so the host needs nothing but Docker (hosts/tizen/docker).
 #
-#   scripts/tizen-docker.sh core [out-dir]   build libreel_tizen_core.so (default: hosts/tizen/out)
+#   scripts/tizen-docker.sh core [out-dir]   build libreel_tizen_core.so (default: hosts/tizen/out);
+#                                            the project's TMDB key goes in from REEL_TMDB_TOKEN (.env)
 #   scripts/tizen-docker.sh clean            remove the image and its cache volumes
 #
 # Cargo's registry and the build's target dir live in Docker volumes (reel-tizen-*), not in the
@@ -24,6 +25,7 @@ case "${1:-}" in
             -v reel-tizen-cargo:/usr/local/cargo/registry \
             -v reel-tizen-target:/target \
             -e CARGO_TARGET_DIR=/target \
+            -e REEL_TMDB_TOKEN \
             "$image" hosts/tizen/build.sh core /out
         echo "$out/libreel_tizen_core.so"
         ;;

@@ -23,8 +23,11 @@ base="$(cd "$(dirname "$base")" && pwd)/$(basename "$base")"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
+# The project's keys (REEL_TMDB_TOKEN) for both builds: the core has none without it.
+set -a; [ -f "$here/.env" ] && . "$here/.env"; set +a
+[ -n "${REEL_TMDB_TOKEN:-}" ] || echo "warning: no REEL_TMDB_TOKEN: the TV core will show anime only" >&2
 echo "== web UI"
-(set -a; [ -f "$here/.env" ] && . "$here/.env"; set +a; "$here/hosts/tizen/build.sh" web "$work/web")
+"$here/hosts/tizen/build.sh" web "$work/web"
 echo "== core (Docker)"
 "$here/scripts/tizen-docker.sh" core "$work/core"
 
