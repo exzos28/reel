@@ -1,9 +1,9 @@
 // A TV's web build driver: the scroll view's content moved by a CSS `transform` transition
-// (scrollDriver.ts). The browser's compositor runs it alone, so it stays smooth while the
+// (scroll.ts). The browser's compositor runs it alone, so it stays smooth while the
 // page's thread is busy; scrolling the element (even a smooth `scrollTo`) runs on that
 // thread on a TV. The element itself stays at 0; its content is found by the element's
 // `data-testid` in the documents the app's code reaches (its frame and NSH's page, one origin).
-import type { DriverHost, ScrollDriver } from "./scrollDriver";
+import type { DriverHost, ScrollDriver } from "./scroll";
 
 /** How long a slide takes, ms. */
 const SLIDE_MS = 320;

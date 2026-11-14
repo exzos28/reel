@@ -4,10 +4,10 @@
 // - slide (a TV's web build): its content moved by a CSS transform transition, which the
 //   browser's compositor runs alone, smooth however busy the page's thread is.
 // `scrollCtl` decides where to go; a driver only goes there.
-import { platform, type ScrollRef } from "nsh";
-import { density } from "../theme";
-import { slideDriver } from "./scrollDriver.slide";
-import { stepDriver } from "./scrollDriver.steps";
+import type { ScrollRef } from "nsh";
+import { family, runtime } from ".";
+import { slideDriver } from "./scroll.slide";
+import { stepDriver } from "./scroll.steps";
 
 export interface ScrollDriver {
   /** Goes to `target` (points): at once, or gliding. */
@@ -32,4 +32,4 @@ export interface DriverHost {
 }
 
 export const scrollDriver: (host: DriverHost) => ScrollDriver =
-  platform.os === "web" && density === "ten-foot" ? slideDriver : stepDriver;
+  runtime.web && family === "tv" ? slideDriver : stepDriver;

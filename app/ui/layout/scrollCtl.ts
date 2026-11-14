@@ -4,13 +4,13 @@
 // ease-out (a jump when the viewer asks for less motion). Only arrow keys
 // move them this way: a pointer press that moves the focus, the wheel and
 // the trackpad leave the offset to the viewer. Where to go is decided here;
-// going there is the platform's scroll driver's (scrollDriver.ts).
+// going there is the platform's scroll driver's (platform/scroll.ts).
 import { effect, reduceMotion, signal, type ScrollRef, type ViewRef } from "nsh";
 import { keyed } from "../focus/keys";
 import { perf } from "../perf";
 import { density, ringRoom, safe } from "../theme";
 import { anchorOffset, nearestOffset } from "./anchor";
-import { scrollDriver } from "./scrollDriver";
+import { scrollDriver } from "../platform/scroll";
 
 /** Where a followed block goes: to the anchor, only as far as needed to show
  * it whole, or to the start of the content. */
@@ -40,7 +40,7 @@ export interface ScrollCtl {
   /** @internal The scroll view and its content, set by `Scroller`. */
   scroll: ReturnType<typeof signal<ScrollRef | undefined>>;
   content?: ViewRef;
-  /** @internal The scroll view's `testID`: a TV's web build finds its element by it (scrollDriver.slide). */
+  /** @internal The scroll view's `testID`: a TV's web build finds its element by it (platform/scroll.slide). */
   domId: string;
 }
 

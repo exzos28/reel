@@ -5,15 +5,15 @@
 // from the core that serves the page (`native-http.ts`, docs/tizen.md). On the web
 // `app/native` only exports what the wasm crate registered, so it is imported as a namespace:
 // a named import of a module it lacks would not resolve there.
-import { platform } from "nsh";
 import { BackHandler } from "nsh/mobile";
 import process from "process";
 import * as local from "app/native";
 import * as http from "./native-http";
 import { postExitToShell } from "./avplay";
+import { runtime } from "./platform/runtime";
 
 /** The web build: the modules come from the core over HTTP. */
-export const remote = platform.os === "web";
+export const remote = runtime.web;
 
 // Fails at startup with a clear message when the page was not opened by the TV shell (no
 // token) or the core does not answer, instead of on the first call.
@@ -38,6 +38,6 @@ export function dataDir(): string {
  * (TV) finishes the activity. Elsewhere the system's own controls close it. */
 export function exitApp() {
   if (postExitToShell()) return;
-  if (platform.os === "android") return BackHandler.exitApp();
-  throw new Error(`reel does not leave by itself on ${platform.os}`);
+  if (runtime.os === "android") return BackHandler.exitApp();
+  throw new Error(`reel does not leave by itself on ${runtime.os}`);
 }

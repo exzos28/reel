@@ -1,7 +1,7 @@
 // The native apps' driver: the scroll view's own offset, stepped every animation frame
-// with an ease-out (scrollDriver.ts).
-import { easeOut } from "./anchor";
-import type { DriverHost, ScrollDriver } from "./scrollDriver";
+// with an ease-out (scroll.ts).
+import { easeOut } from "../layout/anchor";
+import type { DriverHost, ScrollDriver } from "./scroll";
 
 /** How long a glide takes, ms. */
 const DURATION = 200;

@@ -1,27 +1,12 @@
 // The platform family reel lays its frame out for (design/navigation.md,
 // "Platform families"): where the nav sits, where Back is, how panels open.
-import { platform, safeArea } from "nsh";
-import { Settings } from "../native";
+import { safeArea } from "nsh";
+import { family, type Family } from "../platform";
 
-export type Chrome = "tv" | "mac" | "windows" | "linux" | "tablet" | "phone";
+export type Chrome = Family;
 
-/** A TV: the system says so, or the core does (a Samsung TV's web view looks
- * like a desktop browser to NSH, but the core there runs the TV's player). */
-const tv = platform.idiom === "tv" || Settings.device() === "tv";
-
-function detect(): Chrome {
-  if (tv) return "tv";
-  if (platform.desktop) {
-    if (platform.os === "macos") return "mac";
-    if (platform.os === "windows") return "windows";
-    // Linux, and a desktop browser: no system title bar of reel's own to fit
-    // around (`titleBar()` reports no window controls there).
-    return "linux";
-  }
-  return platform.idiom === "phone" ? "phone" : "tablet";
-}
-
-export const chrome: Chrome = detect();
+/** Which family this is: the platform layer's (ui/platform). */
+export const chrome: Chrome = family;
 export const isDesktop = chrome === "mac" || chrome === "windows" || chrome === "linux";
 export const isTouch = chrome === "tablet" || chrome === "phone";
 
