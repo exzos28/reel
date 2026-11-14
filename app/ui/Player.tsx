@@ -15,7 +15,7 @@ import { t } from "nsh/i18n";
 import { Catalog, Fmt } from "app/native";
 import { episodeCode, episodeText, runtime, titleText, type Episode, type Release } from "./catalog";
 import { BACK_SIZE, BackButton, Icon } from "./components";
-import { duration, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
+import { duration, firstFrame, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
 import { alpha, colors, focusRing, font, radius, safe, type, u } from "./theme";
 import { SubtitleOverlay } from "./SubtitleOverlay";
 import { playerTracks, type TrackOption } from "./tracks";
@@ -327,7 +327,10 @@ export function Player() {
             position.set(e.currentTime);
             if (e.duration > 0) duration.set(e.duration);
             // The first frame from where it should start: the film plays.
-            if (loaded() && !buffering() && e.currentTime >= resumeTo - 1) started.set(true);
+            if (!started() && loaded() && !buffering() && e.currentTime >= resumeTo - 1) {
+              started.set(true);
+              firstFrame();
+            }
           }}
           onBuffer={(e) => buffering.set(e.isBuffering)}
           onEnd={() => { paused.set(true); poke(); }}

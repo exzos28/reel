@@ -116,6 +116,11 @@ export async function play(what: Playing) {
   }
 }
 
+/** The first frame is on screen: the core logs how long that took (timing log). */
+export function firstFrame() {
+  if (job) Engine.firstFrame(job);
+}
+
 export function stop() {
   saveProgress();
   generation++;

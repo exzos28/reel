@@ -173,6 +173,7 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
         catalog::PlaySource::Ready(source, episode) => open_release(&source, episode),
         catalog::PlaySource::Searching => {
             let job = new_job(Job::Searching);
+            time_start(job, "searching the source");
             if job == 0 {
                 return Ok(0);
             }
@@ -189,6 +190,7 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
                     match catalog::play_source(&key) {
                         catalog::PlaySource::Searching if started.elapsed() < std::time::Duration::from_secs(150) => {}
                         catalog::PlaySource::Ready(source, episode) => {
+                            time_step(job, "release chosen");
                             if let Some(ep) = episode {
                                 EPISODES.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, ep);
                             }
@@ -280,6 +282,62 @@ fn with_open_trackers(url: &str) -> String {
     out
 }
 
+// ---- Timing log: how long each step from Play to the picture takes -------
+
+/// When each job's Play was pressed, the steps logged so far, and when peers were last logged.
+static TIMES: Mutex<Option<HashMap<u32, (std::time::Instant, Vec<&'static str>, std::time::Instant)>>> = Mutex::new(None);
+
+/// `$TMPDIR/reel-timings.log`: one line per step, `+ms` since Play.
+pub fn timing_log() -> PathBuf {
+    std::env::temp_dir().join("reel-timings.log")
+}
+
+fn log_line(line: &str) {
+    use std::io::Write;
+    eprintln!("reel timing {line}");
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(timing_log()) {
+        let _ = writeln!(f, "{line}");
+    }
+}
+
+/// Starts timing a job (Play pressed).
+fn time_start(job: u32, what: &str) {
+    let now = std::time::Instant::now();
+    TIMES.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, (now, Vec::new(), now));
+    log_line(&format!("job {job} +0 ms play ({what})"));
+}
+
+/// Logs a step the first time it happens.
+pub fn time_step(job: u32, step: &'static str) {
+    let line = {
+        let mut times = TIMES.lock().unwrap();
+        let Some((t0, done, _)) = times.get_or_insert_with(HashMap::new).get_mut(&job) else { return };
+        if done.contains(&step) {
+            return;
+        }
+        done.push(step);
+        format!("job {job} +{} ms {step}", t0.elapsed().as_millis())
+    };
+    log_line(&line);
+}
+
+/// Every 2 s while timing: the peers by state.
+fn time_peers(job: u32, p: &Value, speed: f64) {
+    let line = {
+        let mut times = TIMES.lock().unwrap();
+        let Some((t0, _, last)) = times.get_or_insert_with(HashMap::new).get_mut(&job) else { return };
+        if last.elapsed() < std::time::Duration::from_secs(2) {
+            return;
+        }
+        *last = std::time::Instant::now();
+        format!(
+            "job {job} +{} ms peers: seen {} queued {} connecting {} live {} (seeders {}, tcp {}, utp {}) not_needed {} dead {}; {:.2} MiB/s",
+            t0.elapsed().as_millis(), p["seen"], p["queued"], p["connecting"], p["live"], p["live_seeders"], p["live_tcp"], p["live_utp"], p["not_needed"], p["dead"], speed
+        )
+    };
+    log_line(&line);
+}
+
 /// What a source's http(s) link turned out to be.
 enum Fetched {
     /// A .torrent file.
@@ -335,6 +393,9 @@ pub fn redact(message: &str) -> String {
 }
 
 fn add_to(core: &Core, job: u32, url: &str) {
+    if !TIMES.lock().unwrap().as_ref().is_some_and(|t| t.contains_key(&job)) {
+        time_start(job, "release known");
+    }
     core.jobs.lock().unwrap().insert(job, Job::Resolving);
     let (session, jobs, url) = (core.session.clone(), core.jobs.clone(), with_open_trackers(url));
     // The film's cache: at most the buffer, around where the player reads.
@@ -351,8 +412,14 @@ fn add_to(core: &Core, job: u32, url: &str) {
         };
         let add = if url.starts_with("http://") || url.starts_with("https://") {
             match fetch_torrent(&url).await {
-                Ok(Fetched::Torrent(bytes)) => Ok(AddTorrent::from_bytes(bytes)),
-                Ok(Fetched::Magnet(magnet)) => Ok(AddTorrent::from_url(with_open_trackers(&magnet))),
+                Ok(Fetched::Torrent(bytes)) => {
+                    time_step(job, "source gave a .torrent");
+                    Ok(AddTorrent::from_bytes(bytes))
+                }
+                Ok(Fetched::Magnet(magnet)) => {
+                    time_step(job, "source gave a magnet");
+                    Ok(AddTorrent::from_url(with_open_trackers(&magnet)))
+                }
                 Err(e) => Err(e),
             }
         } else {
@@ -365,6 +432,7 @@ fn add_to(core: &Core, job: u32, url: &str) {
         let state = match result {
             Ok(response) => match response.into_handle() {
                 Some(handle) => {
+                    time_step(job, "torrent added, metadata known");
                     link.attach(&handle);
                     // Streams exist once it is initialized: size their readahead.
                     let (h, l) = (handle.clone(), link.clone());
@@ -448,6 +516,19 @@ pub fn status(job: u32) -> Value {
             let peers = live.map(|l| l.snapshot.peer_stats.live);
             let found = live.map(|l| l.snapshot.peer_stats.seen);
             let start = start_percent(core, &handle, file);
+            if let Some(l) = live {
+                if l.snapshot.peer_stats.seen > 0 {
+                    time_step(job, "first peer seen");
+                }
+                if l.snapshot.peer_stats.live > 0 {
+                    time_step(job, "first peer connected");
+                }
+                let peers = serde_json::to_value(&l.snapshot.peer_stats).unwrap_or(Value::Null);
+                time_peers(job, &peers, l.download_speed.mbps);
+            }
+            if start >= 100 {
+                time_step(job, "start of the film downloaded");
+            }
             let stage = if start >= 100 {
                 "starting"
             } else if peers.unwrap_or(0) == 0 {

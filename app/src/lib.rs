@@ -74,6 +74,12 @@ impl Engine {
         })
     }
 
+    /// The player shows the first frame of the job's film (for the timing log,
+    /// `$TMPDIR/reel-timings.log`).
+    pub fn first_frame(job: u32) {
+        engine::time_step(job, "first frame on screen");
+    }
+
     /// Stops the job and deletes what it downloaded (the cache is per film).
     pub fn close(job: u32) {
         engine::close(job);
