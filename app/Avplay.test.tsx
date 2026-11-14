@@ -4,8 +4,8 @@
 // shell: it takes the page's `avplay` posts (a stand-in for `host.post`, which
 // nsh.json grants nothing: declaring capabilities would deny the rest) and
 // sends AVPlay's `avplay-event`s back.
-import { expect, open, test } from "nsh/test";
-import { NATIVE } from "./testEngine";
+import { expect, test } from "nsh/test";
+import { NATIVE, openApp } from "./testEngine";
 
 const URL = "http://127.0.0.1:47391/torrents/0/stream/0";
 const status = JSON.stringify({
@@ -46,7 +46,7 @@ async function tv() {
   /** What the page gave the core as the view's tracks. */
   const embedded: string[] = [];
   const posts: { op: string }[] = [];
-  const app = await open("./App.tsx", {
+  const app = await openApp({
     clock: {},
     host: { handlers: { avplay: null } }, // an embedding app: `host.available()`
     modules: {

@@ -1,5 +1,5 @@
-import { expect, open, test } from "nsh/test";
-import { ENGINE } from "./testEngine";
+import { expect, test } from "nsh/test";
+import { ENGINE, openApp } from "./testEngine";
 
 const SOURCE = {
   ...ENGINE,
@@ -9,7 +9,7 @@ const SOURCE = {
 };
 
 test("Settings: saving a search source checks it and says how it searches", async () => {
-  const app = await open("./App.tsx", { clock: {}, modules: { "app/native": SOURCE } });
+  const app = await openApp({ clock: {}, modules: { "app/native": SOURCE } });
   await app.press("label:Settings");
   expect(app.texts()).toContain("Search source");
   await app.press("Save and check");
@@ -18,7 +18,7 @@ test("Settings: saving a search source checks it and says how it searches", asyn
 });
 
 test("Settings: a bad address is refused with the core's message", async () => {
-  const app = await open("./App.tsx", {
+  const app = await openApp({
     modules: { "app/native": { ...SOURCE, "Settings.setSource": JSON.stringify({ ok: false, message: "not an address" }) } },
   });
   await app.press("label:Settings");
@@ -27,7 +27,7 @@ test("Settings: a bad address is refused with the core's message", async () => {
 });
 
 test("Settings: About reel, past the buffer sizes, shows the TMDB logo and notice and the other sources", async () => {
-  const app = await open("./App.tsx", { modules: { "app/native": SOURCE } });
+  const app = await openApp({ modules: { "app/native": SOURCE } });
   await app.press("label:Settings");
   for (let i = 0; i < 20; i++) await app.keyboard.press("down"); // past the languages and buffer sizes, stops on About
   await app.keyboard.press("enter");
@@ -44,7 +44,7 @@ test("Settings: About reel, past the buffer sizes, shows the TMDB logo and notic
 });
 
 test("Settings: choosing a language asks the core and marks it chosen", async () => {
-  const app = await open("./App.tsx", {
+  const app = await openApp({
     modules: { "app/native": { ...SOURCE, "Settings.setContentLanguage": "ru-RU" } },
   });
   await app.press("label:Settings");

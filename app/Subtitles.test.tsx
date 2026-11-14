@@ -2,8 +2,8 @@
 // panel and our overlay showing the cue at the player's position (the
 // still video view, STILL, plays its first frame and stands still, so the
 // position is where seeks put it).
-import { expect, open, test } from "nsh/test";
-import { NATIVE, STILL } from "./testEngine";
+import { expect, test } from "nsh/test";
+import { NATIVE, STILL, openApp } from "./testEngine";
 
 const status = JSON.stringify({
   phase: "ready",
@@ -35,7 +35,7 @@ function cues(_job: number, id: number, from: number, to: number) {
 
 async function playing(remembered: "off" | "x:5") {
   const chosen: string[] = [];
-  const app = await open("./App.tsx", {
+  const app = await openApp({
     clock: {},
     modules: {
       "app/native": {

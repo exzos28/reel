@@ -1,8 +1,8 @@
 // Scroll views that follow the remote: the offset math, and the screens
 // moving with the arrow keys.
-import { expect, open, test } from "nsh/test";
+import { expect, test } from "nsh/test";
 import { anchorOffset, nearestOffset } from "./ui/layout/anchor";
-import { NATIVE } from "./testEngine";
+import { NATIVE, openApp } from "./testEngine";
 
 // A shelf on a 1920-wide TV: 96 px inset, 352 px cards 24 px apart.
 const card = (i: number) => ({ start: 96 + i * 376, end: 96 + i * 376 + 352 });
@@ -55,7 +55,7 @@ test("revealing moves only as far as needed", () => {
 });
 
 test("pressing right moves the focus along a shelf; down reaches the last shelf", async () => {
-  const app = await open("./App.tsx", { platform: "macos", width: 800, height: 600, modules: { "app/native": NATIVE } });
+  const app = await openApp({ platform: "macos", width: 800, height: 600, modules: { "app/native": NATIVE } });
   for (let i = 0; i < 4; i++) await app.keyboard.press("right");
   await app.wait(300);
   for (let i = 0; i < 8; i++) await app.keyboard.press("down");

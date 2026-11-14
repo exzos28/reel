@@ -1,9 +1,9 @@
-import { expect, open, test } from "nsh/test";
-import { AOT_S3, ENGINE, episode, INCEPTION_NO_SOURCE, NATIVE, release, SHOW } from "./testEngine";
+import { expect, test } from "nsh/test";
+import { AOT_S3, ENGINE, episode, INCEPTION_NO_SOURCE, NATIVE, release, SHOW, openApp } from "./testEngine";
 
 type Native = Record<string, {} | null>;
 const app_ = (native: Native = NATIVE, options: Record<string, unknown> = {}) =>
-  open("./App.tsx", { ...options, modules: { "app/native": native } });
+  openApp({ ...options, modules: { "app/native": native } });
 
 test("home starts on Continue watching and the hero follows the focus", async () => {
   const app = await app_();

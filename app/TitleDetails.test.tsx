@@ -1,11 +1,11 @@
 // A title screen below the hero: About with the crew, the cast, the details,
 // More like this; the scores with their sources and the age rating; the
 // remote walking through them.
-import { expect, open, test } from "nsh/test";
-import { ENGINE, NATIVE, SHOW } from "./testEngine";
+import { expect, test } from "nsh/test";
+import { ENGINE, NATIVE, SHOW, openApp } from "./testEngine";
 
 type Native = Record<string, {} | null | ((...args: any[]) => unknown)>;
-const app_ = (native: Native = NATIVE) => open("./App.tsx", { modules: { "app/native": native } });
+const app_ = (native: Native = NATIVE) => openApp({ modules: { "app/native": native } });
 
 /** Home opens on Continue watching, Inception first. */
 async function inception(native: Native = NATIVE) {
@@ -105,7 +105,7 @@ test("the remote reaches Trailer between the list and the release button, which 
 });
 
 test("a click on Trailer opens it", async () => {
-  const app = await open("./App.tsx", { platform: "macos", width: 1440, height: 900, modules: { "app/native": withTrailer } });
+  const app = await openApp({ platform: "macos", width: 1440, height: 900, modules: { "app/native": withTrailer } });
   await app.press("label:Inception >> nth=0");
   await app.press("text:Trailer");
   expect(app.openedUrls()).toEqual([TRAILER]);
@@ -146,7 +146,7 @@ test("a film without releases goes from Play straight to the cast", async () => 
 });
 
 test("a person without a photo shows their initials; a click on a similar title opens it", async () => {
-  const app = await open("./App.tsx", { platform: "macos", width: 1440, height: 900, modules: { "app/native": NATIVE } });
+  const app = await openApp({ platform: "macos", width: 1440, height: 900, modules: { "app/native": NATIVE } });
   await app.press("label:Inception >> nth=0");
   expect(app.texts()).toContain("JG");
   await app.press("label:Dune >> nth=0");
