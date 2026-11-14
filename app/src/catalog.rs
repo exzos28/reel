@@ -95,6 +95,13 @@ fn bump() {
     REV.fetch_add(1, Ordering::Relaxed);
 }
 
+/// The content language changed: everything asked so far was in the old one.
+pub fn language_changed() {
+    SLOTS.0.lock().unwrap().clear();
+    SEARCHES.lock().unwrap().clear();
+    bump();
+}
+
 /// What the UI polls: changes of the catalog's own and of `Meta`.
 pub fn revision() -> u64 {
     REV.load(Ordering::Relaxed) + metadata::revision()
@@ -185,7 +192,7 @@ fn meta_all(calls: &[Call]) -> Vec<Option<Value>> {
 fn ask(call: Call, rev: u64) {
     start_meta();
     runtime().spawn(async move {
-        let lang = settings::language();
+        let lang = settings::content_language();
         let text = match &call {
             Call::Trending(kind) => metadata::trending(kind.to_string(), lang).await,
             Call::Title(id) => metadata::title(id.clone(), lang).await,
@@ -298,7 +305,6 @@ struct Info {
     title: String,
     about: String,
     original_title: Option<String>,
-    original_language: Option<String>,
     year: Option<u16>,
     year_end: Option<u16>,
     minutes: u32,
@@ -382,7 +388,6 @@ fn from_title(t: &Value) -> Info {
         title: text(&t["title"]).unwrap_or_default(),
         about: text(&t["overview"]).unwrap_or_default(),
         original_title: text(&t["originalTitle"]),
-        original_language: text(&t["originalLanguage"]),
         year: first,
         year_end: if show && ended { last.filter(|l| Some(*l) != first) } else { None },
         minutes: t["runtimeMinutes"].as_u64().unwrap_or(0) as u32,
@@ -439,13 +444,11 @@ fn has_source() -> bool {
     settings::source().is_some()
 }
 
-/// The name a source is searched by: the original when it is English,
-/// else the title in the UI's language.
-fn search_title(info: &Info) -> String {
-    match (&info.original_title, info.original_language.as_deref()) {
-        (Some(o), Some("en")) => o.clone(),
-        _ => info.title.clone(),
-    }
+/// The names a source is searched by: the title in the content language first
+/// (trackers name releases "Локализованное / Original"), then the original.
+fn search_titles(info: &Info) -> (String, Vec<String>) {
+    let alt = info.original_title.iter().filter(|o| **o != info.title).cloned().collect();
+    (info.title.clone(), alt)
 }
 
 /// Starts the search for `key` (once per run) when there is a source.
@@ -454,9 +457,11 @@ fn ensure_search(key: &str, info: &Info) {
         return;
     }
     let (_, ep) = parse_key(key);
+    let (title, alt_titles) = search_titles(info);
     let request = json!({
         "imdb": info.imdb,
-        "title": search_title(info),
+        "title": title,
+        "altTitles": alt_titles,
         "year": if ep.is_none() { info.year } else { None },
         "season": ep.map(|e| e.0),
         "episode": ep.map(|e| e.1),
@@ -882,7 +887,7 @@ fn summary(info: &Info) -> Value {
         "rating": info.rating,
         "votes": info.votes,
         "ratings": details::ratings(&info.ratings),
-        "certification": details::certification(&info.certifications, &settings::language()),
+        "certification": details::certification(&info.certifications, &settings::content_language()),
         "badges": [],
         "genres": info.genres,
         "still": info.still,

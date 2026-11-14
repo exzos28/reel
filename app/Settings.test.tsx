@@ -29,7 +29,7 @@ test("Settings: a bad address is refused with the core's message", async () => {
 test("Settings: About reel, past the buffer sizes, shows the TMDB logo and notice and the other sources", async () => {
   const app = await open("./App.tsx", { modules: { "app/native": SOURCE } });
   await app.press("label:Settings");
-  for (let i = 0; i < 8; i++) await app.keyboard.press("down"); // past the last buffer size, stops on About
+  for (let i = 0; i < 20; i++) await app.keyboard.press("down"); // past the languages and buffer sizes, stops on About
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Data sources");
   expect(app.shows("label:The Movie Database (TMDB)")).toBe(true);
@@ -41,4 +41,16 @@ test("Settings: About reel, past the buffer sizes, shows the TMDB logo and notic
   expect(app.texts()).toContain("Playback buffer");
   await app.keyboard.press("enter"); // the focus is back on About
   expect(app.texts()).toContain("Data sources");
+});
+
+test("Settings: choosing a language asks the core and marks it chosen", async () => {
+  const app = await open("./App.tsx", {
+    modules: { "app/native": { ...SOURCE, "Settings.setContentLanguage": "ru-RU" } },
+  });
+  await app.press("label:Settings");
+  expect(app.texts()).toContain("Language");
+  expect(app.texts()).toContain("Русский");
+  await app.keyboard.press("down");
+  await app.keyboard.press("enter");
+  expect(app.shows("label:Selected")).toBe(true);
 });

@@ -267,6 +267,9 @@ settings:
   title: Settings
   hint: "OK chooses, Back closes."
   selected: Selected
+  language:
+    title: Language
+    about: The language of titles, descriptions and episode names. reel also searches releases by the title in this language, then by the original one. The app itself stays in English.
   source:
     title: Search source
     about: Where reel looks for releases of a film or an episode. Enter the Torznab address of your own Jackett (or Prowlarr, JacRed…) and its API key. reel comes with no source of its own.

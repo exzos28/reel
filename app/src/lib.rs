@@ -166,6 +166,15 @@ impl Settings {
         }
     }
 
+    /// Saves the content language (titles, descriptions, episode names; one
+    /// of `contentLanguages` from `load`) and drops what was asked in the old
+    /// one; the language in effect.
+    pub fn set_content_language(tag: String) -> String {
+        let now = settings::set_content_language(&tag);
+        catalog::language_changed();
+        now
+    }
+
     /// Saves the UI language (a BCP 47 tag).
     pub fn set_language(tag: String) {
         settings::set_language(&tag);

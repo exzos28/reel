@@ -1,5 +1,6 @@
-// Settings: Playback (buffer size), Search source (the user's Jackett) and
-// About reel. Up/down move the focus in the buffer list and on to About,
+// Settings: Language (of titles and descriptions), Playback (buffer size),
+// Search source (the user's Jackett) and About reel. Up/down move the focus
+// through the languages, the buffer sizes and on to About,
 // OK chooses (or opens About), Back closes. A click chooses too; the source
 // fields take text (on a TV, entering it from a phone comes later).
 import { keymap, signal, Text, View, type ViewRef, type ViewStyle } from "nsh";
@@ -11,9 +12,10 @@ import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
 import { PageHeader } from "../../layout/TopBar";
 import { openAbout } from "../../nav";
-import { bufferChoices, bufferMB, chooseBuffer } from "../../preferences";
+import { bufferChoices, chooseBuffer, chooseContentLanguage, contentLanguage, contentLanguages } from "../../preferences";
 import { colors, safe, u } from "../../theme";
 import { BufferSection } from "./BufferSection";
+import { LanguageSection } from "./LanguageSection";
 import { SourceSection } from "./SourceSection";
 
 const aboutRow = (focused: boolean): ViewStyle => ({
@@ -44,9 +46,11 @@ const pageStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: s
 let backFromAbout = false;
 
 export function SettingsScreen(props: { freeBytes: () => number | null; onClose: () => void }) {
-  /** The focus goes through the buffer sizes, then to About. */
-  const aboutAt = () => bufferChoices().length;
-  const focus = signal(backFromAbout ? aboutAt() : Math.max(0, bufferChoices().findIndex((c) => c.mb === bufferMB())));
+  /** The focus goes through the languages, the buffer sizes, then to About. */
+  const langs = () => contentLanguages().length;
+  const bufferAt = () => langs();
+  const aboutAt = () => langs() + bufferChoices().length;
+  const focus = signal(backFromAbout ? aboutAt() : Math.max(0, contentLanguages().findIndex((l) => l.tag === contentLanguage())));
   backFromAbout = false;
   const about = () => {
     focus.set(aboutAt());
@@ -57,7 +61,12 @@ export function SettingsScreen(props: { freeBytes: () => number | null; onClose:
 
   keymap.bind({ up: () => move(-1), down: () => move(1) }, { repeat: true });
   keymap.bind({
-    enter: () => (focus() === aboutAt() ? about() : chooseBuffer(bufferChoices()[focus()].mb)),
+    enter: () => {
+      const f = focus();
+      if (f === aboutAt()) about();
+      else if (f < bufferAt()) chooseContentLanguage(contentLanguages()[f].tag);
+      else chooseBuffer(bufferChoices()[f - bufferAt()].mb);
+    },
     escape: props.onClose,
   });
 
@@ -67,7 +76,8 @@ export function SettingsScreen(props: { freeBytes: () => number | null; onClose:
     <Screen ctl={page}>
       <View style={pageStyle()}>
         <PageHeader title={() => t("settings.title")} focused={() => false} onBack={props.onClose} />
-        <BufferSection freeBytes={props.freeBytes} focusedAt={focus} onFocus={(i) => focus.set(i)} />
+        <LanguageSection focusedAt={focus} onFocus={(i) => focus.set(i)} />
+        <BufferSection freeBytes={props.freeBytes} focusedAt={() => focus() - bufferAt()} onFocus={(i) => focus.set(bufferAt() + i)} />
         <SourceSection />
         <Text style={metaText()}>{t("settings.hint")}</Text>
         <AboutRow focused={() => focus() === aboutAt()} viewRef={page.follow(() => focus() === aboutAt(), "nearest")} onPress={about} />

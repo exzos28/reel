@@ -17,6 +17,15 @@ export interface SourceInfo {
   hasKey: boolean;
 }
 
+/** A language titles and descriptions can be shown in: its tag and its own name. */
+export interface ContentLanguage {
+  tag: string;
+  name: string;
+}
+
+export const contentLanguage = signal("en-US");
+export const contentLanguages = signal<ContentLanguage[]>([]);
+
 export const bufferMB = signal(0);
 export const source = signal<SourceInfo>({ url: "", hasKey: false });
 export const bufferChoices = signal<BufferChoice[]>([]);
@@ -26,6 +35,8 @@ export async function loadSettings() {
   const s = JSON.parse(await Settings.load(process.dataDir ?? ""));
   bufferMB.set(s.bufferMB);
   bufferChoices.set(s.bufferChoices);
+  if (s.contentLanguage) contentLanguage.set(s.contentLanguage);
+  if (s.contentLanguages) contentLanguages.set(s.contentLanguages);
   if (s.source) source.set(s.source);
   setLocale(s.language);
 }
@@ -58,4 +69,9 @@ export async function checkSource(): Promise<CheckResult> {
     if (r.state === "done") return { state: "ok", ...r.caps };
     return { state: "failed", message: r.message ?? "" };
   }
+}
+
+/** Shows titles and descriptions in `tag`; the core drops what it asked in the old one. */
+export async function chooseContentLanguage(tag: string) {
+  contentLanguage.set(await Settings.setContentLanguage(tag));
 }
