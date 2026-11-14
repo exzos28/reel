@@ -37,6 +37,9 @@ jobs:
     env:
       TIZEN_SDK: /home/runner/tizen-sdk
       CARGO_TERM_COLOR: always
+      # A push has no inputs (and `inputs.shell_only == false` holds for a missing
+      # one): it builds the diagnostics shell, as the inputs' default does.
+      SHELL_ONLY: ${{ github.event_name == 'push' || inputs.shell_only }}
     steps:
       - uses: actions/checkout@v4
 
@@ -91,7 +94,7 @@ jobs:
 
       # The NSH web build is only needed for the full package.
       - uses: ./.github/actions/setup-nsh
-        if: inputs.shell_only == false
+        if: env.SHELL_ONLY != 'true'
         with:
           rust-cache-key: tizen-web
 
@@ -103,7 +106,7 @@ jobs:
         env:
           REEL_TMDB_TOKEN: ${{ secrets.REEL_TMDB_TOKEN }}
         run: |
-          if [ "${{ inputs.shell_only != false }}" = "true" ]; then
+          if [ "$SHELL_ONLY" = "true" ]; then
             hosts/tizen/build.sh package --shell-only hosts/tizen/out
           else
             hosts/tizen/build.sh package hosts/tizen/out
