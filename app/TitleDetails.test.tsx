@@ -62,8 +62,8 @@ test("the release button opens the releases in a panel; OK picks one and closes 
   expect(app.texts()).not.toContain("Releases");
   await app.keyboard.press("down"); // the release button, its own row under the actions
   await app.keyboard.press("enter");
-  for (const s of ["Releases", "3 found, the best of each quality first", "Starts fast", "Needs 58 Mbit/s internet"])
-    expect(app.texts()).toContain(s);
+  for (const s of ["Releases", "3 found, the best of each quality first"]) expect(app.texts()).toContain(s);
+  for (const s of ["Starts fast", "Needs 58 Mbit/s internet"]) expect(app.texts()).not.toContain(s); // no note column
   await app.keyboard.press("escape"); // closes the panel, stays on the film
   expect(app.texts()).not.toContain("3 found, the best of each quality first");
   expect(app.texts()).toContain("More like this");

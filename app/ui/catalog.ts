@@ -390,7 +390,6 @@ export const namesText = (names: string[]) => names.join(", ");
 export const statusText = (status: string) => t(`status.${status}`);
 
 export const tracksText = (r: Release) => r.tracks.map((k) => t(`tracks.${k}`)).join(", ");
-export const noteText = (r: Release) => t(`release.note.${r.note}`, { mbit: r.mbit });
 
 /** An episode's name or overview, from the core (empty while its season is not known). */
 export function episodeText(show: string, season: number, episode: number, field: "title" | "about") {

@@ -1,6 +1,6 @@
 import { Text, View, type TextStyle, type ViewRef, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
-import { noteText, tracksText, type Release } from "../../catalog";
+import { tracksText, type Release } from "../../catalog";
 import { Badge } from "../../kit/Badge";
 import { Icon } from "../../kit/Icon";
 import { rowStyle } from "../../kit/Row";
@@ -23,10 +23,10 @@ const releaseRowStyle = (selected: boolean, focused: boolean): ViewStyle => ({
 const sourceStyle = (): TextStyle => ({ ...oneLine, flex: 1, minWidth: u(120), ...fontText(23, colors.snow(), 600) });
 const groupStyle = (): TextStyle => ({ fontWeight: 400, fontSize: u(22), color: colors.ash() });
 const cellText = (width: number): TextStyle => ({ width: u(width), ...fontText(23, colors.ash()) });
-const noteStyle = (): ViewStyle => ({ ...column(240), ...row(u(10)), justifyContent: "flex-end" });
+const checkStyle = (): ViewStyle => ({ width: u(28), ...row(0), justifyContent: "flex-end" });
 
-/** A release: quality, source and group, size, tracks, people sharing and
- * a plain note; the one Play uses is selected (lighter, with a check). */
+/** A release: quality, source and group, size, tracks and people sharing; the one Play
+ * uses is selected (lighter, with a check). */
 export function ReleaseRow(props: {
   release: () => Release;
   focused: () => boolean;
@@ -64,11 +64,10 @@ export function ReleaseRow(props: {
         <SignalBars bars={r().bars} />
         <Text style={fontText(23, colors.ash())}>{t("release.sharing_short", { count: r().peers })}</Text>
       </View>
-      <View style={noteStyle()}>
+      <View style={checkStyle()}>
         <If when={r().selected}>
           <Icon src={() => checkIcon} size={22} />
         </If>
-        <Text style={fontText(23, r().selected ? colors.snow() : colors.ash())}>{noteText(r())}</Text>
       </View>
     </View>
   );
@@ -83,8 +82,8 @@ const narrowStyle = (selected: boolean, focused: boolean): ViewStyle => ({
 });
 
 /** A release in a narrow panel (desktop, touch): two lines and its name.
- * Quality and source (a check when it is the one Play uses); size, people
- * sharing and the note; the release's own name, one line. */
+ * Quality and source (a check when it is the one Play uses); size and people
+ * sharing; the release's own name, one line. */
 function NarrowRow(props: { release: () => Release; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
   const r = props.release;
   return (
@@ -110,7 +109,6 @@ function NarrowRow(props: { release: () => Release; focused: () => boolean; view
           <SignalBars bars={r().bars} />
           <Text style={fontText(22, colors.ash())}>{t("release.sharing_short", { count: r().peers })}</Text>
         </View>
-        <Text style={fontText(22, r().selected ? colors.snow() : colors.ash())}>{noteText(r())}</Text>
       </View>
       <If when={r().group}>
         <Text style={{ ...oneLine, ...fontText(20, colors.dim()) }}>{r().group}</Text>

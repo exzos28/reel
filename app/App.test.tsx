@@ -83,8 +83,6 @@ test("the nav opens Movies; a poster opens its film with the releases found; Bac
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Releases");
   expect(app.texts()).toContain("3 found, the best of each quality first");
-  expect(app.texts()).toContain("Starts fast");
-  expect(app.texts()).toContain("Needs 58 Mbit/s internet");
   await app.keyboard.press("escape"); // the panel
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("All movies");
