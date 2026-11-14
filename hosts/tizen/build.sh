@@ -199,6 +199,8 @@ package() {
     log "TV app"
     mkdir -p "$work/ui"
     cp "$HERE/ui/config.xml" "$HERE/ui/index.html" "$HERE/ui/shell.js" "$work/ui/"
+    # The app's icon, the same as on the other platforms (no copy of it in hosts/).
+    cp "$APP/icon/icon.png" "$work/ui/icon.png"
     sed -i.bak "s/ version=\"[^\"]*\" viewmodes/ version=\"$ver\" viewmodes/" "$work/ui/config.xml" && rm "$work/ui/config.xml.bak"
     if [ "$shell_only" = 1 ]; then
         echo "window.REEL_WEB = false;" > "$work/ui/shell-config.js"
@@ -216,7 +218,7 @@ package() {
     [ -f "$work/hybrid.wgt" ] || die "tz pack produced no package"
     local name="reel-tv-v$ver.wgt"
     cp "$work/hybrid.wgt" "$out/$name"
-    for f in config.xml index.html shell.js shell-config.js ReelCore.dll libreel_tizen_core.so; do
+    for f in config.xml index.html shell.js shell-config.js icon.png ReelCore.dll libreel_tizen_core.so; do
         unzip -l "$out/$name" | grep -q "$f" || die "$f is missing from $name"
     done
     (cd "$out" && shasum -a 256 "$name" > "SHA256SUMS-tizen.txt")

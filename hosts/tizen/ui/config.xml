@@ -5,6 +5,8 @@
 <widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="http://reel.app/tizen" version="0.1.0" viewmodes="maximized">
    <name>reel</name>
    <content src="index.html"></content>
+   <!-- app/icon/icon.png, copied in by ../build.sh: the same artwork as on every platform. -->
+   <icon src="icon.png"></icon>
    <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"></feature>
    <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"></tizen:setting>
    <tizen:application id="ReelTizen1.ui" package="ReelTizen1" required_version="2.3"></tizen:application>
