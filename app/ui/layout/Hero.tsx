@@ -27,7 +27,12 @@ const leftFadeStyle = (): ViewStyle => ({
 const textBlockStyle = (top: number): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(top), gap: u(14), maxWidth: u(1300) });
 /** The hero's own height: at least the backdrop's, or (`fit`) only what its text needs. */
 const heroStyle = (height: number, fit: boolean): ViewStyle => (fit ? {} : { minHeight: u(height) });
-const aboutStyle = (): TextStyle => ({ numberOfLines: 3, ...bodyText(colors.soft()), maxWidth: u(980) });
+const ABOUT_LINES = 3;
+/** `steady`: always the height of its three lines, so what is under it stays put as the text changes. */
+const aboutStyle = (steady: boolean): TextStyle => {
+  const body = bodyText(colors.soft());
+  return { numberOfLines: ABOUT_LINES, ...body, maxWidth: u(980), ...(steady ? { height: (body.lineHeight as number) * ABOUT_LINES } : {}) };
+};
 const logotypeStyle = (size: number): TextStyle => ({ numberOfLines: 2, ...type.logotype(size), color: colors.snow(), marginBottom: u(10) });
 
 /** The still (or the title's paper colour) fading into the background;
@@ -58,6 +63,8 @@ export function Hero(props: {
   /** As tall as its text (the backdrop still fades out under what follows),
    * so a title screen's next block starts right under the actions. */
   fit?: boolean;
+  /** The about keeps the height of three lines (Home: the hero follows the focus). */
+  steadyAbout?: boolean;
   children: JSX.Element;
 }) {
   const s = props.item;
@@ -68,7 +75,7 @@ export function Hero(props: {
         <Text style={logotypeStyle(props.titleSize)}>{titleText(s())}</Text>
         <MetaLine item={s} />
         <Text style={{ ...metaText(), fontSize: u(24) }}>{genresText(s())}</Text>
-        <Text style={aboutStyle()}>{aboutText(s())}</Text>
+        <Text style={aboutStyle(!!props.steadyAbout)}>{aboutText(s())}</Text>
         {props.children}
       </View>
     </View>

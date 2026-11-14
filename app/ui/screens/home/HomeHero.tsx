@@ -12,7 +12,7 @@ export const HOME_HERO = density === "ten-foot" ? { height: 640, top: 180 } : { 
 /** The hero for the focused card: Play and My list under its release. */
 export function HomeHero(props: { item: () => Summary; focusedAt: () => number | null; onPlay: () => void; onToggle: () => void }) {
   return (
-    <Hero item={props.item} height={HOME_HERO.height} titleSize={96} top={HOME_HERO.top}>
+    <Hero item={props.item} height={HOME_HERO.height} titleSize={96} top={HOME_HERO.top} steadyAbout>
       <ReleaseText item={props.item} />
       <View style={actionsRow(false)}>
         <PlayButton label={() => playLabel(props.item())} focused={() => props.focusedAt() === 0} onPress={props.onPlay} />
