@@ -203,7 +203,6 @@ series:
   episodes: "%{count} episodes"
   no_episodes: The episodes of this show are not listed yet.
   watched: Watched
-  plays_now: "%{quality} · plays now"
   not_in_release: Not in this release
 
 browse:

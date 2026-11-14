@@ -31,15 +31,16 @@ function metaOf(e: Episode) {
   return parts.join(" · ");
 }
 
-/** "✓ Watched", what plays ("1080p · plays now"), or that the season's release lacks it. */
+/** Only what differs from the season's release (shown on the button above):
+ * "Watched", that the release lacks it, or the quality of a release picked for it. */
 const statusOf = (e: Episode) => {
   if (e.watched) return t("series.watched");
   if (e.inRelease === "no") return t("series.not_in_release");
-  return e.quality ? t("series.plays_now", { quality: e.quality }) : "";
+  return e.inRelease === "own" && e.quality ? e.quality : "";
 };
 
 /** An episode: big grey number, still, title, meta and one line of about;
- * on the right what plays or that it is watched. */
+ * on the right only what differs from the season's release. */
 export function EpisodeRow(props: { episode: () => Episode; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
   const e = props.episode;
   return (
