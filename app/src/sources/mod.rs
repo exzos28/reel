@@ -237,11 +237,15 @@ fn years_in(text: &str) -> Vec<u16> {
     words(text).iter().filter_map(|w| w.parse::<u16>().ok()).filter(|y| (1900..2100).contains(y)).collect()
 }
 
-/// Whether a release's name is about the title: every word of one of its
-/// `names` is in it, and for a film a year it gives is the film's (±1).
+/// Whether a release's name is about the title: the words of one of its
+/// `names` are in it, in a row, and for a film a year it gives is the film's (±1).
 fn is_about(release: &str, names: &[String], year: Option<u16>, film: bool) -> bool {
     let have = words(release);
-    let named = names.iter().map(|n| words(n)).filter(|w| !w.is_empty()).any(|name| name.iter().all(|w| have.contains(w)));
+    let named = names
+        .iter()
+        .map(|n| words(n))
+        .filter(|w| !w.is_empty())
+        .any(|name| have.windows(name.len()).any(|run| run == name.as_slice()));
     if !named {
         return false;
     }
@@ -336,6 +340,9 @@ mod tests {
         assert!(about("Годзилла Минус Ноль WEBRip"), "no year: kept");
         assert!(is_about("Ёлки 2010 HDTV", &["Елки".to_owned()], Some(2010), true), "ё is е");
         assert!(is_about("The Office S01E03 1080p", &["The Office".to_owned()], Some(2005), false), "a show's year is not checked");
+        let twelves = ["12 12 12".to_owned()];
+        assert!(is_about("12 12 12 / S1E1 of 8 (Карен Мейн) [2026, WEB-DL 1080p]", &twelves, None, false));
+        assert!(!is_about("Похищение / S1E1-12 of 12 [2026]", &twelves, None, false), "the words in a row, not anywhere");
     }
 
     #[test]

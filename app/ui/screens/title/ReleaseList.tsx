@@ -44,11 +44,13 @@ export function ReleaseList(props: {
   focused: (i: number) => boolean;
   follow: Follow;
   onPress: (i: number) => void;
+  /** In the side panel: no page inset, narrower rows. */
+  inPanel?: boolean;
 }) {
   const more = () => props.more?.() ?? 0;
   const moreAt = () => props.releases().length;
   return (
-    <View style={{ paddingHorizontal: safe().x, marginTop: u(40) }}>
+    <View style={props.inPanel ? undefined : { paddingHorizontal: safe().x, marginTop: u(40) }}>
       <SectionHeader title={props.title ?? (() => t("releases.title"))} note={props.header} />
       <View style={{ gap: u(12), marginTop: u(20) }}>
         <If
@@ -63,6 +65,7 @@ export function ReleaseList(props: {
             {(r, i) => (
               <ReleaseRow
                 release={r}
+                narrow={props.inPanel}
                 focused={() => props.focused(i())}
                 viewRef={props.follow(() => props.focused(i()))}
                 onPress={() => props.onPress(i())}

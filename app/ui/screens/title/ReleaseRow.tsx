@@ -27,7 +27,14 @@ const noteStyle = (): ViewStyle => ({ ...column(240), ...row(u(10)), justifyCont
 
 /** A release: quality, source and group, size, tracks, people sharing and
  * a plain note; the one Play uses is selected (lighter, with a check). */
-export function ReleaseRow(props: { release: () => Release; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
+export function ReleaseRow(props: {
+  release: () => Release;
+  focused: () => boolean;
+  viewRef: (r: ViewRef) => void;
+  onPress: () => void;
+  /** Narrower (the side panel): no audio tracks column. */
+  narrow?: boolean;
+}) {
   const r = props.release;
   return (
     <View
@@ -48,7 +55,9 @@ export function ReleaseRow(props: { release: () => Release; focused: () => boole
       </Text>
       <If when={wide}>
         <Text style={cellText(140)}>{r().size}</Text>
-        <Text style={{ ...oneLine, ...cellText(380) }}>{tracksText(r())}</Text>
+        <If when={!props.narrow}>
+          <Text style={{ ...oneLine, ...cellText(380) }}>{tracksText(r())}</Text>
+        </If>
       </If>
       <View style={{ ...column(250), ...row(u(12)) }}>
         <SignalBars bars={r().bars} />

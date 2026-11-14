@@ -26,7 +26,8 @@ const saved = new Map<string, Saved>();
  * it back to where it was on `id`). */
 export function focusTitle(id: string, startSeason: number) {
   if (shownId === id) return;
-  if (shownId) saved.set(shownId, [zone(), action(), season(), item(), castAt(), similarAt()]);
+  // The release panel closes when the screen does: back on its button.
+  if (shownId) saved.set(shownId, [zone() === "releases" ? "actions" : zone(), action(), season(), item(), castAt(), similarAt()]);
   // Only titles still under this one are come back to.
   const open = new Set(stack().flatMap((r) => (r.name === "title" ? [r.id] : [])));
   for (const k of saved.keys()) if (!open.has(k)) saved.delete(k);

@@ -11,7 +11,7 @@ const app_ = (native: Native = NATIVE) => open("./App.tsx", { modules: { "app/na
 async function inception(native: Native = NATIVE) {
   const app = await app_(native);
   await app.keyboard.press("enter");
-  expect(app.texts()).toContain("Releases");
+  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing"); // the release button beside Play
   return app;
 }
 
@@ -28,9 +28,8 @@ test("a film shows its scores, age rating, crew, cast, details and More like thi
     expect(texts).toContain(s);
   expect(texts).toContain("More like this");
   expect(texts).toContain("Dune");
-  // In that order, under the releases.
+  // In that order, under the hero.
   const at = (s: string) => texts.indexOf(s);
-  expect(at("Releases")).toBeLessThan(at("About"));
   expect(at("About")).toBeLessThan(at("Cast"));
   expect(at("Cast")).toBeLessThan(at("Details"));
   expect(at("Details")).toBeLessThan(at("More like this"));
@@ -51,7 +50,7 @@ test("a series keeps its episodes right under the hero and names its creator, st
   expect(texts).toContain("Frieren: Beyond Journey's End");
 });
 
-test("the remote goes from the releases to the cast, then More like this, which opens a title; Back finds the focus", async () => {
+test("the release button opens the releases in a panel; OK picks one and closes it; Back closes it first", async () => {
   const chosen: number[] = [];
   const app = await inception({
     ...NATIVE,
@@ -60,7 +59,31 @@ test("the remote goes from the releases to the cast, then More like this, which 
       return true;
     },
   });
-  for (let i = 0; i < 3; i++) await app.keyboard.press("down"); // the three releases
+  expect(app.texts()).not.toContain("Releases");
+  await app.keyboard.press("right");
+  await app.keyboard.press("right"); // the release button
+  await app.keyboard.press("enter");
+  for (const s of ["Releases", "3 found, the best of each quality first", "Starts fast", "Needs 58 Mbit/s internet"])
+    expect(app.texts()).toContain(s);
+  await app.keyboard.press("escape"); // closes the panel, stays on the film
+  expect(app.texts()).not.toContain("3 found, the best of each quality first");
+  expect(app.texts()).toContain("More like this");
+  await app.keyboard.press("enter"); // the focus is back on the button: opens it again, on the one Play uses (1080p)
+  await app.keyboard.press("down"); // 720p
+  await app.keyboard.press("enter");
+  expect(chosen).toEqual([1]);
+  expect(app.texts()).not.toContain("3 found, the best of each quality first");
+});
+
+test("the remote goes from the actions to the cast, then More like this, which opens a title; Back finds the focus", async () => {
+  const chosen: number[] = [];
+  const app = await inception({
+    ...NATIVE,
+    "Catalog.chooseRelease": (_id: string, index: number) => {
+      chosen.push(index);
+      return true;
+    },
+  });
   await app.keyboard.press("down"); // the cast
   await app.keyboard.press("right");
   await app.keyboard.press("enter"); // nothing opens on a person
@@ -70,9 +93,8 @@ test("the remote goes from the releases to the cast, then More like this, which 
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("More like this"); // back on Inception, not Home
   await app.keyboard.press("up"); // the cast
-  await app.keyboard.press("up"); // the release the focus left
-  await app.keyboard.press("enter");
-  expect(chosen).toEqual([1]); // the last row, 720p (index 1)
+  await app.keyboard.press("up"); // the actions, on Play
+  expect(chosen).toEqual([]);
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });

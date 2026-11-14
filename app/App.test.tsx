@@ -72,11 +72,15 @@ test("the nav opens Movies; a poster opens its film with the releases found; Bac
   expect(app.texts()).toContain("All movies");
   await app.keyboard.press("right");
   await app.keyboard.press("enter");
+  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
+  await app.keyboard.press("right");
+  await app.keyboard.press("right"); // the release button
+  await app.keyboard.press("enter");
   expect(app.texts()).toContain("Releases");
   expect(app.texts()).toContain("3 found, the best of each quality first");
   expect(app.texts()).toContain("Starts fast");
   expect(app.texts()).toContain("Needs 58 Mbit/s internet");
-  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
+  await app.keyboard.press("escape"); // the panel
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("All movies");
   await app.keyboard.press("down"); // the grid
@@ -163,8 +167,11 @@ test("in a Mac window the screens lay out with all their columns", async () => {
   await app.press("label:Movies");
   expect(app.texts()).toContain("All movies");
   await app.press("label:Dune >> nth=0");
-  expect(app.texts()).toContain("8 GB");
+  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
+  for (let i = 0; i < 2; i++) await app.keyboard.press("right");
+  await app.keyboard.press("enter"); // the releases panel, with all its columns
   expect(app.texts()).toContain("60 GB");
+  await app.keyboard.press("escape");
   await app.keyboard.press("escape");
   await app.press("label:Shows");
   expect(app.texts()).toContain("All shows");
@@ -202,7 +209,7 @@ test("the nav opens Anime after Shows: its trending row and all anime", async ()
   expect(app.texts()).toContain("Trending this season");
   expect(app.texts()).toContain("All anime");
   await app.keyboard.press("enter"); // the first in the row
-  expect(app.texts()).toContain("Releases");
+  expect(app.texts()).toContain("Add to list");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("All anime");
   await app.keyboard.press("escape");

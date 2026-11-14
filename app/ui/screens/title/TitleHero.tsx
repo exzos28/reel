@@ -1,14 +1,21 @@
-import { View } from "nsh";
-import { playLabel, type Title } from "../../catalog";
+import { Text, View } from "nsh";
+import { playLabel, releaseLine, releasesText, type Title } from "../../catalog";
 import { Hero } from "../../layout/Hero";
-import { actionsRow, ListButton, PlayButton } from "../../layout/HeroActions";
-import { ReleaseText } from "../../layout/HeroMeta";
-import { u } from "../../theme";
+import { actionsRow, ListButton, PlayButton, ReleaseButton } from "../../layout/HeroActions";
+import { colors, type, u } from "../../theme";
 
-/** The hero of a film or a show: Play and Add to list, the release Play
- * uses beside them. */
-export function TitleHero(props: { data: () => Title; focusedAt: () => number | null; onPlay: () => void; onToggle: () => void }) {
+/** The hero of a film or a show: Play, Add to list, and the release Play uses
+ * as a button that opens the releases (while searching or with none, a line
+ * that says so). `focusedAt`: 0 Play, 1 the list, 2 the release. */
+export function TitleHero(props: {
+  data: () => Title;
+  focusedAt: () => number | null;
+  onPlay: () => void;
+  onToggle: () => void;
+  onReleases: () => void;
+}) {
   const show = () => props.data().kind === "show";
+  const line = () => releaseLine(props.data().release!, false);
   return (
     <Hero
       item={props.data}
@@ -26,9 +33,12 @@ export function TitleHero(props: { data: () => Title; focusedAt: () => number | 
           focused={() => props.focusedAt() === 1}
           onPress={props.onToggle}
         />
-        <View style={{ marginLeft: u(12) }}>
-          <ReleaseText item={props.data} withStart={false} />
-        </View>
+        <If
+          when={props.data().release}
+          else={<Text style={{ ...type.meta(), fontSize: u(22), color: colors.ash(), marginLeft: u(12) }}>{releasesText(props.data())}</Text>}
+        >
+          <ReleaseButton name={() => line().name} rest={() => line().rest} focused={() => props.focusedAt() === 2} onPress={props.onReleases} />
+        </If>
       </View>
     </Hero>
   );
