@@ -4,7 +4,10 @@
 # reel-tv .wgt; the service rarely changes). Optionally installs it on a TV through
 # apps2samsung-cli, and removes the Docker image and its caches afterwards.
 #
-#   scripts/tizen-local.sh <base.wgt> <out.wgt> [--tv <ip>] [--clean] [--ui-only]
+#   scripts/tizen-local.sh <base.wgt> <out.wgt> [--tv <ip>] [--clean] [--ui-only] [--perf]
+#
+# --perf: the app logs its frames per second, key-to-paint times and long tasks
+# (scripts/tizen-logs.sh, "[perf]" lines).
 #
 # --ui-only: only the web UI is built (about 15 s); the core stays the base's. For changes
 # in app/ui and app/*.tsx only: give the last local package as the base (it may be <out.wgt>
@@ -15,12 +18,13 @@ here="$(cd "$(dirname "$0")/.." && pwd)"
 base="${1:-}"; out="${2:-}"
 [ -f "$base" ] && [ -n "$out" ] || { sed -n '2,/^set -euo/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 2; }
 shift 2
-tv=""; clean=0; ui_only=0
+tv=""; clean=0; ui_only=0; perf=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --tv) tv="$2"; shift 2 ;;
         --clean) clean=1; shift ;;
         --ui-only) ui_only=1; shift ;;
+        --perf) perf=1; shift ;;
         *) echo "unknown argument $1" >&2; exit 2 ;;
     esac
 done
@@ -65,6 +69,7 @@ rm -rf "$work/pkg/res/wgt/web" && cp -R "$work/web" "$work/pkg/res/wgt/web"
 cp "$here/hosts/tizen/ui/shell.js" "$here/hosts/tizen/ui/index.html" "$work/pkg/res/wgt/"
 cp "$here/app/icon/icon.png" "$work/pkg/res/wgt/icon.png"
 echo "window.REEL_WEB = true;" > "$work/pkg/res/wgt/shell-config.js"
+[ "$perf" = 0 ] || echo "window.REEL_PERF = true;" >> "$work/pkg/res/wgt/shell-config.js"
 grep -q '<icon ' "$work/pkg/res/wgt/config.xml" || \
     sed -i.bak 's#<content src="index.html"></content>#<content src="index.html"></content><icon src="icon.png"></icon>#' "$work/pkg/res/wgt/config.xml"
 rm -f "$work/pkg/res/wgt/config.xml.bak"

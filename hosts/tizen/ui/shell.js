@@ -189,7 +189,7 @@
     if (!info.ui || !info.ui.index) throw new Error('the core has no web build at ' + (info.ui && info.ui.dir));
     frame = document.createElement('iframe');
     frame.id = 'app';
-    frame.src = BASE + '/ui/index.html?reelToken=' + token;
+    frame.src = BASE + '/ui/index.html?reelToken=' + token + (window.REEL_PERF ? '&reelPerf=1' : '');
     document.body.appendChild(frame);
     frame.addEventListener('load', function () { frame.focus(); });
     // The splash stays until the app says it has drawn (the page is white until the web

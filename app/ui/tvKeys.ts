@@ -98,3 +98,78 @@ export function tellShellReady() {
     }
   }, 150);
 }
+
+/** Diagnostics for a local TV build made with `scripts/tizen-local.sh --perf` (the shell adds
+ * `reelPerf=1` to the page's address): into the log (forwardConsole), per second of
+ * activity, the frames the page drew and its long pauses; per key, how long it took to the
+ * next paint and how much of that was the app's handler; and the browser's long tasks. */
+export function perfProbe() {
+  type Entry = { name: string; duration: number; startTime: number; processingStart?: number; processingEnd?: number };
+  type Observer = new (f: (list: { getEntries(): Entry[] }) => void) => { observe(o: Record<string, unknown>): void };
+  const g = globalThis as unknown as {
+    location?: { search?: string };
+    parent?: { location?: { search?: string }; requestAnimationFrame?: (f: (t: number) => void) => number };
+    PerformanceObserver?: Observer & { supportedEntryTypes?: string[] };
+  };
+  const query = (w?: { location?: { search?: string } }) => {
+    try {
+      return w?.location?.search ?? "";
+    } catch {
+      return "";
+    }
+  };
+  if (!`${query(g)}${query(g.parent)}`.includes("reelPerf=1")) return;
+  const PO = g.PerformanceObserver;
+  const types = PO?.supportedEntryTypes ?? [];
+  console.log(`[perf] on; entry types: ${types.join(",") || "none"}`);
+  if (PO && types.includes("longtask")) {
+    new PO((l) => {
+      for (const e of l.getEntries()) console.log(`[perf] long task ${Math.round(e.duration)} ms`);
+    }).observe({ type: "longtask" });
+  }
+  if (PO && types.includes("event")) {
+    new PO((l) => {
+      for (const e of l.getEntries()) {
+        if (e.name !== "keydown" && e.name !== "keyup") continue;
+        const ps = e.processingStart ?? e.startTime;
+        const pe = e.processingEnd ?? ps;
+        console.log(
+          `[perf] ${e.name} to paint ${Math.round(e.duration)} ms: waiting ${Math.round(ps - e.startTime)}, handler ${Math.round(pe - ps)}, after ${Math.round(e.startTime + e.duration - pe)}`,
+        );
+      }
+    }).observe({ type: "event", durationThreshold: 16, buffered: true });
+  }
+  // The frames of the page that draws (the app's own frame gets none).
+  const raf = g.parent?.requestAnimationFrame?.bind(g.parent);
+  if (!raf) return console.log("[perf] no animation frames to count");
+  let last = 0;
+  let windowStart = 0;
+  let frames = 0;
+  let worst = 0;
+  let slow = 0;
+  let quietFor = 0;
+  const tick = (t: number) => {
+    if (last) {
+      const gap = t - last;
+      frames++;
+      worst = Math.max(worst, gap);
+      if (gap > 25) slow++;
+    }
+    last = t;
+    if (!windowStart) windowStart = t;
+    if (t - windowStart >= 1000) {
+      // A second with a missed frame is worth a line; quiet seconds are counted, not logged.
+      if (slow > 0) {
+        if (quietFor) console.log(`[perf] (${quietFor} smooth s)`);
+        quietFor = 0;
+        console.log(`[perf] frames ${frames}/s, worst ${Math.round(worst)} ms, ${slow} over 25 ms`);
+      } else quietFor++;
+      windowStart = t;
+      frames = 0;
+      worst = 0;
+      slow = 0;
+    }
+    raf(tick);
+  };
+  raf(tick);
+}

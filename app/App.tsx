@@ -13,7 +13,7 @@ import { fpsEnabled, keymap, mount, platform, setColorScheme, setFpsEnabled, Vie
 import { BackHandler } from "nsh/mobile";
 import { currentWindow, isAvailable as hasWindows } from "nsh/desktop";
 import { remote } from "./ui/native";
-import { forwardConsole, mapRemoteBack, tellShellReady } from "./ui/tvKeys";
+import { forwardConsole, mapRemoteBack, perfProbe, tellShellReady } from "./ui/tvKeys";
 import { AboutScreen } from "./ui/screens/about/AboutScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
@@ -36,6 +36,7 @@ setColorScheme("dark");
 if (remote) {
   mapRemoteBack();
   forwardConsole();
+  perfProbe();
 }
 // A phone and a tablet keep a stack per tab (design/navigation.md, "History model").
 useTabStacks(isTouch);
