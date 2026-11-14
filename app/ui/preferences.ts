@@ -27,6 +27,8 @@ export const contentLanguage = signal("en-US");
 export const contentLanguages = signal<ContentLanguage[]>([]);
 
 export const bufferMB = signal(0);
+/** The player shows the stream's speed, people and what is ready ahead. */
+export const streamDetails = signal(false);
 export const source = signal<SourceInfo>({ url: "", hasKey: false });
 export const bufferChoices = signal<BufferChoice[]>([]);
 
@@ -35,10 +37,15 @@ export async function loadSettings() {
   const s = JSON.parse(await Settings.load(process.dataDir ?? ""));
   bufferMB.set(s.bufferMB);
   bufferChoices.set(s.bufferChoices);
+  streamDetails.set(!!s.streamDetails);
   if (s.contentLanguage) contentLanguage.set(s.contentLanguage);
   if (s.contentLanguages) contentLanguages.set(s.contentLanguages);
   if (s.source) source.set(s.source);
   setLocale(s.language);
+}
+
+export async function toggleStreamDetails() {
+  streamDetails.set(await Settings.setStreamDetails(!streamDetails()));
 }
 
 export async function chooseBuffer(mb: number) {

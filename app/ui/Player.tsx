@@ -15,6 +15,7 @@ import { t } from "nsh/i18n";
 import { Catalog, Fmt } from "app/native";
 import { episodeCode, episodeText, runtime, titleText, type Episode, type Release } from "./catalog";
 import { BACK_SIZE, BackButton, Icon } from "./components";
+import { streamDetails } from "./preferences";
 import { duration, firstFrame, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
 import { alpha, colors, focusRing, font, radius, safe, type, u } from "./theme";
 import { SubtitleOverlay } from "./SubtitleOverlay";
@@ -271,10 +272,11 @@ export function Player() {
   /** The stage's line under the bar: once someone is connected. */
   const stageMeta = () => {
     const s = core();
-    return s.phase === "ready" && !problem() && (s.peers ?? 0) > 0 ? streaming() : "";
+    return streamDetails() && s.phase === "ready" && !problem() && (s.peers ?? 0) > 0 ? streaming() : "";
   };
   /** A stall while playing: how much is ready ahead and how fast it comes. */
   const bufferingText = () => {
+    if (!streamDetails()) return "";
     const s = core();
     const ahead = Math.floor(timeline().ahead);
     const first = ahead > 0 ? t("player.ahead_seconds", { seconds: ahead }) : t("player.buffering");
@@ -423,6 +425,7 @@ export function Player() {
         {/* Bottom: engine line, scrubber, times, buttons. */}
         <If when={ready()}>
           <View style={{ position: "absolute", left: safe().x, right: safe().x, bottom: safe().y }}>
+            <If when={streamDetails()}>
             <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", minHeight: u(32) }}>
               <If when={aheadText() !== ""}>
                 <Text style={{ fontFamily: font, fontSize: u(24), fontWeight: 600, color: colors.snow() }}>{aheadText()}</Text>
@@ -430,6 +433,7 @@ export function Player() {
               </If>
               <Text style={{ fontFamily: font, fontSize: u(24), color: colors.soft() }}>{streaming()}</Text>
             </View>
+            </If>
             <Scrubber
               focused={() => row() === "scrubber" && !panel()}
               position={position}

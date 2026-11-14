@@ -46,6 +46,8 @@ struct Saved {
     /// The user's search source: a Torznab endpoint and its key (may be empty).
     source_url: String,
     source_key: String,
+    /// The player shows the stream's speed, people and what is ready ahead.
+    stream_details: bool,
 }
 
 impl Default for Saved {
@@ -56,6 +58,7 @@ impl Default for Saved {
             content_language: DEFAULT_CONTENT_LANGUAGE.to_owned(),
             source_url: String::new(),
             source_key: String::new(),
+            stream_details: false,
         }
     }
 }
@@ -128,6 +131,7 @@ pub fn load(data_dir: Option<&Path>) -> Value {
             .map(|(tag, name)| json!({ "tag": tag, "name": name }))
             .collect::<Vec<_>>(),
         "bufferMB": saved.buffer_mb,
+        "streamDetails": saved.stream_details,
         "source": source_json(&saved),
         "bufferChoices": BUFFER_CHOICES
             .iter()
@@ -150,6 +154,17 @@ pub fn set_buffer_mb(mb: u32) -> u32 {
     });
     engine::set_buffer_mb(mb as u64);
     mb
+}
+
+/// Saves whether the player shows the stream's details; the value in effect.
+pub fn set_stream_details(on: bool) -> bool {
+    with(|s| {
+        s.saved.stream_details = on;
+        if let Some(file) = &s.file {
+            write(file, &s.saved);
+        }
+        on
+    })
 }
 
 /// The search source as the UI may show it: the address, and whether a key is

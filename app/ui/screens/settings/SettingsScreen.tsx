@@ -12,9 +12,12 @@ import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
 import { PageHeader } from "../../layout/TopBar";
 import { openAbout } from "../../nav";
-import { bufferChoices, chooseBuffer, chooseContentLanguage, contentLanguage, contentLanguages } from "../../preferences";
+import {
+  bufferChoices, chooseBuffer, chooseContentLanguage, contentLanguage, contentLanguages, toggleStreamDetails,
+} from "../../preferences";
 import { colors, safe, u } from "../../theme";
 import { BufferSection } from "./BufferSection";
+import { DetailsSection } from "./DetailsSection";
 import { LanguageSection } from "./LanguageSection";
 import { SourceSection } from "./SourceSection";
 
@@ -49,7 +52,8 @@ export function SettingsScreen(props: { freeBytes: () => number | null; onClose:
   /** The focus goes through the languages, the buffer sizes, then to About. */
   const langs = () => contentLanguages().length;
   const bufferAt = () => langs();
-  const aboutAt = () => langs() + bufferChoices().length;
+  const detailsAt = () => langs() + bufferChoices().length;
+  const aboutAt = () => detailsAt() + 1;
   const focus = signal(backFromAbout ? aboutAt() : Math.max(0, contentLanguages().findIndex((l) => l.tag === contentLanguage())));
   backFromAbout = false;
   const about = () => {
@@ -64,6 +68,7 @@ export function SettingsScreen(props: { freeBytes: () => number | null; onClose:
     enter: () => {
       const f = focus();
       if (f === aboutAt()) about();
+      else if (f === detailsAt()) toggleStreamDetails();
       else if (f < bufferAt()) chooseContentLanguage(contentLanguages()[f].tag);
       else chooseBuffer(bufferChoices()[f - bufferAt()].mb);
     },
@@ -78,6 +83,7 @@ export function SettingsScreen(props: { freeBytes: () => number | null; onClose:
         <PageHeader title={() => t("settings.title")} focused={() => false} onBack={props.onClose} />
         <LanguageSection focusedAt={focus} onFocus={(i) => focus.set(i)} />
         <BufferSection freeBytes={props.freeBytes} focusedAt={() => focus() - bufferAt()} onFocus={(i) => focus.set(bufferAt() + i)} />
+        <DetailsSection focused={() => focus() === detailsAt()} onFocus={() => focus.set(detailsAt())} />
         <SourceSection />
         <Text style={metaText()}>{t("settings.hint")}</Text>
         <AboutRow focused={() => focus() === aboutAt()} viewRef={page.follow(() => focus() === aboutAt(), "nearest")} onPress={about} />

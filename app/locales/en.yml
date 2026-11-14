@@ -304,6 +304,10 @@ settings:
     open: About reel and its data sources
     data: Data sources
     tmdb_logo: The Movie Database (TMDB)
+  details:
+    title: Stream details
+    about: While a film plays or waits, show how fast it comes, from how many people, and how much is ready ahead.
+    show: Show stream details
   buffer:
     title: Playback buffer
     about: How much of the film reel keeps on this device while it plays. A bigger buffer survives slow peers and long seeks better. reel needs this much free space to start a film.

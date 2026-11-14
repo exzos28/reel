@@ -16,11 +16,15 @@ const status = JSON.stringify({
   stage: "starting",
 });
 const timeline = JSON.stringify({ ranges: [[0, 0.3], [0.6, 0.7]], ahead: 0 });
+/** Settings with the stream's details on (they are off by default). */
+const DETAILS = {
+  "Settings.load": JSON.stringify({ language: "en", bufferMB: 256, bufferChoices: [{ mb: 256, default: true }], streamDetails: true }),
+};
 
 async function playing() {
   const app = await open("./App.tsx", {
     clock: {},
-    modules: { "app/native": { ...NATIVE, ...STILL, "Engine.status": status, "Engine.timeline": timeline } },
+    modules: { "app/native": { ...NATIVE, ...STILL, ...DETAILS, "Engine.status": status, "Engine.timeline": timeline } },
   });
   await app.keyboard.press("down"); // Trending movies: Dune
   await app.press("Play");
@@ -32,7 +36,7 @@ async function playing() {
 async function waiting(engine: Record<string, unknown>) {
   const app = await open("./App.tsx", {
     clock: {},
-    modules: { "app/native": { ...NATIVE, "Engine.status": JSON.stringify(engine) } },
+    modules: { "app/native": { ...NATIVE, ...DETAILS, "Engine.status": JSON.stringify(engine) } },
   });
   await app.keyboard.press("down");
   await app.press("Play");
@@ -237,4 +241,16 @@ test("Watch credits dismisses Up next and brings the controls back", async () =>
   expect(app.texts()).not.toContain("Next episode · S3:E3");
   await app.keyboard.press("down");
   expect(app.texts()).toContain("S3:E2 · Pain");
+});
+
+test("by default the player keeps the stream's details to itself", async () => {
+  const app = await open("./App.tsx", {
+    clock: {},
+    modules: { "app/native": { ...NATIVE, ...STILL, "Engine.status": status, "Engine.timeline": timeline } },
+  });
+  await app.keyboard.press("down");
+  await app.press("Play");
+  await app.wait(600);
+  expect(app.shows("scrubber")).toBe(true);
+  expect(app.texts()).not.toContain("streaming at 3.4 MB/s from 37 people");
 });

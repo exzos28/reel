@@ -162,6 +162,12 @@ impl Settings {
         settings::set_buffer_mb(mb)
     }
 
+    /// Saves whether the player shows the stream's speed, people and what is
+    /// ready ahead (off by default); the value in effect.
+    pub fn set_stream_details(on: bool) -> bool {
+        settings::set_stream_details(on)
+    }
+
     /// Saves the search source (a Torznab endpoint and its key; empty URL
     /// removes it). JSON `{"ok":true,"source":{"url","hasKey"}}` or
     /// `{"ok":false,"message"}` for an address that is not one.

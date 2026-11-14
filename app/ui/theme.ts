@@ -96,6 +96,8 @@ export function focusRing(focused: boolean, lift: "card" | "row" | "button" = "b
     outlineColor: colors.snow(),
     boxShadow: focused ? `0 ${u(20)}px ${u(50)}px ${alpha(colors.ink(), 0.7)}` : "none",
     transform: focused ? moved : "none",
+    // The ring and its shadow draw over the neighbours (a row of pills, tabs).
+    zIndex: focused ? 2 : 0,
     transitionProperty: "transform",
     transitionDuration: 120,
     transitionTimingFunction: "ease-out",
