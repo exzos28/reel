@@ -1,5 +1,7 @@
 # A local Jackett for developing reel's search (Torznab source).
 # Run: docker compose -f dev/jackett/compose.yml up -d   → http://localhost:9117
+# It listens on the local network too (http://<this computer's IP>:9117), so a TV running
+# reel can use it as its search source; Jackett asks for its API key on every search.
 # Config (indexers, accounts, API key) lives in dev/jackett/config, never committed.
 services:
   jackett:
@@ -11,5 +13,5 @@ services:
     volumes:
       - ./config:/config
     ports:
-      - "127.0.0.1:9117:9117"
+      - "9117:9117"
     restart: unless-stopped
