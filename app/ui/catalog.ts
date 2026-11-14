@@ -180,16 +180,26 @@ const check = () => {
   }
 };
 setInterval(check, 1000);
-const read = <T>(json: () => string): T => {
+/** The last answer of each call: when the core answers the same JSON again
+ * (most revisions change something elsewhere), the same object comes back,
+ * so nothing that shows it updates. */
+const last = new Map<string, { raw: string; value: unknown }>();
+const read = <T>(key: string, json: () => string): T => {
   version();
-  return JSON.parse(json());
+  const raw = json();
+  const before = last.get(key);
+  if (before && before.raw === raw) return before.value as T;
+  const value = JSON.parse(raw) as T;
+  last.set(key, { raw, value });
+  return value;
 };
 
-export const home = () => read<Shelf[]>(() => Catalog.home());
+export const home = () => read<Shelf[]>("home", () => Catalog.home());
 export const browse = (page: "movies" | "shows" | "anime") =>
-  read<{ trending: Summary[]; all: Summary[] }>(() => Catalog.browse(page));
-export const title = (id: string) => read<Title | null>(() => Catalog.title(id));
-export const episodes = (show: string, season: number) => read<Episode[]>(() => Catalog.episodes(show, season));
+  read<{ trending: Summary[]; all: Summary[] }>(`browse:${page}`, () => Catalog.browse(page));
+export const title = (id: string) => read<Title | null>(`title:${id}`, () => Catalog.title(id));
+export const episodes = (show: string, season: number) =>
+  read<Episode[]>(`episodes:${show}:${season}`, () => Catalog.episodes(show, season));
 
 export function toggleList(id: string) {
   Catalog.toggleList(id);
@@ -282,7 +292,7 @@ export const noteText = (r: Release) => t(`release.note.${r.note}`, { mbit: r.mb
 
 /** An episode's name or overview, from the core (empty while its season is not known). */
 export function episodeText(show: string, season: number, episode: number, field: "title" | "about") {
-  const e = read<Episode | null>(() => Catalog.episode(show, season, episode));
+  const e = read<Episode | null>(`episode:${show}:${season}:${episode}`, () => Catalog.episode(show, season, episode));
   return e ? e[field] : "";
 }
 
