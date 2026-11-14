@@ -243,6 +243,15 @@ pub struct SeasonSummary {
     pub poster: Option<Image>,
 }
 
+/// An age rating as a country's board gives it ("R", "TV-14", "16").
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Certification {
+    /// ISO 3166-1 ("US", "DE").
+    pub country: String,
+    pub rating: String,
+}
+
 /// A full title card for the details screen.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -279,6 +288,10 @@ pub struct Title {
     pub season_count: Option<u32>,
     pub episode_count: Option<u32>,
     pub next_episode: Option<EpisodeRef>,
+    /// Age ratings per country (the UI's region is picked by the catalog).
+    pub certifications: Vec<Certification>,
+    /// Titles like this one (TMDB recommendations, else similar), best first.
+    pub similar: Vec<TitleCard>,
 }
 
 /// A title on a shelf or in search results.

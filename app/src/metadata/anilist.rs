@@ -457,6 +457,8 @@ impl TitleSource for Anilist {
                     airing_at,
                 })
             }),
+            certifications: Vec::new(),
+            similar: Vec::new(),
         })
     }
 }

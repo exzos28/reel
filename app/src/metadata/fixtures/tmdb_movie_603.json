@@ -366,5 +366,146 @@
     }
    }
   ]
+ },
+ "release_dates": {
+  "results": [
+   {
+    "iso_3166_1": "US",
+    "release_dates": [
+     {
+      "certification": "",
+      "iso_639_1": "",
+      "note": "Premiere",
+      "release_date": "1999-03-24T00:00:00.000Z",
+      "type": 1
+     },
+     {
+      "certification": "R",
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1999-03-31T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "DE",
+    "release_dates": [
+     {
+      "certification": "16",
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1999-06-17T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "PL",
+    "release_dates": [
+     {
+      "certification": "",
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1999-08-13T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   }
+  ]
+ },
+ "recommendations": {
+  "page": 1,
+  "results": [
+   {
+    "adult": false,
+    "backdrop_path": "/reloaded.jpg",
+    "id": 604,
+    "title": "Matrix Reaktywacja",
+    "original_title": "The Matrix Reloaded",
+    "overview": "",
+    "poster_path": "/reloaded.jpg",
+    "media_type": "movie",
+    "original_language": "en",
+    "genre_ids": [
+     28,
+     878
+    ],
+    "popularity": 10.0,
+    "release_date": "2003-05-15",
+    "video": false,
+    "vote_average": 7.0,
+    "vote_count": 11000
+   },
+   {
+    "adult": false,
+    "backdrop_path": "/revolutions.jpg",
+    "id": 605,
+    "title": "Matrix Rewolucje",
+    "original_title": "The Matrix Revolutions",
+    "overview": "",
+    "poster_path": "/revolutions.jpg",
+    "media_type": "movie",
+    "original_language": "en",
+    "genre_ids": [
+     28,
+     878
+    ],
+    "popularity": 10.0,
+    "release_date": "2003-11-05",
+    "video": false,
+    "vote_average": 6.7,
+    "vote_count": 9800
+   },
+   {
+    "adult": false,
+    "backdrop_path": "/self.jpg",
+    "id": 603,
+    "title": "Matrix",
+    "original_title": "The Matrix",
+    "overview": "",
+    "poster_path": "/self.jpg",
+    "media_type": "movie",
+    "original_language": "en",
+    "genre_ids": [
+     28,
+     878
+    ],
+    "popularity": 10.0,
+    "release_date": "1999-03-31",
+    "video": false,
+    "vote_average": 8.2,
+    "vote_count": 26000
+   }
+  ],
+  "total_pages": 1,
+  "total_results": 3
+ },
+ "similar": {
+  "page": 1,
+  "results": [
+   {
+    "adult": false,
+    "backdrop_path": "/empire.jpg",
+    "id": 1891,
+    "title": "Imperium kontratakuje",
+    "original_title": "The Empire Strikes Back",
+    "overview": "",
+    "poster_path": "/empire.jpg",
+    "media_type": "movie",
+    "original_language": "en",
+    "genre_ids": [
+     28,
+     878
+    ],
+    "popularity": 10.0,
+    "release_date": "1980-05-20",
+    "video": false,
+    "vote_average": 8.4,
+    "vote_count": 17000
+   }
+  ],
+  "total_pages": 1,
+  "total_results": 1
  }
 }

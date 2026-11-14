@@ -131,6 +131,31 @@ fn tmdb_movie() {
 }
 
 #[test]
+fn tmdb_age_ratings_and_similar() {
+    let movie = tmdb().map_title(&fixture("tmdb_movie_603.json"), &cx("pl-PL")).unwrap();
+    let certs: Vec<_> = movie.certifications.iter().map(|c| (c.country.as_str(), c.rating.as_str())).collect();
+    // The theatrical rating, not the premiere's empty one; a country without one is left out.
+    assert_eq!(certs, [("US", "R"), ("DE", "16")]);
+    let ids: Vec<_> = movie.similar.iter().map(|c| c.id.as_str()).collect();
+    assert_eq!(ids, ["tmdb:movie:604", "tmdb:movie:605"], "recommendations, without the title itself");
+    assert_eq!(movie.similar[0].title, "Matrix Reaktywacja");
+    assert!(movie.similar[0].backdrop.is_some());
+
+    let show = tmdb().map_title(&fixture("tmdb_tv_1429.json"), &cx("pl-PL")).unwrap();
+    assert!(show.certifications.iter().any(|c| c.country == "US" && c.rating == "TV-MA"));
+    // No recommendations: the similar titles.
+    assert_eq!(show.similar.len(), 1);
+    assert_eq!(show.similar[0].id, "tmdb:tv:31911");
+    assert_eq!(show.similar[0].kind, TitleKind::Series);
+
+    let req = tmdb().title_request(MetaId::TmdbTv(1429), "en").unwrap();
+    let Call::Get { query, .. } = req.call else { panic!("a GET") };
+    let append = &query.iter().find(|(k, _)| k == "append_to_response").unwrap().1;
+    assert!(append.contains("content_ratings") && append.contains("recommendations") && append.contains("similar"));
+    assert!(!append.contains("release_dates"));
+}
+
+#[test]
 fn tmdb_text_falls_back_by_language() {
     let mut body = fixture("tmdb_movie_603.json");
     body["overview"] = json!("");
@@ -418,6 +443,9 @@ fn live_tmdb() {
         let title = t.map_title(&body, &cx).unwrap();
         assert_eq!(title.ids.imdb.as_deref(), Some("tt0133093"));
         assert!(title.poster.is_some() && title.logo.is_some());
+        assert!(title.certifications.iter().any(|c| c.country == "US"), "release_dates appended");
+        assert!(!title.similar.is_empty(), "recommendations appended");
+        assert!(title.credits.iter().any(|c| c.role == CreditRole::Cast && c.profile.is_some()));
         let trending =
             super::http::fetch(&client, &limiter, &t.shelf_request(Shelf::TrendingSeries, "en").unwrap().call)
                 .await

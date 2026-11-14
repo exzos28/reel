@@ -165,6 +165,35 @@ fn a_film_screen() {
     assert!(matches!(play_source(MATRIX), PlaySource::None));
     // Not known yet: a notice title, so the screen has something to show.
     assert_eq!(title("tmdb:movie:1")["notice"], "loading");
+    assert_eq!(title("tmdb:movie:1")["cast"], json!([]));
+}
+
+#[test]
+fn a_film_screen_below_the_hero() {
+    let _g = fresh(true, false);
+    seed_matrix();
+    let t = title(MATRIX);
+    let cast = t["cast"].as_array().unwrap();
+    assert_eq!(cast[0]["name"], "Keanu Reeves");
+    assert_eq!(cast[0]["character"], "Neo");
+    assert_eq!(cast[0]["initials"], "KR");
+    assert!(cast[0]["photo"].as_str().unwrap().starts_with("https://image.tmdb.org/t/p/w185/"));
+    let jobs: Vec<_> = t["crew"].as_array().unwrap().iter().map(|c| c["job"].as_str().unwrap()).collect();
+    assert_eq!(jobs, ["director", "writer", "music"], "no producers");
+    assert_eq!(t["crew"][1]["names"].as_array().unwrap().len(), 2);
+    assert_eq!(t["originalTitle"], "The Matrix");
+    assert_eq!(t["releaseDate"], json!([1999, 3, 31]));
+    assert!(t["countries"].as_array().unwrap().contains(&json!("United States")));
+    assert!(!t["studios"].as_array().unwrap().is_empty());
+    assert_eq!(t["status"], Value::Null, "a film has no status line");
+    // The UI is in English: the US rating.
+    assert_eq!(t["certification"], "R");
+    assert_eq!(t["ratings"], json!([{ "source": "tmdb", "value": "8.3", "votes": "29K" }]));
+    let similar: Vec<_> = t["similar"].as_array().unwrap().iter().map(|s| s["id"].as_str().unwrap()).collect();
+    assert_eq!(similar, ["tmdb:movie:604", "tmdb:movie:605"]);
+    assert_eq!(t["similar"][0]["title"], "Matrix Reaktywacja");
+    assert_eq!(t["similar"][0]["kind"], "movie");
+    assert!(t["similar"][0]["card"].as_str().unwrap().starts_with("https://image.tmdb.org/t/p/w780/"));
 }
 
 #[test]
@@ -227,6 +256,11 @@ fn a_series_screen_with_seasons_and_episodes() {
     assert_eq!(t["play"]["id"], "tmdb:tv:1429:s1e1");
     assert_eq!(t["season"], 1);
     assert_eq!(t["resume"], Value::Null);
+    assert_eq!(t["status"], "ended");
+    assert_eq!(t["certification"], "TV-MA");
+    assert_eq!(t["crew"][0]["job"], "music", "no creators listed: the music");
+    assert_eq!(t["similar"][0]["id"], "tmdb:tv:31911");
+    assert_eq!(t["similar"][0]["kind"], "show");
 
     let eps = episodes(AOT, 3);
     let e = &eps[1];

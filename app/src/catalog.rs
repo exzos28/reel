@@ -28,6 +28,8 @@ use serde_json::{Value, json};
 
 use crate::{metadata, progress, settings, sources};
 
+mod details;
+
 // ---- Ids.
 
 /// What plays: a title, or an episode of one.
@@ -313,6 +315,9 @@ struct Info {
     airs: Option<[u32; 4]>,
     anime: bool,
     imdb: Option<String>,
+    /// The model's scores and age ratings, as they came.
+    ratings: Value,
+    certifications: Value,
 }
 
 /// Backdrop sizes: the hero's and a 16:9 card's; posters (2:3).
@@ -341,6 +346,7 @@ fn from_card(card: &Value) -> Info {
         rating,
         votes,
         anime: card["anime"].as_bool().unwrap_or(false),
+        ratings: card["ratings"].clone(),
         ..Default::default()
     };
     images(&mut info, card);
@@ -394,6 +400,8 @@ fn from_title(t: &Value) -> Info {
         airs,
         anime: !t["anime"].is_null(),
         imdb: text(&t["ids"]["imdb"]),
+        ratings: t["ratings"].clone(),
+        certifications: t["certifications"].clone(),
         ..Default::default()
     };
     images(&mut info, t);
@@ -873,6 +881,8 @@ fn summary(info: &Info) -> Value {
         "minutes": info.minutes,
         "rating": info.rating,
         "votes": info.votes,
+        "ratings": details::ratings(&info.ratings),
+        "certification": details::certification(&info.certifications, &settings::language()),
         "badges": [],
         "genres": info.genres,
         "still": info.still,
@@ -910,7 +920,18 @@ fn notice_title(key: &str) -> Value {
     let mut v = notice(key);
     v["releases"] = json!([]);
     v["releasesState"] = json!("none");
+    v["aboutFull"] = json!(false);
+    for empty in ["cast", "crew", "countries", "studios", "similar"] {
+        v[empty] = json!([]);
+    }
+    for unknown in ["tagline", "originalTitle", "releaseDate", "status"] {
+        v[unknown] = Value::Null;
+    }
     v
+}
+
+fn list_of(v: &Value) -> &[Value] {
+    v.as_array().map(Vec::as_slice).unwrap_or_default()
 }
 
 /// Shelf items of a `Meta.trending` answer.
@@ -1021,11 +1042,20 @@ pub fn browse(page: &str) -> Value {
     json!({ "trending": t, "all": a })
 }
 
+/// An overview longer than this (characters) does not fit the hero's three
+/// lines: the screen shows it whole below.
+const HERO_ABOUT: usize = 200;
+/// How many titles "More like this" shows.
+const SIMILAR: usize = 12;
+
 /// A title screen: the summary plus `releases` (of what Play starts: the
 /// film, or the show's episode) and `releasesState` (see `releases_state`),
 /// and for shows `season` (the one to show first) and `seasonList`
-/// (`[{"number","year","episodes","name"}]`, regular seasons). A notice
-/// title while it is not known yet.
+/// (`[{"number","year","episodes","name"}]`, regular seasons). Below the
+/// hero: `aboutFull` (the overview is longer than the hero shows), `cast`,
+/// `crew` (see `details`), `tagline`, `originalTitle`, `releaseDate`
+/// ([y,m,d]), `countries`, `studios`, `status` (series), and `similar`
+/// (summaries). A notice title while it is not known yet.
 pub fn title(id: &str) -> Value {
     let call = Call::Title(id.to_owned());
     let Some(t) = meta_all(std::slice::from_ref(&call)).remove(0) else {
@@ -1037,6 +1067,19 @@ pub fn title(id: &str) -> Value {
     let mut v = summary(&info);
     v["releases"] = json!(releases_json(&w.key, &info));
     v["releasesState"] = json!(releases_state(&w.key));
+    v["aboutFull"] = json!(info.about.chars().count() > HERO_ABOUT);
+    v["cast"] = json!(details::cast(&t["credits"]));
+    v["crew"] = json!(details::crew(&t["credits"], info.show));
+    if let Value::Object(more) = details::details(&t, info.show) {
+        v.as_object_mut().expect("a summary is an object").extend(more);
+    }
+    let mut seen = HashSet::from([id.to_owned()]);
+    v["similar"] = list_of(&t["similar"])
+        .iter()
+        .filter(|c| c["id"].as_str().is_some_and(|i| seen.insert(i.to_owned())))
+        .take(SIMILAR)
+        .map(|c| summary(&card_info(c)))
+        .collect();
     if info.show {
         v["season"] = json!(w.episode.map_or(1, |e| e.0));
         v["seasonList"] = info

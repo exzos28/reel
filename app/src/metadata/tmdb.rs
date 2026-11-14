@@ -381,11 +381,15 @@ impl TitleSource for Tmdb {
             MetaId::Anilist(_) => return Err(ProviderError::BadId),
         };
         let primary = lang.split(['-', '_']).next().unwrap_or("en");
+        let ratings = if matches!(id, MetaId::TmdbMovie(_)) { "release_dates" } else { "content_ratings" };
         self.get(
             &path,
             vec![
                 ("language", lang.to_owned()),
-                ("append_to_response", "external_ids,images,credits,translations".into()),
+                (
+                    "append_to_response",
+                    format!("external_ids,images,credits,translations,{ratings},recommendations,similar"),
+                ),
                 ("include_image_language", format!("{primary},en,null")),
             ],
             CacheKind::TitleSettled,
@@ -560,8 +564,62 @@ impl TitleSource for Tmdb {
                 })
             }),
             seasons,
+            certifications: certifications(body, movie),
+            similar: similar(body, n, kind, cx),
         })
     }
+}
+
+/// The age rating of each country: a film's theatrical one (else any its
+/// release dates name), a series' content rating. Empty ones are left out.
+fn certifications(body: &Value, movie: bool) -> Vec<Certification> {
+    let results = |key| body.get(key).map_or(&[][..], |v| arr(v, "results"));
+    if movie {
+        results("release_dates")
+            .iter()
+            .filter_map(|c| {
+                let dates = arr(c, "release_dates");
+                let rating = dates
+                    .iter()
+                    .filter(|d| u(d, "type") == Some(3))
+                    .chain(dates)
+                    .find_map(|d| s(d, "certification"))?;
+                Some(Certification { country: s(c, "iso_3166_1")?, rating })
+            })
+            .collect()
+    } else {
+        results("content_ratings")
+            .iter()
+            .filter_map(|c| Some(Certification { country: s(c, "iso_3166_1")?, rating: s(c, "rating")? }))
+            .collect()
+    }
+}
+
+/// How many titles "More like this" lists at most.
+const SIMILAR: usize = 12;
+
+/// TMDB's recommendations, else its similar titles (by genre and keywords);
+/// the title itself left out.
+fn similar(body: &Value, id: u64, kind: TitleKind, cx: &MapCx) -> Vec<TitleCard> {
+    let list = |key| -> Vec<TitleCard> {
+        body.get(key)
+            .map_or(&[][..], |v| arr(v, "results"))
+            .iter()
+            .filter(|v| u(v, "id") != Some(id))
+            .filter_map(|v| {
+                let k = match v.get("media_type").and_then(Value::as_str) {
+                    Some("movie") => TitleKind::Movie,
+                    Some("tv") => TitleKind::Series,
+                    Some(_) => return None,
+                    None => kind,
+                };
+                card(v, k, cx)
+            })
+            .take(SIMILAR)
+            .collect()
+    };
+    let recommended = list("recommendations");
+    if recommended.is_empty() { list("similar") } else { recommended }
 }
 
 /// Regular episodes before season `n` (TMDB order), when every earlier
