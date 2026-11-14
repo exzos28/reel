@@ -137,7 +137,7 @@ pub(crate) fn bump() {
 /// The revision once it is past `after` (at once if it already is), or the same one after
 /// `CHANGED_WAIT`: the UI waits on it, so a change made on a phone shows on the TV at once.
 pub async fn changed(after: u64) -> u64 {
-    let waiting = crate::catalog::runtime().spawn(async move {
+    let waiting = crate::application::catalog::runtime().spawn(async move {
         let deadline = tokio::time::Instant::now() + CHANGED_WAIT;
         loop {
             let notified = CHANGED.notified();
@@ -305,7 +305,7 @@ pub fn set_source_with(url: &str, key: Option<&str>) -> Result<Value, String> {
         (source_json(&s.saved), before != (s.saved.source_url.clone(), s.saved.source_key.clone()))
     });
     if changed {
-        crate::catalog::source_changed();
+        crate::application::catalog::source_changed();
     }
     bump();
     Ok(shown)
@@ -371,7 +371,7 @@ mod tests {
 
     #[test]
     fn saves_and_loads_from_the_data_dir() {
-        let _guard = crate::catalog::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = crate::application::catalog::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let dir = std::env::temp_dir().join(format!("reel-settings-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
 
@@ -435,7 +435,7 @@ mod tests {
 
     #[test]
     fn every_change_wakes_whoever_waits() {
-        let _guard = crate::catalog::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = crate::application::catalog::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
         let seen = revision();
         // Already past: answers at once.

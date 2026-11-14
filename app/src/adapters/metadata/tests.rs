@@ -16,7 +16,7 @@ use super::{
 };
 
 fn fixture(name: &str) -> Value {
-    let path = format!("{}/src/metadata/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
+    let path = format!("{}/src/adapters/metadata/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
     serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap()
 }
 
@@ -34,7 +34,7 @@ fn sources(ratings: &[Rating]) -> Vec<RatingSource> {
 
 fn aot_entries() -> Vec<AnimeEntry> {
     animemap::parse(
-        &std::fs::read(format!("{}/src/metadata/fixtures/anime-list-full.json", env!("CARGO_MANIFEST_DIR"))).unwrap(),
+        &std::fs::read(format!("{}/src/adapters/metadata/fixtures/anime-list-full.json", env!("CARGO_MANIFEST_DIR"))).unwrap(),
     )
     .unwrap()
     .iter()
@@ -404,7 +404,7 @@ fn service_answers_from_the_cache() {
     {
         let mut c = svc.cache.lock().unwrap();
         let rows = animemap::parse(
-            &std::fs::read(format!("{}/src/metadata/fixtures/anime-list-full.json", env!("CARGO_MANIFEST_DIR")))
+            &std::fs::read(format!("{}/src/adapters/metadata/fixtures/anime-list-full.json", env!("CARGO_MANIFEST_DIR")))
                 .unwrap(),
         )
         .unwrap();

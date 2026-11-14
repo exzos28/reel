@@ -5,32 +5,28 @@
 //! the others over HTTP from the core (`ui/native.ts`, docs/tizen.md).
 //! New native modules follow the same rule: `#[cfg(not(target_arch = "wasm32"))]`.
 
+// The layers (app/ARCHITECTURE.md): the application on the domain and the ports, the
+// adapters behind the ports, the interface (these NSH modules and what is served over
+// HTTP), and `wiring`, the one place that puts adapters behind the ports.
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg_attr(feature = "engine", allow(dead_code))]
-mod no_engine;
+mod adapters;
 #[cfg(not(target_arch = "wasm32"))]
-mod tracks;
+mod application;
+#[cfg(not(target_arch = "wasm32"))]
+mod interface;
 #[cfg(not(target_arch = "wasm32"))]
 mod wiring;
+
+// Paths the Tizen host uses (hosts/tizen/core).
 #[cfg(not(target_arch = "wasm32"))]
-pub mod thumbs;
-#[cfg(not(target_arch = "wasm32"))]
-mod catalog;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod hosted;
-#[cfg(not(target_arch = "wasm32"))]
-mod metadata;
-#[cfg(not(target_arch = "wasm32"))]
-mod progress;
-#[cfg(not(target_arch = "wasm32"))]
-mod settings;
-#[cfg(target_os = "macos")]
-mod mpv;
+pub use interface::{hosted, thumbs};
 
 use nsh_core::prelude::*;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use catalog::Catalog;
+use application::{catalog, progress, settings, tracks};
+#[cfg(target_os = "macos")]
+use adapters::mpv;
 #[cfg(not(target_arch = "wasm32"))]
 use wiring::{metadata, playback};
 
@@ -281,6 +277,118 @@ impl Hosted {
     /// where the page is not served.
     pub fn link() -> String {
         hosted::link().to_string()
+    }
+}
+
+/// The catalog the UI shows: TMDB and AniList titles through `Meta`,
+/// releases from the user's search source, watch progress. Results are JSON
+/// strings; poll `revision()` and read again when it changes.
+#[cfg(not(target_arch = "wasm32"))]
+#[module]
+pub struct Catalog;
+
+#[cfg(not(target_arch = "wasm32"))]
+#[module]
+impl Catalog {
+    /// The revision once it is past `after`, or the same after a while: what the UI
+    /// waits on to read again the moment something changed.
+    pub async fn changed(after: f64) -> f64 {
+        catalog::changed(after as u64).await as f64
+    }
+
+    /// Goes up when anything the catalog shows changed (an answer landed, a
+    /// search finished, progress was saved): read again.
+    pub fn revision() -> f64 {
+        catalog::revision() as f64
+    }
+
+    /// The home shelves: `[{"id","items":[summary…]}]` (see `catalog::summary`).
+    pub fn home() -> String {
+        catalog::home().to_string()
+    }
+
+    /// `"movies"`, `"shows"` or `"anime"`: `{"trending":[summary…],"all":[summary…],
+    /// "filters":[group…],"allState"}` (see `catalog::browse`).
+    pub fn browse(page: String) -> String {
+        catalog::browse(&page).to_string()
+    }
+
+    /// The next page of a browse page's grid (`"movies"`, `"shows"`, `"anime"`):
+    /// whether one is on its way now (`browse`'s `moreState` says when it is in).
+    pub fn browse_more(page: String) -> bool {
+        catalog::browse_more(&page)
+    }
+
+    /// One choice in a browse page's filter panel (see `catalog::choose_filter`):
+    /// `group` "genres" | "years" | "countries" | "sort", `id` an option's
+    /// id, empty to clear the group. Whether the filter changed.
+    pub fn choose_filter(page: String, group: String, id: String) -> bool {
+        catalog::choose_filter(&page, &group, &id)
+    }
+
+    /// A film or show screen (a notice title while it is not known yet).
+    pub fn title(id: String) -> String {
+        catalog::title(&id).to_string()
+    }
+
+    /// The episodes of `season` of `show`.
+    pub fn episodes(show: String, season: u32) -> String {
+        catalog::episodes(&show, season).to_string()
+    }
+
+    /// Episode `number` of `season` of `show`, or null while it is not known.
+    pub fn episode(show: String, season: u32, number: u32) -> String {
+        catalog::episode(&show, season, number).to_string()
+    }
+
+    /// The episode to offer next at `position` of `duration` seconds of `id`, or null.
+    pub fn up_next(id: String, position: f64, duration: f64) -> String {
+        catalog::up_next(&id, position, duration).to_string()
+    }
+
+    /// The audio, subtitle and release options of what plays.
+    pub fn tracks(id: String) -> String {
+        catalog::tracks(&id).to_string()
+    }
+
+    /// Adds `id` to the user's list or takes it off: whether it is on it now.
+    pub fn toggle_list(id: String) -> bool {
+        catalog::toggle_list(&id)
+    }
+
+    /// The search screen for `query` (see `catalog::search::search`):
+    /// `{"query","state","tmdb","recent","sections":[{"id","items":[summary…]}]}`.
+    /// Asks in the background once the query rests; read again on `revision()`.
+    pub fn search(query: String) -> String {
+        catalog::search::search(&query).to_string()
+    }
+
+    /// Keeps `query` among the recent searches (submitted, or a title opened from it).
+    pub fn remember_search(query: String) {
+        catalog::search::remember(&query)
+    }
+
+    /// Makes release `index` the one Play uses for `id`.
+    pub fn choose_release(id: String, index: u32) -> bool {
+        catalog::choose_release(&id, index as usize)
+    }
+
+    /// The releases of one episode (an episode key), to pick one when it is not
+    /// in its season's: `{"releases","releasesState","seasonRelease"}`.
+    pub fn episode_releases(key: String) -> String {
+        catalog::episode_releases(&key).to_string()
+    }
+
+    /// Where the player should start `id` (what plays), seconds: where the
+    /// viewer stopped, 0 when new or watched.
+    pub fn start_at(id: String) -> f64 {
+        progress::start_at(&id)
+    }
+
+    /// The player's report: `position` of `duration` seconds into `id`.
+    /// Whether it counts as watched now (90%).
+    pub fn save_progress(id: String, position: f64, duration: f64) -> bool {
+        catalog::save_progress(&id, position, duration)
     }
 }
 

@@ -9,7 +9,7 @@ use super::{anilist::Anilist, provider::*, tmdb::Tmdb};
 use reel_domain::discover::*;
 
 fn fixture(name: &str) -> Value {
-    let path = format!("{}/src/metadata/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
+    let path = format!("{}/src/adapters/metadata/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
     serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap()
 }
 

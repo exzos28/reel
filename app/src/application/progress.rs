@@ -216,7 +216,7 @@ mod tests {
     // One test: the store is process-wide.
     #[test]
     fn records_resumes_marks_watched_and_persists() {
-        let _guard = crate::catalog::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = crate::application::catalog::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         clear();
         let dir = std::env::temp_dir().join(format!("reel-progress-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);

@@ -10,7 +10,7 @@ use std::{
 
 use serde_json::{Value, json};
 
-use crate::{progress, wiring::playback};
+use crate::{application::progress, wiring::playback};
 use reel_domain::keys::parse_key;
 use reel_domain::subtitles::{
     files::SubFile,
@@ -260,7 +260,7 @@ mod tests {
 
     #[test]
     fn menu_without_a_torrent_and_without_tracks() {
-        let _lock = crate::catalog::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _lock = crate::application::catalog::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // Job 0 plays nothing: no files yet, the one original audio track.
         let m = menu(0, "tmdb:movie:1", None);
         assert_eq!(m["pending"], true);

@@ -23,20 +23,17 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Condvar, LazyLock, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use nsh_core::prelude::*;
 use serde_json::{Value, json};
 
-use crate::{
-    progress, settings,
-    wiring::{metadata, playback},
-};
+use super::{progress, settings};
+use crate::wiring::{metadata, playback};
 use reel_domain::discover::{DiscoverKind, Filter};
 use reel_domain::{compat, episode};
 
 mod details;
 mod filters;
 mod paging;
-mod search;
+pub mod search;
 
 // ---- Ids (`reel_domain::keys`).
 
@@ -395,9 +392,17 @@ fn card_url(image: &Value) -> Option<String> {
     let url = image_url(image, width)?;
     let picked = image["variants"].as_array()?.iter().find(|v| v["url"].as_str() == Some(&url))?["width"].as_u64();
     if width == CARD_W_TV && picked.is_some_and(|w| w > 2 * width as u64) {
-        return Some(crate::thumbs::url(&url, width));
+        return Some(thumb_url(&url, width));
     }
     Some(url)
+}
+
+/// Where the TV's web UI asks for `src` `width` px wide (a path on the core's own server,
+/// which `interface::thumbs` answers).
+fn thumb_url(src: &str, width: u32) -> String {
+    let mut u = reqwest::Url::parse("http://core/img").expect("a fixed address");
+    u.query_pairs_mut().append_pair("w", &width.to_string()).append_pair("src", src);
+    format!("/img?{}", u.query().unwrap_or_default())
 }
 
 fn card_width() -> u32 {
@@ -1457,116 +1462,6 @@ pub fn save_progress(key: &str, position: f64, duration: f64) -> bool {
     watched
 }
 
-/// The catalog the UI shows: TMDB and AniList titles through `Meta`,
-/// releases from the user's search source, watch progress. Results are JSON
-/// strings; poll `revision()` and read again when it changes.
-#[module]
-pub struct Catalog;
-
-#[module]
-impl Catalog {
-    /// The revision once it is past `after`, or the same after a while: what the UI
-    /// waits on to read again the moment something changed.
-    pub async fn changed(after: f64) -> f64 {
-        changed(after as u64).await as f64
-    }
-
-    /// Goes up when anything the catalog shows changed (an answer landed, a
-    /// search finished, progress was saved): read again.
-    pub fn revision() -> f64 {
-        revision() as f64
-    }
-
-    /// The home shelves: `[{"id","items":[summary…]}]` (see `catalog::summary`).
-    pub fn home() -> String {
-        home().to_string()
-    }
-
-    /// `"movies"`, `"shows"` or `"anime"`: `{"trending":[summary…],"all":[summary…],
-    /// "filters":[group…],"allState"}` (see `catalog::browse`).
-    pub fn browse(page: String) -> String {
-        browse(&page).to_string()
-    }
-
-    /// The next page of a browse page's grid (`"movies"`, `"shows"`, `"anime"`):
-    /// whether one is on its way now (`browse`'s `moreState` says when it is in).
-    pub fn browse_more(page: String) -> bool {
-        browse_more(&page)
-    }
-
-    /// One choice in a browse page's filter panel (see `catalog::choose_filter`):
-    /// `group` "genres" | "years" | "countries" | "sort", `id` an option's
-    /// id, empty to clear the group. Whether the filter changed.
-    pub fn choose_filter(page: String, group: String, id: String) -> bool {
-        choose_filter(&page, &group, &id)
-    }
-
-    /// A film or show screen (a notice title while it is not known yet).
-    pub fn title(id: String) -> String {
-        title(&id).to_string()
-    }
-
-    /// The episodes of `season` of `show`.
-    pub fn episodes(show: String, season: u32) -> String {
-        episodes(&show, season).to_string()
-    }
-
-    /// Episode `number` of `season` of `show`, or null while it is not known.
-    pub fn episode(show: String, season: u32, number: u32) -> String {
-        episode(&show, season, number).to_string()
-    }
-
-    /// The episode to offer next at `position` of `duration` seconds of `id`, or null.
-    pub fn up_next(id: String, position: f64, duration: f64) -> String {
-        up_next(&id, position, duration).to_string()
-    }
-
-    /// The audio, subtitle and release options of what plays.
-    pub fn tracks(id: String) -> String {
-        tracks(&id).to_string()
-    }
-
-    /// Adds `id` to the user's list or takes it off: whether it is on it now.
-    pub fn toggle_list(id: String) -> bool {
-        toggle_list(&id)
-    }
-
-    /// The search screen for `query` (see `catalog::search::search`):
-    /// `{"query","state","tmdb","recent","sections":[{"id","items":[summary…]}]}`.
-    /// Asks in the background once the query rests; read again on `revision()`.
-    pub fn search(query: String) -> String {
-        search::search(&query).to_string()
-    }
-
-    /// Keeps `query` among the recent searches (submitted, or a title opened from it).
-    pub fn remember_search(query: String) {
-        search::remember(&query)
-    }
-
-    /// Makes release `index` the one Play uses for `id`.
-    pub fn choose_release(id: String, index: u32) -> bool {
-        choose_release(&id, index as usize)
-    }
-
-    /// The releases of one episode (an episode key), to pick one when it is not
-    /// in its season's: `{"releases","releasesState","seasonRelease"}`.
-    pub fn episode_releases(key: String) -> String {
-        episode_releases(&key).to_string()
-    }
-
-    /// Where the player should start `id` (what plays), seconds: where the
-    /// viewer stopped, 0 when new or watched.
-    pub fn start_at(id: String) -> f64 {
-        progress::start_at(&id)
-    }
-
-    /// The player's report: `position` of `duration` seconds into `id`.
-    /// Whether it counts as watched now (90%).
-    pub fn save_progress(id: String, position: f64, duration: f64) -> bool {
-        save_progress(&id, position, duration)
-    }
-}
-
 /// The catalog's and progress's stores are process-wide: tests that use
 /// them take this lock.
 #[cfg(test)]
@@ -1578,6 +1473,14 @@ static TEST_SOURCE: Mutex<Option<bool>> = Mutex::new(None);
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod thumb_url_tests {
+    #[test]
+    fn the_url_carries_the_source_encoded() {
+        assert_eq!(super::thumb_url("https://s4.anilist.co/b/1-a.jpg?x=1&y=2", 500), "/img?w=500&src=https%3A%2F%2Fs4.anilist.co%2Fb%2F1-a.jpg%3Fx%3D1%26y%3D2");
+    }
+}
 
 #[cfg(test)]
 mod release_order_tests {

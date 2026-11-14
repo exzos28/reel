@@ -20,7 +20,10 @@ use std::{
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::{catalog, settings, wiring::playback};
+use crate::{
+    application::{catalog, settings},
+    wiring::playback,
+};
 use pairing::{Pairing, Refused};
 
 /// The page, self-contained (no resource from elsewhere).

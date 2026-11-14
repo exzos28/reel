@@ -1,7 +1,7 @@
 //! Smaller copies of providers' pictures, for a TV. Some sources have one size only (AniList's
 //! banners are 1900 px wide); a TV decoding dozens of those for 326 px cards stalls for most
 //! of a second at a time. On a TV the catalog points such pictures at the core instead
-//! (`url`), which answers `/img` with a card's 16:9 copy `width` px wide (`get`), kept on disk:
+//! (`catalog::thumb_url`), which answers `/img` with a card's 16:9 copy `width` px wide (`get`), kept on disk:
 //! cut from the middle as the card's `cover` would, so a banner is not stretched up.
 //! Only the image hosts the catalog uses: the core is no proxy for anything else.
 
@@ -12,13 +12,6 @@ use std::path::PathBuf;
 const HOSTS: &[&str] = &["s4.anilist.co", "image.tmdb.org", "cdn.myanimelist.net"];
 /// The widths it makes.
 const WIDTHS: &[u32] = &[300, 500, 780];
-
-/// Where the TV's web UI asks for `src` `width` px wide (a path on the core's own server).
-pub fn url(src: &str, width: u32) -> String {
-    let mut u = reqwest::Url::parse("http://core/img").expect("a fixed address");
-    u.query_pairs_mut().append_pair("w", &width.to_string()).append_pair("src", src);
-    format!("/img?{}", u.query().unwrap_or_default())
-}
 
 fn allowed(src: &str, width: u32) -> Result<reqwest::Url, String> {
     let u = reqwest::Url::parse(src).map_err(|e| format!("not an address: {e}"))?;
@@ -83,11 +76,6 @@ mod tests {
         assert!(allowed("https://example.com/a.jpg", 500).is_err(), "no proxy for other hosts");
         assert!(allowed("http://s4.anilist.co/file/a.jpg", 500).is_err(), "https only");
         assert!(allowed("https://s4.anilist.co/file/a.jpg", 1234).is_err());
-    }
-
-    #[test]
-    fn the_url_carries_the_source_encoded() {
-        assert_eq!(url("https://s4.anilist.co/b/1-a.jpg?x=1&y=2", 500), "/img?w=500&src=https%3A%2F%2Fs4.anilist.co%2Fb%2F1-a.jpg%3Fx%3D1%26y%3D2");
     }
 
     #[test]

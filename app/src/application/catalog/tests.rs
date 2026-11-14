@@ -3,13 +3,13 @@
 
 use super::*;
 use reel_domain::discover::Sort;
-use crate::metadata::{
+use crate::adapters::metadata::{
     provider::{MapCx, TitleSource},
     tmdb::{ImageConfig, Tmdb},
 };
 
 fn fixture(name: &str) -> Value {
-    let path = format!("{}/src/metadata/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
+    let path = format!("{}/src/adapters/metadata/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
     serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap()
 }
 
@@ -138,7 +138,7 @@ fn home_shelves_from_meta() {
 #[test]
 fn without_tmdb_anime_and_a_notice() {
     let _g = fresh(false, false);
-    let anime = crate::metadata::anilist::Anilist.map_cards(&fixture("anilist_trending.json"), &cx()).unwrap();
+    let anime = crate::adapters::metadata::anilist::Anilist.map_cards(&fixture("anilist_trending.json"), &cx()).unwrap();
     seed(Call::Trending("anime"), json!({ "items": anime }));
     let shelves = home();
     assert_eq!(shelves[0]["id"], "anime");
@@ -638,10 +638,10 @@ fn a_new_filter_or_sort_starts_from_page_one() {
 #[test]
 #[ignore]
 fn live_browse_pages() {
-    let _g = fresh(crate::metadata::tmdb::build_key().is_some(), false);
+    let _g = fresh(crate::adapters::metadata::tmdb::build_key().is_some(), false);
     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
     for n in [1, 2] {
-        let text = rt.block_on(crate::metadata::discover(DiscoverKind::Movie, Filter::default(), "en".into(), n));
+        let text = rt.block_on(crate::adapters::metadata::discover(DiscoverKind::Movie, Filter::default(), "en".into(), n));
         let envelope: Value = serde_json::from_str(&text).unwrap();
         println!("page {n}: {} items, more {}", list_of(&envelope["data"]["items"]).len(), envelope["data"]["more"]);
         land(&movies_page(n), &envelope, u64::MAX);
@@ -664,7 +664,7 @@ fn list() {
 /// `Meta.search` answered `query`: TMDB's search fixture and AniList's trending as its anime.
 fn seed_search(query: &str) {
     let tmdb_cards = tmdb().map_cards(&fixture("tmdb_search_multi.json"), &cx()).unwrap();
-    let anime = crate::metadata::anilist::Anilist.map_cards(&fixture("anilist_trending.json"), &cx()).unwrap();
+    let anime = crate::adapters::metadata::anilist::Anilist.map_cards(&fixture("anilist_trending.json"), &cx()).unwrap();
     // AniList lists one TMDB already found: it shows once.
     let mut anilist = vec![serde_json::to_value(&tmdb_cards[0]).unwrap()];
     anilist.extend(anime.iter().map(|c| serde_json::to_value(c).unwrap()));
@@ -775,11 +775,11 @@ fn an_empty_query_lists_the_recent_searches_kept_in_the_data_dir() {
 #[test]
 #[ignore]
 fn live_home() {
-    let _g = fresh(crate::metadata::tmdb::build_key().is_some(), false);
+    let _g = fresh(crate::adapters::metadata::tmdb::build_key().is_some(), false);
     *TEST_TMDB.lock().unwrap() = None;
     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
     for kind in ["movie", "tv", "movie-popular", "tv-popular", "anime"] {
-        let text = rt.block_on(crate::metadata::trending(kind.into(), "en".into()));
+        let text = rt.block_on(crate::adapters::metadata::trending(kind.into(), "en".into()));
         land(&Call::Trending(kind), &serde_json::from_str(&text).unwrap(), u64::MAX);
     }
     let shelves = home();

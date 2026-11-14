@@ -17,7 +17,7 @@ pub fn playback() -> &'static dyn Playback {
             #[cfg(feature = "engine")]
             let p: Box<dyn Playback> = Box::new(reel_engine::Local::new(std::sync::Arc::new(host::AppHost)));
             #[cfg(not(feature = "engine"))]
-            let p: Box<dyn Playback> = Box::new(crate::no_engine::NoEngine::default());
+            let p: Box<dyn Playback> = Box::new(crate::adapters::no_engine::NoEngine::default());
             p
         })
         .as_ref()
@@ -27,7 +27,7 @@ pub fn playback() -> &'static dyn Playback {
 /// that stored something new wakes whoever waits on the catalog.
 pub fn metadata() -> &'static dyn Metadata {
     static METADATA: OnceLock<Box<dyn Metadata>> = OnceLock::new();
-    METADATA.get_or_init(|| Box::new(crate::metadata::Providers::new(crate::catalog::notify_changed))).as_ref()
+    METADATA.get_or_init(|| Box::new(crate::adapters::metadata::Providers::new(crate::application::catalog::notify_changed))).as_ref()
 }
 
 /// What the engine asks the application.
@@ -38,7 +38,7 @@ mod host {
         ports::PlaybackHost,
     };
 
-    use crate::{catalog, progress};
+    use crate::application::{catalog, progress};
 
     pub struct AppHost;
 
