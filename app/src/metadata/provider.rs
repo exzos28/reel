@@ -160,6 +160,9 @@ pub enum Shelf {
     PopularSeries,
     TrendingAnime,
     PopularAnime,
+    /// The best rated cartoon series (TMDB has no trending of them alone; the page's grid
+    /// is the popular ones).
+    PopularCartoons,
 }
 
 impl Shelf {
@@ -172,6 +175,7 @@ impl Shelf {
             "tv-popular" => Shelf::PopularSeries,
             "anime" => Shelf::TrendingAnime,
             "anime-popular" => Shelf::PopularAnime,
+            "cartoons" => Shelf::PopularCartoons,
             _ => return None,
         })
     }

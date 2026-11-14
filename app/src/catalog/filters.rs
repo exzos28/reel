@@ -1,4 +1,4 @@
-//! The filters of the browse pages (Movies, Shows, Anime): what each one
+//! The filters of the browse pages (Movies, Series, Cartoons, Anime): what each one
 //! is set to, and what the UI lists in their panels.
 //!
 //! The state is kept per catalog (films, series, anime), in memory: Shows
@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 
 use super::details::country;
 use crate::metadata::discover::{
-    ANIME_COUNTRIES, COUNTRIES, DECADES, DiscoverKind, Filter, OLDER, Sort,
+    ANIMATION, ANIME_COUNTRIES, COUNTRIES, DECADES, DiscoverKind, Filter, NOT_SERIES, OLDER, Sort,
 };
 
 static FILTERS: LazyLock<Mutex<HashMap<DiscoverKind, Filter>>> = LazyLock::new(Default::default);
@@ -22,6 +22,7 @@ pub fn page_kind(page: &str, tmdb: bool) -> Option<DiscoverKind> {
         ("anime", _) | ("shows", false) => Some(DiscoverKind::Anime),
         ("movies", true) => Some(DiscoverKind::Movie),
         ("shows", true) => Some(DiscoverKind::Tv),
+        ("cartoons", true) => Some(DiscoverKind::Cartoons),
         _ => None,
     }
 }
@@ -63,8 +64,15 @@ pub fn groups(kind: DiscoverKind, filter: &Filter, named: Option<&Value>) -> Val
             })
             .unwrap_or_default()
     };
+    // Series offer none of the genres they leave out; Cartoons are Animation already.
+    let left_out = |id: &str| match kind {
+        DiscoverKind::Tv => id.parse::<u32>().is_ok_and(|g| NOT_SERIES.contains(&g)),
+        DiscoverKind::Cartoons => id == ANIMATION.to_string(),
+        _ => false,
+    };
     let genres: Vec<Value> = pairs("genres")
         .iter()
+        .filter(|(id, _)| !left_out(id))
         .map(|(id, name)| option(id, Some(name), None, None, filter.genres.contains(id)))
         .collect();
 

@@ -14,6 +14,7 @@ export function screenFor(r: Route) {
       return <HomeScreen />;
     case "movies":
     case "shows":
+    case "cartoons":
     case "anime":
       return <BrowseScreen page={r.name} />;
     case "search":

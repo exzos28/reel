@@ -10,7 +10,7 @@ async function searchScreen(answer: object, extra: Record<string, unknown> = {})
   });
   await app.keyboard.press("up"); // hero
   await app.keyboard.press("up"); // nav, on Home
-  for (let i = 0; i < 4; i++) await app.keyboard.press("right"); // Movies, Shows, Anime, Search
+  for (let i = 0; i < 5; i++) await app.keyboard.press("right"); // Movies, Series, Cartoons, Anime, Search
   await app.keyboard.press("enter");
   await app.keyboard.press("down"); // chosen in the nav, the focus stays there: down to the field
   return app;
@@ -33,7 +33,7 @@ test("typing shows the results in rows; Down, OK opens a title; Back comes back,
   const app = await searchScreen(SEARCH_DUNE);
   await app.type("search-field", "dune");
   expect(app.texts()).toContain("Movies");
-  expect(app.texts()).toContain("Shows");
+  expect(app.texts()).toContain("Series");
   expect(app.texts()).toContain("Anime");
   expect(app.texts()).toContain("Dune");
   expect(app.texts()).toContain("Severance");

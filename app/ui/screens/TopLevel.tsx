@@ -1,4 +1,4 @@
-// The nav's destinations (Home, Movies, Shows, Anime, Search, Settings): the
+// The nav's destinations (Home, Movies, Series, Cartoons, Anime, Search, Settings): the
 // roots of the history, one shown at a time.
 import { View } from "nsh";
 import { route } from "../nav";
@@ -19,6 +19,9 @@ export function TopLevel() {
       </If>
       <If when={current() === "shows"}>
         <BrowseScreen page="shows" />
+      </If>
+      <If when={current() === "cartoons"}>
+        <BrowseScreen page="cartoons" />
       </If>
       <If when={current() === "anime"}>
         <BrowseScreen page="anime" />

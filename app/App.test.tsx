@@ -51,7 +51,7 @@ test("Settings: from the nav, the buffer row opens the sizes in a drawer; pick o
   const app = await app_();
   await app.keyboard.press("up"); // hero
   await app.keyboard.press("up"); // nav, on Home
-  for (let i = 0; i < 5; i++) await app.keyboard.press("right"); // Movies, Shows, Anime, Search, Settings
+  for (let i = 0; i < 6; i++) await app.keyboard.press("right"); // Movies, Series, Cartoons, Anime, Search, Settings
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Playback buffer");
   expect(app.texts()).toContain("10 GB free on this device");
@@ -180,14 +180,14 @@ test("in a Mac window the screens lay out with all their columns", async () => {
   expect(app.texts()).toContain("60 GB");
   await app.keyboard.press("escape");
   await app.keyboard.press("escape");
-  await app.press("label:Shows");
-  expect(app.texts()).toContain("All shows");
+  await app.press("label:Series");
+  expect(app.texts()).toContain("All series");
 });
 
 
-test("Home, Movies, Shows and Anime have the same nav in the window bar, whose pills keep their size", async () => {
+test("Home, Movies, Series, Cartoons and Anime have the same nav in the window bar, whose pills keep their size", async () => {
   const app = await app_(NATIVE, { platform: "macos", width: 1440, height: 900 });
-  const pills = ["Home", "Movies", "Shows", "Anime"];
+  const pills = ["Home", "Movies", "Series", "Cartoons", "Anime"];
   /** What decides a pill's width: its label's size and weight (selected changes only the colour). */
   const sizes = () => pills.map((p) => {
     const s = app.spanStyle(`label:${p} >> text:${p}`);
@@ -195,7 +195,7 @@ test("Home, Movies, Shows and Anime have the same nav in the window bar, whose p
   });
   const onHome = sizes();
   expect(new Set(onHome.map((s) => s.join())).size).toBe(1);
-  for (const page of ["Movies", "Shows", "Anime", "Home"]) {
+  for (const page of ["Movies", "Series", "Cartoons", "Anime", "Home"]) {
     await app.press(`label:${page}`);
     expect(app.count("label:Home")).toBe(1);
     expect(app.count("label:Settings")).toBe(1);
@@ -223,11 +223,21 @@ test("Mac: Back in the window bar is disabled on a root, goes back from a title;
   expect(app.texts()).toContain("Continue watching");
 });
 
-test("the nav opens Anime after Shows: its trending row and all anime", async () => {
+test("the nav opens Cartoons after Series: animated series, their own page", async () => {
   const app = await app_();
   await app.keyboard.press("up");
   await app.keyboard.press("up");
-  for (let i = 0; i < 3; i++) await app.keyboard.press("right"); // Movies, Shows, Anime
+  for (let i = 0; i < 3; i++) await app.keyboard.press("right"); // Movies, Series, Cartoons
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("Animated series for every age");
+  expect(app.texts()).toContain("All cartoons");
+});
+
+test("the nav opens Anime after Series and Cartoons: its trending row and all anime", async () => {
+  const app = await app_();
+  await app.keyboard.press("up");
+  await app.keyboard.press("up");
+  for (let i = 0; i < 4; i++) await app.keyboard.press("right"); // Movies, Series, Cartoons, Anime
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Seasonal hits and all-time favourites");
   expect(app.texts()).toContain("Trending this season");
@@ -317,7 +327,7 @@ test("TV: a destination chosen in the nav keeps the focus on it; Right goes on t
   expect(app.texts()).toContain("All movies");
   await app.keyboard.press("right"); // still in the nav: Shows
   await app.keyboard.press("enter");
-  expect(app.texts()).toContain("All shows");
+  expect(app.texts()).toContain("All series");
   await app.keyboard.press("down"); // into the page
   await app.keyboard.press("up");
   await app.keyboard.press("left"); // back in the nav, on Movies

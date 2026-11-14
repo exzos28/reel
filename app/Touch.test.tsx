@@ -9,14 +9,14 @@ const phone = () => openApp({ platform: "ios", width: 393, height: 852, safeArea
 test("phone: a bottom tab bar; a tab keeps its place; the selected tab chosen again goes to its root", async () => {
   const app = await phone();
   expect(app.shows("tab-bar")).toBe(true);
-  for (const tab of ["Home", "Movies", "Shows", "Anime", "Search"]) expect(app.shows(`label:${tab}`)).toBe(true);
+  for (const tab of ["Home", "Movies", "Series", "Cartoons", "Anime", "Search"]) expect(app.shows(`label:${tab}`)).toBe(true);
   await app.press("label:Movies");
   expect(app.texts()).toContain("All movies");
   await app.press("label:Dune >> nth=0");
   expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
   expect(app.shows("tab-bar")).toBe(true); // on a pushed page too
-  await app.press("label:Shows");
-  expect(app.texts()).toContain("All shows");
+  await app.press("label:Series");
+  expect(app.texts()).toContain("All series");
   await app.press("label:Movies"); // back to Movies: the film is still open
   expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
   await app.press("label:Movies"); // chosen again: its root

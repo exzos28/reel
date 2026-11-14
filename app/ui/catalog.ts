@@ -255,7 +255,7 @@ export interface Browse {
   moreState: "idle" | "loading" | "failed";
 }
 
-export type BrowsePage = "movies" | "shows" | "anime";
+export type BrowsePage = "movies" | "shows" | "cartoons" | "anime";
 
 export const browse = (page: BrowsePage) => read<Browse>(`browse:${page}`, () => Catalog.browse(page));
 export const title = (id: string) => read<Title | null>(`title:${id}`, () => Catalog.title(id));

@@ -430,11 +430,27 @@ async fn trending_work(kind: String, lang: String) -> CallResult {
         let req = src.shelf_request(shelf, &lang).map_err(|e| (e, Some(ProviderId::Tmdb)))?;
         let got = cached(req).await.map_err(|e| (e, Some(ProviderId::Tmdb)))?;
         age.add(&got);
-        let mut cards = src.map_cards(&got.body, &cx).map_err(|e| (e, Some(ProviderId::Tmdb)))?;
+        // TMDB's trending series are every kind of TV: the Series shelves keep series.
+        let body = if shelf == Shelf::TrendingSeries { only_series(&got.body) } else { got.body.clone() };
+        let mut cards = src.map_cards(&body, &cx).map_err(|e| (e, Some(ProviderId::Tmdb)))?;
         mark_anime(&mut cards);
+        if shelf == Shelf::TrendingSeries {
+            cards.retain(|c| !c.anime);
+        }
         cards
     };
     Ok((json!({ "items": items }), age))
+}
+
+/// A TMDB list without the titles in a genre the Series page leaves out (`NOT_SERIES`).
+fn only_series(body: &Value) -> Value {
+    let mut body = body.clone();
+    if let Some(list) = body["results"].as_array_mut() {
+        list.retain(|t| {
+            !t["genre_ids"].as_array().is_some_and(|g| g.iter().any(|id| id.as_u64().is_some_and(|id| discover::NOT_SERIES.contains(&(id as u32)))))
+        });
+    }
+    body
 }
 
 async fn discover_work(kind: DiscoverKind, filter: Filter, lang: String, page: u32) -> CallResult {
@@ -955,5 +971,22 @@ impl Meta {
     /// an anime TMDB found is not repeated under AniList.
     pub async fn search(query: String, language: String) -> String {
         search(query, language).await
+    }
+}
+
+#[cfg(test)]
+mod series_only {
+    use serde_json::json;
+
+    #[test]
+    fn trending_series_keep_series() {
+        let body = json!({ "results": [
+            { "id": 1, "genre_ids": [18, 80] },
+            { "id": 2, "genre_ids": [16, 10765] },
+            { "id": 3, "genre_ids": [10764] },
+            { "id": 4 },
+        ]});
+        let ids: Vec<u64> = super::only_series(&body)["results"].as_array().unwrap().iter().map(|t| t["id"].as_u64().unwrap()).collect();
+        assert_eq!(ids, [1, 4], "no cartoons, no reality; a title without genres stays");
     }
 }

@@ -182,10 +182,17 @@ impl Tmdb {
     ) -> Result<Request, ProviderError> {
         let (path, date, min_votes) = match kind {
             DiscoverKind::Movie => ("/discover/movie", "primary_release_date", 300),
-            DiscoverKind::Tv => ("/discover/tv", "first_air_date", 200),
+            DiscoverKind::Tv | DiscoverKind::Cartoons => ("/discover/tv", "first_air_date", 200),
             DiscoverKind::Anime => return Err(ProviderError::Unsupported),
         };
         let mut query = vec![("language", lang.to_owned()), ("include_adult", "false".into())];
+        let joined = |ids: &[u32], sep: &str| ids.iter().map(u32::to_string).collect::<Vec<_>>().join(sep);
+        match kind {
+            // Pipe: none of them.
+            DiscoverKind::Tv => query.push(("without_genres", joined(&discover::NOT_SERIES, "|"))),
+            DiscoverKind::Cartoons => query.push(("without_keywords", discover::ANIME_KEYWORD.to_string())),
+            _ => {}
+        }
         let sort = match filter.sort {
             Sort::Popular => "popularity.desc".to_owned(),
             Sort::TopRated => {
@@ -199,8 +206,12 @@ impl Tmdb {
             }
         };
         query.push(("sort_by", sort));
-        let genres: Vec<&str> =
+        let mut genres: Vec<&str> =
             filter.genres.iter().map(String::as_str).filter(|g| g.bytes().all(|b| b.is_ascii_digit())).collect();
+        let animation = discover::ANIMATION.to_string();
+        if kind == DiscoverKind::Cartoons && !genres.contains(&animation.as_str()) {
+            genres.insert(0, &animation);
+        }
         if !genres.is_empty() {
             // Comma: a title has every genre.
             query.push(("with_genres", genres.join(",")));
@@ -247,7 +258,7 @@ impl Tmdb {
     pub fn genres_request(&self, kind: DiscoverKind, lang: &str) -> Result<Request, ProviderError> {
         let path = match kind {
             DiscoverKind::Movie => "/genre/movie/list",
-            DiscoverKind::Tv => "/genre/tv/list",
+            DiscoverKind::Tv | DiscoverKind::Cartoons => "/genre/tv/list",
             DiscoverKind::Anime => return Err(ProviderError::Unsupported),
         };
         self.get(path, vec![("language", lang.to_owned())], CacheKind::Config)
@@ -486,7 +497,29 @@ impl TitleSource for Tmdb {
             Shelf::TrendingMovies => self.get("/trending/movie/week", vec![lang.clone()], CacheKind::Shelf),
             Shelf::TrendingSeries => self.get("/trending/tv/week", vec![lang.clone()], CacheKind::Shelf),
             Shelf::PopularMovies => popular("/discover/movie"),
-            Shelf::PopularSeries => popular("/discover/tv"),
+            Shelf::PopularSeries => self.get(
+                "/discover/tv",
+                vec![
+                    lang.clone(),
+                    ("sort_by", "popularity.desc".into()),
+                    ("include_adult", "false".into()),
+                    ("without_genres", discover::NOT_SERIES.iter().map(u32::to_string).collect::<Vec<_>>().join("|")),
+                ],
+                CacheKind::Shelf,
+            ),
+            Shelf::PopularCartoons => self.get(
+                "/discover/tv",
+                vec![
+                    lang.clone(),
+                    // Not the grid's order (popular): the best rated, among those rated enough.
+                    ("sort_by", "vote_average.desc".into()),
+                    ("vote_count.gte", "300".into()),
+                    ("include_adult", "false".into()),
+                    ("with_genres", discover::ANIMATION.to_string()),
+                    ("without_keywords", discover::ANIME_KEYWORD.to_string()),
+                ],
+                CacheKind::Shelf,
+            ),
             Shelf::TrendingAnime | Shelf::PopularAnime => Err(ProviderError::Unsupported),
         }
     }

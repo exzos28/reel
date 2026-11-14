@@ -1248,7 +1248,7 @@ pub fn home() -> Value {
 /// once its answer is in, the one before while it loads.
 static SHOWN: LazyLock<Mutex<HashMap<DiscoverKind, Filter>>> = LazyLock::new(Default::default);
 
-/// A browse page (`"movies"`, `"shows"`, `"anime"`):
+/// A browse page (`"movies"`, `"shows"` (Series), `"cartoons"`, `"anime"`):
 /// `{"trending":[summary…],"all":[summary…],"filters":[group…],"allState",
 /// "more","moreState"}`.
 /// `all` is the catalog through the page's filters (see `filters::groups`
@@ -1265,6 +1265,7 @@ pub fn browse(page: &str) -> Value {
     let trending = Call::Trending(match kind {
         DiscoverKind::Movie => "movie",
         DiscoverKind::Tv => "tv",
+        DiscoverKind::Cartoons => "cartoons",
         DiscoverKind::Anime => "anime",
     });
     let filter = filters::of(kind);

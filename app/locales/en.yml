@@ -4,7 +4,8 @@ app:
 nav:
   home: Home
   movies: Movies
-  shows: Shows
+  shows: Series
+  cartoons: Cartoons
   anime: Anime
   search: Search
   settings: Settings
@@ -21,7 +22,7 @@ exit:
 shelf:
   continue: Continue watching
   trending_movies: Trending movies
-  trending_shows: Trending shows
+  trending_shows: Trending series
   popular: Popular
   anime: Anime trending
   no_tmdb: Movies and shows
@@ -221,10 +222,15 @@ browse:
     trending: Trending
     all: All movies
   shows:
-    title: Shows
+    title: Series
     lead: Binge-worthy series and episodes
     trending: Current & upcoming
-    all: All shows
+    all: All series
+  cartoons:
+    title: Cartoons
+    lead: Animated series for every age
+    trending: Top rated
+    all: All cartoons
   anime:
     title: Anime
     lead: Seasonal hits and all-time favourites
@@ -252,8 +258,8 @@ browse:
 
 search:
   title: Search
-  placeholder: Films, shows and anime by title
-  hint: Type a title to find films, shows and anime.
+  placeholder: Films, series and anime by title
+  hint: Type a title to find films, series and anime.
   recent: Recent searches
   searching: Searching…
   none: "Nothing found for “%{query}”."
@@ -261,7 +267,7 @@ search:
   no_tmdb: This build has no TMDB key, so only anime is searched.
   section:
     movies: Movies
-    shows: Shows
+    shows: Series
     anime: Anime
 
 compat:

@@ -9,15 +9,27 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DiscoverKind {
     Movie,
+    /// Series: TMDB's TV without cartoons, kids', reality, talk, news and soaps (`NOT_SERIES`).
     Tv,
+    /// Cartoon series: TMDB's TV in Animation, without anime (the Anime page has those).
+    Cartoons,
     Anime,
 }
+
+/// TMDB's TV genres that are not what the Series page lists: Animation, Kids, News,
+/// Reality, Soap, Talk.
+pub const NOT_SERIES: [u32; 6] = [16, 10762, 10763, 10764, 10766, 10767];
+/// TMDB's TV genre Animation: what the Cartoons page lists.
+pub const ANIMATION: u32 = 16;
+/// TMDB's keyword "anime": kept out of Cartoons.
+pub const ANIME_KEYWORD: u32 = 210024;
 
 impl DiscoverKind {
     pub fn as_str(self) -> &'static str {
         match self {
             DiscoverKind::Movie => "movie",
             DiscoverKind::Tv => "tv",
+            DiscoverKind::Cartoons => "cartoons",
             DiscoverKind::Anime => "anime",
         }
     }
@@ -232,6 +244,27 @@ mod tests {
         let f = filter(&[], None, None, Sort::TopRated);
         let (_, q) = get(&tmdb().discover_request(DiscoverKind::Tv, &f, "en", TODAY, 1).unwrap());
         assert_eq!(q["vote_count.gte"], "200");
+    }
+
+    #[test]
+    fn series_leave_out_cartoons_kids_and_talk_and_cartoons_leave_out_anime() {
+        let (url, q) = get(&tmdb().discover_request(DiscoverKind::Tv, &Filter::default(), "en", TODAY, 1).unwrap());
+        assert!(url.ends_with("/discover/tv"));
+        assert_eq!(q["without_genres"], "16|10762|10763|10764|10766|10767");
+        assert!(!q.contains_key("with_genres"));
+        let (url, q) = get(&tmdb().discover_request(DiscoverKind::Cartoons, &Filter::default(), "en", TODAY, 1).unwrap());
+        assert!(url.ends_with("/discover/tv"));
+        assert_eq!(q["with_genres"], "16");
+        assert_eq!(q["without_keywords"], "210024");
+        assert!(!q.contains_key("without_genres"));
+        // A genre picked on Cartoons narrows Animation down (comma: both).
+        let f = filter(&["35"], None, None, Sort::Popular);
+        let (_, q) = get(&tmdb().discover_request(DiscoverKind::Cartoons, &f, "en", TODAY, 1).unwrap());
+        assert_eq!(q["with_genres"], "16,35");
+        // Series and Cartoons are not one cached answer.
+        let a = tmdb().discover_request(DiscoverKind::Tv, &Filter::default(), "en", TODAY, 1).unwrap();
+        let b = tmdb().discover_request(DiscoverKind::Cartoons, &Filter::default(), "en", TODAY, 1).unwrap();
+        assert_ne!(a.key, b.key);
     }
 
     #[test]

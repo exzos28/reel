@@ -1,9 +1,9 @@
-// Movies', Shows' and Anime's focus, one per page, kept while other screens show:
+// Movies', Series', Cartoons' and Anime's focus, one per page, kept while other screens show:
 // the nav, the trending row, the filter pills, a filter's panel (its row) or
 // the grid (a cell index across its rows).
 import { signal } from "nsh";
 
-export type Page = "movies" | "shows" | "anime";
+export type Page = "movies" | "shows" | "cartoons" | "anime";
 export type Zone = "nav" | "trending" | "filters" | "panel" | "grid";
 
 const pageFocus = (navAt: number) => ({
@@ -22,5 +22,6 @@ const pageFocus = (navAt: number) => ({
 export const focusOf = {
   movies: pageFocus(1),
   shows: pageFocus(2),
-  anime: pageFocus(3),
+  cartoons: pageFocus(3),
+  anime: pageFocus(4),
 };
