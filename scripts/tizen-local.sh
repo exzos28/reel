@@ -4,18 +4,23 @@
 # reel-tv .wgt; the service rarely changes). Optionally installs it on a TV through
 # apps2samsung-cli, and removes the Docker image and its caches afterwards.
 #
-#   scripts/tizen-local.sh <base.wgt> <out.wgt> [--tv <ip>] [--clean]
+#   scripts/tizen-local.sh <base.wgt> <out.wgt> [--tv <ip>] [--clean] [--ui-only]
+#
+# --ui-only: only the web UI is built (about 15 s); the core stays the base's. For changes
+# in app/ui and app/*.tsx only: give the last local package as the base (it may be <out.wgt>
+# itself), not CI's, whose core is older.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")/.." && pwd)"
 base="${1:-}"; out="${2:-}"
 [ -f "$base" ] && [ -n "$out" ] || { sed -n '2,/^set -euo/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 2; }
 shift 2
-tv=""; clean=0
+tv=""; clean=0; ui_only=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --tv) tv="$2"; shift 2 ;;
         --clean) clean=1; shift ;;
+        --ui-only) ui_only=1; shift ;;
         *) echo "unknown argument $1" >&2; exit 2 ;;
     esac
 done
@@ -43,15 +48,19 @@ if [ -n "${REEL_TORZNAB_URL:-}" ]; then
 fi
 echo "== web UI"
 "$here/hosts/tizen/build.sh" web "$work/web"
-echo "== core (Docker)"
-"$here/scripts/tizen-docker.sh" core "$work/core"
+if [ "$ui_only" = 1 ]; then
+    echo "== core: the base's (--ui-only)"
+else
+    echo "== core (Docker)"
+    "$here/scripts/tizen-docker.sh" core "$work/core"
+fi
 
 echo "== package"
 mkdir "$work/pkg"
 (cd "$work/pkg" && unzip -q "$base")
 # The signatures of the base no longer match: the installer signs the package again.
 rm -f "$work/pkg/author-signature.xml" "$work/pkg/signature1.xml"
-cp "$work/core/libreel_tizen_core.so" "$work/pkg/lib/libreel_tizen_core.so"
+[ "$ui_only" = 1 ] || cp "$work/core/libreel_tizen_core.so" "$work/pkg/lib/libreel_tizen_core.so"
 rm -rf "$work/pkg/res/wgt/web" && cp -R "$work/web" "$work/pkg/res/wgt/web"
 cp "$here/hosts/tizen/ui/shell.js" "$here/hosts/tizen/ui/index.html" "$work/pkg/res/wgt/"
 cp "$here/app/icon/icon.png" "$work/pkg/res/wgt/icon.png"
