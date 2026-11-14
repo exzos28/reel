@@ -101,6 +101,7 @@ impl Engine {
     /// `$TMPDIR/reel-timings.log`).
     pub fn first_frame(job: u32) {
         engine::time_step(job, "first frame on screen");
+        engine::first_frame_shown(job);
     }
 
     /// Stops the job and deletes what it downloaded (the cache is per film).

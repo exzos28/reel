@@ -12,7 +12,7 @@ use std::{
     },
 };
 
-use crate::{buffer, catalog, disk, sources, timeline};
+use crate::{buffer, catalog, disk, progress, sources, timeline};
 
 use anyhow::Context;
 use librqbit::{
@@ -182,9 +182,14 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
     match catalog::play_source(key) {
         catalog::PlaySource::None => Ok(new_job(Job::NoSource)),
         catalog::PlaySource::NotInRelease => Ok(new_job(Job::NotInRelease)),
-        catalog::PlaySource::Ready(source, episode) => open_release(&source, episode),
+        catalog::PlaySource::Ready(source, episode) => {
+            let job = open_release(&source, episode)?;
+            remember_key(job, key);
+            Ok(job)
+        }
         catalog::PlaySource::Searching => {
             let job = new_job(Job::Searching);
+            remember_key(job, key);
             time_start(job, "searching the source");
             if job == 0 {
                 return Ok(0);
@@ -388,6 +393,64 @@ fn time_peers(job: u32, p: &Value, speed: f64) {
     log_line(&line);
 }
 
+// ---- Warming: the pieces the player will ask for next, asked for at once -------------
+
+/// What each job plays (a catalog key), for where it resumes.
+static JOB_KEYS: Mutex<Option<HashMap<u32, String>>> = Mutex::new(None);
+/// Jobs whose first frame is on screen: their warming streams let go.
+static FIRST_FRAMES: Mutex<Option<std::collections::HashSet<u32>>> = Mutex::new(None);
+/// The end of the file the player reads before playing (an MKV's index sits there).
+const TAIL_BYTES: u64 = 4 * MIB;
+/// A warming stream lets go after this even without a first frame.
+const WARM_FOR: std::time::Duration = std::time::Duration::from_secs(120);
+
+fn remember_key(job: u32, key: &str) {
+    JOB_KEYS.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, key.to_owned());
+}
+
+/// The player shows its first frame: warming is over.
+pub fn first_frame_shown(job: u32) {
+    FIRST_FRAMES.lock().unwrap().get_or_insert_with(std::collections::HashSet::new).insert(job);
+}
+
+fn first_frame_seen(job: u32) -> bool {
+    FIRST_FRAMES.lock().unwrap().as_ref().is_some_and(|s| s.contains(&job))
+}
+
+/// The player reads the file's start, then its end (the index), then seeks to where the
+/// viewer stopped, one after the other, and each piece can take seconds: the end and the
+/// resume point are asked for at once, by streams held until the first frame is on screen.
+fn warm(job: u32, handle: Arc<librqbit::ManagedTorrent>) {
+    let Some(file) = video_file(&handle, job) else { return };
+    let Some(len) = handle.with_metadata(|m| m.file_infos.get(file).map(|f| f.len)).ok().flatten() else { return };
+    let mut spots: Vec<(u64, &'static str)> = vec![(len.saturating_sub(TAIL_BYTES), "end of the file in")];
+    let key = JOB_KEYS.lock().unwrap().as_ref().and_then(|k| k.get(&job).cloned());
+    if let Some(e) = key.and_then(|k| progress::get(&k)).filter(|e| !e.watched && e.position > 0.0 && e.duration > 0.0) {
+        // Bytes in proportion to time: near enough to fetch the right pieces first.
+        let at = (len as f64 * (e.position / e.duration).clamp(0.0, 1.0)) as u64;
+        spots.push((at, "resume point in"));
+    }
+    for (at, step) in spots {
+        let h = handle.clone();
+        tokio::spawn(async move {
+            use tokio::io::{AsyncReadExt, AsyncSeekExt};
+            let Ok(mut stream) = h.stream(file).await else { return };
+            if stream.seek(std::io::SeekFrom::Start(at)).await.is_err() {
+                return;
+            }
+            let started = std::time::Instant::now();
+            let mut byte = [0u8; 1];
+            if tokio::time::timeout(WARM_FOR, stream.read(&mut byte)).await.is_ok_and(|r| r.is_ok()) {
+                time_step(job, step);
+            }
+            // Held, so the buffer keeps those pieces until the player has read them.
+            while !first_frame_seen(job) && started.elapsed() < WARM_FOR {
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            }
+        });
+    }
+}
+
 // ---- A release's files, read before it plays --------------------------------
 
 type Files = Vec<(usize, String, u64)>;
@@ -583,6 +646,7 @@ fn add_to(core: &Core, job: u32, url: &str) {
                     tokio::spawn(async move {
                         if h.wait_until_initialized().await.is_ok() {
                             l.sync();
+                            warm(job, h);
                         }
                     });
                     Job::Ready(handle, link)

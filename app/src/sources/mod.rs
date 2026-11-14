@@ -203,8 +203,30 @@ async fn search(source: &Source, request: &Request) -> anyhow::Result<(Vec<Value
     }
     urls.dedup();
     let names = request.names();
+    // A season asks every query anyway (packs and single episodes come from different
+    // ones): all at once, not one after the other (each can take seconds on a source
+    // that opens tracker pages).
+    let answers: Vec<anyhow::Result<String>> = if matches!(query, Query::Season { .. }) {
+        let mut set = tokio::task::JoinSet::new();
+        for (i, url) in urls.iter().cloned().enumerate() {
+            set.spawn(async move { (i, get(&url).await) });
+        }
+        let mut got: Vec<(usize, anyhow::Result<String>)> = Vec::new();
+        while let Some(r) = set.join_next().await {
+            got.push(r.unwrap_or_else(|e| (usize::MAX, Err(anyhow::anyhow!("search task: {e}")))));
+        }
+        got.sort_by_key(|(i, _)| *i);
+        got.into_iter().map(|(_, r)| r).collect()
+    } else {
+        Vec::new()
+    };
+    let mut answers = answers.into_iter();
     for url in urls {
-        match get(&url).await.and_then(|xml| torznab::parse(&xml)) {
+        let answer = match answers.next() {
+            Some(a) => a,
+            None => get(&url).await,
+        };
+        match answer.and_then(|xml| torznab::parse(&xml)) {
             Ok(items) => {
                 // A source that cannot search the way asked may answer with its
                 // latest releases instead: only those about this title count.
