@@ -87,12 +87,14 @@ export function Player() {
   /** The buttons this device has: full screen only where the app has a window. */
   const buttons: ButtonId[] = platform.desktop ? [...BUTTONS] : BUTTONS.filter((b) => b !== "fullscreen");
   /** The window fills the screen (desktops). Left as it was found when the player closes. */
-  const fullscreen = signal(platform.desktop && currentWindow().state()?.mode === "fullScreen");
+  // The window, taken while rendering: NSH's currentWindow() throws in handlers.
+  const win = platform.desktop ? currentWindow() : null;
+  const fullscreen = signal(win?.state()?.mode === "fullScreen");
   const wasFullscreen = fullscreen();
-  if (platform.desktop) cleanup(currentWindow().on("modeChange", (e) => fullscreen.set(e.mode === "fullScreen")));
+  if (win) cleanup(win.on("modeChange", (e) => fullscreen.set(e.mode === "fullScreen")));
   const setFullscreen = (on: boolean) => {
-    if (!platform.desktop) return;
-    currentWindow().setMode(on ? "fullScreen" : "normal");
+    if (!win) return;
+    win.setMode(on ? "fullScreen" : "normal");
     fullscreen.set(on);
   };
   cleanup(() => {
@@ -341,7 +343,12 @@ export function Player() {
       testID="player"
       style={{ flex: 1, backgroundColor: screenBackground() }}
       onMouseMove={() => { if (!card()) poke(); }}
-      onPress={() => { if (!card()) poke(); }}
+      onPress={(e) => {
+        if (card()) return;
+        poke();
+        // A double click on the picture: full screen, as in other players.
+        if (e?.clickCount === 2) setFullscreen(!fullscreen());
+      }}
       focusable={false}
     >
       <If when={ready()}>
