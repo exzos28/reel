@@ -3,6 +3,14 @@
   "id": "app.reel.concept",
   "version": "0.1.0",
   "build": 1,
+  "icon": {
+    "macos": "icon/icon-macos@2x.png",
+    "ios": "icon/icon@2x.png",
+    "android": "icon/icon@2x.png",
+    "windows": "icon/icon@2x.png",
+    "linux": "icon/icon@2x.png",
+    "web": "icon/icon@2x.png"
+  },
   "rust": ".",
   "theme": {
     "cssVars": {
