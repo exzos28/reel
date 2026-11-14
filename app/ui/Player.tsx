@@ -9,7 +9,8 @@
 // buttons on the buttons row), Up/Down switch rows, Escape closes the
 // panel, then hides the overlay, then leaves. Near the end of an episode
 // the Up next card (tv-player-end.html) takes the remote instead.
-import { cleanup, computed, effect, Image, keymap, signal, Text, View, type ImageAsset } from "nsh";
+import { cleanup, computed, effect, Image, keymap, platform, signal, Text, View, type ImageAsset } from "nsh";
+import { currentWindow } from "nsh/desktop";
 import { BufferingNote, PlayerStage, type StageLine } from "./PlayerStage";
 import { t } from "nsh/i18n";
 import { Catalog, Fmt } from "./native";
@@ -26,6 +27,8 @@ import pauseIcon from "./icons/pause.svg";
 import rewindIcon from "./icons/rewind.svg";
 import forwardIcon from "./icons/forward.svg";
 import tracksIcon from "./icons/tracks.svg";
+import fullscreenIcon from "./icons/fullscreen.svg";
+import fullscreenExitIcon from "./icons/fullscreen-exit.svg";
 import checkIcon from "./icons/check.svg";
 
 /** How long the overlay stays without input. */
@@ -37,7 +40,7 @@ const SEEK_S = 10;
 const STALL_MS = 300;
 
 type Row = "scrubber" | "buttons";
-const BUTTONS = ["back", "play", "forward", "tracks"] as const;
+const BUTTONS = ["back", "play", "forward", "tracks", "fullscreen"] as const;
 type ButtonId = (typeof BUTTONS)[number];
 const PLAY_BUTTON = 1;
 
@@ -81,6 +84,20 @@ export function Player() {
   const overlay = signal(true);
   const row = signal<Row>("scrubber");
   const button = signal(PLAY_BUTTON);
+  /** The buttons this device has: full screen only where the app has a window. */
+  const buttons: ButtonId[] = platform.desktop ? [...BUTTONS] : BUTTONS.filter((b) => b !== "fullscreen");
+  /** The window fills the screen (desktops). Left as it was found when the player closes. */
+  const fullscreen = signal(platform.desktop && currentWindow().state()?.mode === "fullScreen");
+  const wasFullscreen = fullscreen();
+  if (platform.desktop) cleanup(currentWindow().on("modeChange", (e) => fullscreen.set(e.mode === "fullScreen")));
+  const setFullscreen = (on: boolean) => {
+    if (!platform.desktop) return;
+    currentWindow().setMode(on ? "fullScreen" : "normal");
+    fullscreen.set(on);
+  };
+  cleanup(() => {
+    if (fullscreen() !== wasFullscreen) setFullscreen(wasFullscreen);
+  });
 
   // The tracks panel: three columns, the focus inside it while it is open.
   const panel = signal(false);
@@ -169,6 +186,7 @@ export function Player() {
   const run = (id: ButtonId) => {
     if (id === "play") togglePause();
     else if (id === "tracks") (panel() ? panel.set(false) : openPanel());
+    else if (id === "fullscreen") setFullscreen(!fullscreen());
     else seekBy(id === "back" ? -SEEK_S : SEEK_S);
   };
   const movePanel = (dc: number, dr: number) => {
@@ -198,7 +216,7 @@ export function Player() {
       right: key(
         () => {
           if (panel()) movePanel(1, 0);
-          else if (row() === "buttons") button.set(Math.min(button() + 1, BUTTONS.length - 1));
+          else if (row() === "buttons") button.set(Math.min(button() + 1, buttons.length - 1));
           else seekBy(SEEK_S);
         },
         () => cardButton.set(1),
@@ -206,6 +224,8 @@ export function Player() {
     },
     { repeat: true },
   );
+  // F: full screen, as in other players.
+  if (platform.desktop) keymap.bind({ f: () => setFullscreen(!fullscreen()) });
   keymap.bind({
     up: key((shown) => (panel() ? movePanel(0, -1) : shown && row.set("scrubber"))),
     down: key((shown) => (panel() ? movePanel(0, 1) : shown && row.set("buttons"))),
@@ -223,6 +243,8 @@ export function Player() {
       else if (panel()) panel.set(false);
       // On a problem the stage covers everything: Back leaves at once.
       else if (started() && overlay() && !failed()) hide();
+      // A window that fills the screen is left first (as Escape does in macOS apps).
+      else if (fullscreen()) setFullscreen(false);
       else stop();
     },
   });
@@ -308,9 +330,11 @@ export function Player() {
     id === "play" ? (paused() ? t("player.play") : t("player.pause"))
     : id === "back" ? t("player.back_10")
     : id === "forward" ? t("player.forward_10")
+    : id === "fullscreen" ? (fullscreen() ? t("player.exit_fullscreen") : t("player.fullscreen"))
     : t("player.tracks");
   const icon = (id: ButtonId): ImageAsset =>
-    id === "play" ? (paused() ? playIcon : pauseIcon) : id === "back" ? rewindIcon : id === "forward" ? forwardIcon : tracksIcon;
+    id === "play" ? (paused() ? playIcon : pauseIcon) : id === "back" ? rewindIcon : id === "forward" ? forwardIcon
+    : id === "fullscreen" ? (fullscreen() ? fullscreenExitIcon : fullscreenIcon) : tracksIcon;
 
   return (
     <View
@@ -456,7 +480,7 @@ export function Player() {
               </Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: u(14), marginTop: u(26) }}>
-              <Each of={[...BUTTONS]} key="index">
+              <Each of={buttons} key="index">
                 {(id, i) => (
                   <View style={{ marginLeft: id() === "tracks" ? u(22) : 0 }}>
                     <RoundButton

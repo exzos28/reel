@@ -251,6 +251,8 @@ compat:
 
 player:
   back: Back
+  fullscreen: Full screen
+  exit_fullscreen: Exit full screen
   stage:
     searching: Looking for a release
     finding: Finding people sharing this film
