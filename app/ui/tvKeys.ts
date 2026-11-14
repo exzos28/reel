@@ -86,17 +86,15 @@ export function forwardConsole() {
 }
 
 /** Tells the TV shell the app has drawn (its splash goes then, not while the page is
- * still white). After two frames: the first one has been painted. */
+ * still white). A timer, not requestAnimationFrame: the app's code runs in a frame the
+ * TV's browser does not draw, where animation frames never come. */
 export function tellShellReady() {
-  const g = globalThis as unknown as { top?: { postMessage(m: unknown, o: string): void } | null; requestAnimationFrame?: (f: () => void) => void };
-  const raf = g.requestAnimationFrame ?? ((f: () => void) => setTimeout(f, 16));
-  raf(() =>
-    raf(() => {
-      try {
-        g.top?.postMessage({ reel: "ready" }, "*");
-      } catch {
-        // no shell above (a browser)
-      }
-    }),
-  );
+  const g = globalThis as unknown as { top?: { postMessage(m: unknown, o: string): void } | null };
+  setTimeout(() => {
+    try {
+      g.top?.postMessage({ reel: "ready" }, "*");
+    } catch {
+      // no shell above (a browser)
+    }
+  }, 150);
 }
