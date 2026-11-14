@@ -10,10 +10,8 @@
 // touch, each tab's native stack with the phone's tab bar or the tablet's top
 // row (layout/TouchStack.tsx, layout/TouchNav.tsx).
 import { fpsEnabled, keymap, mount, platform, setColorScheme, setFpsEnabled, View, type ViewStyle } from "nsh";
-import { BackHandler } from "nsh/mobile";
 import { currentWindow, isAvailable as hasWindows } from "nsh/desktop";
-import { remote } from "./ui/native";
-import { mapRemoteBack, tellShellReady } from "./ui/tvKeys";
+import { appDrawn, bindPlatformInput, mapPlatformKeys } from "./ui/platform/remote";
 import { startDiagnostics } from "./ui/platform/diagnostics";
 import { AboutScreen } from "./ui/screens/about/AboutScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
@@ -23,7 +21,6 @@ import { screenFor } from "./ui/screens/RouteScreen";
 import { chrome, isDesktop, isTouch } from "./ui/layout/chrome";
 import { PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
 import { TouchStack } from "./ui/layout/TouchStack";
-import { bindDesktopKeys } from "./ui/layout/desktopKeys";
 import { ExitDialog } from "./ui/layout/ExitDialog";
 import { BAR_HEIGHT, barBackBox, WindowBar } from "./ui/layout/WindowBar";
 import { Player } from "./ui/Player";
@@ -33,8 +30,8 @@ import { colors } from "./ui/theme";
 import { videoUnderUi } from "./ui/VideoSurface";
 
 setColorScheme("dark");
-// The web build runs on a Samsung TV: its remote's Back becomes Escape.
-if (remote) mapRemoteBack();
+// Keys the platform sends that the keymap does not know (a Samsung TV remote's Back).
+mapPlatformKeys();
 startDiagnostics();
 // A phone and a tablet keep a stack per tab (design/navigation.md, "History model").
 useTabStacks(isTouch);
@@ -91,10 +88,8 @@ function App() {
   if (isDesktop && hasWindows) currentWindow().set({ titleBar: { style: "hidden", height: BAR_HEIGHT } });
   // Back: Escape (a TV remote's Back arrives as Escape), through what is open first.
   keymap.bind({ escape: handleBack });
-  if (isDesktop) bindDesktopKeys();
-  if (isTouch && platform.os === "android") BackHandler.on("press", systemBack);
-  // Android TV: the remote's Back is the system back, not an Escape key.
-  if (chrome === "tv" && platform.os === "android") BackHandler.on("press", () => (handleBack(), true));
+  // The platform's own: a desktop's shortcuts and menu, Android's system back.
+  bindPlatformInput({ back: handleBack, systemBack, go });
   const playing = () => status().phase !== "idle";
 
   return (
@@ -131,4 +126,4 @@ function App() {
 
 mount(App);
 // On the TV: the shell's splash goes once the first frame is drawn.
-if (remote) tellShellReady();
+appDrawn();

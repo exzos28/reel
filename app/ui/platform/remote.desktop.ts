@@ -5,12 +5,12 @@
 import { keymap } from "nsh";
 import { Menu } from "nsh/desktop";
 import { t } from "nsh/i18n";
-import { go, handleBack } from "../nav";
-import { chrome } from "./chrome";
+import { family } from ".";
+import type { InputActions, PlatformInput } from "./remote";
 
 /** macOS: the menu bar carries the shortcuts (a menu item gets a keystroke before the
  * window does: ⌘F reached nothing as a plain binding), under Go, as Mac apps do. */
-function setMacMenu() {
+function setMacMenu({ back: handleBack, go }: InputActions) {
   Menu.setApplicationMenu([
     {
       label: "reel",
@@ -47,9 +47,10 @@ function setMacMenu() {
   ]);
 }
 
-export function bindDesktopKeys() {
-  if (chrome === "mac") {
-    setMacMenu();
+function bindDesktopKeys(actions: InputActions) {
+  const { back: handleBack, go } = actions;
+  if (family === "mac") {
+    setMacMenu(actions);
     // ⌘← stays a binding: the menu shows ⌘[ for Back.
     keymap.bind({ "mod+left": handleBack });
     return;
@@ -65,3 +66,6 @@ export function bindDesktopKeys() {
     "mod+,": () => go("settings"),
   });
 }
+
+/** macOS, Windows, Linux (and a desktop browser). */
+export const desktopInput: PlatformInput = { bind: bindDesktopKeys };

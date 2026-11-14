@@ -2,6 +2,8 @@
 // know. On the web it is turned into Escape, the key every screen binds for Back. The app's
 // code runs in a frame of the same origin as NSH's page, so it listens on every document it
 // can reach (the TV shell above them is another origin and is skipped).
+// Also the TV shell around the app: told when the app has drawn (remote.ts).
+import type { PlatformInput } from "./remote";
 
 const TIZEN_BACK = 10009;
 
@@ -20,7 +22,7 @@ interface Doc extends Target {
 }
 type KeyEventCtor = new (type: string, init: Record<string, unknown>) => unknown;
 
-export function mapRemoteBack() {
+function mapRemoteBack() {
   const g = globalThis as unknown as { document?: Doc; parent?: { document?: Doc }; KeyboardEvent?: KeyEventCtor };
   const KeyEvent = g.KeyboardEvent;
   if (!KeyEvent) return;
@@ -53,7 +55,7 @@ export function mapRemoteBack() {
 /** Tells the TV shell the app has drawn (its splash goes then, not while the page is
  * still white). A timer, not requestAnimationFrame: the app's code runs in a frame the
  * TV's browser does not draw, where animation frames never come. */
-export function tellShellReady() {
+function tellShellReady() {
   const g = globalThis as unknown as { top?: { postMessage(m: unknown, o: string): void } | null };
   setTimeout(() => {
     try {
@@ -63,3 +65,6 @@ export function tellShellReady() {
     }
   }, 150);
 }
+
+/** A Samsung TV's web build. */
+export const tizenInput: PlatformInput = { mapKeys: mapRemoteBack, drawn: tellShellReady };
