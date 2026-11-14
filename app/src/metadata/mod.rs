@@ -487,6 +487,9 @@ pub fn merge_anime(mut title: Title, mut entries: Vec<AnimeEntry>, primary: usiz
         title.ids.anidb = p.anidb;
         title.ids.kitsu = p.kitsu;
     }
+    if title.trailer.is_none() {
+        title.trailer = anilist.as_ref().and_then(|t| t.trailer.clone());
+    }
     let (format, season, season_year, mut aliases, tags, studios) = match anilist.and_then(|t| {
         let display = t.title.clone();
         t.anime.map(|a| (display, a))

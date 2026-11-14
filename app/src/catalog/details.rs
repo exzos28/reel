@@ -148,6 +148,7 @@ pub fn details(t: &Value, show: bool) -> Value {
         "countries": countries,
         "studios": studios,
         "status": if show { t["status"].clone() } else { Value::Null },
+        "trailer": text(&t["trailer"]),
     })
 }
 

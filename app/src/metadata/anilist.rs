@@ -30,7 +30,7 @@ const MEDIA_QUERY: &str = "query ($id: Int) {
     title { romaji english native } synonyms description(asHtml: false)
     coverImage { extraLarge large medium color } bannerImage
     startDate { year month day } endDate { year month day } genres isAdult
-    countryOfOrigin siteUrl
+    countryOfOrigin siteUrl trailer { id site }
     tags { name rank isMediaSpoiler }
     studios(isMain: true) { nodes { name } }
     nextAiringEpisode { episode airingAt }
@@ -459,6 +459,10 @@ impl TitleSource for Anilist {
             }),
             certifications: Vec::new(),
             similar: Vec::new(),
+            trailer: m
+                .get("trailer")
+                .filter(|t| t.get("site").and_then(Value::as_str) == Some("youtube"))
+                .and_then(|t| youtube(&s(t, "id")?)),
         })
     }
 }

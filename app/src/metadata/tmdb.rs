@@ -388,9 +388,10 @@ impl TitleSource for Tmdb {
                 ("language", lang.to_owned()),
                 (
                     "append_to_response",
-                    format!("external_ids,images,credits,translations,{ratings},recommendations,similar"),
+                    format!("external_ids,images,credits,translations,{ratings},recommendations,similar,videos"),
                 ),
                 ("include_image_language", format!("{primary},en,null")),
+                ("include_video_language", format!("{primary},en,null")),
             ],
             CacheKind::TitleSettled,
         )
@@ -566,6 +567,7 @@ impl TitleSource for Tmdb {
             seasons,
             certifications: certifications(body, movie),
             similar: similar(body, n, kind, cx),
+            trailer: trailer(body, cx),
         })
     }
 }
@@ -593,6 +595,34 @@ fn certifications(body: &Value, movie: bool) -> Vec<Certification> {
             .filter_map(|c| Some(Certification { country: s(c, "iso_3166_1")?, rating: s(c, "rating")? }))
             .collect()
     }
+}
+
+/// The trailer to offer (a YouTube watch URL): a YouTube video of type
+/// Trailer, else Teaser; official ones first, then in the content language,
+/// then English, then any; the newest first.
+fn trailer(body: &Value, cx: &MapCx) -> Option<String> {
+    let lang = cx.lang_primary();
+    let videos = body.get("videos").map_or(&[][..], |v| arr(v, "results"));
+    videos
+        .iter()
+        .filter(|v| v.get("site").and_then(Value::as_str) == Some("YouTube"))
+        .filter_map(|v| {
+            let kind = match v.get("type").and_then(Value::as_str)? {
+                "Trailer" => 0,
+                "Teaser" => 1,
+                _ => return None,
+            };
+            let unofficial = v.get("official") != Some(&Value::Bool(true));
+            let language = match v.get("iso_639_1").and_then(Value::as_str) {
+                Some(l) if l == lang => 0,
+                Some("en") => 1,
+                _ => 2,
+            };
+            let published = s(v, "published_at").unwrap_or_default();
+            Some(((kind, unofficial, language), published, youtube(&s(v, "key")?)?))
+        })
+        .min_by(|a, b| a.0.cmp(&b.0).then_with(|| b.1.cmp(&a.1)))
+        .map(|(_, _, url)| url)
 }
 
 /// How many titles "More like this" lists at most.

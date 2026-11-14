@@ -156,6 +156,38 @@ fn tmdb_age_ratings_and_similar() {
 }
 
 #[test]
+fn tmdb_trailer() {
+    let req = tmdb().title_request(MetaId::TmdbMovie(603), "pl-PL").unwrap();
+    let Call::Get { query, .. } = req.call else { panic!("a GET") };
+    let param = |key: &str| query.iter().find(|(k, _)| k == key).unwrap().1.clone();
+    assert!(param("append_to_response").ends_with(",videos"));
+    assert_eq!(param("include_video_language"), "pl,en,null");
+
+    let watch = |key: &str| Some(format!("https://www.youtube.com/watch?v={key}"));
+    let body = fixture("tmdb_movie_603.json");
+    // A fan trailer in Polish loses to official English ones; of those the newest.
+    assert_eq!(tmdb().map_title(&body, &cx("pl-PL")).unwrap().trailer, watch("vKQi3bBA1y8"));
+    assert_eq!(tmdb().map_title(&body, &cx("en")).unwrap().trailer, watch("vKQi3bBA1y8"));
+
+    // An official one in the content language comes before English.
+    let mut polish = body.clone();
+    polish["videos"]["results"][1]["official"] = json!(true);
+    assert_eq!(tmdb().map_title(&polish, &cx("pl-PL")).unwrap().trailer, watch("plFanTrailer"));
+    assert_eq!(tmdb().map_title(&polish, &cx("en")).unwrap().trailer, watch("vKQi3bBA1y8"));
+
+    // No YouTube trailer: the teaser (not the Vimeo trailer, not the featurette).
+    let mut teaser = body.clone();
+    teaser["videos"]["results"].as_array_mut().unwrap().retain(|v| v["type"] != "Trailer" || v["site"] != "YouTube");
+    assert_eq!(tmdb().map_title(&teaser, &cx("pl-PL")).unwrap().trailer, watch("plTeaser"));
+
+    let mut none = body;
+    none["videos"]["results"].as_array_mut().unwrap().retain(|v| v["type"] == "Featurette");
+    assert_eq!(tmdb().map_title(&none, &cx("pl-PL")).unwrap().trailer, None);
+    let json = serde_json::to_value(tmdb().map_title(&fixture("tmdb_tv_1429.json"), &cx("en")).unwrap()).unwrap();
+    assert_eq!(json["trailer"], Value::Null, "no videos: null");
+}
+
+#[test]
 fn tmdb_text_falls_back_by_language() {
     let mut body = fixture("tmdb_movie_603.json");
     body["overview"] = json!("");
@@ -261,6 +293,10 @@ fn anilist_media() {
     assert_eq!(poster.color.as_deref(), Some("#f1a143"));
     assert_eq!(poster.variants.len(), 3);
     assert_eq!(t.backdrop.as_ref().unwrap().kind, ImageKind::Banner);
+    assert_eq!(t.trailer.as_deref(), Some("https://www.youtube.com/watch?v=LHtdKWJdif4"));
+    let mut other = fixture("anilist_media_16498.json");
+    other["data"]["Media"]["trailer"] = json!({ "id": "x2abc", "site": "dailymotion" });
+    assert_eq!(Anilist.map_title(&other, &cx("en")).unwrap().trailer, None, "only YouTube");
     let overview = t.overview.as_deref().unwrap();
     assert!(overview.starts_with("Several hundred years ago"));
     assert!(!overview.contains('<'), "no markup");
@@ -321,7 +357,13 @@ fn anime_merges_into_the_tmdb_title() {
         Rating { source: RatingSource::Anilist, value: 85.0, scale: 100.0, votes: None },
         Jikan.map_score(&fixture("jikan_anime_16498.json")).unwrap().unwrap(),
     ];
+    let mut with_trailer = base.clone();
+    with_trailer.trailer = Some("https://www.youtube.com/watch?v=tmdb".into());
+    let kept = super::merge_anime(with_trailer, entries.clone(), primary, Some(anilist.clone()));
+    assert_eq!(kept.trailer.as_deref(), Some("https://www.youtube.com/watch?v=tmdb"), "TMDB's trailer first");
+    assert_eq!(base.trailer, None);
     let t = super::merge_anime(base.clone(), entries, primary, Some(anilist));
+    assert_eq!(t.trailer.as_deref(), Some("https://www.youtube.com/watch?v=LHtdKWJdif4"), "else AniList's");
     assert_eq!(t.id, "tmdb:tv:1429");
     assert_eq!(t.title, base.title, "TMDB keeps the text in the UI's language");
     assert_eq!(t.overview, base.overview);

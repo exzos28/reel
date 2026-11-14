@@ -1069,7 +1069,7 @@ fn notice_title(key: &str) -> Value {
     for empty in ["cast", "crew", "countries", "studios", "similar"] {
         v[empty] = json!([]);
     }
-    for unknown in ["tagline", "originalTitle", "releaseDate", "status"] {
+    for unknown in ["tagline", "originalTitle", "releaseDate", "status", "trailer"] {
         v[unknown] = Value::Null;
     }
     v
@@ -1199,8 +1199,8 @@ const SIMILAR: usize = 12;
 /// (`[{"number","year","episodes","name"}]`, regular seasons). Below the
 /// hero: `aboutFull` (the overview is longer than the hero shows), `cast`,
 /// `crew` (see `details`), `tagline`, `originalTitle`, `releaseDate`
-/// ([y,m,d]), `countries`, `studios`, `status` (series), and `similar`
-/// (summaries). A notice title while it is not known yet.
+/// ([y,m,d]), `countries`, `studios`, `status` (series), `trailer` (a
+/// YouTube watch URL or null), and `similar` (summaries). A notice title while it is not known yet.
 pub fn title(id: &str) -> Value {
     let call = Call::Title(id.to_owned());
     let Some(t) = meta_all(std::slice::from_ref(&call)).remove(0) else {

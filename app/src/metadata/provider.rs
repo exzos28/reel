@@ -215,3 +215,9 @@ pub fn f(v: &Value, key: &str) -> Option<f64> {
 pub fn arr<'a>(v: &'a Value, key: &str) -> &'a [Value] {
     v.get(key).and_then(Value::as_array).map(Vec::as_slice).unwrap_or(&[])
 }
+
+/// The watch page of YouTube video `key` (None when it is not a video ID).
+pub fn youtube(key: &str) -> Option<String> {
+    let id = !key.is_empty() && key.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_');
+    id.then(|| format!("https://www.youtube.com/watch?v={key}"))
+}

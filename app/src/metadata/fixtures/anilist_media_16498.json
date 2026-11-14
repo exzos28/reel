@@ -59,6 +59,10 @@
    "isAdult": false,
    "countryOfOrigin": "JP",
    "siteUrl": "https://anilist.co/anime/16498",
+   "trailer": {
+    "id": "LHtdKWJdif4",
+    "site": "youtube"
+   },
    "tags": [
     {
      "name": "Kaiju",

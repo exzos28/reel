@@ -292,6 +292,8 @@ pub struct Title {
     pub certifications: Vec<Certification>,
     /// Titles like this one (TMDB recommendations, else similar), best first.
     pub similar: Vec<TitleCard>,
+    /// A trailer's web page (a YouTube watch URL), when the sources name one.
+    pub trailer: Option<String>,
 }
 
 /// A title on a shelf or in search results.
