@@ -1,0 +1,12 @@
+reel
+Required Notice: Copyright (c) 2026 exzos (https://github.com/exzos28/reel)
+Licensed under the PolyForm Noncommercial License 1.0.0 (LICENSE): any noncommercial use;
+no commercial use.
+
+Third-party code and assets in this repository keep their own licences:
+
+- vendor/librqbit: librqbit by Igor Katson and contributors, Apache License 2.0
+  (vendor/librqbit/LICENSE). reel's changes to it are listed in vendor/librqbit/REEL_PATCH.md.
+- app/fonts/Geist.ttf, site/fonts/Geist.ttf: Geist by Vercel, SIL Open Font License 1.1
+  (app/fonts/Geist-OFL.txt).
+- Rust crates and other dependencies are under their own licences (see each crate).

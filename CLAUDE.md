@@ -1,6 +1,6 @@
 # reel
 
-Open-source app that streams films and series from torrents with a built-in engine. Targets:
+Source-available app (PolyForm Noncommercial 1.0.0: no commercial use; `LICENSE`, `NOTICE`) that streams films and series from torrents with a built-in engine. Targets:
 Samsung Tizen TV (first), macOS, Android / Android TV, iOS / iPadOS, Windows, Linux. UI in NSH
 (nsh.dev, TSX on QuickJS with native views); core in Rust (`app/src`).
 
