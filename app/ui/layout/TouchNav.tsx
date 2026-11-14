@@ -5,7 +5,7 @@
 // Tablet: one top row on every page: the logo (Back in its place on a deeper
 // page), the floating tabs centred, Add to list on a title, Settings; solid
 // once content is under it.
-import { platform, safeArea, Text, View, type TextStyle, type ViewStyle } from "nsh";
+import { safeArea, Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { title as titleOf, titleText, toggleList } from "../catalog";
 import backIcon from "../icons/back.svg";
@@ -13,6 +13,7 @@ import settingsIcon from "../icons/settings.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
 import { canGoBack, go, handleBack, openSettings, route, section, stack, type Route } from "../nav";
+import { look } from "../platform/look";
 import { alpha, colors, font, u } from "../theme";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
@@ -20,7 +21,8 @@ import { barSolid } from "./WindowBar";
 
 /** The tabs: the nav's destinations but Settings. */
 const TABS = NAV.filter((n) => n.id !== "settings");
-const android = platform.os === "android";
+/** Android's Material bar, else iOS's. */
+const android = look.system === "material";
 /** Points as TV pixels, for `Icon`'s size. */
 const pt = (points: number) => points / u(1);
 
