@@ -11,7 +11,7 @@ test("home starts on Continue watching and the hero follows the focus", async ()
   expect(app.texts()).toContain("Resume 41:12");
   expect(app.texts()).toContain("Action, Science Fiction");
   await app.keyboard.press("right");
-  expect(app.texts()).toContain("2013–2023");
+  await app.waitFor("2013–2023"); // the hero follows once the focus rests
   expect(app.texts()).toContain("Resume S3:E2");
   await app.keyboard.press("down");
   expect(app.texts()).toContain("Trending movies");

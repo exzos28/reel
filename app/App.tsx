@@ -11,7 +11,8 @@ import { mapRemoteBack } from "./ui/tvKeys";
 import { AboutScreen } from "./ui/screens/about/AboutScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
-import { handleBack, isRoot, route } from "./ui/nav";
+import { handleBack, isRoot, route, useTabStacks } from "./ui/nav";
+import { isTouch } from "./ui/layout/chrome";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
 import { loadSettings } from "./ui/preferences";
@@ -22,6 +23,8 @@ import { videoUnderUi } from "./ui/VideoSurface";
 setColorScheme("dark");
 // The web build runs on a Samsung TV: its remote's Back becomes Escape.
 if (remote) mapRemoteBack();
+// A phone and a tablet keep a stack per tab (design/navigation.md, "History model").
+useTabStacks(isTouch);
 loadSettings().catch((e) => console.warn("could not load settings", e));
 
 function App() {

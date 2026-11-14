@@ -1,9 +1,9 @@
 // Direction 3, "Minimal" (design/directions.md): black, white and grey; the
 // film is the only colour on screen. Colors come from nsh.json's theme via
 // token(); sizes are written in TV pixels and scaled by density.
-import { computed, platform, token, windowSize, type TextStyle, type ViewStyle } from "nsh";
+import { computed, token, windowSize, type TextStyle, type ViewStyle } from "nsh";
 import geist from "../fonts/Geist.ttf";
-import { Settings } from "./native";
+import { chrome, sideInset } from "./layout/chrome";
 
 export const font = geist;
 
@@ -44,21 +44,18 @@ export function alpha(color: string, opacity: number) {
 /** Sizes are written in TV pixels (a 1920-wide ten-foot canvas): `u(72)`.
  * Density decides what one TV pixel is:
  * - ten-foot (TV): the screen is the canvas, so it scales with its width;
- * - regular (Mac) and compact (phone): fixed, so resizing a window reflows the
- *   layout (shelves scroll) instead of zooming it.
- * TODO: the Tizen build runs the web target; detect it as ten-foot there. */
+ * - regular (desktop, tablet) and compact (phone): fixed, so resizing a window
+ *   reflows the layout (shelves scroll) instead of zooming it. */
 export type Density = "ten-foot" | "regular" | "compact";
-/** A TV: the system says so, or the core does (a Samsung TV's web view looks like a desktop
- * browser to NSH, but the core there runs the TV's player). */
-const tv = platform.idiom === "tv" || Settings.device() === "tv";
-export const density: Density = tv ? "ten-foot" : platform.idiom === "phone" ? "compact" : "regular";
+export const density: Density = chrome === "tv" ? "ten-foot" : chrome === "phone" ? "compact" : "regular";
 
 const FIXED = { regular: 0.66, compact: 0.45 } as const;
 const scale = computed(() => (density === "ten-foot" ? windowSize().width / 1920 : FIXED[density]));
 export const u = (px: number) => px * scale();
 
-/** Title-safe inset of a TV picture (5%). */
-export const safe = () => ({ x: u(96), y: u(54) });
+/** Where content starts from the screen's edges: a TV picture's title-safe
+ * 5%; elsewhere the system's safe area plus the family's margin (`chrome`). */
+export const safe = () => ({ x: chrome === "tv" ? u(96) : sideInset(), y: u(54) });
 
 /** Radius of buttons, rows, cards and posters: 10 on a TV, 8 elsewhere. */
 export const radius = () => (density === "ten-foot" ? u(10) : u(14));

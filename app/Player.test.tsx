@@ -217,6 +217,7 @@ async function nearTheEnd() {
     modules: { "app/native": { ...NATIVE, ...STILL, "Engine.status": status, "Engine.timeline": timeline, "Catalog.upNext": nextEpisode } },
   });
   await app.keyboard.press("right"); // Attack on Titan
+  await app.waitFor("Resume S3:E2"); // the hero follows once the focus rests
   await app.press("Resume S3:E2");
   await app.wait(600);
   return app;

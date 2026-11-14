@@ -1,7 +1,7 @@
 // The top of a screen without the nav: the back button in the safe area's
 // top-left corner, alone over a hero or beside the page's title. On a Mac it
 // sits in the title bar instead, beside the traffic lights (TitleBarBack).
-import { platform, Text, View, type ViewStyle } from "nsh";
+import { Text, View, type ViewStyle } from "nsh";
 import { titleBar } from "nsh/desktop";
 import { t } from "nsh/i18n";
 import backIcon from "../icons/back.svg";
@@ -10,11 +10,12 @@ import { row } from "../kit/shape";
 import { pageTitle } from "../kit/text";
 import { safe, u } from "../theme";
 import { BackButton } from "./BackButton";
+import { chrome } from "./chrome";
 
 const cornerStyle = (): ViewStyle => ({ position: "absolute", top: safe().y, left: safe().x, zIndex: 3 });
 
 /** On a Mac Back is in the title bar, not on the screens. */
-export const backInTitleBar = platform.os === "macos";
+export const backInTitleBar = chrome === "mac";
 
 /** The Mac's title bar is this tall (points), the traffic lights centred in it. */
 export const TITLE_BAR_HEIGHT = 40;
