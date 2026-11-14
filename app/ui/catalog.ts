@@ -6,6 +6,7 @@
 import { signal } from "nsh";
 import { t } from "nsh/i18n";
 import { Catalog, Fmt } from "./native";
+import { hostedUrl } from "./hosted";
 
 /** What Play starts for a title: a film, or an episode of a show (id
  * `<show>:s<season>e<episode>`). `start`: where the viewer stopped, seconds. */
@@ -409,6 +410,9 @@ export function episodeText(show: string, season: number, episode: number, field
 export function releasesText(s: Title) {
   if (s.releasesState === "done" || s.releasesState === "none")
     return s.releases.length ? t("releases.found", { count: s.releases.length }) : t("releases.state.none");
+  // Where the TV serves the settings page, the address to set the source from a phone.
+  const url = hostedUrl();
+  if (s.releasesState === "no_source" && url) return t("releases.state.no_source_hosted", { url });
   return t(`releases.state.${s.releasesState}`);
 }
 

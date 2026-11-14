@@ -1,6 +1,6 @@
 // The search source form's state: what is typed, saving, then checking the
 // saved source, and the line that says how it went.
-import { signal } from "nsh";
+import { effect, signal, untracked } from "nsh";
 import { t } from "nsh/i18n";
 import { checkSource, saveSource, source, type CheckResult } from "../../preferences";
 
@@ -10,6 +10,11 @@ export function sourceForm() {
   const state = signal<"idle" | "saving" | "saved" | "checking">("idle");
   const error = signal<string | null>(null);
   const check = signal<CheckResult | null>(null);
+  // A source saved elsewhere (on a phone) shows in the field.
+  effect(() => {
+    const saved = source().url;
+    untracked(() => url.set(saved));
+  });
 
   const save = async () => {
     state.set("saving");

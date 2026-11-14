@@ -227,12 +227,19 @@ export const SEARCH_DUNE = {
   ],
 };
 
+/** The settings change only where a test says so: the tests share one core, whose settings
+ * revision other tests move (Hosted.test.tsx stands in for these to change them). */
+const SETTLED = { "Settings.revision": 0, "Settings.changed": 0 };
+
 /** Opens the app as the tests drive it: a TV (Android TV's 1920×1080 screen,
  * the core saying it is a TV) driven by the remote's arrows, OK and Back,
  * unless `options` names another platform (a Mac window, a phone, a tablet). */
 export function openApp(options: OpenOptions = {}) {
-  if (options.platform) return open("./App.tsx", options);
-  const native = { ...(options.modules?.["app/native"] ?? NATIVE), "Settings.device": "tv" };
+  if (options.platform) {
+    const own = options.modules?.["app/native"] ?? {};
+    return open("./App.tsx", { ...options, modules: { ...options.modules, "app/native": { ...SETTLED, ...own } } });
+  }
+  const native = { ...SETTLED, ...(options.modules?.["app/native"] ?? NATIVE), "Settings.device": "tv" };
   return open("./App.tsx", {
     platform: "android",
     width: 1920,

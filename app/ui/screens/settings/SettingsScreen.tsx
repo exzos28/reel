@@ -3,7 +3,8 @@
 // Up/down move the focus through the languages, the buffer sizes and on to
 // About (Up from the first language: the nav); OK chooses (or opens About).
 // Back takes the focus to the nav, then Home. A click chooses too; the source
-// fields take text (on a TV, entering it from a phone comes later).
+// fields take text (on a TV, easier from a phone: the section shows the address of the
+// TV's settings page, docs/hosted-settings.md).
 import { keymap, signal, Text, View, type ViewRef, type ViewStyle } from "nsh";
 import { Engine } from "../../native";
 import { t } from "nsh/i18n";

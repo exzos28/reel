@@ -26,6 +26,8 @@ import { ExitDialog } from "./ui/layout/ExitDialog";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
 import { loadSettings } from "./ui/preferences";
+import { watchSettings } from "./ui/hosted";
+import { PairingDialog } from "./ui/layout/PairingDialog";
 import { colors } from "./ui/theme";
 import { videoUnderUi } from "./ui/VideoSurface";
 
@@ -35,7 +37,10 @@ mapPlatformKeys();
 startDiagnostics();
 // A phone and a tablet keep a stack per tab (design/navigation.md, "History model").
 useTabStacks(caps.touch);
-loadSettings().catch((e) => console.warn("could not load settings", e));
+// Then follows the core's settings (changed on a phone too) and the pairing code it shows.
+loadSettings()
+  .catch((e) => console.warn("could not load settings", e))
+  .then(watchSettings);
 
 /** Android's system back on touch: what is open closes first; a pushed page
  * pops natively (the stack's own back); another tab's root goes Home; Home
@@ -99,6 +104,8 @@ function App() {
       {/* A desktop's window bar (the player's drag strips while a film plays). */}
       <WindowFrame playing={playing} />
       <ExitDialog />
+      {/* A phone pairing for the settings page: its code, over any screen. */}
+      <PairingDialog />
     </View>
   );
 }

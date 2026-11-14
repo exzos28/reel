@@ -4,6 +4,7 @@ import { Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { rounded, row } from "../../kit/shape";
 import { bodyText, labelText, metaText, sectionTitle } from "../../kit/text";
+import { hostedUrl } from "../../hosted";
 import { source } from "../../preferences";
 import { colors, type, u } from "../../theme";
 import { sourceForm } from "./sourceForm";
@@ -25,6 +26,10 @@ export function SourceSection() {
     <View style={{ gap: u(14), maxWidth: u(980) }}>
       <Text style={sectionTitle()}>{t("settings.source.title")}</Text>
       <Text style={bodyText(colors.soft())}>{t("settings.source.about")}</Text>
+      {/* Where the TV serves the settings page: typing an address with a remote is slow. */}
+      <If when={hostedUrl()}>
+        {(url) => <Text testID="hosted-address" style={bodyText(colors.snow())}>{t("settings.source.phone", { url: url() })}</Text>}
+      </If>
       <Text style={metaText()}>{t("settings.source.url")}</Text>
       <Input
         value={form.url()}

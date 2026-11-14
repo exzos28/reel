@@ -19,6 +19,11 @@ exit:
   stay: Stay
   exit: Exit
 
+hosted:
+  pair_title: Pair your phone
+  pair_about: Type this code on reel's settings page on your phone or computer.
+  cancel: Cancel
+
 shelf:
   continue: Continue watching
   trending_movies: Trending movies
@@ -118,6 +123,7 @@ releases:
   more: "Show %{count} more"
   state:
     no_source: Add a search source in Settings to find releases.
+    no_source_hosted: "Add a search source in Settings, or open %{url} on your phone."
     searching: Searching your source…
     failed: Your search source did not answer. Check it in Settings.
     none: Nothing found on your search source.
@@ -331,6 +337,7 @@ settings:
   source:
     title: Search source
     about: Where reel looks for releases of a film or an episode. Enter the Torznab address of your own Jackett (or Prowlarr, JacRed…) and its API key. reel comes with no source of its own.
+    phone: "Easier on a phone or computer: open %{url}"
     url: Address
     url_placeholder: "http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api"
     key: API key

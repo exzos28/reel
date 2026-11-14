@@ -22,6 +22,17 @@ export interface ContentLanguage {
   name: string;
 }
 
+/** The settings as the core answers them (`Settings.load`, `Settings.current`). */
+export interface SettingsJson {
+  language: string;
+  bufferMB: number;
+  bufferChoices: BufferChoice[];
+  streamDetails?: boolean;
+  contentLanguage?: string;
+  contentLanguages?: ContentLanguage[];
+  source?: SourceInfo;
+}
+
 export const contentLanguage = signal("en-US");
 export const contentLanguages = signal<ContentLanguage[]>([]);
 
@@ -33,7 +44,12 @@ export const bufferChoices = signal<BufferChoice[]>([]);
 
 /** Loads the settings from the core and applies the language. */
 export async function loadSettings() {
-  const s = JSON.parse(await Settings.load(dataDir()));
+  applySettings(JSON.parse(await Settings.load(dataDir())));
+}
+
+/** Shows the settings as the core answers them (`Settings.load` or `Settings.current`,
+ * e.g. after a change made on a phone). */
+export function applySettings(s: SettingsJson) {
   bufferMB.set(s.bufferMB);
   bufferChoices.set(s.bufferChoices);
   streamDetails.set(!!s.streamDetails);
