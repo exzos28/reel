@@ -8,11 +8,13 @@ import { browse, type Summary } from "../../catalog";
 import { clamp } from "../../focus/memory";
 import { useZones } from "../../focus/zones";
 import { cellWidth, Grid, gridColumns, gridRows } from "../../layout/Grid";
-import { NavBar } from "../../layout/NavBar";
+import { NAV_BOTTOM } from "../../layout/NavBar";
 import { NAV } from "../../layout/navItems";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
+import { showNav } from "../../layout/navState";
 import { back, go, openTitle } from "../../nav";
+import { u } from "../../theme";
 import { BrowseHeader } from "./BrowseHeader";
 import { FilterBar } from "./FilterBar";
 import { focusOf, type Page } from "./focus";
@@ -30,6 +32,7 @@ export function BrowseScreen(props: { page: Page }) {
   /** The page puts the focused grid row in its upper third. */
   const page = scroller({ anchor: (viewport) => viewport / 3 });
 
+  showNav(() => (zone() === "nav" ? nav() : null));
   useZones(
     zone,
     {
@@ -78,10 +81,8 @@ export function BrowseScreen(props: { page: Page }) {
   };
 
   return (
-    <Screen ctl={page}>
-      <View ref={page.follow(() => zone() === "nav", "start")}>
-        <NavBar current={props.page} focused={() => (zone() === "nav" ? nav() : null)} onPick={(i) => go(NAV[i].id)} />
-      </View>
+    <Screen ctl={page} navClear={24}>
+      <View ref={page.follow(() => zone() === "nav", "start")} style={{ height: u(NAV_BOTTOM) }} />
       <BrowseHeader page={props.page} />
       <Trending
         items={() => data().trending}

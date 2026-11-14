@@ -1,13 +1,14 @@
 // Home: the nav, a hero for the focused title, then shelves of 16:9 cards.
 // Remote: the focus starts on the first card; Up goes to the hero's
 // buttons, then to the nav. OK on a card opens its title; on Play, plays.
-import { computed, View, type ViewStyle } from "nsh";
+import { computed, View } from "nsh";
 import { home, toggleList, type Summary } from "../../catalog";
 import { useZones } from "../../focus/zones";
-import { NavBar } from "../../layout/NavBar";
+import { NAV_BOTTOM } from "../../layout/NavBar";
 import { NAV } from "../../layout/navItems";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
+import { showNav } from "../../layout/navState";
 import { go, openTitle } from "../../nav";
 import { play } from "../../playback";
 import { u } from "../../theme";
@@ -15,7 +16,9 @@ import { cols, heroAt, navAt, row, zone } from "./focus";
 import { HomeHero } from "./HomeHero";
 import { HomeShelf } from "./HomeShelf";
 
-const navLayer: ViewStyle = { position: "absolute", top: 0, left: 0, right: 0, zIndex: 3 };
+/** How far Home scrolls before its content runs under the nav: to the top
+ * of the hero's text (TV pixels). */
+const NAV_CLEAR = 236 - NAV_BOTTOM;
 
 export function HomeScreen() {
   const shelves = computed(() => home());
@@ -31,6 +34,7 @@ export function HomeScreen() {
   /** The page puts the focused shelf in its upper third. */
   const page = scroller({ anchor: (viewport) => viewport / 3 });
 
+  showNav(() => (zone() === "nav" ? navAt() : null));
   useZones(zone, {
     nav: {
       left: () => navAt.set(Math.max(navAt() - 1, 0)),
@@ -62,10 +66,7 @@ export function HomeScreen() {
   };
 
   return (
-    <Screen ctl={page}>
-      <View style={navLayer}>
-        <NavBar current="home" focused={() => (zone() === "nav" ? navAt() : null)} onPick={(i) => go(NAV[i].id)} />
-      </View>
+    <Screen ctl={page} navClear={NAV_CLEAR}>
       <View ref={page.follow(() => zone() !== "shelves", "start")}>
         <HomeHero
           item={focused}

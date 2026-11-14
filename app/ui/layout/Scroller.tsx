@@ -1,7 +1,7 @@
 // The scroll view of a `scroller` (scrollCtl.ts): hides the system's
 // indicator; on a Mac a thin bar of our own replaces it, a TV and a phone
 // show none.
-import { Scroll, signal, View, type JSX, type ScrollRef, type ViewRef, type ViewStyle } from "nsh";
+import { Scroll, signal, View, type JSX, type ScrollEvent, type ScrollRef, type ViewRef, type ViewStyle } from "nsh";
 import { Scrollbar } from "nsh/base";
 import { alpha, colors, density, u } from "../theme";
 import { stopAll, type ScrollCtl } from "./scrollCtl";
@@ -54,8 +54,9 @@ function Bar(props: { ctl: ScrollCtl; shown: () => boolean }) {
   );
 }
 
-/** `style` is the outer view's (size, background). */
-export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; children: JSX.Element }) {
+/** `style` is the outer view's (size, background); `onScroll` hears where
+ * the content is. */
+export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; onScroll?: (e: ScrollEvent) => void; children: JSX.Element }) {
   const c = props.ctl;
   const bar = density === "regular";
   const shown = signal(false);
@@ -73,7 +74,10 @@ export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; children: J
         horizontal={c.horizontal}
         scrollbar={false}
         scrollEventThrottle={16}
-        onScroll={poke}
+        onScroll={(e: ScrollEvent) => {
+          poke();
+          props.onScroll?.(e);
+        }}
         onScrollDragStart={stopAll}
         style={c.horizontal ? undefined : { flex: 1 }}
       >

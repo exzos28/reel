@@ -2,13 +2,13 @@
 // density on a TV, regular on a Mac, compact on a phone) and by the mouse.
 // Only one screen is mounted at a time, so only its keys are bound; the
 // screens keep their focus in their own modules, so Back finds it again.
+// Home, Movies and Shows share one nav (screens/TopLevel.tsx).
 import { effect, mount, setColorScheme, signal, View } from "nsh";
 import { Engine } from "app/native";
-import { BrowseScreen } from "./ui/screens/browse/BrowseScreen";
-import { HomeScreen } from "./ui/screens/home/HomeScreen";
 import { SearchScreen } from "./ui/screens/search/SearchScreen";
 import { SettingsScreen } from "./ui/screens/settings/SettingsScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
+import { isTopLevel, TopLevel } from "./ui/screens/TopLevel";
 import { back, route } from "./ui/nav";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
@@ -34,14 +34,8 @@ function App() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.ink() }}>
       <If when={!playing()} else={<Player />}>
-        <If when={r().name === "home"}>
-          <HomeScreen />
-        </If>
-        <If when={r().name === "movies"}>
-          <BrowseScreen page="movies" />
-        </If>
-        <If when={r().name === "shows"}>
-          <BrowseScreen page="shows" />
+        <If when={isTopLevel(r().name)}>
+          <TopLevel />
         </If>
         <If when={r().name === "search"}>
           <SearchScreen />

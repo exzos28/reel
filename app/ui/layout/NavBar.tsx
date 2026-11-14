@@ -1,5 +1,6 @@
-// The floating nav: logo left; the destinations as pills (the current one
-// in a lighter pill), then round search and settings buttons.
+// The nav: logo left; the destinations as pills (the current one in a
+// lighter pill, the same width as when it is not), then round search and
+// settings buttons.
 import { Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { Icon } from "../kit/Icon";
@@ -11,12 +12,20 @@ import type { Destination } from "../nav";
 import { colors, density, font, radius, safe, u } from "../theme";
 import { NAV } from "./navItems";
 
+/** Where the nav sits from the top and how tall its row is, TV pixels; a
+ * screen's content starts under `NAV_BOTTOM`. */
+const NAV_TOP = 50;
+const NAV_ROW = 62;
+export const NAV_BOTTOM = NAV_TOP + NAV_ROW;
+
 const barStyle = (): ViewStyle => ({
   ...row(0),
   justifyContent: "space-between",
+  height: u(NAV_BOTTOM),
   paddingHorizontal: safe().x,
-  paddingTop: u(50),
+  paddingTop: u(NAV_TOP),
   zIndex: 3,
+  pointerEvents: "box-none",
 });
 const groupStyle = (): ViewStyle => ({ ...row(u(2), "stretch"), padding: u(5), ...rounded(radius() + u(5)), backgroundColor: colors.card() });
 const logoStyle = (): TextStyle => ({ fontFamily: font, fontSize: u(40), fontWeight: 700, letterSpacing: -u(0.5), color: colors.red() });
@@ -25,13 +34,13 @@ export function Logo() {
   return <Text style={logoStyle()}>{t("app.name")}</Text>;
 }
 
-type Props = { current: Destination; focused: () => number | null; onPick: (i: number) => void };
+type Props = { current: () => Destination; focused: () => number | null; onPick: (i: number) => void };
 
 const pills = NAV.filter((n) => n.pill);
 const buttons = NAV.filter((n) => !n.pill);
 
 function NavPills(props: Props) {
-  const tint = (id: Destination) => (props.current === id ? colors.snow() : colors.dim());
+  const tint = (id: Destination) => (props.current() === id ? colors.snow() : colors.dim());
   return (
     <View style={groupStyle()}>
       <Each of={pills} key={(n) => n.id}>
@@ -41,7 +50,7 @@ function NavPills(props: Props) {
             accessibilityLabel={t(`nav.${n().id}`)}
             onPress={() => props.onPick(i())}
             hoverStyle={{ backgroundColor: colors.raise() }}
-            style={pillStyle(props.current === n().id ? colors.nav() : "transparent", props.focused() === i(), 20)}
+            style={pillStyle(props.current() === n().id ? colors.nav() : "transparent", props.focused() === i(), 20)}
           >
             <Icon src={() => n().icon} size={24} color={() => tint(n().id)} />
             <If when={density !== "compact"}>
@@ -66,7 +75,7 @@ export function NavBar(props: Props) {
               icon={() => n().icon}
               label={() => t(`nav.${n().id}`)}
               focused={() => props.focused() === pills.length + i()}
-              selected={() => props.current === n().id}
+              selected={() => props.current() === n().id}
               onPress={() => props.onPick(pills.length + i())}
             />
           )}

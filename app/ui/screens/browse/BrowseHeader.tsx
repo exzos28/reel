@@ -4,7 +4,8 @@ import { bodyText, pageTitle, sectionTitle } from "../../kit/text";
 import { safe, u } from "../../theme";
 import type { Page } from "./focus";
 
-/** The page's title, its grey lead and the trending row's title. */
+/** The page's title (24 TV pixels under the nav), its grey lead and the
+ * trending row's title. */
 export function BrowseHeader(props: { page: Page }) {
   return (
     <View style={{ paddingHorizontal: safe().x, marginTop: u(24) }}>

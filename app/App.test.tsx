@@ -170,3 +170,23 @@ test("in a Mac window the screens lay out with all their columns", async () => {
   expect(app.texts()).toContain("All shows");
 });
 
+
+test("Home, Movies and Shows share one nav whose pills keep their size", async () => {
+  const app = await app_(NATIVE, { platform: "macos", width: 1440, height: 900 });
+  const pills = ["Home", "Movies", "Shows"];
+  /** What decides a pill's width: its label's size and weight (selected changes only the colour). */
+  const sizes = () => pills.map((p) => {
+    const s = app.spanStyle(`label:${p} >> text:${p}`);
+    return [s.fontSize, s.fontWeight];
+  });
+  const onHome = sizes();
+  expect(new Set(onHome.map((s) => s.join())).size).toBe(1);
+  for (const page of ["Movies", "Shows", "Home"]) {
+    await app.press(`label:${page}`);
+    expect(app.count("label:Home")).toBe(1);
+    expect(app.count("label:Settings")).toBe(1);
+    expect(sizes()).toEqual(onHome);
+    // It is not in the screen's scroll view, so it never moves with it.
+    await expect(app.scroll("label:Home", 200)).rejects.toMatchObject({ code: "ERR_NSH_TEST_NOT_FOUND" });
+  }
+});
