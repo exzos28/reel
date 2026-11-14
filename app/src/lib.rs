@@ -1,9 +1,8 @@
 //! reel's Rust side: what `App.tsx` imports from `app/native`.
-
 //!
 //! NSH's web target builds this crate for wasm32, where librqbit, tokio networking and sqlite
-//! do not build. There only the pure modules (`Fmt`, `VideoEngine`) are registered; on a TV
-//! the web UI reaches the others over HTTP from the core (`ui/native.ts`, docs/tizen.md).
+//! do not build. There only the pure module `Fmt` is registered; on a TV the web UI reaches
+//! the others over HTTP from the core (`ui/native.ts`, docs/tizen.md).
 //! New native modules follow the same rule: `#[cfg(not(target_arch = "wasm32"))]`.
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -38,9 +37,9 @@ pub use metadata::Meta;
 
 #[native_module("app/native")]
 fn native(registry: &mut Registry) {
-    registry.module::<Fmt>().module::<VideoEngine>();
+    registry.module::<Fmt>();
     #[cfg(not(target_arch = "wasm32"))]
-    registry.module::<Engine>().module::<Catalog>().module::<Settings>().module::<Sources>().module::<Meta>();
+    registry.module::<Engine>().module::<Catalog>().module::<Settings>().module::<Sources>().module::<Meta>().module::<VideoEngine>();
 }
 
 /// The mpv video view (`reel/mpv`), where libmpv is found.
@@ -144,9 +143,11 @@ fn parse_embedded(json: &str) -> Option<subtitles::tracks::Embedded> {
 }
 
 /// Which video view plays on this device.
+#[cfg(not(target_arch = "wasm32"))]
 #[module]
 pub struct VideoEngine;
 
+#[cfg(not(target_arch = "wasm32"))]
 #[module]
 impl VideoEngine {
     /// `"mpv"` where reel's mpv view (`reel/mpv`) can play (macOS with

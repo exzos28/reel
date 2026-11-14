@@ -186,15 +186,15 @@ export const Meta: MetaModule = {
   search: a("Meta", "search"),
 };
 
-// Fmt and VideoEngine are pure and also registered in the wasm32 build; `ui/native.ts` uses
-// those. Over HTTP they are here for completeness (the core serves them too).
+export const VideoEngine: VideoEngineModule = {
+  kind: s("VideoEngine", "kind"),
+};
+
+// Fmt is pure and also registered in the wasm32 build, which `ui/native.ts` uses. Over HTTP
+// it is here for completeness (the core serves it too).
 export const Fmt: FmtModule = {
   position: s("Fmt", "position"),
   size: s("Fmt", "size"),
   speed: s("Fmt", "speed"),
   hoursMinutes: s("Fmt", "hoursMinutes"),
-};
-
-export const VideoEngine: VideoEngineModule = {
-  kind: s("VideoEngine", "kind"),
 };

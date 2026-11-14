@@ -4,7 +4,7 @@
 // platform's player). All take the same props and give the same events;
 // mpv and AVPlay report and switch tracks (`videoCaps().tracks`).
 import { cleanup, nativeComponent, signal, Video, View, type NativeComponentRef, type VideoRef, type ViewStyle } from "nsh";
-import { VideoEngine } from "app/native";
+import { VideoEngine } from "./native";
 import { AvplaySurface } from "./AvplaySurface";
 
 /** Which view plays here, as the core decides (`VideoEngine.kind`). */

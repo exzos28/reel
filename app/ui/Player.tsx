@@ -12,7 +12,7 @@
 import { cleanup, computed, effect, Image, keymap, signal, Text, View, type ImageAsset } from "nsh";
 import { BufferingNote, PlayerStage, type StageLine } from "./PlayerStage";
 import { t } from "nsh/i18n";
-import { Catalog, Fmt } from "app/native";
+import { Catalog, Fmt } from "./native";
 import { episodeCode, episodeText, runtime, titleText, type Episode, type Release } from "./catalog";
 import { BACK_SIZE, BackButton, Icon } from "./components";
 import { streamDetails } from "./preferences";
