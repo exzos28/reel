@@ -96,9 +96,17 @@ build_core() {
         # ring's ARM assembly needs NEON, which zig leaves off for plain armv7. Every Samsung
         # TV SoC (Cortex-A53/A73 running 32-bit) has it; cortex_a7 = ARMv7-A + NEON + VFPv4.
         export "CFLAGS_${TRIPLE//-/_}=${CFLAGS_ARMV7:--mcpu=cortex_a7}"
+        # Some crates ask to link the system libatomic; zig has no such library (its
+        # compiler-rt provides the atomics). Link an empty stand-in and drop it again with
+        # --as-needed, so the .so does not need a libatomic on the TV either.
+        local var; var="$(echo "$TRIPLE" | tr '[:lower:]-' '[:upper:]_')"
+        local stub="$HERE/target/zig-stubs"
+        mkdir -p "$stub"
+        [ -f "$stub/libatomic.so" ] || printf '' | zig cc -target arm-linux-gnueabi -shared -x c - -o "$stub/libatomic.so"
+        export "CARGO_TARGET_${var}_RUSTFLAGS=-L native=$stub -C link-arg=-Wl,--as-needed"
         have cargo-zigbuild || die "cargo-zigbuild not found (run '$0 check')"
         log "core: cargo zigbuild --target $TRIPLE.$GLIBC"
-        (cd "$HERE" && cargo zigbuild --locked --release -p reel-tizen-core --lib --target "$TRIPLE.$GLIBC")
+        (cd "$HERE" && cargo zigbuild --release -p reel-tizen-core --lib --target "$TRIPLE.$GLIBC")
     fi
     [ -f "$so" ] || die "no $so"
     mkdir -p "$out"
