@@ -102,8 +102,10 @@ struct Slot {
     failed_at: Option<Instant>,
 }
 
-/// Waiting for a first answer on the UI thread, at most.
-const FIRST_WAIT: Duration = Duration::from_millis(1500);
+/// Waiting for a first answer on the UI thread, at most: long enough for the local cache
+/// (milliseconds), short enough that a page opens at once when the network is needed (it
+/// shows its "loading" stand-ins, and the answer replaces them when it lands).
+const FIRST_WAIT: Duration = Duration::from_millis(80);
 /// A call that failed is asked again after this.
 const RETRY: Duration = Duration::from_secs(30);
 
