@@ -26,9 +26,11 @@ use std::time::{Duration, Instant};
 use nsh_core::prelude::*;
 use serde_json::{Value, json};
 
+use crate::metadata::discover::{DiscoverKind, Filter};
 use crate::{metadata, progress, settings, sources};
 
 mod details;
+mod filters;
 mod search;
 
 // ---- Ids.
@@ -69,6 +71,10 @@ enum Call {
     Trending(&'static str),
     Title(String),
     Season(String, u32),
+    /// A browse grid: the catalog through a filter (`Meta`'s discover).
+    Discover(DiscoverKind, Filter),
+    /// What the filters of a catalog offer (genre names, country names).
+    FilterOptions(DiscoverKind),
 }
 
 impl Call {
@@ -77,6 +83,8 @@ impl Call {
             Call::Trending(k) => format!("trending/{k}"),
             Call::Title(id) => format!("title/{id}"),
             Call::Season(id, n) => format!("season/{id}/{n}"),
+            Call::Discover(kind, f) => format!("discover/{}/{}", kind.as_str(), f.key()),
+            Call::FilterOptions(kind) => format!("filterOptions/{}", kind.as_str()),
         }
     }
 }
@@ -209,6 +217,8 @@ fn ask(call: Call, rev: u64) {
             Call::Trending(kind) => metadata::trending(kind.to_string(), lang).await,
             Call::Title(id) => metadata::title(id.clone(), lang).await,
             Call::Season(id, n) => metadata::season(id.clone(), *n, lang).await,
+            Call::Discover(kind, f) => metadata::discover(*kind, f.clone(), lang).await,
+            Call::FilterOptions(kind) => metadata::filter_options(*kind, lang).await,
         };
         let envelope: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
         if !envelope["error"].is_null() {
@@ -221,7 +231,7 @@ fn ask(call: Call, rev: u64) {
 /// Tests answer by `seed`; nothing goes to the network.
 #[cfg(test)]
 fn ask(_call: Call, _rev: u64) {
-    let _ = (runtime, start_meta);
+    let _ = (runtime, start_meta, metadata::discover, metadata::filter_options);
 }
 
 /// Stores an answer (`{"data",…}` as `Meta` resolves it).
@@ -1166,26 +1176,74 @@ pub fn home() -> Value {
     json!(out)
 }
 
-/// A browse page: `{"trending":[summary…],"all":[summary…]}` for `"movies"`
-/// or `"shows"`. Without TMDB, Shows lists anime and Movies a notice card.
+/// The filter whose grid each catalog shows now: the one chosen last
+/// once its answer is in, the one before while it loads.
+static SHOWN: LazyLock<Mutex<HashMap<DiscoverKind, Filter>>> = LazyLock::new(Default::default);
+
+/// A browse page (`"movies"`, `"shows"`, `"anime"`):
+/// `{"trending":[summary…],"all":[summary…],"filters":[group…],"allState"}`.
+/// `all` is the catalog through the page's filters (see `filters::groups`
+/// for `filters`); `allState` is "done", "loading" (a new filter's answer is
+/// on its way: `all` is still the last one's), "empty" (nothing matches) or
+/// "offline". Without TMDB, Shows lists anime and Movies a notice card.
 pub fn browse(page: &str) -> Value {
-    let shows = page == "shows";
-    let tmdb = tmdb_on();
-    let (trending, all) = match (tmdb, shows) {
-        // Anime comes from AniList, with or without a TMDB key.
-        _ if page == "anime" => ("anime", "anime-popular"),
-        (true, false) => ("movie", "movie-popular"),
-        (true, true) => ("tv", "tv-popular"),
-        (false, true) => ("anime", "anime-popular"),
-        (false, false) => return json!({ "trending": [notice("no_tmdb")], "all": [] }),
+    let Some(kind) = filters::page_kind(page, tmdb_on()) else {
+        return json!({ "trending": [notice("no_tmdb")], "all": [], "filters": [], "allState": "done" });
     };
-    let got = meta_all(&[Call::Trending(trending), Call::Trending(all)]);
-    let (t, a) = (shelf_items(&cards(&got[0])), shelf_items(&cards(&got[1])));
-    if t.is_empty() && a.is_empty() {
-        let key = if answered(&Call::Trending(trending)) { "offline" } else { "loading" };
-        return json!({ "trending": [notice(key)], "all": [] });
+    let trending = Call::Trending(match kind {
+        DiscoverKind::Movie => "movie",
+        DiscoverKind::Tv => "tv",
+        DiscoverKind::Anime => "anime",
+    });
+    let filter = filters::of(kind);
+    let grid = Call::Discover(kind, filter.clone());
+    let shown = SHOWN.lock().unwrap().get(&kind).cloned().filter(|f| *f != filter);
+    let options = Call::FilterOptions(kind);
+    // The first grid of a page may wait a moment like the rest; a new
+    // filter's does not: the last grid stays until it lands.
+    let calls = match shown {
+        Some(_) => vec![trending.clone(), options.clone()],
+        None => vec![trending.clone(), options.clone(), grid.clone()],
+    };
+    let got = meta_all(&calls);
+    let mut data = got.get(2).cloned().flatten();
+    if shown.is_some() {
+        data = meta(&grid);
     }
-    json!({ "trending": t, "all": a })
+    let mut state = "done";
+    match (&data, shown) {
+        (Some(_), _) => {
+            SHOWN.lock().unwrap().insert(kind, filter.clone());
+        }
+        (None, Some(last)) if !answered(&grid) => {
+            data = peek(&Call::Discover(kind, last));
+            state = "loading";
+        }
+        (None, _) => state = if answered(&grid) { "offline" } else { "loading" },
+    }
+    let (t, a) = (shelf_items(&cards(&got[0])), shelf_items(&cards(&data)));
+    if state == "done" && a.is_empty() {
+        state = "empty";
+    }
+    let groups = filters::groups(kind, &filter, got[1].as_ref());
+    if t.is_empty() && a.is_empty() && filter.is_default() {
+        let key = if answered(&trending) { "offline" } else { "loading" };
+        return json!({ "trending": [notice(key)], "all": [], "filters": groups, "allState": state });
+    }
+    json!({ "trending": t, "all": a, "filters": groups, "allState": state })
+}
+
+/// One choice in a browse page's filter panel: `group` "genres" toggles
+/// genre `id`, "years" and "countries" pick `id` or drop it when it was
+/// picked, "sort" sets the order; an empty `id` clears the group. Whether
+/// the filter changed.
+pub fn choose_filter(page: &str, group: &str, id: &str) -> bool {
+    let Some(kind) = filters::page_kind(page, tmdb_on()) else { return false };
+    let changed = filters::choose(kind, group, id);
+    if changed {
+        bump();
+    }
+    changed
 }
 
 /// An overview longer than this (characters) does not fit the hero's three
@@ -1349,9 +1407,17 @@ impl Catalog {
         home().to_string()
     }
 
-    /// `"movies"` or `"shows"`: `{"trending":[summary…],"all":[summary…]}`.
+    /// `"movies"`, `"shows"` or `"anime"`: `{"trending":[summary…],"all":[summary…],
+    /// "filters":[group…],"allState"}` (see `catalog::browse`).
     pub fn browse(page: String) -> String {
         browse(&page).to_string()
+    }
+
+    /// One choice in a browse page's filter panel (see `catalog::choose_filter`):
+    /// `group` "genres" | "years" | "countries" | "sort", `id` an option's
+    /// id, empty to clear the group. Whether the filter changed.
+    pub fn choose_filter(page: String, group: String, id: String) -> bool {
+        choose_filter(&page, &group, &id)
     }
 
     /// A film or show screen (a notice title while it is not known yet).

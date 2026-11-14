@@ -226,8 +226,20 @@ browse:
     genres: Genres
     years: Years
     countries: Countries
+    sort: Sort by
+    picked: "%{filter}: %{picked}"
   sort: "Sort by:"
-  popular: Most popular
+  option:
+    decade: "%{n}s"
+    older: "Before %{n}"
+    popular: Most popular
+    top_rated: Top rated
+    newest: Newest
+    clear: Clear
+  state:
+    loading: Loading…
+    empty: Nothing matches these filters.
+    offline: Could not load this list. Check the connection.
 
 search:
   title: Search

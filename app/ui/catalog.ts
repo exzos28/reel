@@ -211,8 +211,37 @@ const read = <T>(key: string, json: () => string): T => {
 };
 
 export const home = () => read<Shelf[]>("home", () => Catalog.home());
-export const browse = (page: "movies" | "shows" | "anime") =>
-  read<{ trending: Summary[]; all: Summary[] }>(`browse:${page}`, () => Catalog.browse(page));
+/** A row of a filter panel: `name` when the source names it (a genre, a
+ * country), else `key` under `browse.option.*` with its number `n`. */
+export interface FilterOption {
+  id: string;
+  name: string | null;
+  key: string | null;
+  n: number | null;
+  selected: boolean;
+}
+
+/** A filter of a browse page and its panel; `id` is also the key under
+ * `browse.filter.*`. `multi`: OK toggles; `clear`: the panel has a Clear row. */
+export interface FilterGroup {
+  id: "genres" | "years" | "countries" | "sort";
+  multi: boolean;
+  clear: boolean;
+  options: FilterOption[];
+}
+
+export interface Browse {
+  trending: Summary[];
+  /** The catalog through the page's filters. */
+  all: Summary[];
+  filters: FilterGroup[];
+  /** "loading": a new filter's grid is on its way (`all` is the last one). */
+  allState: "done" | "loading" | "empty" | "offline";
+}
+
+export type BrowsePage = "movies" | "shows" | "anime";
+
+export const browse = (page: BrowsePage) => read<Browse>(`browse:${page}`, () => Catalog.browse(page));
 export const title = (id: string) => read<Title | null>(`title:${id}`, () => Catalog.title(id));
 export const episodes = (show: string, season: number) =>
   read<Episode[]>(`episodes:${show}:${season}`, () => Catalog.episodes(show, season));
@@ -242,6 +271,10 @@ export const rememberSearch = (query: string) => Catalog.rememberSearch(query);
 export function toggleList(id: string) {
   Catalog.toggleList(id);
   version.set(version() + 1);
+}
+/** One choice in a filter panel (`id` empty: clear the group). */
+export function chooseFilter(page: BrowsePage, group: string, id: string) {
+  if (Catalog.chooseFilter(page, group, id)) version.set(version() + 1);
 }
 export function chooseRelease(id: string, index: number) {
   Catalog.chooseRelease(id, index);
@@ -312,6 +345,25 @@ export function releaseLine(r: ReleaseLine, withStart = true) {
   const size = r.pack ? t("release.pack", { size: r.size }) : r.size;
   const rest = [size, sharing, ...(withStart && r.fast ? [t("release.fast")] : [])];
   return { name: `${r.quality} ${r.source}`, rest: rest.join(" · ") };
+}
+
+/** A filter panel's row: "Drama", "2010s", "Before 1960", "Top rated". */
+export const optionText = (o: FilterOption) => o.name ?? t(`browse.option.${o.key}`, { n: o.n ?? 0 });
+
+/** What a filter pill says: its name until something is picked, then the
+ * pick ("2010s", "France"); genres keep the name ("Genres: Drama, Crime").
+ * The order's pill is worded by `FilterBar` (two weights). */
+export function filterText(g: FilterGroup) {
+  const picked = g.options.filter((o) => o.selected).map(optionText);
+  const name = t(`browse.filter.${g.id}`);
+  if (picked.length === 0) return name;
+  return g.multi ? t("browse.filter.picked", { filter: name, picked: picked.join(", ") }) : picked.join(", ");
+}
+
+/** The picked order's name ("Most popular"). */
+export function sortText(g: FilterGroup) {
+  const o = g.options.find((x) => x.selected);
+  return o ? optionText(o) : "";
 }
 
 /** A score's source: "TMDB", "AniList", "MAL". */

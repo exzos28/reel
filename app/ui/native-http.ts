@@ -145,6 +145,7 @@ export const Catalog: CatalogModule = {
   revision: s("Catalog", "revision"),
   home: s("Catalog", "home"),
   browse: s("Catalog", "browse"),
+  chooseFilter: s("Catalog", "chooseFilter"),
   title: s("Catalog", "title"),
   episodes: s("Catalog", "episodes"),
   episode: s("Catalog", "episode"),

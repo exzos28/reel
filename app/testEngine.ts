@@ -53,7 +53,7 @@ export const AOT = summary({
 
 const ARRIVAL = summary({ id: "tmdb:movie:329865", title: "Arrival", year: 2016, minutes: 116, rating: "7.6" });
 const DUNE = summary({ id: "tmdb:movie:438631", title: "Dune", year: 2021, minutes: 155, rating: "7.8" });
-const SEVERANCE = summary({ id: "tmdb:tv:95396", kind: "show", title: "Severance", year: 2022, seasons: 2 });
+export const SEVERANCE = summary({ id: "tmdb:tv:95396", kind: "show", title: "Severance", year: 2022, seasons: 2 });
 const FRIEREN = summary({ id: "anilist:154587", kind: "show", title: "Frieren: Beyond Journey's End", anime: true, year: 2023 });
 
 export const HOME = [
@@ -157,11 +157,31 @@ export const AOT_S3 = [
   episode(4, "Trust"),
 ];
 
+const option = (id: string, name: string | null, key: string | null = null, n: number | null = null, selected = false) =>
+  ({ id, name, key, n, selected });
+
+/** A browse page's filters as the core lists them, with `picked` ids selected
+ * (the order is "popular" unless one of the sort ids is picked). */
+export function browseFilters(picked: string[] = []) {
+  const on = (id: string) => picked.includes(id);
+  const sortPicked = ["top_rated", "newest"].some(on);
+  return [
+    { id: "genres", multi: true, clear: true, options: [["18", "Drama"], ["80", "Crime"], ["878", "Science Fiction"]].map(([id, name]) => option(id, name, null, null, on(id))) },
+    { id: "years", multi: false, clear: true, options: [...[2020, 2010, 2000].map((d) => option(String(d), null, "decade", d, on(String(d)))), option("older", null, "older", 1960, on("older"))] },
+    { id: "countries", multi: false, clear: true, options: [["US", "United States"], ["FR", "France"]].map(([id, name]) => option(id, name, null, null, on(id))) },
+    { id: "sort", multi: false, clear: false, options: ["popular", "top_rated", "newest"].map((id) => option(id, null, id, null, id === "popular" ? !sortPicked : on(id))) },
+  ];
+}
+
+export const BROWSE_TRENDING = [DUNE, ARRIVAL, INCEPTION];
+export const BROWSE_ALL = [ARRIVAL, DUNE, INCEPTION, SEVERANCE];
+
 /** The catalog as most tests see it: Home, Browse, Inception's screen. */
 export const CATALOG = {
   "Catalog.revision": 1,
   "Catalog.home": JSON.stringify(HOME),
-  "Catalog.browse": JSON.stringify({ trending: [DUNE, ARRIVAL, INCEPTION], all: [ARRIVAL, DUNE, INCEPTION, SEVERANCE] }),
+  "Catalog.browse": JSON.stringify({ trending: BROWSE_TRENDING, all: BROWSE_ALL, filters: browseFilters(), allState: "done" }),
+  "Catalog.chooseFilter": false,
   "Catalog.title": JSON.stringify(INCEPTION_TITLE),
   "Catalog.episodes": JSON.stringify(AOT_S3),
   "Catalog.episode": JSON.stringify(AOT_S3[1]),
