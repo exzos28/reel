@@ -5,6 +5,7 @@ import { SectionTitle } from "../../layout/Section";
 import { LazyBlock } from "../../layout/LazyBlock";
 import { scroller, type ScrollCtl } from "../../layout/Scroller";
 import { Shelf } from "../../layout/Shelf";
+import { rowReach } from "../../layout/reach";
 import { safe, u } from "../../theme";
 import { WideCard } from "./WideCard";
 
@@ -23,12 +24,13 @@ export function HomeShelf(props: {
 }) {
   /** The shelf puts the focused card at the left edge of its inset. */
   const line = scroller({ horizontal: true, anchor: () => safe().x });
+  const reach = rowReach({ line, focusedAt: props.focusedAt, step: () => u(352 + 24) });
   return (
     <View ref={props.blockRef} style={{ gap: u(22) }}>
       <SectionTitle text={props.title ?? (() => t(`shelf.${props.shelf().id}`))} inset />
       <LazyBlock page={props.page} eager={props.eager} height={() => u(198 + 110)}>
       <Shelf ctl={line} gap={24} top={0} bottom={24}>
-        <Each of={props.shelf().items} key={(f) => f.id}>
+        <Each of={props.shelf().items.slice(0, reach())} key={(f) => f.id}>
           {(item, c) => (
             <WideCard
               item={item}
