@@ -32,6 +32,8 @@ export const OVERLAY_MS = 3000;
 /** How long the Up next card counts down before the next episode plays. */
 export const UP_NEXT_MS = 6000;
 const SEEK_S = 10;
+/** How long a wait lasts before the buffering note shows, ms. */
+const STALL_MS = 300;
 
 type Row = "scrubber" | "buttons";
 const BUTTONS = ["back", "play", "forward", "tracks"] as const;
@@ -54,6 +56,8 @@ export function Player() {
   const loaded = signal(false);
   /** What `onBuffer` last said. */
   const buffering = signal(false);
+  let stallTimer: ReturnType<typeof setTimeout> | undefined;
+  cleanup(() => clearTimeout(stallTimer));
   const error = signal<string | null>(null);
   /** The first frame played: the stage gives way to the picture and the controls. */
   const started = signal(false);
@@ -64,6 +68,7 @@ export function Player() {
     url();
     loaded.set(false);
     started.set(false);
+    clearTimeout(stallTimer);
     buffering.set(false);
     error.set(null);
   });
@@ -332,7 +337,12 @@ export function Player() {
               firstFrame();
             }
           }}
-          onBuffer={(e) => buffering.set(e.isBuffering)}
+          onBuffer={(e) => {
+            clearTimeout(stallTimer);
+            if (!e.isBuffering) return buffering.set(false);
+            // A seek inside what is downloaded ends at once: no note for it.
+            stallTimer = setTimeout(() => buffering.set(true), STALL_MS);
+          }}
           onEnd={() => { paused.set(true); poke(); }}
           onError={(e) => error.set(e.message)}
           style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}

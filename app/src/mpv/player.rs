@@ -43,10 +43,12 @@ pub struct Player {
     src: String,
 }
 
-const OBSERVED: [(&str, c_int); 5] = [
+const OBSERVED: [(&str, c_int); 6] = [
     ("time-pos", ffi::FORMAT_DOUBLE),
     ("duration", ffi::FORMAT_DOUBLE),
     ("paused-for-cache", ffi::FORMAT_FLAG),
+    // A seek waits for data too: the UI shows it as buffering.
+    ("seeking", ffi::FORMAT_FLAG),
     ("track-list", ffi::FORMAT_STRING),
     ("eof-reached", ffi::FORMAT_FLAG),
 ];
@@ -200,7 +202,7 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
     let mut time = 0.0;
     let mut duration = 0.0;
     let mut last_progress: Option<Instant> = None;
-    let mut buffering = false;
+    let (mut buffering, mut cache_wait, mut seeking) = (false, false, false);
     loop {
         if shared.stop.load(Ordering::Relaxed) {
             return;
@@ -240,8 +242,14 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
                         duration = unsafe { *(p.data as *const f64) };
                         emit("progress", json!({ "currentTime": time, "duration": duration }));
                     }
-                    (b"paused-for-cache", ffi::FORMAT_FLAG) => {
-                        let now = unsafe { *(p.data as *const c_int) } != 0;
+                    (b"paused-for-cache" | b"seeking", ffi::FORMAT_FLAG) => {
+                        let on = unsafe { *(p.data as *const c_int) } != 0;
+                        if name == b"seeking" {
+                            seeking = on;
+                        } else {
+                            cache_wait = on;
+                        }
+                        let now = cache_wait || seeking;
                         if now != buffering {
                             buffering = now;
                             emit("buffer", json!({ "isBuffering": now }));

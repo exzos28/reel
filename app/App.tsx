@@ -15,6 +15,8 @@ import { back, route } from "./ui/nav";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
 import { loadSettings } from "./ui/preferences";
+import { pageScrolled } from "./ui/layout/scrollCtl";
+import { TitleBarBlur } from "./ui/layout/TitleBarBlur";
 import { backInTitleBar, TITLE_BAR_HEIGHT, TitleBarBack } from "./ui/layout/TopBar";
 import { colors } from "./ui/theme";
 
@@ -38,6 +40,11 @@ function App() {
       .catch(() => freeBytes.set(null));
   });
   const r = route;
+  // A new screen starts at its top until its page says otherwise.
+  effect(() => {
+    r();
+    pageScrolled.set(false);
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.ink() }}>
@@ -46,7 +53,10 @@ function App() {
         desktop={{ windowDrag: true }}
         style={{ position: "absolute", top: 0, left: 0, right: 0, height: titleBar().height, zIndex: 10 }}
       />
-      {/* On a Mac, Back sits in the title bar beside the traffic lights. */}
+      {/* On a Mac the title bar blurs a scrolled page under it, and Back sits beside the traffic lights. */}
+      <If when={backInTitleBar && !playing()}>
+        <TitleBarBlur />
+      </If>
       <If when={backInTitleBar && !playing() && !isTopLevel(r().name)}>
         <TitleBarBack onPress={back} />
       </If>
