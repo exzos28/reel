@@ -1,10 +1,11 @@
-import { Image, Text, View, type ViewStyle } from "nsh";
+import { Image, Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { titleText, type Summary } from "../catalog";
 import { colors, radius, type, u } from "../theme";
 import { cover } from "./shape";
 
 const pictureStyle = (fill: string, style: ViewStyle): ViewStyle => ({ overflow: "hidden", backgroundColor: fill, ...style });
 const fallbackStyle = (): ViewStyle => ({ flex: 1, padding: u(18), justifyContent: "flex-end" });
+const fallbackTitle = (size: number, ink: string): TextStyle => ({ numberOfLines: 3, ...type.logotype(size), fontWeight: 300, color: ink });
 const imageStyle = (position: string) => ({ ...cover(), objectFit: "cover", objectPosition: position }) as ViewStyle;
 const trackStyle = (): ViewStyle => ({ position: "absolute", left: 0, right: 0, bottom: 0, height: u(5), backgroundColor: colors.raise() });
 const watchedStyle = (progress: number): ViewStyle => ({ height: "100%", width: `${Math.round(progress * 100)}%`, backgroundColor: colors.snow() });
@@ -24,7 +25,7 @@ export function Picture(props: {
         when={props.src()}
         else={
           <View style={fallbackStyle()}>
-            <Text style={{ numberOfLines: 3, ...type.logotype(props.titleSize), fontWeight: 300, color: props.item().ink }}>
+            <Text style={fallbackTitle(props.titleSize, props.item().ink)}>
               {titleText(props.item())}
             </Text>
           </View>
