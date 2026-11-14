@@ -84,7 +84,7 @@ export function HomeScreen() {
   };
 
   return (
-    <Screen ctl={page} nav>
+    <Screen ctl={page} nav hero={780}>
       <View ref={page.follow(() => zone() !== "shelves", "start")}>
         <HomeHero
           item={hero}

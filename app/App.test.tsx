@@ -182,7 +182,7 @@ test("in a Mac window the screens lay out with all their columns", async () => {
 });
 
 
-test("Home, Movies, Shows and Anime have the same nav, scrolling with the page, whose pills keep their size", async () => {
+test("Home, Movies, Shows and Anime have the same nav in the window bar, whose pills keep their size", async () => {
   const app = await app_(NATIVE, { platform: "macos", width: 1440, height: 900 });
   const pills = ["Home", "Movies", "Shows", "Anime"];
   /** What decides a pill's width: its label's size and weight (selected changes only the colour). */
@@ -197,10 +197,27 @@ test("Home, Movies, Shows and Anime have the same nav, scrolling with the page, 
     expect(app.count("label:Home")).toBe(1);
     expect(app.count("label:Settings")).toBe(1);
     expect(sizes()).toEqual(onHome);
-    // It is in the screen's own scroll view (it scrolls away with the page),
-    // so a scroll from it reaches that view rather than finding none.
-    await app.scroll("label:Home", 200).catch((e) => expect(e.code).not.toBe("ERR_NSH_TEST_NOT_FOUND"));
   }
+});
+
+test("Mac: Back in the window bar is disabled on a root, goes back from a title; ⌘[ and Esc go back, never past a root", async () => {
+  const app = await app_(NATIVE, { platform: "macos", width: 1440, height: 900 });
+  await expect(app.press("label:Back")).rejects.toMatchObject({ code: "ERR_NSH_TEST_DISABLED" });
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
+  expect(app.shows("label:Add to list")).toBe(true); // the page's action, in the bar
+  await app.press("label:Back to Movies");
+  expect(app.texts()).toContain("All movies");
+  await app.press("label:Dune >> nth=0");
+  await app.keyboard.press("mod+[");
+  expect(app.texts()).toContain("All movies");
+  await app.press("label:Dune >> nth=0");
+  await app.keyboard.press("escape");
+  await app.keyboard.press("escape"); // on a root: stays
+  expect(app.texts()).toContain("All movies");
+  await app.keyboard.press("mod+1");
+  expect(app.texts()).toContain("Continue watching");
 });
 
 test("the nav opens Anime after Shows: its trending row and all anime", async () => {

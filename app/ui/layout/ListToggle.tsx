@@ -53,7 +53,7 @@ export function ListToggle(props: { inList: () => boolean; focused: () => boolea
     <If
       when={isTouch}
       else={
-        <View role="button" onPress={props.onPress} hoverStyle={{ backgroundColor: colors.raise() }} style={pillStyle(props.inList(), props.focused())}>
+        <View role="button" accessibilityLabel={label()} onPress={props.onPress} hoverStyle={{ backgroundColor: colors.raise() }} style={pillStyle(props.inList(), props.focused())}>
           <Icon src={icon} size={size().icon} color={tint} />
           <Text style={labelStyle(props.inList())}>{label()}</Text>
         </View>

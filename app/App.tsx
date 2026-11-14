@@ -1,23 +1,26 @@
 // reel: the screens, driven by arrow keys, OK and Back like a remote (TV
-// density on a TV, regular on a Mac, compact on a phone) and by the mouse.
-// Only one screen is mounted at a time, so only its keys are bound; the
-// screens keep their focus in their own modules, so Back finds it again.
-// The nav's destinations are the roots (screens/TopLevel.tsx); Back goes
-// through one handler (ui/nav.ts `handleBack`), whatever key or button.
-import { fpsEnabled, keymap, mount, platform, setColorScheme, setFpsEnabled, View } from "nsh";
-import { currentWindow, titleBar } from "nsh/desktop";
+// density on a TV, regular on a desktop and a tablet, compact on a phone) and
+// by the mouse. Only one screen is mounted at a time, so only its keys are
+// bound; the screens keep their focus in their own modules, so Back finds it
+// again. The nav's destinations are the roots (screens/TopLevel.tsx); Back
+// goes through one handler (ui/nav.ts `handleBack`), whatever key or button.
+// The frame around the screens is the platform family's (layout/chrome.ts):
+// on a desktop, one window bar over every page (layout/WindowBar.tsx).
+import { fpsEnabled, keymap, mount, setColorScheme, setFpsEnabled, View } from "nsh";
+import { currentWindow, isAvailable as hasWindows } from "nsh/desktop";
 import { remote } from "./ui/native";
 import { mapRemoteBack } from "./ui/tvKeys";
 import { AboutScreen } from "./ui/screens/about/AboutScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
 import { handleBack, isRoot, route, useTabStacks } from "./ui/nav";
-import { isTouch } from "./ui/layout/chrome";
+import { isDesktop, isTouch } from "./ui/layout/chrome";
+import { bindDesktopKeys } from "./ui/layout/desktopKeys";
 import { ExitDialog } from "./ui/layout/ExitDialog";
+import { BAR_HEIGHT, WindowBar } from "./ui/layout/WindowBar";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
 import { loadSettings } from "./ui/preferences";
-import { backInTitleBar, TITLE_BAR_HEIGHT, TitleBarBack } from "./ui/layout/TopBar";
 import { colors } from "./ui/theme";
 import { videoUnderUi } from "./ui/VideoSurface";
 
@@ -31,26 +34,22 @@ loadSettings().catch((e) => console.warn("could not load settings", e));
 function App() {
   // ⌘⇧F (Ctrl+Shift+F elsewhere): NSH's performance monitor, to see where frames drop.
   keymap.bind("mod+shift+f", () => setFpsEnabled(!fpsEnabled()));
-  // On the Mac the window has no grey title bar: the app's own background (the
-  // hero's still) runs up to the top edge, under the traffic lights.
-  if (platform.os === "macos") currentWindow().set({ titleBar: { style: "hidden", height: TITLE_BAR_HEIGHT } });
+  // The window has no system title bar: the window bar is reel's own, the
+  // hero's still running up to the top edge under it and the window's controls.
+  if (isDesktop && hasWindows) currentWindow().set({ titleBar: { style: "hidden", height: BAR_HEIGHT } });
   // Back: Escape (a TV remote's Back arrives as Escape), through what is open first.
   keymap.bind({ escape: handleBack });
+  if (isDesktop) bindDesktopKeys();
   const playing = () => status().phase !== "idle";
   const r = route;
 
   return (
     // While a film plays under the UI (AVPlay on a TV), the app paints no background over it.
-    <View style={{ flex: 1, backgroundColor: playing() && videoUnderUi() ? "transparent" : colors.ink() }}>
-      {/* Where the title bar was: dragging there moves the window, a double click zooms it. */}
-      <View
-        desktop={{ windowDrag: true }}
-        style={{ position: "absolute", top: 0, left: 0, right: 0, height: titleBar().height, zIndex: 10 }}
-      />
-      {/* On a Mac, Back sits in the title bar beside the traffic lights. */}
-      <If when={backInTitleBar && !playing() && !isRoot(r().name)}>
-        <TitleBarBack onPress={handleBack} />
-      </If>
+    <View
+      style={{ flex: 1, backgroundColor: playing() && videoUnderUi() ? "transparent" : colors.ink() }}
+      // The mouse's back button (button 4).
+      onMouseUp={(e) => e.button === "back" && handleBack()}
+    >
       <If when={!playing()} else={<Player />}>
         <If when={isRoot(r().name)}>
           <TopLevel />
@@ -62,6 +61,15 @@ function App() {
         <Each of={r().name === "title" ? [(r() as { id: string }).id] : []} key={(id) => id}>
           {(id) => <TitleScreen id={id()} />}
         </Each>
+      </If>
+      <If when={isDesktop}>
+        <If
+          when={!playing()}
+          // The player has no bar: its top still drags the window.
+          else={<View desktop={{ windowDrag: true }} style={{ position: "absolute", top: 0, left: 0, right: 0, height: BAR_HEIGHT, zIndex: 10 }} />}
+        >
+          <WindowBar />
+        </If>
       </If>
       <ExitDialog />
     </View>

@@ -9,7 +9,7 @@
 // makes it the one Play uses, on an episode plays it; Down past the list
 // walks the cast row, then More like this, where OK opens the title. Back
 // closes the release panel, then goes one level up.
-import { computed, effect, openUrl, signal, View, type ViewStyle } from "nsh";
+import { computed, effect, keymap, openUrl, signal, View, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import {
   chooseRelease, episodeCode, episodeReleases, episodes, releaseLine, releasesText, title as titleOf, toggleList,
@@ -19,7 +19,7 @@ import { clamp } from "../../focus/memory";
 import { useZones } from "../../focus/zones";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
-import { chrome } from "../../layout/chrome";
+import { isDesktop } from "../../layout/chrome";
 import { ListToggle } from "../../layout/ListToggle";
 import { FloatingBack } from "../../layout/TopBar";
 import { handleBack, openTitle } from "../../nav";
@@ -126,6 +126,7 @@ export function TitleScreen(props: { id: string }) {
     trailer: openTrailer,
   };
   const toggle = () => toggleList(props.id);
+  if (isDesktop) keymap.bind({ "mod+d": toggle });
   /** The hero's last stop: the release button when there is one, else the actions. */
   const heroEnd = (): Zone => (data().release ? "release" : "actions");
   /** Down from the hero: a show's season tabs, else the rows below. */
@@ -178,7 +179,8 @@ export function TitleScreen(props: { id: string }) {
       actions: {
         left: () => action.set(Math.max(action() - 1, 0)),
         right: () => action.set(Math.min(action() + 1, actionCount() - 1)),
-        up: () => zone.set("header"),
+        // On a desktop Add to list is in the window bar (⌘D / Ctrl+D), not above the actions.
+        up: () => !isDesktop && zone.set("header"),
         down: () => (data().release ? zone.set("release") : underHero()),
         enter: () => {
           const a = heroRow()[clamp(action(), actionCount() - 1)];
@@ -230,11 +232,8 @@ export function TitleScreen(props: { id: string }) {
 
   return (
     <View style={{ flex: 1 }}>
-    <Screen ctl={page} bottom={40}>
-      {/* A TV has no Back on screen: the remote's Back key is it. */}
-      <If when={chrome !== "tv"}>
-        <FloatingBack focused={() => false} onPress={handleBack} />
-      </If>
+    <Screen ctl={page} bottom={40} hero={isShow() ? 640 : 700}>
+      <FloatingBack onPress={handleBack} />
       <View ref={page.follow(() => zone() === "header" || zone() === "actions" || zone() === "release", "start")}>
         <TitleHero
           data={data}
@@ -245,9 +244,12 @@ export function TitleScreen(props: { id: string }) {
           onReleases={() => openPanel()}
         />
       </View>
-      <View style={headerStyle()}>
-        <ListToggle inList={() => data().inList} focused={() => zone() === "header"} onPress={toggle} />
-      </View>
+      {/* On a desktop Add to list is in the window bar. */}
+      <If when={!isDesktop}>
+        <View style={headerStyle()}>
+          <ListToggle inList={() => data().inList} focused={() => zone() === "header"} onPress={toggle} />
+        </View>
+      </If>
       <If when={isShow()}>
         <SeriesEpisodes
           data={data}
