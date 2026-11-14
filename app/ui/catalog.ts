@@ -27,6 +27,14 @@ export interface ReleaseLine {
   fast: boolean;
 }
 
+/** A score with its source, in the source's own scale: TMDB "8.0", AniList
+ * "85%", MAL "8.54"; `votes` "4.8K" (empty when unknown). */
+export interface Score {
+  source: "tmdb" | "anilist" | "mal";
+  value: string;
+  votes: string;
+}
+
 /** A title as cards, shelves and heroes show it. Ids are the metadata
  * ones ("tmdb:movie:603", "tmdb:tv:1399", "anilist:21"). */
 export interface Summary {
@@ -44,6 +52,10 @@ export interface Summary {
   minutes: number;
   rating: string;
   votes: string;
+  /** Every score with its source (the hero labels them). */
+  ratings: Score[];
+  /** The age rating for the viewer's region ("R", "TV-14"), null when none. */
+  certification: string | null;
   /** Keys under `badge.*`; genre names as the source words them. */
   badges: string[];
   genres: string[];
@@ -92,11 +104,41 @@ export interface Release {
 /** Where the search for releases is (key under `releases.state.*` except "done"). */
 export type ReleasesState = "no_source" | "searching" | "failed" | "done" | "none";
 
+export interface CastMember {
+  name: string;
+  character: string | null;
+  /** A w185 photo, null when there is none (the initials show). */
+  photo: string | null;
+  initials: string;
+}
+
+/** A crew group: `job` a key under `crew.*` ("director", "writer", "novel",
+ * "music", "creator"). */
+export interface CrewGroup {
+  job: string;
+  names: string[];
+}
+
 export interface Title extends Summary {
   releases: Release[];
   releasesState: ReleasesState;
   season?: number;
   seasonList?: { number: number; year: number; episodes: number; name: string | null }[];
+  /** The overview is longer than the hero's three lines: shown whole below. */
+  aboutFull: boolean;
+  cast: CastMember[];
+  crew: CrewGroup[];
+  tagline: string | null;
+  /** Only when it differs from `title`. */
+  originalTitle: string | null;
+  releaseDate: [number, number, number] | null;
+  /** Country names, studio names. */
+  countries: string[];
+  studios: string[];
+  /** A series' status, a key under `status.*`. */
+  status: string | null;
+  /** More like this. */
+  similar: Summary[];
 }
 
 export interface Episode {
@@ -223,6 +265,17 @@ export function releaseLine(r: ReleaseLine, withStart = true) {
   const rest = [size, sharing, ...(withStart && r.fast ? [t("release.fast")] : [])];
   return { name: `${r.quality} ${r.source}`, rest: rest.join(" · ") };
 }
+
+/** A score's source: "TMDB", "AniList", "MAL". */
+export const scoreSource = (s: Score) => t(`score.${s.source}`);
+/** "4.8K votes" (empty when unknown). */
+export const votesText = (s: Score) => (s.votes ? t("score.votes", { votes: s.votes }) : "");
+
+/** A crew group's label: "Director", "Writers", "Created by". */
+export const crewLabel = (g: CrewGroup) => t(`crew.${g.job}.${g.names.length === 1 ? "one" : "other"}`);
+export const namesText = (names: string[]) => names.join(", ");
+
+export const statusText = (status: string) => t(`status.${status}`);
 
 export const tracksText = (r: Release) => r.tracks.map((k) => t(`tracks.${k}`)).join(", ");
 export const noteText = (r: Release) => t(`release.note.${r.note}`, { mbit: r.mbit });

@@ -43,9 +43,10 @@ function App() {
         <If when={r().name === "settings"}>
           <SettingsScreen freeBytes={freeBytes} onClose={back} />
         </If>
-        <If when={r().name === "title" ? (r() as { id: string }).id : null}>
+        {/* Keyed by the id: a title opened from another one (More like this) is a new screen. */}
+        <Each of={r().name === "title" ? [(r() as { id: string }).id] : []} key={(id) => id}>
           {(id) => <TitleScreen id={id()} />}
-        </If>
+        </Each>
       </If>
     </View>
   );

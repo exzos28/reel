@@ -109,6 +109,54 @@ releases:
     failed: Your search source did not answer. Check it in Settings.
     none: Nothing found on your search source.
 
+score:
+  tmdb: TMDB
+  anilist: AniList
+  mal: MAL
+  votes: "%{votes} votes"
+
+about:
+  title: About
+  cast: Cast
+  details: Details
+  similar: More like this
+
+crew:
+  director:
+    one: Director
+    other: Directors
+  writer:
+    one: Writer
+    other: Writers
+  novel:
+    one: Novel
+    other: Novel
+  music:
+    one: Music
+    other: Music
+  creator:
+    one: Created by
+    other: Created by
+
+detail:
+  tagline: Tagline
+  original_title: Original title
+  release_date: Release date
+  first_aired: First aired
+  runtime: Runtime
+  status: Status
+  countries: Country
+  studios: Studio
+  networks: Network and studios
+
+status:
+  announced: Announced
+  inProduction: In production
+  airing: Returning series
+  ended: Ended
+  canceled: Canceled
+  released: Released
+
 tracks:
   audio:
     original: Original
@@ -234,6 +282,11 @@ settings:
     ok_imdb: Connected. It searches by IMDb id.
     ok_text: Connected. It searches by title.
     failed: "Could not reach the source: %{message}"
+  about:
+    title: About reel
+    open: About reel and its data sources
+    data: Data sources
+    tmdb_logo: The Movie Database (TMDB)
   buffer:
     title: Playback buffer
     about: How much of the film reel keeps on this device while it plays. A bigger buffer survives slow peers and long seeks better. reel needs this much free space to start a film.

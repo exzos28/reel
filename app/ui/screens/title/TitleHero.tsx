@@ -16,6 +16,7 @@ export function TitleHero(props: { data: () => Title; focusedAt: () => number | 
       backdropLeft={show() ? 520 : 560}
       titleSize={show() ? 76 : 88}
       top={show() ? 150 : 176}
+      fit
     >
       <View style={actionsRow(true)}>
         <PlayButton label={() => playLabel(props.data())} focused={() => props.focusedAt() === 0} onPress={props.onPlay} />

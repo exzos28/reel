@@ -15,9 +15,11 @@ const img = (size: string, name: string) => `https://image.tmdb.org/t/p/${size}/
 
 function summary(over: Record<string, unknown>) {
   const id = over.id as string;
+  const rating = (over.rating as string) ?? "7.5";
+  const votes = (over.votes as string) ?? "10K";
   return {
     kind: "movie", about: "", notice: null, anime: false, year: 2010, yearEnd: null, minutes: 0,
-    rating: "7.5", votes: "10K", badges: [], genres: [],
+    rating, votes, ratings: [{ source: "tmdb", value: rating, votes }], certification: null, badges: [], genres: [],
     still: img("w1280", id), card: img("w780", id), poster: img("w342", id),
     ink: "#F5F5F5", paper: "#1A1A1A", stoppedAt: null, progress: 0, left: null, resume: null,
     seasons: 0, airs: null, tag: null, playable: true, inList: false, release: null,
@@ -58,9 +60,32 @@ const release = (index: number, quality: string, source: string, group: string, 
   index, quality, source, group, size, tracks: [], peers, bars, note, mbit, selected, pack: false, indexer: "test",
 });
 
+/** What a title screen shows below the hero (a film's). */
+const BELOW = {
+  aboutFull: true,
+  cast: [
+    { name: "Leonardo DiCaprio", character: "Cobb", photo: img("w185", "dicaprio"), initials: "LD" },
+    { name: "Joseph Gordon-Levitt", character: "Arthur", photo: null, initials: "JG" },
+    { name: "Elliot Page", character: "Ariadne", photo: img("w185", "page"), initials: "EP" },
+  ],
+  crew: [
+    { job: "director", names: ["Christopher Nolan"] },
+    { job: "music", names: ["Hans Zimmer"] },
+  ],
+  tagline: "Your mind is the scene of the crime.",
+  originalTitle: null,
+  releaseDate: [2010, 7, 15],
+  countries: ["United Kingdom", "United States"],
+  studios: ["Legendary Pictures", "Syncopy"],
+  status: null,
+};
+
 /** Inception's screen: three releases from the user's source, fastest first. */
 export const INCEPTION_TITLE = {
   ...INCEPTION,
+  ...BELOW,
+  certification: "PG-13",
+  similar: [DUNE, ARRIVAL],
   releasesState: "done",
   releases: [
     release(1, "720p", "WEB", "Inception.2010.720p.WEB", "2 GB", 655, 4, "starts_fastest", 2),
@@ -74,6 +99,22 @@ export const INCEPTION_NO_SOURCE = { ...INCEPTION_TITLE, release: null, playable
 
 export const AOT_TITLE = {
   ...AOT,
+  ...BELOW,
+  aboutFull: false,
+  crew: [{ job: "creator", names: ["Hajime Isayama"] }],
+  cast: [{ name: "Yuki Kaji", character: "Eren Yeager (voice)", photo: null, initials: "YK" }],
+  tagline: null,
+  releaseDate: [2013, 4, 7],
+  countries: ["Japan"],
+  studios: ["MBS"],
+  status: "ended",
+  certification: "TV-MA",
+  ratings: [
+    { source: "tmdb", value: "8.7", votes: "7.1K" },
+    { source: "anilist", value: "84%", votes: "" },
+    { source: "mal", value: "8.54", votes: "2.4M" },
+  ],
+  similar: [FRIEREN],
   releasesState: "searching",
   releases: [],
   season: 3,

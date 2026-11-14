@@ -8,15 +8,26 @@ import { bodyText, metaText } from "../kit/text";
 import { alpha, colors, heroFade, safe, type, u } from "../theme";
 import { MetaLine } from "./HeroMeta";
 
-const backdropStyle = (height: number, left: number): ViewStyle => ({ position: "absolute", top: 0, right: 0, left: u(left), height: u(height) });
+const backdropStyle = (height: number, left: number): ViewStyle => ({
+  position: "absolute", top: 0, right: 0, left: u(left), height: u(height), overflow: "hidden",
+});
 const paperStyle = (paper: string): ViewStyle => ({ flex: 1, backgroundColor: paper, opacity: 0.55 });
-const stillStyle = { flex: 1, objectFit: "cover", objectPosition: "center 30%" } as ViewStyle;
+// A backdrop is a 16:9 frame, and people's heads sit in its upper part. The
+// box keeps at least 16:9 of its width (taller only when the hero is), never
+// stretched, and anchored to the top: what does not fit is cut at the bottom,
+// where the fade into the background hides it anyway.
+const stillStyle = {
+  width: "100%", minHeight: "100%", aspectRatio: 16 / 9, objectFit: "cover", objectPosition: "center top",
+} as ViewStyle;
 const fadeStyle = (): ViewStyle => ({ ...cover(), backgroundImage: heroFade() });
 const leftFadeStyle = (): ViewStyle => ({
   position: "absolute", top: 0, left: 0, bottom: 0, width: "40%",
   backgroundImage: `linear-gradient(90deg, ${colors.ink()} 0%, ${alpha(colors.ink(), 0)} 100%)`,
 });
 const textBlockStyle = (top: number): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(top), gap: u(14), maxWidth: u(1300) });
+/** The hero's own height: at least the backdrop's, or (`fit`) only what its text needs. */
+const heroStyle = (height: number, fit: boolean): ViewStyle => (fit ? {} : { minHeight: u(height) });
+const aboutStyle = (): TextStyle => ({ numberOfLines: 3, ...bodyText(colors.soft()), maxWidth: u(980) });
 const logotypeStyle = (size: number): TextStyle => ({ numberOfLines: 2, ...type.logotype(size), color: colors.snow(), marginBottom: u(10) });
 
 /** The still (or the title's paper colour) fading into the background;
@@ -44,17 +55,20 @@ export function Hero(props: {
   titleSize: number;
   /** Top padding of the text block (room for the nav or the back button). */
   top: number;
+  /** As tall as its text (the backdrop still fades out under what follows),
+   * so a title screen's next block starts right under the actions. */
+  fit?: boolean;
   children: JSX.Element;
 }) {
   const s = props.item;
   return (
-    <View style={{ minHeight: u(props.height) }}>
+    <View style={heroStyle(props.height, !!props.fit)}>
       <Backdrop item={s} height={props.height} left={props.backdropLeft ?? 0} />
       <View style={textBlockStyle(props.top)}>
         <Text style={logotypeStyle(props.titleSize)}>{titleText(s())}</Text>
         <MetaLine item={s} />
         <Text style={{ ...metaText(), fontSize: u(24) }}>{genresText(s())}</Text>
-        <Text style={{ numberOfLines: 2, ...bodyText(colors.soft()), maxWidth: u(980) }}>{aboutText(s())}</Text>
+        <Text style={aboutStyle()}>{aboutText(s())}</Text>
         {props.children}
       </View>
     </View>
