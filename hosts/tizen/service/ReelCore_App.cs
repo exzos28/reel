@@ -39,7 +39,9 @@ namespace ReelCore
         static IntPtr Resolve(string name, Assembly assembly, DllImportSearchPath? path)
         {
             if (name != Library) return IntPtr.Zero;
-            return NativeLibrary.Load(Path.Combine(Current.DirectoryInfo.Lib, Library));
+            // Tizen's DirectoryInfo has no lib folder: the package root is res/'s parent.
+            var root = Path.GetDirectoryName(Current.DirectoryInfo.Resource.TrimEnd('/'));
+            return NativeLibrary.Load(Path.Combine(root, "lib", Library));
         }
 
         protected override void OnCreate()
