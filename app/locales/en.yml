@@ -231,7 +231,17 @@ browse:
 
 search:
   title: Search
-  soon: Search is not here yet. Browse Movies and Shows for now.
+  placeholder: Films, shows and anime by title
+  hint: Type a title to find films, shows and anime.
+  recent: Recent searches
+  searching: Searching…
+  none: "Nothing found for “%{query}”."
+  failed: TMDB and AniList did not answer. Check the connection and try again.
+  no_tmdb: This build has no TMDB key, so only anime is searched.
+  section:
+    movies: Movies
+    shows: Shows
+    anime: Anime
 
 compat:
   audio_dts: This release has only DTS audio, which this device cannot play. Choose another release.

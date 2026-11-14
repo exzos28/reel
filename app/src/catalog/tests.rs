@@ -73,6 +73,7 @@ fn reset(tmdb_on: bool, source: bool) {
     CHOSEN.lock().unwrap().clear();
     LIST.lock().unwrap().clear();
     progress::clear();
+    search::reset();
     *TEST_TMDB.lock().unwrap() = Some(tmdb_on);
     *TEST_SOURCE.lock().unwrap() = Some(source);
 }
@@ -413,6 +414,115 @@ fn list() {
     assert!(!in_list(MATRIX));
     assert!(toggle_list(MATRIX));
     assert!(!toggle_list(MATRIX));
+}
+
+/// `Meta.search` answered `query`: TMDB's search fixture and AniList's trending as its anime.
+fn seed_search(query: &str) {
+    let tmdb_cards = tmdb().map_cards(&fixture("tmdb_search_multi.json"), &cx()).unwrap();
+    let anime = crate::metadata::anilist::Anilist.map_cards(&fixture("anilist_trending.json"), &cx()).unwrap();
+    // AniList lists one TMDB already found: it shows once.
+    let mut anilist = vec![serde_json::to_value(&tmdb_cards[0]).unwrap()];
+    anilist.extend(anime.iter().map(|c| serde_json::to_value(c).unwrap()));
+    let data = json!({ "sections": [
+        { "source": "tmdb", "items": tmdb_cards },
+        { "source": "anilist", "items": anilist },
+    ] });
+    search::land(&search::answer_key(query, &settings::content_language()), &json!({ "data": data }));
+}
+
+fn row_ids(found: &Value, row: &str) -> Vec<String> {
+    let section = found["sections"].as_array().unwrap().iter().find(|s| s["id"] == row);
+    section.map_or(vec![], |s| s["items"].as_array().unwrap().iter().map(|i| i["id"].as_str().unwrap().to_owned()).collect())
+}
+
+#[test]
+fn search_groups_and_dedupes_the_answer() {
+    let _g = fresh(true, false);
+    let first = search::search("  Matrix ");
+    assert_eq!(first["state"], "searching");
+    assert_eq!(first["query"], "Matrix");
+    assert_eq!(first["sections"], json!([]));
+    assert_eq!(search::wanted(), search::answer_key("matrix", &settings::content_language()));
+    seed_search("matrix");
+    let found = search::search("Matrix");
+    assert_eq!(found["state"], "done");
+    assert_eq!(found["tmdb"], true);
+    let ids: Vec<_> = found["sections"].as_array().unwrap().iter().map(|s| s["id"].as_str().unwrap()).collect();
+    assert_eq!(ids[0], "movies");
+    assert!(ids.contains(&"anime"));
+    let movies = row_ids(&found, "movies");
+    assert_eq!(&movies[..2], ["tmdb:movie:603", "tmdb:movie:604"]);
+    // Matrix came from AniList too: listed once, with the films.
+    let all: Vec<String> = ["movies", "shows", "anime"].iter().flat_map(|r| row_ids(&found, r)).collect();
+    assert_eq!(all.iter().filter(|i| *i == "tmdb:movie:603").count(), 1);
+    assert!(row_ids(&found, "anime").iter().all(|i| i.starts_with("anilist:")));
+    // A card is the shelves' summary.
+    let card = &found["sections"][0]["items"][0];
+    assert_eq!(card["title"], "Matrix");
+    assert_eq!(card["kind"], "movie");
+    assert!(card["card"].as_str().unwrap().starts_with("https://image.tmdb.org/t/p/w780/"));
+    assert_eq!(card["play"]["id"], "tmdb:movie:603");
+}
+
+#[test]
+fn search_keeps_the_last_results_while_the_next_query_comes() {
+    let _g = fresh(true, false);
+    seed_search("matrix");
+    assert_eq!(search::search("matrix")["state"], "done");
+    // Typing on: the older rows stay while it searches.
+    let typing = search::search("matrix r");
+    assert_eq!(typing["state"], "searching");
+    assert_eq!(row_ids(&typing, "movies")[0], "tmdb:movie:603");
+    // An answer for a query no longer wanted is kept, not shown.
+    seed_search("matri");
+    assert_eq!(search::search("matrix r")["state"], "searching");
+    assert_eq!(search::search("MATRI")["state"], "done", "known already, whatever the case");
+    // Nothing found.
+    search::land(&search::answer_key("zzz", &settings::content_language()), &json!({ "data": { "sections": [] } }));
+    let none = search::search("zzz");
+    assert_eq!(none["state"], "done");
+    assert_eq!(none["sections"], json!([]));
+    // The sources did not answer; typed again, it is asked again.
+    search::search("offline");
+    search::land(&search::answer_key("offline", &settings::content_language()), &json!({ "data": null, "error": { "kind": "network" } }));
+    assert_eq!(search::search("offline")["state"], "failed");
+    search::search("other");
+    assert_eq!(search::search("offline")["state"], "searching");
+}
+
+#[test]
+fn search_without_tmdb_says_so() {
+    let _g = fresh(false, false);
+    search::search("frieren");
+    seed_search("frieren");
+    assert_eq!(search::search("frieren")["tmdb"], false);
+}
+
+#[test]
+fn an_empty_query_lists_the_recent_searches_kept_in_the_data_dir() {
+    let _g = fresh(true, false);
+    let dir = std::env::temp_dir().join(format!("reel-search-test-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    *DATA_DIR.lock().unwrap() = Some(dir.clone());
+    let empty = search::search("   ");
+    assert_eq!(empty["state"], "recent");
+    assert_eq!(empty["recent"], json!([]));
+    for q in ["dune", "Arrival", "  frieren  ", "DUNE"] {
+        search::remember(q);
+    }
+    search::remember(" ");
+    assert_eq!(search::search("")["recent"], json!(["DUNE", "frieren", "Arrival"]));
+    for i in 0..15 {
+        search::remember(&format!("q{i}"));
+    }
+    assert_eq!(search::recent().len(), search::RECENT_MAX);
+    assert_eq!(search::recent()[0], "q14");
+    // Read back from the file.
+    search::reset();
+    assert_eq!(search::recent()[0], "q14");
+    assert!(dir.join("recent_searches.json").exists());
+    *DATA_DIR.lock().unwrap() = None;
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// Home from the real sources (TMDB with the build's key, AniList):
