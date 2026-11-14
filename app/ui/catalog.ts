@@ -220,6 +220,25 @@ export const episodes = (show: string, season: number) =>
 export const episodeReleases = (key: string) =>
   read<EpisodeReleases>(`episodeReleases:${key}`, () => Catalog.episodeReleases(key));
 
+/** The search screen, as the core answers a query (it asks once the query
+ * rests; `revision` brings the answer). */
+export interface SearchAnswer {
+  query: string;
+  /** "recent": nothing typed (`recent` lists the last searches); "searching":
+   * `sections` still hold the previous query's results; "done": `sections`
+   * empty means nothing found; "failed": the sources did not answer. */
+  state: "recent" | "searching" | "done" | "failed";
+  /** Films and shows are searched (a TMDB key); without one only anime is. */
+  tmdb: boolean;
+  recent: string[];
+  /** `id` is also the translation key `search.section.<id>`. */
+  sections: { id: "movies" | "shows" | "anime"; items: Summary[] }[];
+}
+
+export const search = (query: string) => read<SearchAnswer>("search", () => Catalog.search(query));
+/** Keeps `query` among the recent searches. */
+export const rememberSearch = (query: string) => Catalog.rememberSearch(query);
+
 export function toggleList(id: string) {
   Catalog.toggleList(id);
   version.set(version() + 1);

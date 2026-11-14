@@ -186,3 +186,17 @@ export const STILL = { "VideoEngine.kind": "still" };
 
 /** Engine and catalog: what most tests run on. */
 export const NATIVE = { ...ENGINE, ...CATALOG };
+
+/** Search as the core answers it: nothing typed (two recent searches), and "dune" found. */
+export const SEARCH_RECENT = { query: "", state: "recent", tmdb: true, recent: ["dune", "frieren"], sections: [] };
+export const SEARCH_DUNE = {
+  query: "dune",
+  state: "done",
+  tmdb: true,
+  recent: [],
+  sections: [
+    { id: "movies", items: [DUNE, ARRIVAL] },
+    { id: "shows", items: [SEVERANCE] },
+    { id: "anime", items: [FRIEREN] },
+  ],
+};

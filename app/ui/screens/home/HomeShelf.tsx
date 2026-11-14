@@ -9,7 +9,8 @@ import { safe, u } from "../../theme";
 import { WideCard } from "./WideCard";
 
 /** A shelf's title and its row of 16:9 cards. `focusedAt`: the card the
- * focus is on, null while it is elsewhere. */
+ * focus is on, null while it is elsewhere. The title is `shelf.<id>` unless
+ * `title` says (Search's rows). */
 export function HomeShelf(props: {
   shelf: () => ShelfData;
   focusedAt: () => number | null;
@@ -18,12 +19,13 @@ export function HomeShelf(props: {
   /** The page's scroll: the row of cards mounts when the page nears it. */
   page: ScrollCtl;
   eager?: boolean;
+  title?: () => string;
 }) {
   /** The shelf puts the focused card at the left edge of its inset. */
   const line = scroller({ horizontal: true, anchor: () => safe().x });
   return (
     <View ref={props.blockRef} style={{ gap: u(22) }}>
-      <SectionTitle text={() => t(`shelf.${props.shelf().id}`)} inset />
+      <SectionTitle text={props.title ?? (() => t(`shelf.${props.shelf().id}`))} inset />
       <LazyBlock page={props.page} eager={props.eager} height={() => u(198 + 110)}>
       <Shelf ctl={line} gap={24} top={0} bottom={24}>
         <Each of={props.shelf().items} key={(f) => f.id}>
