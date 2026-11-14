@@ -38,6 +38,11 @@ pub struct Source {
 pub struct Request {
     pub imdb: Option<String>,
     pub title: String,
+    /// Other names to try by text when `title` finds nothing to play: the
+    /// original title, the title in another language (trackers name releases
+    /// "Локализованное / Original").
+    #[serde(default)]
+    pub alt_titles: Vec<String>,
     pub year: Option<u16>,
     /// Set (with `episode`) for an episode of a show.
     pub season: Option<u16>,
@@ -46,10 +51,30 @@ pub struct Request {
 
 impl Request {
     fn query(&self) -> Query {
+        self.query_for(&self.title, self.imdb.clone())
+    }
+
+    fn query_for(&self, title: &str, imdb: Option<String>) -> Query {
         match (self.season, self.episode) {
-            (Some(season), Some(episode)) => Query::Episode { imdb: self.imdb.clone(), title: self.title.clone(), season, episode },
-            _ => Query::Movie { imdb: self.imdb.clone(), title: self.title.clone(), year: self.year },
+            (Some(season), Some(episode)) => Query::Episode { imdb, title: title.to_owned(), season, episode },
+            _ => Query::Movie { imdb, title: title.to_owned(), year: self.year },
         }
+    }
+
+    /// The text queries after the first: each other title once (the IMDb id is
+    /// only tried with the first, it doesn't depend on the name).
+    fn alt_queries(&self) -> Vec<Query> {
+        let mut seen = vec![self.title.to_lowercase()];
+        let mut out = Vec::new();
+        for t in &self.alt_titles {
+            let key = t.trim().to_lowercase();
+            if key.is_empty() || seen.contains(&key) {
+                continue;
+            }
+            seen.push(key);
+            out.push(self.query_for(t.trim(), None));
+        }
+        out
     }
 }
 
@@ -166,7 +191,12 @@ async fn search(source: &Source, request: &Request) -> anyhow::Result<(Vec<Value
     let query = request.query();
     let mut found = Vec::new();
     let mut last_err = None;
-    for url in torznab::search_urls(&source.url, source.key.as_deref(), &query, &caps)? {
+    let mut urls = torznab::search_urls(&source.url, source.key.as_deref(), &query, &caps)?;
+    for q in request.alt_queries() {
+        urls.extend(torznab::search_urls(&source.url, source.key.as_deref(), &q, &caps)?);
+    }
+    urls.dedup();
+    for url in urls {
         match get(&url).await.and_then(|xml| torznab::parse(&xml)) {
             Ok(items) => {
                 found.extend(items);
@@ -278,6 +308,21 @@ mod tests {
     }
 
     #[test]
+    fn alt_titles_add_text_queries_once() {
+        let r = Request {
+            imdb: Some("tt0013442".into()),
+            title: "Носферату".into(),
+            alt_titles: vec!["Nosferatu".into(), "носферату".into(), " ".into()],
+            year: Some(1922),
+            season: None,
+            episode: None,
+        };
+        let alts = r.alt_queries();
+        assert_eq!(alts.len(), 1, "a duplicate and a blank are skipped");
+        assert_eq!(alts[0], Query::Movie { imdb: None, title: "Nosferatu".into(), year: Some(1922) });
+    }
+
+    #[test]
     fn zero_seeders_everywhere_means_unknown() {
         let q = Query::Movie { imdb: None, title: "Sintel".into(), year: None };
         let items = vec![
@@ -298,7 +343,14 @@ mod tests {
             panic!("REEL_TORZNAB_URL is not set");
         };
         let source = Source { url, key };
-        let request = Request { imdb: Some("tt0013442".into()), title: "Носферату".into(), year: Some(1922), season: None, episode: None };
+        let request = Request {
+            imdb: Some("tt0013442".into()),
+            title: "Носферату".into(),
+            alt_titles: vec!["Nosferatu".into()],
+            year: Some(1922),
+            season: None,
+            episode: None,
+        };
         let (r, _) = runtime().block_on(search(&source, &request)).expect("the source answers");
         println!("{} releases; best: {:?} {:?}", r.len(), r.first().map(|v| &v["info"]), r.first().map(|v| &v["seeders"]));
         assert!(!r.is_empty());

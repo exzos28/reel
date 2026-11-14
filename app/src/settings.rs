@@ -17,12 +17,32 @@ use crate::engine;
 pub const BUFFER_CHOICES: [u32; 5] = [128, 256, 512, 1024, 2048];
 pub const DEFAULT_BUFFER_MB: u32 = 256;
 pub const DEFAULT_LANGUAGE: &str = "en";
+pub const DEFAULT_CONTENT_LANGUAGE: &str = "en-US";
+
+/// Languages titles, descriptions and episode names can be shown in (TMDB
+/// translations): the tag and the language's own name, which is data, not UI text.
+pub const CONTENT_LANGUAGES: [(&str, &str); 12] = [
+    ("en-US", "English"),
+    ("ru-RU", "Русский"),
+    ("uk-UA", "Українська"),
+    ("pl-PL", "Polski"),
+    ("de-DE", "Deutsch"),
+    ("fr-FR", "Français"),
+    ("es-ES", "Español"),
+    ("it-IT", "Italiano"),
+    ("pt-BR", "Português (Brasil)"),
+    ("tr-TR", "Türkçe"),
+    ("ja-JP", "日本語"),
+    ("zh-CN", "中文"),
+];
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 struct Saved {
     buffer_mb: u32,
     language: String,
+    /// The language of titles, descriptions and episode names (a TMDB tag).
+    content_language: String,
     /// The user's search source: a Torznab endpoint and its key (may be empty).
     source_url: String,
     source_key: String,
@@ -33,6 +53,7 @@ impl Default for Saved {
         Saved {
             buffer_mb: DEFAULT_BUFFER_MB,
             language: DEFAULT_LANGUAGE.to_owned(),
+            content_language: DEFAULT_CONTENT_LANGUAGE.to_owned(),
             source_url: String::new(),
             source_key: String::new(),
         }
@@ -44,6 +65,9 @@ impl Saved {
     fn sanitized(mut self) -> Self {
         if !BUFFER_CHOICES.contains(&self.buffer_mb) {
             self.buffer_mb = DEFAULT_BUFFER_MB;
+        }
+        if !CONTENT_LANGUAGES.iter().any(|(tag, _)| *tag == self.content_language) {
+            self.content_language = DEFAULT_CONTENT_LANGUAGE.to_owned();
         }
         if self.language.is_empty() {
             self.language = DEFAULT_LANGUAGE.to_owned();
@@ -98,6 +122,11 @@ pub fn load(data_dir: Option<&Path>) -> Value {
     });
     json!({
         "language": saved.language,
+        "contentLanguage": saved.content_language,
+        "contentLanguages": CONTENT_LANGUAGES
+            .iter()
+            .map(|(tag, name)| json!({ "tag": tag, "name": name }))
+            .collect::<Vec<_>>(),
         "bufferMB": saved.buffer_mb,
         "source": source_json(&saved),
         "bufferChoices": BUFFER_CHOICES
@@ -165,6 +194,24 @@ pub fn language() -> String {
     with(|s| s.saved.language.clone())
 }
 
+/// The language titles and descriptions are asked for (a TMDB tag like "ru-RU").
+pub fn content_language() -> String {
+    with(|s| s.saved.content_language.clone())
+}
+
+/// Saves the content language if it is one of `CONTENT_LANGUAGES`; the one in effect.
+pub fn set_content_language(tag: &str) -> String {
+    with(|s| {
+        if CONTENT_LANGUAGES.iter().any(|(t, _)| *t == tag) {
+            s.saved.content_language = tag.to_owned();
+            if let Some(file) = &s.file {
+                write(file, &s.saved);
+            }
+        }
+        s.saved.content_language.clone()
+    })
+}
+
 pub fn set_language(tag: &str) {
     with(|s| {
         s.saved.language = tag.to_owned();
@@ -209,6 +256,13 @@ mod tests {
         assert_eq!(load(Some(&dir))["source"]["hasKey"], true);
         set_source("", "").unwrap();
         assert!(source().is_none());
+
+        // Content language: one of the list, kept across loads.
+        assert_eq!(load(Some(&dir))["contentLanguage"], DEFAULT_CONTENT_LANGUAGE);
+        assert_eq!(set_content_language("ru-RU"), "ru-RU");
+        assert_eq!(set_content_language("xx-XX"), "ru-RU", "an unknown tag is refused");
+        assert_eq!(load(Some(&dir))["contentLanguage"], "ru-RU");
+        set_content_language(DEFAULT_CONTENT_LANGUAGE);
 
         std::fs::remove_dir_all(&dir).unwrap();
         engine::set_buffer_mb(DEFAULT_BUFFER_MB as u64);
