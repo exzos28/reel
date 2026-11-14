@@ -165,7 +165,6 @@ async fn stream_swarm() -> anyhow::Result<(Duration, Duration)> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "a piece comes from one peer until the next commit"]
 async fn test_stream_swarm_first_bytes() -> anyhow::Result<()> {
     let (start, seek) = tokio::time::timeout(Duration::from_secs(60), stream_swarm()).await??;
     // One seeder alone needs PIECE / SEEDER_BPS = 4 s for a piece (less the

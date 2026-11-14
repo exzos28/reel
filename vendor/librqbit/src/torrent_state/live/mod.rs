@@ -1038,14 +1038,46 @@ const DEFAULT_PEER_REQUEST_WINDOW: usize = 128;
 struct PeerFlowControl {
     i_am_choked: bool,
     request_window: usize,
+    // reel: the peer's download rate (bytes/s, smoothed) and the last
+    // sample of its fetched bytes, for stream_window.
+    rate: f64,
+    rate_sample: Option<(Instant, u64)>,
 }
+
+/// reel: while streams are open, a peer has about this much of its download
+/// requested at once. A peer serves requests in order, so a request waits
+/// behind all the earlier ones: with a fixed window of 128 chunks (2 MiB) a
+/// slow peer makes the chunks a seek needs wait seconds behind the old ones.
+const STREAM_QUEUE: Duration = Duration::from_secs(1);
+/// reel: the window while streaming is at least this many chunks (and grows
+/// from it as the rate is learned).
+const MIN_STREAM_WINDOW: usize = 8;
 
 impl PeerFlowControl {
     fn new(max_request_window: usize) -> Self {
         Self {
             i_am_choked: true,
             request_window: max_request_window,
+            rate: 0.,
+            rate_sample: None,
         }
+    }
+
+    /// reel: the request window while streams are open: about
+    /// [`STREAM_QUEUE`] of the peer's rate, given its `fetched` bytes so far.
+    fn stream_window(&mut self, fetched: u64) -> usize {
+        let now = Instant::now();
+        match self.rate_sample {
+            Some((at, bytes)) if now - at >= Duration::from_millis(500) => {
+                let r = fetched.saturating_sub(bytes) as f64 / (now - at).as_secs_f64();
+                self.rate = if self.rate == 0. { r } else { (self.rate + r) / 2. };
+                self.rate_sample = Some((now, fetched));
+            }
+            Some(_) => {}
+            None => self.rate_sample = Some((now, fetched)),
+        }
+        let chunks = self.rate * STREAM_QUEUE.as_secs_f64() / CHUNK_SIZE as f64;
+        (chunks.ceil() as usize).clamp(MIN_STREAM_WINDOW.min(self.request_window), self.request_window)
     }
 }
 
@@ -1475,6 +1507,7 @@ impl PeerHandler {
                     ..
                 } = &mut **g;
                 let pieces = pieces.as_mut().ok_or(Error::ChunkTrackerEmpty)?;
+                pieces.set_sharing_peers(self.state.peers.stats.live.load(Ordering::Relaxed) as usize);
                 let result = pieces.acquire_piece(AcquireRequest {
                     peer: self.addr,
                     peer_avg_time: self.counters.average_piece_download_time(),
@@ -1498,6 +1531,10 @@ impl PeerHandler {
                         debug!("stole piece {} from {}", piece, from_peer);
                         // Store steal info to process after releasing peer lock to avoid deadlock
                         steal_info = Some((from_peer, piece));
+                        Ok(Some(piece))
+                    }
+                    AcquireResult::Joined(piece) => {
+                        trace!("joined shared piece {}", piece);
                         Ok(Some(piece))
                     }
                     AcquireResult::NoneAvailable => Ok(None),
@@ -1730,7 +1767,23 @@ impl PeerHandler {
                 }
             };
 
-            for chunk in self.state.lengths.iter_chunk_infos(next) {
+            // reel: the piece's chunks are taken one at a time, when a request
+            // slot is free (PieceTracker::next_chunk), so other peers can take
+            // the rest of a shared piece. After a seek, a peer on a shared
+            // piece goes back to acquire_next_piece: the new position first.
+            let seeks = self.state.streams.seeks();
+            loop {
+                aframe!(self.wait_for_request_slot()).await;
+                let chunk = {
+                    let mut g = self.state.lock_write("next_chunk");
+                    let pieces = g.get_pieces_mut()?;
+                    if self.state.streams.seeks() != seeks && pieces.is_shared(next) {
+                        None
+                    } else {
+                        pieces.next_chunk(next, self.addr)
+                    }
+                };
+                let Some(chunk) = chunk else { break };
                 let request = Request {
                     index: next.get(),
                     begin: chunk.offset,
@@ -1879,15 +1932,20 @@ impl PeerHandler {
             // we can actually checksum etc.
             // Otherwise it might get into some weird state.
             let ppl_guard = {
-                let g = state.lock_read("check_steal");
+                let mut g = state.lock_write("check_steal");
 
                 let ppl = state
                     .per_piece_locks
                     .get(piece.index as usize)
                     .map(|l| l.read());
 
-                match g.get_pieces()?.get_inflight(chunk_info.piece_index) {
-                    Some(inflight) if inflight.peer == addr => {}
+                // reel: start_writing_chunk is the owner check for a piece one
+                // peer downloads, and lets any peer write a missing chunk of a
+                // shared one (once).
+                let pieces = g.get_pieces_mut()?;
+                let may_write = pieces.start_writing_chunk(chunk_info, addr);
+                match pieces.get_inflight(chunk_info.piece_index) {
+                    Some(_) if may_write => {}
                     Some(inflight) => {
                         debug!(
                             "in-flight piece {} was stolen by {}, ignoring",
@@ -2113,8 +2171,14 @@ impl PeerHandler {
 
     fn can_send_request(&self) -> bool {
         let (i_am_choked, request_window) = {
-            let flow = self.lock_flow_control("can_send_request");
-            (flow.i_am_choked, flow.request_window)
+            let mut flow = self.lock_flow_control("can_send_request");
+            // reel: a smaller window while streams are open (see STREAM_QUEUE).
+            let window = if self.state.streams.is_streaming() {
+                flow.stream_window(self.counters.fetched_bytes.load(Ordering::Relaxed))
+            } else {
+                flow.request_window
+            };
+            (flow.i_am_choked, window)
         };
 
         if i_am_choked {

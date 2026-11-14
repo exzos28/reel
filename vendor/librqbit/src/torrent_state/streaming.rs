@@ -86,6 +86,9 @@ pub(crate) struct TorrentStreams {
     // Bytes to download ahead of each stream's position; 0 is the default
     // (PER_STREAM_BUF_DEFAULT).
     readahead: AtomicU64,
+    // reel: counts the streams opened and seeks, so peers on a shared piece
+    // of the old position move to the new one at once.
+    seeks: AtomicU64,
     // reel: measurement, see StreamWait.
     waits: parking_lot::Mutex<VecDeque<StreamWait>>,
     // Pieces a stream waited for: (peers that sent chunks, download time).
@@ -102,6 +105,16 @@ impl TorrentStreams {
             0 => PER_STREAM_BUF_DEFAULT,
             r => r,
         }
+    }
+
+    /// reel: whether any stream is open.
+    pub(crate) fn is_streaming(&self) -> bool {
+        !self.streams.is_empty()
+    }
+
+    /// reel: changes when a stream is opened or seeks.
+    pub(crate) fn seeks(&self) -> u64 {
+        self.seeks.load(Ordering::Relaxed)
     }
 
     fn register_waker(&self, stream_id: StreamId, waker: Waker) {
@@ -348,6 +361,7 @@ impl AsyncSeek for FileStream {
         self.as_mut().set_position(map_io_err!(new_pos.try_into())?);
         self.new_position = true;
         self.waiting_since = None;
+        self.streams.seeks.fetch_add(1, Ordering::Relaxed);
         debug!(stream_id = self.stream_id, position = self.position, "seek");
         Ok(())
     }
@@ -490,6 +504,7 @@ impl ManagedTorrent {
             },
         );
 
+        streams.seeks.fetch_add(1, Ordering::Relaxed);
         debug!(stream_id = s.stream_id, file_id, "started stream");
 
         Ok(s)
