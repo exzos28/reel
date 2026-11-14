@@ -27,13 +27,25 @@ Not like Lampa's plugins (JS loaded by URL):
 
 Estimate: 1–2 weeks. Details: the research of 2026-11-14 (Lampa's plugins and TorrServer; reel's coupling between catalog, sources, engine and player).
 
+Stage 1, done: the `Playback` port (`app/domain/src/ports.rs`), the engine in its own crate (`app/engine`, reel-engine) behind the feature `engine`, and `NoEngine` without it. The layers are in `app/ARCHITECTURE.md`.
+
+Stage 2, the remote `Playback`:
+- `open(key)`: the engine asks `PlaybackHost::play_source` while the catalog still searches. A server has no catalog, so the app has to settle the release first and call `open_release`.
+- The resume point for warm-up (`PlaybackHost::resume`) has to travel with `open_release`.
+- `files_known` has to become something the app can poll, such as a revision.
+- `Playback` is synchronous. A LAN call needs the UI's calls to be asynchronous first.
+- `torrent_files` and `subtitle_files` return Rust types: they need JSON both ways (`SubFile` only serializes).
+- The search source (Torznab) is in reel-engine today. Decide whether a remote setup searches on the server or in the app.
+- `check_space` and `buffer_fits` would measure the server's disk, and the buffer setting would have to reach the server.
+- The engine's state is process-wide: one engine per process.
+
 ## Review the security of the settings page on the TV
 
 The settings page the TV serves on the local network (`http://<TV>:47392/settings`, opened by
 the QR code in Settings) works without pairing for now: anyone on the same network who opens it
 can change the search source, the language and the buffer. The pairing with a code on the
-screen is built and tested (`app/src/hosted/pairing.rs`, docs/hosted-settings.md) but off
-(`PAIRING_REQUIRED` in `app/src/hosted/mod.rs`). To decide: turn pairing back on (or a one-time
+screen is built and tested (`app/src/interface/hosted/pairing.rs`, docs/hosted-settings.md) but off
+(`PAIRING_REQUIRED` in `app/src/interface/hosted/mod.rs`). To decide: turn pairing back on (or a one-time
 key in the QR code, so scanning still pairs without typing), plain HTTP on the LAN, and `/logs`
 on the same port, which is open without any check.
 

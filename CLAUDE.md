@@ -2,7 +2,8 @@
 
 Source-available app (PolyForm Noncommercial 1.0.0: no commercial use; `LICENSE`, `NOTICE`) that streams films and series from torrents with a built-in engine. Targets:
 Samsung Tizen TV (first), macOS, Android / Android TV, iOS / iPadOS, Windows, Linux. UI in NSH
-(nsh.dev, TSX on QuickJS with native views); core in Rust (`app/src`).
+(nsh.dev, TSX on QuickJS with native views); core in Rust (`app/src`, `app/domain`,
+`app/engine`).
 
 ## Architecture rule: TS/TSX is UI only, everything else is Rust
 
@@ -51,7 +52,9 @@ Samsung Tizen TV (first), macOS, Android / Android TV, iOS / iPadOS, Windows, Li
 
 ## Build and test (from `app/`)
 
-- `cargo test`, `nsh check .`, `nsh test .` must pass before every commit.
+- `cargo test --workspace`, `cargo build --no-default-features`, `nsh check .`, `nsh test .` must
+  pass before every commit. The layers and crates (reel-domain, reel-engine, reel-app) are in
+  `app/ARCHITECTURE.md`.
 - `nsh package . --target macos` (with `.env` loaded) for a demo build; `scripts/build.sh <target>`
   is what CI runs.
 - Network tests are `#[ignore]` and run explicitly with `cargo test -- --ignored <name>`.

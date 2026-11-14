@@ -220,7 +220,7 @@ pub unsafe extern "C" fn reel_core_last_error(buf: *mut c_char, len: usize) -> u
     message.len()
 }
 
-/// `GET /img?w=500&src=…`: a provider's picture shrunk for the TV's cards (app/src/thumbs.rs;
+/// `GET /img?w=500&src=…`: a provider's picture shrunk for the TV's cards (app/src/interface/thumbs.rs;
 /// only the hosts it knows, so no token: an <img> sends none).
 async fn thumb(axum::extract::Query(q): axum::extract::Query<std::collections::HashMap<String, String>>) -> axum::response::Response {
     use axum::http::{header, StatusCode};

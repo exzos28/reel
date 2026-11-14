@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# libmpv for the macOS app (the `reel/mpv` video view, app/src/mpv), from
+# libmpv for the macOS app (the `reel/mpv` video view, app/src/adapters/mpv), from
 # MPVKit's LGPL build (https://github.com/mpvkit/MPVKit, product "MPVKit",
 # not "MPVKit-GPL"). MPVKit ships static XCFrameworks; this links their macOS
 # slices into one dynamic libmpv.2.dylib, so the app keeps libmpv (LGPL)

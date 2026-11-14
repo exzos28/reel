@@ -30,16 +30,16 @@ reel-domain = { path = "domain" }
 reel-engine = { path = "engine", optional = true }
 tokio = { version = "1", features = ["rt-multi-thread", "time", "sync", "io-util", "fs"] }
 reqwest = { version = "0.13", default-features = false, features = ["json", "query", "default-tls"] }
-# Shrinking providers' one-size pictures for a TV (src/thumbs.rs).
+# Shrinking providers' one-size pictures for a TV (src/interface/thumbs.rs).
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 # The QR code on the TV that opens its settings page on a phone (src/hosted).
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 rusqlite = { version = "0.42", features = ["bundled"] }
-# Pairing codes and sessions of the hosted settings page (src/hosted); already in the tree.
+# Pairing codes and sessions of the hosted settings page (src/interface/hosted); already in the tree.
 getrandom = "0.3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-# The mpv video view (`src/mpv`): a native component on NSH's AppKit host.
+# The mpv video view (`src/adapters/mpv`): a native component on NSH's AppKit host.
 libc = "0.2"
 nsh-platform-macos = { version = "0.5.0", default-features = false }
 objc2 = "0.6"

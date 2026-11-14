@@ -14,10 +14,10 @@ source, the content language and the playback buffer there.
 - **The RPC stays on 127.0.0.1:47391** with its token. Nothing from it is on the LAN: the
   settings API is a separate, narrow surface (read the settings, write four of them, check the
   source), not a door to `/rpc`.
-- **The logic is in the shared crate** (`app/src/hosted/`): pairing, sessions, rate limits,
+- **The logic is in the shared crate** (`app/src/interface/hosted/`): pairing, sessions, rate limits,
   what the page may read, validation and applying writes. It is a plain function
   `hosted::handle(request) -> response` (method, path, Host header, session header, body in;
-  status and JSON out), with no HTTP framework. The page is `app/src/hosted/page.html`, compiled
+  status and JSON out), with no HTTP framework. The page is `app/src/interface/hosted/page.html`, compiled
   in (`hosted::PAGE`). The Tizen core only adapts axum to it (two routes) and tells the crate
   the port it serves on (`hosted::serving_on(port)`), which is what turns the feature on. Android
   TV can do the same with whatever server it runs.

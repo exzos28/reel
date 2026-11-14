@@ -21,7 +21,7 @@
   var BASE = 'http://127.0.0.1:' + PORT;
   var HEALTH_TIMEOUT_MS = 20000;
   // Sintel (Blender Foundation, CC BY 3.0), the open test torrent the core's tests stream too
-  // (app/src/engine.rs SINTEL).
+  // (app/engine/src/engine.rs SINTEL).
   var SINTEL = 'magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel'
     + '&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Fexplodie.org%3A6969'
     + '&xs=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2Fsintel.torrent';
