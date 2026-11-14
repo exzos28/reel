@@ -26,6 +26,8 @@ case "${1:-}" in
             -v reel-tizen-target:/target \
             -e CARGO_TARGET_DIR=/target \
             -e REEL_TMDB_TOKEN \
+            -e REEL_DEFAULT_SOURCE_URL \
+            -e REEL_DEFAULT_SOURCE_KEY \
             "$image" hosts/tizen/build.sh core /out
         echo "$out/libreel_tizen_core.so"
         ;;

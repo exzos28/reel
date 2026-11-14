@@ -26,6 +26,21 @@ trap 'rm -rf "$work"' EXIT
 # The project's keys (REEL_TMDB_TOKEN) for both builds: the core has none without it.
 set -a; [ -f "$here/.env" ] && . "$here/.env"; set +a
 [ -n "${REEL_TMDB_TOKEN:-}" ] || echo "warning: no REEL_TMDB_TOKEN: the TV core will show anime only" >&2
+# Optional: the developer's own search source (REEL_TORZNAB_URL, REEL_TORZNAB_KEY in .env)
+# goes into this build as the source the TV starts with. A localhost address becomes this
+# computer's address in the local network, so the TV reaches it. The key ends up inside the
+# package: never hand such a package to anyone.
+if [ -n "${REEL_TORZNAB_URL:-}" ]; then
+  lan="$(ipconfig getifaddr en0 2> /dev/null || true)"
+  REEL_DEFAULT_SOURCE_URL="$REEL_TORZNAB_URL"
+  case "$REEL_DEFAULT_SOURCE_URL" in
+    *://127.0.0.1[:/]* | *://localhost[:/]*)
+      [ -n "$lan" ] || { echo "error: REEL_TORZNAB_URL is on localhost and this computer has no LAN address" >&2; exit 1; }
+      REEL_DEFAULT_SOURCE_URL="$(printf '%s' "$REEL_DEFAULT_SOURCE_URL" | sed -E "s#://(127\.0\.0\.1|localhost)#://$lan#")" ;;
+  esac
+  export REEL_DEFAULT_SOURCE_URL REEL_DEFAULT_SOURCE_KEY="${REEL_TORZNAB_KEY:-}"
+  echo "search source for the TV: ${REEL_DEFAULT_SOURCE_URL%%/api*}… (key: $([ -n "$REEL_DEFAULT_SOURCE_KEY" ] && echo set || echo none))"
+fi
 echo "== web UI"
 "$here/hosts/tizen/build.sh" web "$work/web"
 echo "== core (Docker)"

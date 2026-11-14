@@ -48,6 +48,28 @@ struct Saved {
     source_key: String,
     /// The player shows the stream's speed, people and what is ready ahead.
     stream_details: bool,
+    /// The build's default source (`DEFAULT_SOURCE`) was put in once; clearing it later keeps it out.
+    default_source_used: bool,
+}
+
+/// A search source compiled into a developer's own build (scripts/tizen-local.sh, from
+/// their .env): put in on the first start that has none. Release builds have none.
+const DEFAULT_SOURCE: Option<(&str, &str)> = match (option_env!("REEL_DEFAULT_SOURCE_URL"), option_env!("REEL_DEFAULT_SOURCE_KEY")) {
+    (Some(url), Some(key)) => Some((url, key)),
+    (Some(url), None) => Some((url, "")),
+    _ => None,
+};
+
+/// `saved` with the build's default source, the first time there is one and no source.
+fn with_default_source(mut saved: Saved, default: Option<(&str, &str)>) -> Saved {
+    if let Some((url, key)) = default.filter(|(url, _)| !url.trim().is_empty()) {
+        if !saved.default_source_used && saved.source_url.is_empty() {
+            saved.source_url = url.trim().to_owned();
+            saved.source_key = key.trim().to_owned();
+        }
+        saved.default_source_used = true;
+    }
+    saved
 }
 
 impl Default for Saved {
@@ -59,6 +81,7 @@ impl Default for Saved {
             source_url: String::new(),
             source_key: String::new(),
             stream_details: false,
+            default_source_used: false,
         }
     }
 }
@@ -117,7 +140,11 @@ pub fn load(data_dir: Option<&Path>) -> Value {
     if file.is_none() {
         eprintln!("reel settings: no data directory, settings last until the app closes");
     }
-    let saved = file.as_deref().map(read).unwrap_or_default();
+    let before = file.as_deref().map(read).unwrap_or_default();
+    let saved = with_default_source(before.clone(), DEFAULT_SOURCE);
+    if let (Some(f), true) = (&file, saved.default_source_used != before.default_source_used) {
+        write(f, &saved);
+    }
     engine::set_buffer_mb(saved.buffer_mb as u64);
     with(|s| {
         s.file = file;
@@ -286,4 +313,17 @@ mod tests {
         assert!(engine::buffer_fits(1));
         assert!(!engine::buffer_fits(1 << 30), "a petabyte fits nowhere");
     }
+
+    #[test]
+    fn a_builds_default_source_goes_in_once_and_never_over_the_users() {
+        let d = Some(("http://192.168.1.2:9117/api", "k"));
+        let first = with_default_source(Saved::default(), d);
+        assert_eq!((first.source_url.as_str(), first.source_key.as_str()), ("http://192.168.1.2:9117/api", "k"));
+        let cleared = Saved { source_url: String::new(), source_key: String::new(), ..first };
+        assert_eq!(with_default_source(cleared, d).source_url, "", "cleared by the user: stays cleared");
+        let own = Saved { source_url: "http://mine/api".into(), ..Saved::default() };
+        assert_eq!(with_default_source(own, d).source_url, "http://mine/api");
+        assert_eq!(with_default_source(Saved::default(), None).source_url, "");
+    }
+
 }
