@@ -82,7 +82,8 @@ build_core() {
     local out="$1"
     have cargo || die "cargo not found"
     rustup target list --installed | grep -qx "$TRIPLE" || die "rust-std for $TRIPLE missing: rustup target add $TRIPLE (run '$0 check')"
-    local so="$HERE/target/$TRIPLE/release/libreel_tizen_core.so"
+    local target="${CARGO_TARGET_DIR:-$HERE/target}"
+    local so="$target/$TRIPLE/release/libreel_tizen_core.so"
     if [ -n "${REEL_TIZEN_CC:-}" ]; then
         have "$REEL_TIZEN_CC" || die "REEL_TIZEN_CC=$REEL_TIZEN_CC not found"
         log "core: cargo build --target $TRIPLE with $REEL_TIZEN_CC"
@@ -100,7 +101,7 @@ build_core() {
         # compiler-rt provides the atomics). Link an empty stand-in and drop it again with
         # --as-needed, so the .so does not need a libatomic on the TV either.
         local var; var="$(echo "$TRIPLE" | tr '[:lower:]-' '[:upper:]_')"
-        local stub="$HERE/target/zig-stubs"
+        local stub="$target/zig-stubs"
         mkdir -p "$stub"
         [ -f "$stub/libatomic.so" ] || printf '' | zig cc -target arm-linux-gnueabi -shared -x c - -o "$stub/libatomic.so"
         export "CARGO_TARGET_${var}_RUSTFLAGS=-L native=$stub -C link-arg=-Wl,--as-needed"
