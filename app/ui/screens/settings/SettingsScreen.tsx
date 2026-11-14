@@ -17,14 +17,15 @@ import { rowStyle } from "../../kit/Row";
 import { labelText, pageTitle } from "../../kit/text";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
-import { go, openAbout } from "../../nav";
+import { go, onBack, openAbout } from "../../nav";
 import {
   bufferChoices, chooseBuffer, chooseContentLanguage, contentLanguage, contentLanguages, toggleStreamDetails,
 } from "../../preferences";
 import { colors, safe, u } from "../../theme";
 import { BufferSection } from "./BufferSection";
 import { DetailsSection } from "./DetailsSection";
-import { LanguageSection } from "./LanguageSection";
+import { languageChoices, LanguageSection } from "./LanguageSection";
+import { ChoicePanel } from "../../layout/ChoicePanel";
 import { SourceSection } from "./SourceSection";
 
 const aboutRow = (focused: boolean): ViewStyle => ({
@@ -67,12 +68,27 @@ function readFreeSpace() {
 
 export function SettingsScreen() {
   const freeBytes = readFreeSpace();
-  /** The focus goes through the languages, the buffer sizes, then to About. */
-  const langs = () => contentLanguages().length;
-  const bufferAt = () => langs();
-  const detailsAt = () => langs() + bufferChoices().length;
+  /** The focus goes through the language row, the buffer sizes, then to About. */
+  const bufferAt = () => 1;
+  const detailsAt = () => bufferAt() + bufferChoices().length;
   const aboutAt = () => detailsAt() + 1;
-  const focus = signal(backFromAbout ? aboutAt() : Math.max(0, contentLanguages().findIndex((l) => l.tag === contentLanguage())));
+  const focus = signal(backFromAbout ? aboutAt() : 0);
+  /** The language panel is open, its focus on `langAt`. */
+  const langOpen = signal(false);
+  const langAt = signal(0);
+  const openLang = () => {
+    focus.set(0);
+    onNav.set(false);
+    langAt.set(Math.max(0, contentLanguages().findIndex((l) => l.tag === contentLanguage())));
+    langOpen.set(true);
+  };
+  const pickLang = (i: number) => {
+    const l = contentLanguages()[i];
+    if (l) chooseContentLanguage(l.tag);
+    langOpen.set(false);
+  };
+  // Back closes the panel first.
+  onBack(() => (langOpen() ? (langOpen.set(false), true) : false));
   backFromAbout = false;
   const about = () => {
     focus.set(aboutAt());
@@ -92,8 +108,12 @@ export function SettingsScreen() {
 
   keymap.bind(
     {
-      up: () => (onNav() ? undefined : focus() === 0 ? toNav() : move(-1)),
-      down: () => (onNav() ? onNav.set(false) : move(1)),
+      up: () =>
+        langOpen() ? langAt.set(Math.max(langAt() - 1, 0)) : onNav() ? undefined : focus() === 0 ? toNav() : move(-1),
+      down: () =>
+        langOpen()
+          ? langAt.set(Math.min(langAt() + 1, contentLanguages().length - 1))
+          : onNav() ? onNav.set(false) : move(1),
       left: () => onNav() && navAt.set(clamp(navAt() - 1, NAV.length - 1)),
       right: () => onNav() && navAt.set(clamp(navAt() + 1, NAV.length - 1)),
     },
@@ -101,11 +121,12 @@ export function SettingsScreen() {
   );
   keymap.bind({
     enter: () => {
+      if (langOpen()) return pickLang(langAt());
       if (onNav()) return go(NAV[navAt()].id);
       const f = focus();
       if (f === aboutAt()) about();
       else if (f === detailsAt()) toggleStreamDetails();
-      else if (f < bufferAt()) chooseContentLanguage(contentLanguages()[f].tag);
+      else if (f < bufferAt()) openLang();
       else chooseBuffer(bufferChoices()[f - bufferAt()].mb);
     },
   });
@@ -116,17 +137,28 @@ export function SettingsScreen() {
   useRootBack({ ctl: page, onNav, toNav });
   return (
     // On touch Settings is pushed on the current tab, under the system header (its title).
+    <View style={{ flex: 1 }}>
     <Screen ctl={page} nav={!isTouch}>
       <View style={pageStyle()}>
         <If when={!isTouch}>
           <Text style={pageTitle()}>{t("settings.title")}</Text>
         </If>
-        <LanguageSection focusedAt={at} onFocus={(i) => focus.set(i)} />
+        <LanguageSection focused={() => at() === 0 && !langOpen()} onOpen={openLang} />
         <BufferSection freeBytes={freeBytes} focusedAt={() => at() - bufferAt()} onFocus={(i) => focus.set(bufferAt() + i)} />
         <DetailsSection focused={() => at() === detailsAt()} onFocus={() => focus.set(detailsAt())} />
         <SourceSection />
         <AboutRow focused={() => at() === aboutAt()} viewRef={page.follow(() => at() === aboutAt(), "nearest")} onPress={about} />
       </View>
     </Screen>
+      <If when={langOpen()}>
+        <ChoicePanel
+          title={() => t("settings.language.title")}
+          choices={languageChoices}
+          focusedAt={langAt}
+          onPick={pickLang}
+          onClose={() => langOpen.set(false)}
+        />
+      </If>
+    </View>
   );
 }

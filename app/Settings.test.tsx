@@ -43,14 +43,38 @@ test("Settings: About reel, past the buffer sizes, shows the TMDB logo and notic
   expect(app.texts()).toContain("Data sources");
 });
 
-test("Settings: choosing a language asks the core and marks it chosen", async () => {
+test("Settings: the language row opens the languages on the right; OK picks one, asks the core and closes", async () => {
+  const chosen: string[] = [];
   const app = await openApp({
-    modules: { "app/native": { ...SOURCE, "Settings.setContentLanguage": "ru-RU" } },
+    modules: {
+      "app/native": {
+        ...SOURCE,
+        "Settings.setContentLanguage": (tag: string) => {
+          chosen.push(tag);
+          return tag;
+        },
+      },
+    },
   });
   await app.press("label:Settings");
   expect(app.texts()).toContain("Language");
+  expect(app.texts()).toContain("English"); // the language in effect, on its row
+  expect(app.texts()).not.toContain("Русский");
+  await app.press("label:Language"); // the row
   expect(app.texts()).toContain("Русский");
-  await app.keyboard.press("down");
+  expect(app.shows("choice-panel")).toBe(true);
+  await app.keyboard.press("down"); // from English to Русский
   await app.keyboard.press("enter");
-  expect(app.shows("label:Selected")).toBe(true);
+  expect(chosen).toEqual(["ru-RU"]);
+  expect(app.shows("choice-panel")).toBe(false);
+});
+
+test("Settings: Back closes the language panel before it leaves", async () => {
+  const app = await openApp({ modules: { "app/native": SOURCE } });
+  await app.press("label:Settings");
+  await app.press("label:Language");
+  expect(app.shows("choice-panel")).toBe(true);
+  await app.keyboard.press("escape");
+  expect(app.shows("choice-panel")).toBe(false);
+  expect(app.texts()).toContain("Language");
 });
