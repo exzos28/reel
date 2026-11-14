@@ -36,6 +36,11 @@ use librqbit_core::lengths::ValidPieceIndex;
 
 /// Share of the budget kept behind a reader, for short seeks back.
 pub const BEHIND_PERCENT: u64 = 12;
+/// How far ahead of the picture the player reads into its own cache (mpv's
+/// `demuxer-max-bytes`): the reader's position is that far ahead of what is on
+/// screen, so at least this much is kept behind it (what is being watched stays
+/// on disk, and the scrubber shows it as ready).
+pub const PLAYER_CACHE: u64 = 64 * 1024 * 1024;
 /// A reader not seen for this long is forgotten (unless it is the last one).
 const FORGET_READER_AFTER: Duration = Duration::from_secs(60);
 /// At most this many readers are remembered.
@@ -54,8 +59,11 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn for_budget(budget: u64, piece_len: u64) -> Window {
-        let behind = budget * BEHIND_PERCENT / 100;
+    /// `player_cache`: how far the player reads ahead of the picture (see `PLAYER_CACHE`).
+    pub fn for_budget(budget: u64, piece_len: u64, player_cache: u64) -> Window {
+        // Never more than half the budget behind: the reader must keep room ahead.
+        let floor = if player_cache > 0 { player_cache + piece_len } else { 0 };
+        let behind = (budget * BEHIND_PERCENT / 100).max(floor).min(budget / 2);
         // At least one piece ahead, or the reader could never move on: a
         // budget under ~3 pieces is exceeded rather than stalling playback.
         let ahead = budget.saturating_sub(behind + 2 * piece_len).max(piece_len);
@@ -110,11 +118,16 @@ pub struct Policy {
 
 impl Policy {
     pub fn new(piece_len: u64, total_len: u64, budget: u64) -> Policy {
+        Policy::with_player_cache(piece_len, total_len, budget, 0)
+    }
+
+    /// A policy for a player that reads `player_cache` ahead of the picture.
+    pub fn with_player_cache(piece_len: u64, total_len: u64, budget: u64, player_cache: u64) -> Policy {
         Policy {
             piece_len,
             total_len,
             budget,
-            window: Window::for_budget(budget, piece_len),
+            window: Window::for_budget(budget, piece_len, player_cache),
             pieces: BTreeMap::new(),
             stored: 0,
             readers: Vec::new(),
@@ -475,7 +488,7 @@ impl Ring {
             dir,
             piece_len,
             files,
-            policy: Mutex::new(Policy::new(piece_len, total_len, budget)),
+            policy: Mutex::new(Policy::with_player_cache(piece_len, total_len, budget, PLAYER_CACHE)),
             link,
             readahead: AtomicU64::new(0),
             overflows: AtomicU64::new(0),
@@ -652,12 +665,12 @@ mod tests {
 
     #[test]
     fn window_fits_the_budget() {
-        let w = Window::for_budget(1000, P);
+        let w = Window::for_budget(1000, P, 0);
         assert_eq!(w, Window { behind: 120, ahead: 680 });
         // Rounded out to whole pieces at both ends, the window still fits.
         assert!(w.behind + w.ahead + 2 * P <= 1000);
         // Too small a budget still lets the reader move on, a piece at a time.
-        assert_eq!(Window::for_budget(150, P).ahead, P);
+        assert_eq!(Window::for_budget(150, P, 0).ahead, P);
         // Split between readers.
         assert_eq!(w.share(2, P), Window { behind: 60, ahead: 340 });
         assert_eq!(w.share(20, P).ahead, P);
@@ -871,5 +884,16 @@ mod tests {
         drop(s);
         drop(ring);
         assert!(!dir.exists());
+    }
+
+    #[test]
+    fn what_is_watched_stays_behind_a_reader_ahead_of_the_picture() {
+        // 256 MiB budget, 16 MiB pieces, the player reading 64 MiB ahead of the picture.
+        const MIB: u64 = 1024 * 1024;
+        let w = Window::for_budget(256 * MIB, 16 * MIB, 64 * MIB);
+        assert_eq!(w.behind, 80 * MIB, "the player's cache and a piece, not 12% (30 MiB)");
+        assert_eq!(w.ahead, 256 * MIB - 80 * MIB - 32 * MIB);
+        // A small budget keeps half behind at most.
+        assert_eq!(Window::for_budget(100 * MIB, 16 * MIB, 64 * MIB).behind, 50 * MIB);
     }
 }

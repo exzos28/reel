@@ -78,7 +78,8 @@ impl Player {
             ("sub-auto", "no"),
             ("audio-file-auto", "no"),
             ("cache", "yes"),
-            ("demuxer-max-bytes", "64MiB"),
+            // The engine keeps this much behind where the player reads (buffer::PLAYER_CACHE).
+            ("demuxer-max-bytes", PLAYER_CACHE_OPTION),
         ];
         for (name, value) in options {
             let r = unsafe { (lib.set_option_string)(handle, cstr(name).as_ptr(), cstr(value).as_ptr()) };
@@ -185,6 +186,10 @@ fn track_value(value: Option<&Value>) -> String {
         _ => "auto".into(),
     }
 }
+
+/// `buffer::PLAYER_CACHE` as mpv's option value.
+const PLAYER_CACHE_OPTION: &str = "64MiB";
+const _: () = assert!(crate::buffer::PLAYER_CACHE == 64 * 1024 * 1024, "keep PLAYER_CACHE_OPTION in step");
 
 impl Drop for Player {
     fn drop(&mut self) {
