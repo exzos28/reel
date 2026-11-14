@@ -2,7 +2,7 @@ import { View, type ViewRef } from "nsh";
 import { airsText, type Summary } from "../../catalog";
 import { scroller } from "../../layout/Scroller";
 import { Shelf } from "../../layout/Shelf";
-import { rowReach } from "../../layout/reach";
+import { RowGap, rowWindow } from "../../layout/reach";
 import { safe, u } from "../../theme";
 import { PosterCard } from "./PosterCard";
 
@@ -18,18 +18,20 @@ export function Trending(props: {
 }) {
   /** The row puts the focused poster at the left edge of its inset. */
   const line = scroller({ horizontal: true, anchor: () => safe().x });
-  const reach = rowReach({ line, focusedAt: props.focusedAt, step: () => u(196 + 20) });
+  const step = () => u(196 + 20);
+  const win = rowWindow({ line, focusedAt: props.focusedAt, step });
   return (
     <View ref={props.blockRef}>
       <Shelf ctl={line} gap={20} top={26} bottom={16}>
-        <Each of={props.items().slice(0, reach())} key={(s) => s.id}>
+        <RowGap window={win} step={step} gap={20} />
+        <Each of={props.items().slice(win().from, win().to)} key={(s) => s.id}>
           {(item, i) => (
             <PosterCard
               item={item}
               sub={() => (props.airs ? airsText(item()) : null)}
-              focused={() => props.focusedAt() === i()}
+              focused={() => props.focusedAt() === win().from + i()}
               follow={line.follow}
-              onPress={() => props.onOpen(i())}
+              onPress={() => props.onOpen(win().from + i())}
             />
           )}
         </Each>
