@@ -26,3 +26,19 @@ Not like Lampa's plugins (JS loaded by URL):
 - iOS and Google Play forbid downloaded executable code.
 
 Estimate: 1–2 weeks. Details: the research of 2026-11-14 (Lampa's plugins and TorrServer; reel's coupling between catalog, sources, engine and player).
+
+## Review the security of the settings page on the TV
+
+The settings page the TV serves on the local network (`http://<TV>:47392/settings`, opened by
+the QR code in Settings) works without pairing for now: anyone on the same network who opens it
+can change the search source, the language and the buffer. The pairing with a code on the
+screen is built and tested (`app/src/hosted/pairing.rs`, docs/hosted-settings.md) but off
+(`PAIRING_REQUIRED` in `app/src/hosted/mod.rs`). To decide: turn pairing back on (or a one-time
+key in the QR code, so scanning still pairs without typing), plain HTTP on the LAN, and `/logs`
+on the same port, which is open without any check.
+
+## Decide how open the code is
+
+The repository is private; the licence is PolyForm Noncommercial (`LICENSE`). To decide: whether
+and when to make the code public, under which terms, and what the site says about it (its
+"Open code, no accounts" section and the links to GitHub are hidden until then).

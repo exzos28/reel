@@ -14,6 +14,8 @@ export interface PairingCode {
 export const pairingCode = signal<PairingCode | null>(null);
 /** `http://<this TV>:47392/settings`, or null where the page is not served. */
 export const hostedUrl = signal<string | null>(null);
+/** Its QR code (an SVG data URL), or null. */
+export const hostedQr = signal<string | null>(null);
 
 /** A JSON answer of the core (awaited: tests' stand-ins answer with a promise). */
 const parse = async <T>(json: () => string | Promise<string>): Promise<T | null> => {
@@ -28,7 +30,9 @@ const parse = async <T>(json: () => string | Promise<string>): Promise<T | null>
 async function refreshHosted() {
   const p = await parse<{ code: string | null; expiresIn?: number }>(() => Hosted.pairing());
   pairingCode.set(p?.code ? { code: p.code, expiresIn: p.expiresIn ?? 0 } : null);
-  hostedUrl.set((await parse<{ url: string | null }>(() => Hosted.address()))?.url ?? null);
+  const link = await parse<{ url: string | null; qr: string | null }>(() => Hosted.link());
+  hostedUrl.set(link?.url ?? (await parse<{ url: string | null }>(() => Hosted.address()))?.url ?? null);
+  hostedQr.set(link?.qr ?? null);
 }
 
 /** Reads the settings again (changed elsewhere, e.g. on a phone). */

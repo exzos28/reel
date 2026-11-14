@@ -130,6 +130,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Hosted", "cancelPairing", |a| {
         no_args(&a)?;
         ret(Hosted::cancel_pairing())
+    })
+    .sync("Hosted", "link", |a| {
+        no_args(&a)?;
+        ret(Hosted::link())
     });
 
     r.sync("Sources", "search", |a| {

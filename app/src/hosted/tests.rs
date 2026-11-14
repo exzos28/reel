@@ -31,12 +31,15 @@ fn pair() -> String {
 }
 
 #[test]
-fn nothing_without_a_session() {
+fn open_without_a_session_while_pairing_is_off() {
     let (_g, dir) = setup("nosession");
-    for (method, path) in [("GET", "/settings/api/state"), ("POST", "/settings/api/source"), ("POST", "/settings/api/buffer"), ("POST", "/settings/api/language"), ("GET", "/settings/api/check/1")] {
-        assert_eq!(call(method, path, None, "{}").status, 401, "{path}");
-        assert_eq!(call(method, path, Some("made-up"), "{}").body, json!({ "error": "session" }));
-    }
+    // PAIRING_REQUIRED is off for now (docs/todo.md): the page works as it opens.
+    let state = call("GET", "/settings/api/state", None, "");
+    assert_eq!(state.status, 200);
+    assert!(state.body["bufferChoices"].is_array());
+    assert_eq!(call("POST", "/settings/api/buffer", None, "{\"mb\": 1}").status, 400, "still checked");
+    // Never the key, paired or not.
+    assert!(state.body["source"].get("key").is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 

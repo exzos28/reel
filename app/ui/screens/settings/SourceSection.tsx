@@ -1,10 +1,10 @@
 // The search source: the address of the user's Jackett (Torznab) and its key.
 import { Input } from "nsh/base";
-import { Text, View, type TextStyle, type ViewStyle } from "nsh";
+import { Image, Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { rounded, row } from "../../kit/shape";
 import { bodyText, labelText, metaText, sectionTitle } from "../../kit/text";
-import { hostedUrl } from "../../hosted";
+import { hostedQr, hostedUrl } from "../../hosted";
 import { source } from "../../preferences";
 import { colors, type, u } from "../../theme";
 import { sourceForm } from "./sourceForm";
@@ -28,7 +28,15 @@ export function SourceSection() {
       <Text style={bodyText(colors.soft())}>{t("settings.source.about")}</Text>
       {/* Where the TV serves the settings page: typing an address with a remote is slow. */}
       <If when={hostedUrl()}>
-        {(url) => <Text testID="hosted-address" style={bodyText(colors.snow())}>{t("settings.source.phone", { url: url() })}</Text>}
+        {(url) => (
+          <View style={{ ...row(u(28)), alignItems: "center" }}>
+            {/* Scanned with a phone's camera, it opens the settings page there. */}
+            <If when={hostedQr()}>
+              {(qr) => <Image testID="hosted-qr" src={qr()} style={{ width: u(200), height: u(200), ...rounded() }} />}
+            </If>
+            <Text testID="hosted-address" style={{ ...bodyText(colors.snow()), flexShrink: 1 }}>{t("settings.source.phone", { url: url() })}</Text>
+          </View>
+        )}
       </If>
       <Text style={metaText()}>{t("settings.source.url")}</Text>
       <Input

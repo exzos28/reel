@@ -203,6 +203,7 @@ export const Hosted: HostedModule = {
   address: s("Hosted", "address"),
   pairing: s("Hosted", "pairing"),
   cancelPairing: s("Hosted", "cancelPairing"),
+  link: s("Hosted", "link"),
 };
 
 // Fmt is pure and also registered in the wasm32 build, which `ui/native.ts` uses. Over HTTP

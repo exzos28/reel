@@ -281,6 +281,12 @@ impl Hosted {
     pub fn cancel_pairing() {
         hosted::cancel_pairing();
     }
+
+    /// The QR code of the settings page: `{"url","qr"}` (`qr` an SVG data URL), or nulls
+    /// where the page is not served.
+    pub fn link() -> String {
+        hosted::link().to_string()
+    }
 }
 
 /// Finding releases on the user's own source (Torznab). Searches run in the

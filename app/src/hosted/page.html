@@ -252,7 +252,9 @@ button:disabled{opacity:.5}
     });
   }
 
-  if (session) load(); else showPair('');
+  // No pairing for now (docs/todo.md): the page opens on the settings; a TV that asks for
+  // a session again sends it back to pairing (api above).
+  load();
 })();
 </script>
 </body>

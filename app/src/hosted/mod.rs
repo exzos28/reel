@@ -69,6 +69,44 @@ pub fn pairing() -> Value {
     }
 }
 
+/// The screen's QR code of the page: `{"url":"http://192.168.1.20:47392/settings",
+/// "qr":"data:image/svg+xml,…"}`, or `{"url":null,"qr":null}` where the page is not served.
+pub fn link() -> Value {
+    let Some(url) = address()["url"].as_str().map(str::to_owned) else {
+        return json!({ "url": null, "qr": null });
+    };
+    json!({ "qr": qr_svg(&url), "url": url })
+}
+
+/// Whether the page's API asks for a paired session. Off for now: anyone on the local
+/// network who opens the page can change the settings (docs/todo.md: review its security).
+/// On, a browser pairs with the code the TV shows first (docs/hosted-settings.md).
+const PAIRING_REQUIRED: bool = false;
+
+/// `text` as a QR code: an SVG data URL, white on black like reel's screens.
+fn qr_svg(text: &str) -> Option<String> {
+    let code = qrcode::QrCode::with_error_correction_level(text, qrcode::EcLevel::M).ok()?;
+    let svg = code
+        .render::<qrcode::render::svg::Color>()
+        .quiet_zone(true)
+        .dark_color(qrcode::render::svg::Color("#0F0F0F"))
+        .light_color(qrcode::render::svg::Color("#F5F5F5"))
+        .build();
+    let escaped: String = svg
+        .chars()
+        .map(|c| match c {
+            '%' => "%25".to_owned(),
+            '#' => "%23".to_owned(),
+            '<' => "%3C".to_owned(),
+            '>' => "%3E".to_owned(),
+            '"' => "'".to_owned(),
+            '\n' => " ".to_owned(),
+            c => c.to_string(),
+        })
+        .collect();
+    Some(format!("data:image/svg+xml,{escaped}"))
+}
+
 /// The viewer dismissed the code on the screen.
 pub fn cancel_pairing() {
     if PAIRING.lock().unwrap().cancel() {
@@ -215,7 +253,7 @@ pub fn handle(req: &Request) -> Response {
         }
         (_, "/pair" | "/pair/confirm") => error(405, "method"),
         _ => {
-            if !PAIRING.lock().unwrap().session(now, req.session.unwrap_or("")) {
+            if PAIRING_REQUIRED && !PAIRING.lock().unwrap().session(now, req.session.unwrap_or("")) {
                 return error(401, "session");
             }
             authorized(req, route)

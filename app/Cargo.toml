@@ -27,6 +27,8 @@ libc = "0.2"
 reqwest = { version = "0.13", default-features = false, features = ["json", "query", "default-tls"] }
 # Shrinking providers' one-size pictures for a TV (src/thumbs.rs).
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+# The QR code on the TV that opens its settings page on a phone (src/hosted).
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 rusqlite = { version = "0.42", features = ["bundled"] }
 quick-xml = "0.41"
 regex = "1"

@@ -12,6 +12,7 @@ function core(address: string | null = URL) {
   const native = {
     ...NATIVE,
     "Hosted.address": JSON.stringify({ url: address }),
+    "Hosted.link": JSON.stringify({ url: address, qr: address ? "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" : null }),
     "Hosted.pairing": () => JSON.stringify(state.code ? { code: state.code, expiresIn: 120 } : { code: null }),
     "Hosted.cancelPairing": () => {
       state.cancelled++;
@@ -66,10 +67,11 @@ test("OK on Cancel dismisses the code", async () => {
   expect(c.state.cancelled).toBe(1);
 });
 
-test("Settings says where to set the source from a phone", async () => {
+test("Settings shows a QR code and the address to set the source from a phone", async () => {
   const app = await openApp({ modules: { "app/native": core().native } });
   await app.press("label:Settings");
-  expect(app.texts()).toContain(`Easier on a phone or computer: open ${URL}`);
+  expect(app.texts()).toContain(`Scan the code with your phone, or open ${URL}`);
+  expect(app.shows("hosted-qr")).toBe(true);
 });
 
 test("no address where the page is not served", async () => {
