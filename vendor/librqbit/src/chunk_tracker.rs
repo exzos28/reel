@@ -347,6 +347,12 @@ impl ChunkTracker {
     }
 
     // return true if the whole piece is marked downloaded
+    /// reel: whether chunk `chunk_index` of `piece` is written.
+    pub(crate) fn is_chunk_downloaded(&self, piece: ValidPieceIndex, chunk_index: u32) -> bool {
+        let i = self.lengths.chunk_range(piece).start + chunk_index as usize;
+        self.chunk_status.get(i).map(|b| *b).unwrap_or(false)
+    }
+
     pub fn mark_chunk_downloaded(
         &mut self,
         piece: &Piece<ByteBuf<'_>>,
