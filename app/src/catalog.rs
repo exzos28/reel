@@ -634,9 +634,13 @@ fn size(r: &Value) -> String {
     r["size"].as_f64().filter(|b| *b > 0.0).map(crate::Fmt::size).unwrap_or_default()
 }
 
+/// The bitrate a well shared release still starts at once with, Mbit/s: a 4K WEB-DL or
+/// encode (20–40) is in, a remux (60–80) is not. A swarm of 50+ gives far more than 15.
+const PLAYS_NOW_MBIT: u64 = 40;
+
 /// Starts without waiting: enough people sharing for its bitrate.
 fn plays_now(peers: u64, mbit: u64) -> bool {
-    peers >= 50 && mbit <= 15
+    peers >= 50 && mbit <= PLAYS_NOW_MBIT
 }
 
 /// The release Play uses: the user's choice, else the best quality that

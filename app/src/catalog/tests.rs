@@ -672,3 +672,13 @@ fn changed_answers_the_moment_the_revision_moves() {
     assert!(waiter.join().unwrap() > now);
     assert!(started.elapsed() < Duration::from_secs(5), "woken by the change, not the timeout");
 }
+
+#[test]
+fn a_well_shared_4k_is_the_default_and_a_remux_is_not() {
+    // A 170 min film: 4K WEB-DL 25 GB (~20 Mbit/s), 4K remux 80 GB (~63 Mbit/s), 1080p 8 GB.
+    let r = |res: u64, gb: f64, seeders: u64| json!({ "info": { "resolution": res }, "size": gb * 1e9, "seeders": seeders });
+    let releases = [r(2160, 80.0, 900), r(2160, 25.0, 2231), r(1080, 8.0, 5000)];
+    assert_eq!(chosen("film:test-4k-default", &releases, 170, 1), Some(1), "the 4K WEB-DL");
+    let few = [r(2160, 25.0, 20), r(1080, 8.0, 5000)];
+    assert_eq!(chosen("film:test-4k-few", &few, 170, 1), Some(1), "a 4K with few people sharing waits: 1080p");
+}
