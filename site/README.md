@@ -48,3 +48,7 @@ custom domain.
   public-domain titles.
 - Keep the TMDB notice and the AniList and Jikan credits in the footer.
 - Raster images, if ever added: PNG at 1x, `@2x` and `@3x`. Prefer SVG or CSS.
+
+## Updating
+
+After changing `style.css` or `remote-demo.js`, bump the `?v=` in their links in `index.html` (a date is enough), so browsers that cached the old file load the new one.
