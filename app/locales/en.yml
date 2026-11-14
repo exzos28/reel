@@ -102,6 +102,8 @@ release:
 releases:
   title: Releases
   title_episode: "Releases of %{episode}"
+  title_season: "Releases of Season %{season}"
+  not_in: "%{episode} is not in %{release}. Pick a release for this episode."
   found: "%{count} found, the best of each quality first"
   more: "Show %{count} more"
   state:
@@ -202,6 +204,7 @@ series:
   no_episodes: The episodes of this show are not listed yet.
   watched: Watched
   plays_now: "%{quality} · plays now"
+  not_in_release: Not in this release
 
 browse:
   movies:
@@ -270,6 +273,8 @@ player:
   watch_credits: Watch credits
   no_source: No release to play.
   no_source_hint: Add a search source in Settings, or pick another release.
+  not_in_release: This episode is not in the release.
+  not_in_release_hint: Go back to pick a release for it.
   failed: "Could not play: %{message}"
   failed_hint: Go back and pick another release.
   no_space: "Not enough space to play: needs %{needed}, %{free} free."

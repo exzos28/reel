@@ -6,10 +6,11 @@
 // and Right switch the season; OK on a release makes it the one Play uses,
 // on an episode plays it; Down past the list walks the cast row, then More
 // like this, where OK opens the title. Back goes one level up.
-import { computed, signal, View } from "nsh";
+import { computed, effect, signal, View } from "nsh";
 import { t } from "nsh/i18n";
 import {
-  chooseRelease, episodeCode, episodes, releasesText, title as titleOf, toggleList, type Episode, type Title,
+  chooseRelease, episodeCode, episodeReleases, episodes, releaseLine, releasesText, title as titleOf, toggleList,
+  type Episode, type Title,
 } from "../../catalog";
 import { clamp } from "../../focus/memory";
 import { useZones } from "../../focus/zones";
@@ -17,7 +18,7 @@ import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
 import { backInTitleBar, FloatingBack } from "../../layout/TopBar";
 import { back, openTitle } from "../../nav";
-import { play } from "../../playback";
+import { pickReleaseFor, play, playing } from "../../playback";
 import { u } from "../../theme";
 import { AboutBlock, hasAbout } from "./AboutBlock";
 import { LazyBlock } from "../../layout/LazyBlock";
@@ -35,43 +36,80 @@ export function TitleScreen(props: { id: string }) {
   focusTitle(props.id, data().season ?? 1);
   const eps = computed<Episode[]>(() => (isShow() ? episodes(props.id, season()) : []));
   const seasonCount = () => (data().seasonList ?? []).length;
-  /** Releases (in the panel): the short list until Show more, then all (the short list comes first). */
+  /** The release panel shows the title's releases (a film's, a show's season's),
+   * or, for an episode its season's release lacks, that episode's. */
+  const panelEpisode = signal<Episode | null>(null);
+  const panelData = () => {
+    const e = panelEpisode();
+    return e ? episodeReleases(e.id) : { releases: data().releases, releasesState: data().releasesState, seasonRelease: null };
+  };
+  /** Releases: the short list until Show more, then all (the short list comes first). */
   const expanded = signal(false);
-  const shownReleases = () => (expanded() ? data().releases : data().releases.filter((r) => r.top));
-  const moreReleases = () => data().releases.length - shownReleases().length;
+  const allReleases = () => panelData().releases;
+  const shownReleases = () => (expanded() ? allReleases() : allReleases().filter((r) => r.top));
+  const moreReleases = () => allReleases().length - shownReleases().length;
   /** Rows of the release list: the releases, then Show more when there are more. */
   const releaseRows = () => shownReleases().length + (moreReleases() > 0 ? 1 : 0);
-  const searching = () => data().releasesState === "searching";
+  const searching = () => panelData().releasesState === "searching";
   /** The release panel is open (the focus is in it). */
   const panelOpen = () => zone() === "releases";
-  const openPanel = () => {
+  const openPanel = (e: Episode | null = null) => {
+    panelEpisode.set(e);
+    expanded.set(false);
     releaseAt.set(Math.max(0, shownReleases().findIndex((r) => r.selected)));
     zone.set("releases");
   };
   const closePanel = () => {
-    zone.set("actions");
-    action.set(2);
+    const e = panelEpisode();
+    panelEpisode.set(null);
+    if (e) enterList(Math.max(0, eps().findIndex((x) => x.id === e.id)));
+    else {
+      zone.set("actions");
+      action.set(2);
+    }
   };
-  /** OK on a release row: choose it and close; on Show more: show the rest. */
+  /** OK on a release row: choose it and close (an episode's: and play it); on Show more: show the rest. */
   const pressRelease = (i: number) => {
-    if (i < shownReleases().length) {
-      choose(i);
-      closePanel();
-    } else expanded.set(true);
+    if (i >= shownReleases().length) return expanded.set(true);
+    const e = panelEpisode();
+    chooseRelease(e ? e.id : props.id, shownReleases()[i].index);
+    closePanel();
+    if (e) play({ id: e.id, season: e.season, episode: e.number, title: data() });
   };
   /** Rows under the tabs: a show's episodes (a film has none). */
   const listLength = () => (isShow() ? eps().length : 0);
   const cast = () => data().cast;
   const similar = () => data().similar;
-  const playEpisode = (e: Episode) => play({ id: e.id, season: e.season, episode: e.number, title: data() });
-  const choose = (i: number) => chooseRelease(props.id, data().releases[i].index);
+  /** An episode its season's release lacks opens the panel to pick one for it. */
+  const playEpisode = (e: Episode) =>
+    e.inRelease === "no" ? openPanel(e) : play({ id: e.id, season: e.season, episode: e.number, title: data() });
   const releasesTitle = () => {
+    const e = panelEpisode();
+    if (e) return t("releases.title_episode", { episode: episodeCode(e.season, e.number) });
     const p = data().play;
-    return p.season != null && p.episode != null
-      ? t("releases.title_episode", { episode: episodeCode(p.season, p.episode) })
-      : t("releases.title");
+    return p.season != null ? t("releases.title_season", { season: p.season }) : t("releases.title");
   };
-  const actions = [() => play({ ...data().play, title: data() }), () => toggleList(props.id), openPanel];
+  /** Over an episode's releases: the season's release does not hold it. */
+  const panelMessage = () => {
+    const e = panelEpisode();
+    const r = panelData().seasonRelease;
+    return e && r ? t("releases.not_in", { episode: episodeCode(e.season, e.number), release: releaseLine(r, false).name }) : "";
+  };
+  // Back from a player that found the episode missing from the season's release:
+  // pick one for it (its season shown first).
+  effect(() => {
+    const key = pickReleaseFor();
+    if (!key || playing() || !key.startsWith(`${props.id}:`)) return;
+    const e = eps().find((x) => x.id === key);
+    if (e) {
+      pickReleaseFor.set(null);
+      openPanel(e);
+    } else {
+      const s = Number(/:s(\d+)e\d+$/.exec(key)?.[1]);
+      if (s && s !== season()) season.set(s);
+    }
+  });
+  const actions = [() => play({ ...data().play, title: data() }), () => toggleList(props.id), () => openPanel()];
   /** The release button is there once the core knows the release Play uses. */
   const actionCount = () => (data().release ? 3 : 2);
   /** Where the focus lands in a season's episodes: where the viewer is, else the first. */
@@ -172,7 +210,7 @@ export function TitleScreen(props: { id: string }) {
           focusedAt={() => (zone() === "actions" ? action() : null)}
           onPlay={actions[0]}
           onToggle={actions[1]}
-          onReleases={openPanel}
+          onReleases={() => openPanel()}
         />
       </View>
       <If when={isShow()}>
@@ -230,7 +268,8 @@ export function TitleScreen(props: { id: string }) {
     <If when={panelOpen()}>
       <ReleasePanel
         title={releasesTitle}
-        header={() => releasesText(data())}
+        header={() => (panelEpisode() ? releasesText({ ...data(), ...panelData() } as Title) : releasesText(data()))}
+        message={panelMessage}
         releases={shownReleases}
         loading={searching}
         more={moreReleases}

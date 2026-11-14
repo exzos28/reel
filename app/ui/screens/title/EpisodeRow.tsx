@@ -31,9 +31,12 @@ function metaOf(e: Episode) {
   return parts.join(" · ");
 }
 
-/** "✓ Watched", or what plays: "1080p · plays now". */
-const statusOf = (e: Episode) =>
-  e.watched ? t("series.watched") : e.quality ? t("series.plays_now", { quality: e.quality }) : "";
+/** "✓ Watched", what plays ("1080p · plays now"), or that the season's release lacks it. */
+const statusOf = (e: Episode) => {
+  if (e.watched) return t("series.watched");
+  if (e.inRelease === "no") return t("series.not_in_release");
+  return e.quality ? t("series.plays_now", { quality: e.quality }) : "";
+};
 
 /** An episode: big grey number, still, title, meta and one line of about;
  * on the right what plays or that it is watched. */

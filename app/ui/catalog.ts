@@ -160,7 +160,19 @@ export interface Episode {
   /** Where the viewer stopped, seconds (0: from the start). */
   start: number;
   quality: string | null;
+  /** Whether its season's release holds it: "yes", "unknown" (its name does
+   * not say), "no" (pick another), "own" (a release picked for it); null while
+   * the season is searched. */
+  inRelease: "yes" | "unknown" | "no" | "own" | null;
   playable: boolean;
+}
+
+/** One episode's releases, to pick one when its season's does not hold it. */
+export interface EpisodeReleases {
+  releases: Release[];
+  releasesState: ReleasesState;
+  /** The season's release, the one it is not in. */
+  seasonRelease: ReleaseLine | null;
 }
 
 export interface Shelf {
@@ -202,6 +214,9 @@ export const browse = (page: "movies" | "shows" | "anime") =>
 export const title = (id: string) => read<Title | null>(`title:${id}`, () => Catalog.title(id));
 export const episodes = (show: string, season: number) =>
   read<Episode[]>(`episodes:${show}:${season}`, () => Catalog.episodes(show, season));
+
+export const episodeReleases = (key: string) =>
+  read<EpisodeReleases>(`episodeReleases:${key}`, () => Catalog.episodeReleases(key));
 
 export function toggleList(id: string) {
   Catalog.toggleList(id);

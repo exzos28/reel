@@ -64,7 +64,7 @@ export const HOME = [
   { id: "anime", items: [FRIEREN, AOT] },
 ];
 
-const release = (index: number, quality: string, source: string, group: string, size: string, peers: number, bars: number, note: string, mbit: number, selected = false) => ({
+export const release = (index: number, quality: string, source: string, group: string, size: string, peers: number, bars: number, note: string, mbit: number, selected = false) => ({
   index, quality, source, group, size, tracks: [], peers, bars, note, mbit, selected, pack: false, indexer: "test", top: true,
 });
 

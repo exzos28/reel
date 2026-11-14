@@ -1,5 +1,5 @@
 import { expect, open, test } from "nsh/test";
-import { AOT_S3, ENGINE, INCEPTION_NO_SOURCE, NATIVE, SHOW } from "./testEngine";
+import { AOT_S3, ENGINE, episode, INCEPTION_NO_SOURCE, NATIVE, release, SHOW } from "./testEngine";
 
 type Native = Record<string, {} | null>;
 const app_ = (native: Native = NATIVE, options: Record<string, unknown> = {}) =>
@@ -220,4 +220,33 @@ test("in a Mac window the Anime pill opens the Anime page", async () => {
   const app = await app_(NATIVE, { platform: "macos", width: 1440, height: 900 });
   await app.press("label:Anime");
   expect(app.texts()).toContain("All anime");
+});
+
+test("an episode not in its season's release opens the releases of that episode; picking one plays it", async () => {
+  const chosen: [string, number][] = [];
+  const missing = AOT_S3.map((e) => (e.number === 3 ? episode(3, "Old Story", { inRelease: "no" }) : e));
+  const app = await series({
+    ...NATIVE, ...SHOW, "Engine.status": '{"phase":"resolving"}',
+    "Catalog.episodes": JSON.stringify(missing),
+    "Catalog.episode": JSON.stringify(missing[2]),
+    "Catalog.episodeReleases": JSON.stringify({
+      releases: [release(4, "720p", "WEB", "AoT.S03E03.720p", "400 MB", 40, 3, "starts_fast", 2)],
+      releasesState: "done",
+      seasonRelease: { quality: "1080p", source: "WEB", pack: true, size: "22 GB", peers: 90, fast: false },
+    }),
+    "Catalog.chooseRelease": (id: string, index: number) => {
+      chosen.push([id, index]);
+      return true;
+    },
+  });
+  expect(app.texts()).toContain("Not in this release");
+  await app.keyboard.press("down"); // tabs
+  await app.keyboard.press("down"); // S3:E2, where the viewer is
+  await app.keyboard.press("down"); // S3:E3, not in the season's release
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("S3:E3 is not in 1080p WEB. Pick a release for this episode.");
+  expect(app.texts()).toContain("Releases of S3:E3");
+  await app.keyboard.press("enter"); // its only release
+  expect(chosen).toEqual([["tmdb:tv:1429:s3e3", 4]]);
+  expect(app.texts()).toContain("S3:E3 · Old Story");
 });

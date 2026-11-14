@@ -1,7 +1,8 @@
 // The releases of what Play starts (the film, or the show's episode), in a
 // panel over the right of the title screen: the short list, Show more for the
 // rest. OK on one makes it the one Play uses; Back or a press outside closes it.
-import { View, type ViewStyle } from "nsh";
+import { Text, View, type ViewStyle } from "nsh";
+import { bodyText } from "../../kit/text";
 import type { Release } from "../../catalog";
 import { scroller, Scroller } from "../../layout/Scroller";
 import { alpha, colors, safe, u } from "../../theme";
@@ -21,6 +22,8 @@ const panelStyle = (): ViewStyle => ({
 export function ReleasePanel(props: {
   title: () => string;
   header: () => string;
+  /** A line over the list (why it opened), empty for none. */
+  message?: () => string;
   releases: () => Release[];
   loading: () => boolean;
   more: () => number;
@@ -35,7 +38,10 @@ export function ReleasePanel(props: {
     <View testID="releases-backdrop" style={backdropStyle()} onPress={props.onClose} />,
     <View testID="releases-panel" style={panelStyle()}>
       <Scroller ctl={list} style={{ flex: 1 }}>
-        <View style={{ paddingHorizontal: u(48), paddingTop: safe().y, paddingBottom: safe().y }}>
+        <View style={{ paddingHorizontal: u(48), paddingTop: safe().y, paddingBottom: safe().y, gap: u(24) }}>
+          <If when={props.message?.()}>
+            <Text style={{ ...bodyText(colors.snow()), maxWidth: u(900) }}>{props.message!()}</Text>
+          </If>
           <ReleaseList
             inPanel
             title={props.title}

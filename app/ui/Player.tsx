@@ -226,6 +226,7 @@ export function Player() {
   const problem = (): StageLine | null => {
     const s = core();
     if (s.phase === "no_source") return { text: t("player.no_source"), hint: t("player.no_source_hint") };
+    if (s.phase === "not_in_release") return { text: t("player.not_in_release"), hint: t("player.not_in_release_hint") };
     if (s.phase === "unsupported") return { text: t(`compat.${s.reason}`), hint: "" };
     if (s.phase === "no_space")
       return {

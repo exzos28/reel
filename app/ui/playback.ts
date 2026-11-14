@@ -16,6 +16,8 @@ export interface Playing extends PlayTarget {
 export type Status =
   | { phase: "idle" }
   | { phase: "no_source" }
+  /** The episode is not in its season's release: the viewer picks one for it. */
+  | { phase: "not_in_release" }
   /** The chosen file will not play on this device (`compat.<reason>`). */
   | { phase: "unsupported"; reason: string }
   | { phase: "no_space"; needed: number; free: number | null }
@@ -48,6 +50,9 @@ export interface Timeline {
 
 export const playing = signal<Playing | null>(null);
 export const status = signal<Status>({ phase: "idle" });
+/** An episode the player found missing from its season's release (its key):
+ * back on the show, the release panel opens for it. */
+export const pickReleaseFor = signal<string | null>(null);
 export const timeline = signal<Timeline>({ ranges: [], ahead: 0 });
 /** Where the player is, for the core's timeline (set by the player). */
 export const position = signal(0);
@@ -97,6 +102,7 @@ export async function play(what: Playing) {
       const s: Status = JSON.parse(await Engine.status(job));
       if (gen !== generation) return;
       status.set(s);
+      if (s.phase === "not_in_release") pickReleaseFor.set(playing()?.id ?? null);
       if (s.phase === "ready") {
         const tl: Timeline = JSON.parse(await Engine.timeline(job, position(), duration()));
         if (gen === generation) timeline.set(tl);
