@@ -186,7 +186,20 @@
     frame.id = 'app';
     frame.src = BASE + '/ui/index.html?reelToken=' + token;
     document.body.appendChild(frame);
-    frame.addEventListener('load', function () { frame.focus(); });
+    frame.addEventListener('load', function () {
+      frame.focus();
+      // The web runtime starts the app after the page loads: a moment more, then away.
+      setTimeout(hideSplash, 700);
+    });
+  }
+
+  /** The splash goes (it fades), and the page turns transparent for the video plane. */
+  function hideSplash() {
+    var splash = document.getElementById('splash');
+    if (!splash || splash.className === 'gone') return;
+    document.documentElement.className = 'ready';
+    splash.className = 'gone';
+    setTimeout(function () { if (splash.parentNode) splash.parentNode.removeChild(splash); }, 500);
   }
 
   // ---- diagnostics (no web build yet) ----
@@ -234,6 +247,7 @@
   window.addEventListener('unhandledrejection', function (e) { note('unhandled rejection: ' + (e.reason && e.reason.message || e.reason)); });
 
   function diagnostics(info) {
+    hideSplash();
     document.getElementById('diag').classList.remove('hidden');
     var s = step('RPC Fmt.position(4360)');
     rpc('Fmt', 'position', [4360]).then(s.ok, s.fail);
@@ -293,7 +307,10 @@
 
   registerMediaKeys();
   // Shown at once: the page is transparent over the video plane, so nothing on it is a black screen.
-  if (!window.REEL_WEB) document.getElementById('diag').classList.remove('hidden');
+  if (!window.REEL_WEB) {
+    hideSplash();
+    document.getElementById('diag').classList.remove('hidden');
+  }
   note('shell ' + navigator.userAgent);
   var launch = step('start the core service');
   launchCore()
@@ -308,6 +325,7 @@
       else diagnostics(info);
     })
     .catch(function (e) {
+      hideSplash();
       document.getElementById('diag').classList.remove('hidden');
       say('the core did not start: ' + e.message + '\nOn a rooted TV: data/startup-error.txt and data/core.log of ' + serviceAppId());
     });
