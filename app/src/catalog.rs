@@ -400,6 +400,18 @@ const CARD_W: u32 = 780;
 /// a desktop's 2x screen.
 const CARD_W_TV: u32 = 500;
 
+/// A card's picture. On a TV, one far wider than the card (a source with a single size, as
+/// AniList's 1900 px banners) comes from the core shrunk (thumbs.rs).
+fn card_url(image: &Value) -> Option<String> {
+    let width = card_width();
+    let url = image_url(image, width)?;
+    let picked = image["variants"].as_array()?.iter().find(|v| v["url"].as_str() == Some(&url))?["width"].as_u64();
+    if width == CARD_W_TV && picked.is_some_and(|w| w > 2 * width as u64) {
+        return Some(crate::thumbs::url(&url, width));
+    }
+    Some(url)
+}
+
 fn card_width() -> u32 {
     if crate::sources::compat::profile().device() == Some("tv") { CARD_W_TV } else { CARD_W }
 }
@@ -408,7 +420,7 @@ const THUMB_W: u32 = 300;
 
 fn images(info: &mut Info, v: &Value) {
     info.still = image_url(&v["backdrop"], still_width());
-    info.card = image_url(&v["backdrop"], card_width());
+    info.card = card_url(&v["backdrop"]);
     info.poster = image_url(&v["poster"], POSTER_W);
     info.paper = text(&v["poster"]["color"]).or_else(|| text(&v["backdrop"]["color"]));
 }

@@ -79,7 +79,8 @@ pub fn start(config: Config) -> Result<Running, String> {
             "index": d.join("index.html").is_file(),
         })),
     });
-    let router = reel_rpc::router(registry, token.clone(), info, config.ui_dir.clone());
+    let router = reel_rpc::router(registry, token.clone(), info, config.ui_dir.clone())
+        .route("/img", axum::routing::get(thumb));
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -217,4 +218,18 @@ pub unsafe extern "C" fn reel_core_last_error(buf: *mut c_char, len: usize) -> u
         }
     }
     message.len()
+}
+
+/// `GET /img?w=500&src=…`: a provider's picture shrunk for the TV's cards (app/src/thumbs.rs;
+/// only the hosts it knows, so no token: an <img> sends none).
+async fn thumb(axum::extract::Query(q): axum::extract::Query<std::collections::HashMap<String, String>>) -> axum::response::Response {
+    use axum::http::{header, StatusCode};
+    use axum::response::IntoResponse;
+    let (Some(src), Some(width)) = (q.get("src"), q.get("w").and_then(|w| w.parse::<u32>().ok())) else {
+        return (StatusCode::BAD_REQUEST, "w and src").into_response();
+    };
+    match reel_app::thumbs::get(src, width).await {
+        Ok(bytes) => ([(header::CONTENT_TYPE, "image/jpeg"), (header::CACHE_CONTROL, "max-age=2592000")], bytes).into_response(),
+        Err(e) => (StatusCode::BAD_GATEWAY, e).into_response(),
+    }
 }

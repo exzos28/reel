@@ -24,6 +24,8 @@ librqbit-core = { version = "9.1.0", default-features = false }
 tokio = { version = "1", features = ["rt-multi-thread", "time", "sync", "io-util"] }
 libc = "0.2"
 reqwest = { version = "0.13", default-features = false, features = ["json", "query", "default-tls"] }
+# Shrinking providers' one-size pictures for a TV (src/thumbs.rs).
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 rusqlite = { version = "0.42", features = ["bundled"] }
 quick-xml = "0.41"
 regex = "1"

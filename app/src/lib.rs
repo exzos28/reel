@@ -8,6 +8,8 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod buffer;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod thumbs;
+#[cfg(not(target_arch = "wasm32"))]
 mod catalog;
 #[cfg(not(target_arch = "wasm32"))]
 mod disk;
