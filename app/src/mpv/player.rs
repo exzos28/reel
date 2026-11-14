@@ -43,7 +43,9 @@ pub struct Player {
     src: String,
 }
 
-const OBSERVED: [(&str, c_int); 7] = [
+const OBSERVED: [(&str, c_int); 8] = [
+    // The byte of the file mpv has read to: with demuxer-cache-time, where bytes are in time.
+    ("stream-pos", ffi::FORMAT_INT64),
     ("time-pos", ffi::FORMAT_DOUBLE),
     // Seconds of the film mpv holds in memory ahead of the picture (the scrubber shows them).
     ("demuxer-cache-time", ffi::FORMAT_DOUBLE),
@@ -212,6 +214,7 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
     let mut time = 0.0;
     let mut duration = 0.0;
     let mut cached_until = 0.0;
+    let mut read_at: i64 = 0;
     let mut last_progress: Option<Instant> = None;
     let (mut buffering, mut cache_wait, mut seeking) = (false, false, false);
     loop {
@@ -246,8 +249,11 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
                         let every = Duration::from_millis(shared.interval_ms.load(Ordering::Relaxed));
                         if last_progress.is_none_or(|t| t.elapsed() >= every) {
                             last_progress = Some(Instant::now());
-                            emit("progress", json!({ "currentTime": time, "duration": duration, "cached": (cached_until - time).max(0.0) }));
+                            emit("progress", json!({ "currentTime": time, "duration": duration, "cached": (cached_until - time).max(0.0), "readAt": read_at, "readTime": cached_until }));
                         }
+                    }
+                    (b"stream-pos", ffi::FORMAT_INT64) => {
+                        read_at = unsafe { *(p.data as *const i64) };
                     }
                     (b"demuxer-cache-time", ffi::FORMAT_DOUBLE) => {
                         cached_until = unsafe { *(p.data as *const f64) };

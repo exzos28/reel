@@ -76,8 +76,10 @@ impl Engine {
     /// `{"ranges":[[from,to],…],"ahead":seconds}` (see `engine::timeline`).
     /// `cached`: seconds the video view holds in memory ahead of `position` (mpv's cache),
     /// shown as ready with what is on disk.
-    pub fn timeline(job: u32, position: f64, duration: f64, cached: f64) -> String {
-        engine::timeline(job, position, duration, cached).to_string()
+    /// `read_byte`/`read_time`: the byte of the file the view has read to and the moment of
+    /// the film it holds there (0: unknown), which places what is on disk in time.
+    pub fn timeline(job: u32, position: f64, duration: f64, cached: f64, read_byte: f64, read_time: f64) -> String {
+        engine::timeline(job, position, duration, cached, read_byte, read_time).to_string()
     }
 
     /// Whether there is room to start playing, as JSON

@@ -15,6 +15,7 @@ pub type RenderContext = *mut c_void;
 
 pub const FORMAT_STRING: c_int = 1;
 pub const FORMAT_FLAG: c_int = 3;
+pub const FORMAT_INT64: c_int = 4;
 pub const FORMAT_DOUBLE: c_int = 5;
 
 pub const EVENT_NONE: c_int = 0;

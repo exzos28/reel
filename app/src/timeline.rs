@@ -5,6 +5,15 @@
 //! variable bitrate and the index at either end it is an approximation, good
 //! enough to show where the film is ready.
 
+/// `ranges` moved by `by` (a share of the film), kept within 0..1.
+pub fn shifted(ranges: Vec<(f64, f64)>, by: f64) -> Vec<(f64, f64)> {
+    ranges
+        .into_iter()
+        .map(|(a, b)| ((a + by).clamp(0.0, 1.0), (b + by).clamp(0.0, 1.0)))
+        .filter(|(a, b)| b > a)
+        .collect()
+}
+
 /// `ranges` (sorted, merged, 0..1) with the stretch the player holds in memory,
 /// `position .. position + cached` seconds, merged in.
 pub fn with_player_cache(mut ranges: Vec<(f64, f64)>, position: f64, cached: f64, duration: f64) -> Vec<(f64, f64)> {
@@ -38,6 +47,12 @@ pub fn ready_ahead(ranges: &[(f64, f64)], position: f64, duration: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ranges_move_with_the_players_anchor() {
+        assert_eq!(shifted(vec![(0.2, 0.4)], 0.1), vec![(0.30000000000000004, 0.5)]);
+        assert_eq!(shifted(vec![(0.0, 0.05), (0.5, 0.6)], -0.1), vec![(0.4, 0.5)], "what falls off the start goes");
+    }
 
     #[test]
     fn the_players_cache_joins_what_is_on_disk() {

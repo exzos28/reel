@@ -1050,8 +1050,11 @@ struct PeerFlowControl {
 /// slow peer makes the chunks a seek needs wait seconds behind the old ones.
 const STREAM_QUEUE: Duration = Duration::from_secs(1);
 /// reel: the window while streaming is at least this many chunks (and grows
-/// from it as the rate is learned).
-const MIN_STREAM_WINDOW: usize = 8;
+/// from it as the rate is learned). 64 chunks (1 MiB): fewer starved new peers
+/// (8 kept them under ~0.5 MiB/s each at a few hundred ms of latency, so a 4K
+/// start crawled at 1-3 MiB/s from dozens of peers), and a seek still waits at
+/// most ~1 s behind older requests on a 1 MiB/s peer.
+const MIN_STREAM_WINDOW: usize = 64;
 
 impl PeerFlowControl {
     fn new(max_request_window: usize) -> Self {

@@ -105,7 +105,7 @@ peer's 128 queued requests for the old position.
   skipped and requests stop once the piece is stolen (upstream kept
   requesting a stolen piece's chunks and dropped them on arrival).
 - While streams are open, a peer's request window is about 1 s of its
-  measured rate (8 to 128 chunks) instead of a fixed 128, so the chunks a
+  measured rate (64 to 128 chunks; 8 at first starved new peers) instead of a fixed 128, so the chunks a
   seek needs wait about 1 s behind older requests, not 2-4 s. After a seek
   or a new stream, a peer on a shared piece goes back to acquiring, so it
   moves to the new position at once.
