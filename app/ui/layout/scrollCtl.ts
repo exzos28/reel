@@ -7,7 +7,7 @@
 // going there is the platform's scroll driver's (platform/scroll.ts).
 import { effect, reduceMotion, signal, type ScrollRef, type ViewRef } from "nsh";
 import { keyed } from "../focus/keys";
-import { perf } from "../perf";
+import { perf } from "../platform/diagnostics";
 import { density, ringRoom, safe } from "../theme";
 import { anchorOffset, nearestOffset } from "./anchor";
 import { scrollDriver } from "../platform/scroll";

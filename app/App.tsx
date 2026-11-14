@@ -13,7 +13,8 @@ import { fpsEnabled, keymap, mount, platform, setColorScheme, setFpsEnabled, Vie
 import { BackHandler } from "nsh/mobile";
 import { currentWindow, isAvailable as hasWindows } from "nsh/desktop";
 import { remote } from "./ui/native";
-import { forwardConsole, mapRemoteBack, perfProbe, tellShellReady } from "./ui/tvKeys";
+import { mapRemoteBack, tellShellReady } from "./ui/tvKeys";
+import { startDiagnostics } from "./ui/platform/diagnostics";
 import { AboutScreen } from "./ui/screens/about/AboutScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
@@ -33,11 +34,8 @@ import { videoUnderUi } from "./ui/VideoSurface";
 
 setColorScheme("dark");
 // The web build runs on a Samsung TV: its remote's Back becomes Escape.
-if (remote) {
-  mapRemoteBack();
-  forwardConsole();
-  perfProbe();
-}
+if (remote) mapRemoteBack();
+startDiagnostics();
 // A phone and a tablet keep a stack per tab (design/navigation.md, "History model").
 useTabStacks(isTouch);
 loadSettings().catch((e) => console.warn("could not load settings", e));
