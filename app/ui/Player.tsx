@@ -221,7 +221,8 @@ export function Player() {
     escape: () => {
       if (card()) dismissed.set(true);
       else if (panel()) panel.set(false);
-      else if (started() && overlay()) hide();
+      // On a problem the stage covers everything: Back leaves at once.
+      else if (started() && overlay() && !failed()) hide();
       else stop();
     },
   });
