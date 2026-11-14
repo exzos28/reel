@@ -361,6 +361,16 @@ pub fn time_step(job: u32, step: &'static str) {
     log_line(&line);
 }
 
+/// Logs a measurement for a job being timed (every time, unlike `time_step`).
+fn time_note(job: u32, what: &str) {
+    let line = {
+        let times = TIMES.lock().unwrap();
+        let Some((t0, _, _)) = times.as_ref().and_then(|t| t.get(&job)) else { return };
+        format!("job {job} +{} ms {what}", t0.elapsed().as_millis())
+    };
+    log_line(&line);
+}
+
 /// Every 2 s while timing: the peers by state.
 fn time_peers(job: u32, p: &Value, speed: f64) {
     let line = {
@@ -564,6 +574,9 @@ fn add_to(core: &Core, job: u32, url: &str) {
             Ok(response) => match response.into_handle() {
                 Some(handle) => {
                     time_step(job, "torrent added, metadata known");
+                    if let Ok((piece, total)) = handle.with_metadata(|m| (m.lengths().default_piece_length(), m.lengths().total_length())) {
+                        time_note(job, &format!("{} KiB pieces, {} MiB torrent", piece / 1024, total / MIB));
+                    }
                     link.attach(&handle);
                     // Streams exist once it is initialized: size their readahead.
                     let (h, l) = (handle.clone(), link.clone());
@@ -665,6 +678,17 @@ pub fn status(job: u32) -> Value {
             }
             if start >= 100 {
                 time_step(job, "start of the film downloaded");
+            }
+            for w in handle.take_stream_waits() {
+                time_note(job, &format!(
+                    "stream read at {} MiB{}: waited {} ms for piece {} (from {} peers in {} ms)",
+                    w.position / MIB,
+                    if w.new_position { " (new position)" } else { "" },
+                    w.waited.as_millis(),
+                    w.piece,
+                    w.piece_peers.map_or("?".into(), |p| p.to_string()),
+                    w.piece_download.map_or("?".into(), |d| d.as_millis().to_string()),
+                ));
             }
             let stage = if start >= 100 {
                 "starting"

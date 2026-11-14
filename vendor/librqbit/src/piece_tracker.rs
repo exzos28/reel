@@ -29,6 +29,9 @@ use crate::{
 pub struct InflightPiece {
     pub peer: PeerHandle,
     pub started: Instant,
+    /// reel: the peers whose chunks of it were written so far (measurement:
+    /// how many peers a piece came from).
+    writers: Vec<PeerHandle>,
 }
 
 /// Result of attempting to acquire a piece.
@@ -171,6 +174,7 @@ impl PieceTracker {
             InflightPiece {
                 peer,
                 started: Instant::now(),
+                writers: Vec::new(),
             },
         );
         AcquireResult::Reserved(piece)
@@ -283,6 +287,20 @@ impl PieceTracker {
     #[allow(dead_code)]
     pub fn inflight_count(&self) -> usize {
         self.inflight.len()
+    }
+
+    /// reel: notes that `peer` wrote a chunk of the in-flight `piece`.
+    pub fn note_writer(&mut self, piece: ValidPieceIndex, peer: PeerHandle) {
+        if let Some(info) = self.inflight.get_mut(&piece)
+            && !info.writers.contains(&peer)
+        {
+            info.writers.push(peer);
+        }
+    }
+
+    /// reel: how many peers wrote chunks of the in-flight `piece`.
+    pub fn writers(&self, piece: ValidPieceIndex) -> usize {
+        self.inflight.get(&piece).map_or(0, |i| i.writers.len())
     }
 
     // === PASS-THROUGH METHODS ===

@@ -6,7 +6,7 @@ use std::{
         atomic::{AtomicU64, AtomicUsize, Ordering},
     },
     task::{Poll, Waker},
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use anyhow::Context;
@@ -55,6 +55,30 @@ impl StreamState {
     }
 }
 
+/// reel: a stream read at a new position (the stream's first read or the
+/// first after a seek), or one that had to wait for its piece. For measuring
+/// how long a player waits; see [`ManagedTorrent::take_stream_waits`].
+#[derive(Clone, Debug)]
+pub struct StreamWait {
+    pub file_id: usize,
+    /// Byte offset in the file of the read.
+    pub position: u64,
+    pub piece: u32,
+    /// The first read of the stream or the first after a seek.
+    pub new_position: bool,
+    /// From the read finding the piece missing to the piece being served
+    /// (zero when it was there).
+    pub waited: Duration,
+    /// When it waited: how many peers sent chunks of the piece, and how
+    /// long the piece took from the first request to the last chunk
+    /// (None when that was not seen, e.g. it completed before the read).
+    pub piece_peers: Option<u32>,
+    pub piece_download: Option<Duration>,
+}
+
+/// At most this many unread [`StreamWait`]s are kept.
+const MAX_STREAM_WAITS: usize = 64;
+
 #[derive(Default)]
 pub(crate) struct TorrentStreams {
     next_stream_id: AtomicUsize,
@@ -62,6 +86,10 @@ pub(crate) struct TorrentStreams {
     // Bytes to download ahead of each stream's position; 0 is the default
     // (PER_STREAM_BUF_DEFAULT).
     readahead: AtomicU64,
+    // reel: measurement, see StreamWait.
+    waits: parking_lot::Mutex<VecDeque<StreamWait>>,
+    // Pieces a stream waited for: (peers that sent chunks, download time).
+    completed_for_streams: DashMap<u32, (u32, Duration)>,
 }
 
 impl TorrentStreams {
@@ -139,6 +167,33 @@ impl TorrentStreams {
         }
     }
 
+    /// reel: a piece passed its hash check after `download` with chunks from
+    /// `peers` peers; kept for the streams that wait for it.
+    pub(crate) fn note_piece_completed(
+        &self,
+        piece_id: ValidPieceIndex,
+        peers: usize,
+        download: Duration,
+        lengths: &Lengths,
+    ) {
+        let waited_for = self
+            .streams
+            .iter()
+            .any(|s| s.value().current_piece(lengths).map(|p| p.id) == Some(piece_id));
+        if waited_for {
+            self.completed_for_streams
+                .insert(piece_id.get(), (peers as u32, download));
+        }
+    }
+
+    fn push_wait(&self, w: StreamWait) {
+        let mut waits = self.waits.lock();
+        if waits.len() == MAX_STREAM_WAITS {
+            waits.pop_front();
+        }
+        waits.push_back(w);
+    }
+
     fn drop_stream(&self, stream_id: StreamId) -> Option<StreamState> {
         debug!(stream_id, "dropping stream");
         self.streams.remove(&stream_id).map(|s| s.1)
@@ -160,6 +215,11 @@ pub struct FileStream {
     // file params
     file_len: u64,
     file_torrent_abs_offset: u64,
+
+    // reel: measurement (StreamWait). The next read is at a new position;
+    // when a read found its piece missing, and which piece.
+    new_position: bool,
+    waiting_since: Option<(Instant, u32)>,
 
     _blocking_permit: OwnedSemaphorePermit,
 }
@@ -218,8 +278,12 @@ impl AsyncRead for FileStream {
         }));
         if !have {
             debug!(stream_id = self.stream_id, file_id = self.file_id, piece_id = %current.id, "poll pending, not have");
+            if self.waiting_since.is_none() {
+                self.waiting_since = Some((Instant::now(), current.id.get()));
+            }
             return Poll::Pending;
         }
+        self.as_mut().note_served(current.id.get());
 
         // actually stream the piece
         let buf = tbuf.initialize_unfilled();
@@ -282,6 +346,8 @@ impl AsyncSeek for FileStream {
         }
 
         self.as_mut().set_position(map_io_err!(new_pos.try_into())?);
+        self.new_position = true;
+        self.waiting_since = None;
         debug!(stream_id = self.stream_id, position = self.position, "seek");
         Ok(())
     }
@@ -361,6 +427,14 @@ impl ManagedTorrent {
         Ok(())
     }
 
+    /// reel: the stream reads at new positions and the waits for pieces
+    /// since the last call (at most the last 64), oldest first.
+    pub fn take_stream_waits(&self) -> Vec<StreamWait> {
+        self.streams()
+            .map(|s| s.waits.lock().drain(..).collect())
+            .unwrap_or_default()
+    }
+
     /// The open streams as `(file_id, position in the file)`: where readers
     /// are, e.g. for a storage that keeps only the data around them. Empty
     /// when the torrent is not initialized.
@@ -398,6 +472,8 @@ impl ManagedTorrent {
 
             file_len: fd_len,
             file_torrent_abs_offset: fd_offset,
+            new_position: true,
+            waiting_since: None,
             _blocking_permit: blocking_permit,
             torrent: self,
             metadata,
@@ -423,6 +499,26 @@ impl ManagedTorrent {
 impl FileStream {
     pub fn position(&self) -> u64 {
         self.position
+    }
+
+    // reel: records a read at a new position or after a wait (StreamWait).
+    fn note_served(&mut self, piece: u32) {
+        let waited = self.waiting_since.take();
+        if !self.new_position && waited.is_none() {
+            return;
+        }
+        let info = waited
+            .and_then(|_| self.streams.completed_for_streams.remove(&piece))
+            .map(|(_, v)| v);
+        self.streams.push_wait(StreamWait {
+            file_id: self.file_id,
+            position: self.position,
+            piece,
+            new_position: std::mem::take(&mut self.new_position),
+            waited: waited.map(|(t, _)| t.elapsed()).unwrap_or_default(),
+            piece_peers: info.map(|i| i.0),
+            piece_download: info.map(|i| i.1),
+        });
     }
 
     fn advance(&mut self, diff: u64) {

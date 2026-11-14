@@ -1926,14 +1926,23 @@ impl PeerHandler {
                 };
             }
 
+            let mut piece_writers = 0;
             let full_piece_download_time = {
                 let mut g = state.lock_write("mark_chunk_downloaded");
                 let chunk_marking_result = g.get_pieces_mut()?.mark_chunk_downloaded(piece);
                 trace!(?piece, chunk_marking_result=?chunk_marking_result);
+                if matches!(
+                    chunk_marking_result,
+                    Some(ChunkMarkingResult::Completed | ChunkMarkingResult::NotCompleted)
+                ) {
+                    g.get_pieces_mut()?
+                        .note_writer(chunk_info.piece_index, addr);
+                }
 
                 match chunk_marking_result {
                     Some(ChunkMarkingResult::Completed) => {
                         trace!("piece={} done, will write and checksum", piece.index);
+                        piece_writers = g.get_pieces()?.writers(chunk_info.piece_index);
                         // Remove from inflight to prevent others from stealing it during hash check.
                         g.get_pieces_mut()?.take_inflight(chunk_info.piece_index)
                     }
@@ -2003,6 +2012,12 @@ impl PeerHandler {
 
                     trace!(piece = index, "successfully downloaded and verified");
 
+                    state.streams.note_piece_completed(
+                        chunk_info.piece_index,
+                        piece_writers,
+                        full_piece_download_time,
+                        &state.lengths,
+                    );
                     state.on_piece_completed(chunk_info.piece_index)?;
 
                     state.transmit_haves(chunk_info.piece_index);
