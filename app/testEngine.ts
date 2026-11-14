@@ -178,5 +178,9 @@ export const CATALOG = {
 /** Attack on Titan's screen instead of Inception's. */
 export const SHOW = { ...CATALOG, "Catalog.title": JSON.stringify(AOT_TITLE) };
 
+/** The video view that plays its first frame at once (a headless `<Video>`
+ * never loads): for tests of the player once the film plays. */
+export const STILL = { "VideoEngine.kind": "still" };
+
 /** Engine and catalog: what most tests run on. */
 export const NATIVE = { ...ENGINE, ...CATALOG };

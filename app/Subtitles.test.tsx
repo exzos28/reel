@@ -1,8 +1,9 @@
 // Subtitles from the release, on a stand-in core: picking one in the tracks
 // panel and our overlay showing the cue at the player's position (the
-// headless video never plays, so the position is where seeks put it).
+// still video view, STILL, plays its first frame and stands still, so the
+// position is where seeks put it).
 import { expect, open, test } from "nsh/test";
-import { NATIVE } from "./testEngine";
+import { NATIVE, STILL } from "./testEngine";
 
 const status = JSON.stringify({
   phase: "ready",
@@ -39,6 +40,7 @@ async function playing(remembered: "off" | "x:5") {
     modules: {
       "app/native": {
         ...NATIVE,
+        ...STILL,
         "Engine.status": status,
         "Engine.tracks": menu(remembered),
         "Engine.chooseTrack": (_job: number, _id: string, _embedded: string, choice: string) => {
@@ -46,7 +48,6 @@ async function playing(remembered: "off" | "x:5") {
           return menu(choice === "x:5" ? "x:5" : "off");
         },
         "Engine.cues": cues,
-        "VideoEngine.kind": "native",
       },
     },
   });

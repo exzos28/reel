@@ -2,14 +2,16 @@
 // with libmpv) where the core says it can play, else NSH's `<Video>` (the
 // platform's player). Both take the same props and give the same events;
 // only mpv reports and switches tracks (`videoCaps().tracks`).
-import { nativeComponent, signal, Video, type NativeComponentRef, type VideoRef, type ViewStyle } from "nsh";
+import { cleanup, nativeComponent, signal, Video, View, type NativeComponentRef, type VideoRef, type ViewStyle } from "nsh";
 import { VideoEngine } from "app/native";
 
 /** Which view plays here, as the core decides (`VideoEngine.kind`). */
-export const videoKind = signal<"mpv" | "native">("native");
+/** `still` is the headless tests' stand-in, a view that reports itself loaded
+ * at once (a headless `<Video>` never loads). */
+export const videoKind = signal<"mpv" | "native" | "still">("native");
 // Asked once at start; choosing mpv also widens the releases searches offer.
 Promise.resolve(VideoEngine.kind())
-  .then((k) => videoKind.set(k === "mpv" ? "mpv" : "native"))
+  .then((k) => videoKind.set(k === "mpv" || k === "still" ? k : "native"))
   .catch((e) => console.warn("video engine", e));
 
 /** What the view that plays here can do. */
@@ -64,7 +66,7 @@ const MpvView = nativeComponent<MpvProps, MpvEvents>("reel/mpv", {
 
 export function VideoSurface(props: VideoSurfaceProps) {
   return (
-    <If when={videoKind() === "mpv"} else={<NativeSurface {...props} />}>
+    <If when={videoKind() === "mpv"} else={<OtherSurface {...props} />}>
       <MpvView
         ref={(r: NativeComponentRef) => props.surfaceRef?.({ seek: (seconds) => r.command("seek", { seconds }) })}
         src={props.src}
@@ -81,6 +83,14 @@ export function VideoSurface(props: VideoSurfaceProps) {
         onTracks={(e) => props.onTracks?.(JSON.stringify(e))}
         style={props.style}
       />
+    </If>
+  );
+}
+
+function OtherSurface(props: VideoSurfaceProps) {
+  return (
+    <If when={videoKind() === "still"} else={<NativeSurface {...props} />}>
+      <StillSurface {...props} />
     </If>
   );
 }
@@ -102,4 +112,15 @@ function NativeSurface(props: VideoSurfaceProps) {
       style={props.style}
     />
   );
+}
+
+/** Headless tests: loads at once and plays its first frame, then stands still. */
+function StillSurface(props: VideoSurfaceProps) {
+  const timer = setTimeout(() => {
+    props.surfaceRef?.({ seek: () => {} });
+    props.onLoad?.({ duration: 0 });
+    props.onProgress?.({ currentTime: 0, duration: 0 });
+  }, 0);
+  cleanup(() => clearTimeout(timer));
+  return <View style={props.style} />;
 }

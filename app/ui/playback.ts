@@ -19,7 +19,9 @@ export type Status =
   /** The chosen file will not play on this device (`compat.<reason>`). */
   | { phase: "unsupported"; reason: string }
   | { phase: "no_space"; needed: number; free: number | null }
-  | { phase: "resolving" }
+  /** Before the torrent is in: the catalog still `searching` for a release,
+   * or `finding` people who have the torrent's metadata. */
+  | { phase: "resolving"; stage?: "searching" | "finding" }
   | { phase: "failed"; message: string }
   | {
       phase: "ready";
@@ -29,6 +31,12 @@ export type Status =
       /** MiB/s. */
       speed: number;
       peers: number | null;
+      /** People seen so far; null when unknown. */
+      found?: number | null;
+      /** Percent (0..100) of the file's start the player needs that is in. */
+      start?: number;
+      /** `connecting` (no one yet), `fetching` (the start comes in), `starting` (it is in). */
+      stage?: "connecting" | "fetching" | "starting";
     };
 
 export interface Timeline {

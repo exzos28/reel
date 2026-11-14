@@ -1,7 +1,8 @@
-// The player's own controls, on a stand-in engine (no real playback: the
-// headless video never loads, so the time stays where seeks put it).
+// The player's own controls, on a stand-in engine and a still video view
+// (STILL: it plays its first frame at once and stands still, so the time
+// stays where seeks put it); and the stage before the first frame.
 import { expect, open, test } from "nsh/test";
-import { episode, NATIVE } from "./testEngine";
+import { episode, NATIVE, STILL } from "./testEngine";
 
 const status = JSON.stringify({
   phase: "ready",
@@ -10,19 +11,84 @@ const status = JSON.stringify({
   low_space: false,
   speed: 3.4,
   peers: 37,
+  found: 52,
+  start: 100,
+  stage: "starting",
 });
 const timeline = JSON.stringify({ ranges: [[0, 0.3], [0.6, 0.7]], ahead: 0 });
 
 async function playing() {
   const app = await open("./App.tsx", {
     clock: {},
-    modules: { "app/native": { ...NATIVE, "Engine.status": status, "Engine.timeline": timeline } },
+    modules: { "app/native": { ...NATIVE, ...STILL, "Engine.status": status, "Engine.timeline": timeline } },
   });
   await app.keyboard.press("down"); // Trending movies: Dune
   await app.press("Play");
   await app.wait(600); // one poll of the engine
   return app;
 }
+
+/** Play on Dune with the engine answering `engine` and the video never loading. */
+async function waiting(engine: Record<string, unknown>) {
+  const app = await open("./App.tsx", {
+    clock: {},
+    modules: { "app/native": { ...NATIVE, "Engine.status": JSON.stringify(engine) } },
+  });
+  await app.keyboard.press("down");
+  await app.press("Play");
+  await app.wait(600);
+  return app;
+}
+
+const noControls = (app: Awaited<ReturnType<typeof waiting>>) => {
+  expect(app.shows("scrubber")).toBe(false);
+  expect(app.shows("label:Pause")).toBe(false);
+  expect(app.texts()).not.toContain("0:00");
+};
+
+test("while the engine looks for people, the stage shows the title and what it does", async () => {
+  const app = await waiting({ phase: "resolving", stage: "finding" });
+  expect(app.shows("stage")).toBe(true);
+  expect(app.texts()).toContain("DUNE"); // the logotype
+  expect(app.texts()).toContain("Finding people sharing this film");
+  noControls(app);
+  await app.keyboard.press("enter"); // nothing to play or pause yet
+  noControls(app);
+  await app.keyboard.press("escape"); // Back leaves at once
+  expect(app.texts()).toContain("Continue watching");
+});
+
+test("connected, the stage counts the film's start in until the video loads", async () => {
+  const app = await waiting({ ...JSON.parse(status), stage: "connecting", peers: 0, found: 12, start: 0 });
+  expect(app.texts()).toContain("Found 12 people, connecting");
+  noControls(app);
+  const fetching = await waiting({ ...JSON.parse(status), stage: "fetching", start: 42 });
+  expect(fetching.texts()).toContain("Fetching the start of the film, 42%");
+  expect(fetching.texts()).toContain("streaming at 3.4 MB/s from 37 people");
+  noControls(fetching);
+  const starting = await waiting(JSON.parse(status));
+  expect(starting.texts()).toContain("Starting");
+  noControls(starting);
+  await starting.press("label:Back");
+  expect(starting.texts()).toContain("Continue watching");
+});
+
+test("a film that cannot play says so in the middle of the stage, with what to do", async () => {
+  const app = await waiting({ phase: "failed", message: "the torrent was only listed" });
+  expect(app.shows("stage")).toBe(true);
+  expect(app.texts()).toContain("Could not play: the torrent was only listed");
+  expect(app.texts()).toContain("Go back and pick another release.");
+  noControls(app);
+  const unsupported = await waiting({ phase: "unsupported", reason: "container" });
+  expect(unsupported.texts()).toContain("This file's format does not play on this device. Choose another release.");
+});
+
+test("once the first frame plays, the stage gives way to the controls", async () => {
+  const app = await playing();
+  expect(app.shows("stage")).toBe(false);
+  expect(app.shows("scrubber")).toBe(true);
+  expect(app.texts()).toContain("0:00");
+});
 
 test("the player shows the stream and its controls", async () => {
   const app = await playing();
@@ -144,7 +210,7 @@ async function nearTheEnd() {
   const app = await open("./App.tsx", {
     clock: {},
     // The core offers the next episode (as it does in the last 40 s).
-    modules: { "app/native": { ...NATIVE, "Engine.status": status, "Engine.timeline": timeline, "Catalog.upNext": nextEpisode } },
+    modules: { "app/native": { ...NATIVE, ...STILL, "Engine.status": status, "Engine.timeline": timeline, "Catalog.upNext": nextEpisode } },
   });
   await app.keyboard.press("right"); // Attack on Titan
   await app.press("Resume S3:E2");

@@ -23,17 +23,18 @@ test("a title without a release says so instead of playing", async () => {
   const app = await app_({ ...NATIVE, "Engine.status": JSON.stringify({ phase: "no_source" }) });
   await app.keyboard.press("up"); // the hero's Resume
   await app.keyboard.press("enter");
-  expect(app.texts()).toContain("No release to play. Add a search source in Settings, or pick another release.");
+  expect(app.texts()).toContain("No release to play.");
+  expect(app.texts()).toContain("Add a search source in Settings, or pick another release.");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Continue watching");
 });
 
 test("pressing Play opens the player", async () => {
   // The engine as it is while it looks for the film's metadata.
-  const app = await app_({ ...NATIVE, "Engine.status": '{"phase":"resolving"}' });
+  const app = await app_({ ...NATIVE, "Engine.status": '{"phase":"resolving","stage":"finding"}' });
   await app.press("Resume 41:12");
   expect(app.shows("label:Back")).toBe(true);
-  expect(app.texts()).toContain("Finding peers…");
+  expect(app.texts()).toContain("Finding people sharing this film");
 });
 
 test("without room for the buffer, the film does not start and says why", async () => {
@@ -42,9 +43,8 @@ test("without room for the buffer, the film does not start and says why", async 
     "Engine.status": JSON.stringify({ phase: "no_space", needed: 306 * 1024 ** 2, free: 120 * 1024 ** 2 }),
   });
   await app.press("Resume 41:12");
-  expect(app.texts()).toContain(
-    "Not enough space to play: needs 306 MB, 120 MB free. Free up space on this device or lower the buffer size in Settings.",
-  );
+  expect(app.texts()).toContain("Not enough space to play: needs 306 MB, 120 MB free.");
+  expect(app.texts()).toContain("Free up space on this device or lower the buffer size in Settings.");
 });
 
 test("Settings: from the nav, choose a buffer size, back", async () => {

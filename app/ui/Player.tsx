@@ -1,5 +1,8 @@
 // The player: the video view (mpv or the platform's, VideoSurface) on the local stream under our own
-// controls (design/concept/tv-player.html). The overlay shows on any key,
+// controls (design/concept/tv-player.html). Until the first frame plays, and
+// when the film cannot play, the stage (PlayerStage) fills the screen and
+// only Back works; a stall after that is a small note over the picture.
+// The overlay shows on any key,
 // press or mouse move and hides after a few quiet seconds, unless the film
 // is paused, buffering or the tracks panel is open. Remote: Space/Enter
 // play or pause, Left/Right seek 10 s on the scrubber row (move between
@@ -7,6 +10,7 @@
 // panel, then hides the overlay, then leaves. Near the end of an episode
 // the Up next card (tv-player-end.html) takes the remote instead.
 import { cleanup, computed, effect, Image, keymap, signal, Text, View, type ImageAsset } from "nsh";
+import { BufferingNote, PlayerStage, type StageLine } from "./PlayerStage";
 import { t } from "nsh/i18n";
 import { Catalog, Fmt } from "app/native";
 import { episodeCode, episodeText, runtime, titleText, type Episode, type Release } from "./catalog";
@@ -51,6 +55,18 @@ export function Player() {
   /** What `onBuffer` last said. */
   const buffering = signal(false);
   const error = signal<string | null>(null);
+  /** The first frame played: the stage gives way to the picture and the controls. */
+  const started = signal(false);
+  /** Where the film resumes once loaded; it has started when it plays from there. */
+  let resumeTo = 0;
+  // A new stream (the next episode, another release): wait for its first frame again.
+  effect(() => {
+    url();
+    loaded.set(false);
+    started.set(false);
+    buffering.set(false);
+    error.set(null);
+  });
 
   const overlay = signal(true);
   const row = signal<Row>("scrubber");
@@ -104,7 +120,7 @@ export function Player() {
 
   // The overlay hides on its own only while the film plays (not paused,
   // not buffering as `onBuffer` says) and the panel is closed.
-  const mayHide = () => ready() && !paused() && !buffering() && !error() && !panel();
+  const mayHide = () => started() && !paused() && !buffering() && !error() && !panel();
   let hideTimer: ReturnType<typeof setTimeout> | undefined;
   const scheduleHide = () => {
     clearTimeout(hideTimer);
@@ -157,7 +173,7 @@ export function Player() {
     if (card()) return onCard?.();
     const wasShown = overlay();
     poke();
-    if (ready()) act(wasShown);
+    if (started()) act(wasShown);
   };
   keymap.bind(
     {
@@ -195,37 +211,71 @@ export function Player() {
     escape: () => {
       if (card()) dismissed.set(true);
       else if (panel()) panel.set(false);
-      else if (ready() && overlay()) hide();
+      else if (started() && overlay()) hide();
       else stop();
     },
   });
 
-  const status = () => {
+  /** What cannot play, with what to do; null while it can. */
+  const problem = (): StageLine | null => {
     const s = core();
-    if (s.phase === "no_source") return t("player.no_source");
-    if (s.phase === "unsupported") return t(`compat.${s.reason}`);
+    if (s.phase === "no_source") return { text: t("player.no_source"), hint: t("player.no_source_hint") };
+    if (s.phase === "unsupported") return { text: t(`compat.${s.reason}`), hint: "" };
     if (s.phase === "no_space")
-      return s.free == null
-        ? t("player.no_space_unknown", { needed: Fmt.size(s.needed) })
-        : t("player.no_space", { needed: Fmt.size(s.needed), free: Fmt.size(s.free) });
-    if (s.phase === "failed") return t("player.failed", { message: s.message });
-    if (s.phase === "resolving") return t("player.resolving");
-    if (lowSpace()) return t("player.low_space");
-    if (error()) return t("player.failed", { message: error()! });
-    if (buffering() || !loaded()) return t("player.buffering");
-    return "";
+      return {
+        text: s.free == null
+          ? t("player.no_space_unknown", { needed: Fmt.size(s.needed) })
+          : t("player.no_space", { needed: Fmt.size(s.needed), free: Fmt.size(s.free) }),
+        hint: t("player.no_space_hint"),
+      };
+    if (s.phase === "failed") return { text: t("player.failed", { message: s.message }), hint: t("player.failed_hint") };
+    if (error()) return { text: t("player.failed", { message: error()! }), hint: t("player.failed_hint") };
+    return null;
   };
-  const failed = () => {
-    const phase = core().phase;
-    return phase === "failed" || phase === "no_source" || phase === "unsupported" || phase === "no_space" || lowSpace() || error() != null;
+  const failed = () => problem() != null || lowSpace();
+  /** The stage covers the screen until the first frame, and on a problem. */
+  const staged = () => !started() || problem() != null;
+  /** The stage's calm line: what the engine is doing now. */
+  const stageLine = (): StageLine => {
+    const p = problem();
+    if (p) return p;
+    const s = core();
+    if (s.phase === "resolving") return { text: t(`player.stage.${s.stage ?? "finding"}`), hint: null };
+    if (s.phase !== "ready" || loaded() || s.stage === "starting" || s.stage == null) return { text: t("player.stage.starting"), hint: null };
+    if (s.stage === "fetching") return { text: t("player.stage.fetching", { percent: s.start ?? 0 }), hint: null };
+    return s.found
+      ? { text: t(`player.stage.found.${s.found === 1 ? "one" : "other"}`, { count: s.found }), hint: null }
+      : { text: t("player.stage.connecting"), hint: null };
   };
+  /** The bar under it: the film's start coming in; full once the player has it. */
+  const stageProgress = () => {
+    if (problem()) return null;
+    const s = core();
+    return s.phase !== "ready" ? 0 : loaded() ? 100 : (s.start ?? 0);
+  };
+  /** The top-left line while the overlay is up: only running out of space. */
+  const status = () => (lowSpace() ? t("player.low_space") : "");
   // The device ran out of space while playing: stop where we are, keep the overlay up.
   effect(() => { if (lowSpace()) { paused.set(true); poke(); } });
   const streaming = () => {
     const s = core();
     if (s.phase !== "ready") return "";
-    const speed = t("player.speed", { speed: s.speed.toFixed(1) });
-    return s.peers != null ? `${speed} ${t("player.peers", { count: s.peers })}` : speed;
+    const speed = Fmt.speed(s.speed);
+    return s.peers != null ? t("player.streaming_from", { speed, count: s.peers }) : t("player.streaming", { speed });
+  };
+  /** The stage's line under the bar: once someone is connected. */
+  const stageMeta = () => {
+    const s = core();
+    return s.phase === "ready" && !problem() && (s.peers ?? 0) > 0 ? streaming() : "";
+  };
+  /** A stall while playing: how much is ready ahead and how fast it comes. */
+  const bufferingText = () => {
+    const s = core();
+    const ahead = Math.floor(timeline().ahead);
+    const first = ahead > 0 ? t("player.ahead_seconds", { seconds: ahead }) : t("player.buffering");
+    if (s.phase !== "ready") return first;
+    const speed = Fmt.speed(s.speed);
+    return `${first} · ${s.peers != null ? t("player.rate_from", { speed, count: s.peers }) : speed}`;
   };
   const aheadText = () => {
     if (!timeline().ranges.length || duration() <= 0) return "";
@@ -269,10 +319,16 @@ export function Player() {
           onLoad={(e) => {
             loaded.set(true);
             duration.set(e.duration);
+            resumeTo = 0;
             // Resume: once, where the viewer stopped.
-            if (startAt() > 0) { seekTo(startAt()); startAt.set(0); }
+            if (startAt() > 0) { resumeTo = startAt(); seekTo(startAt()); startAt.set(0); }
           }}
-          onProgress={(e) => { position.set(e.currentTime); if (e.duration > 0) duration.set(e.duration); }}
+          onProgress={(e) => {
+            position.set(e.currentTime);
+            if (e.duration > 0) duration.set(e.duration);
+            // The first frame from where it should start: the film plays.
+            if (loaded() && !buffering() && e.currentTime >= resumeTo - 1) started.set(true);
+          }}
           onBuffer={(e) => buffering.set(e.isBuffering)}
           onEnd={() => { paused.set(true); poke(); }}
           onError={(e) => error.set(e.message)}
@@ -282,16 +338,33 @@ export function Player() {
 
       <SubtitleOverlay text={cue} lifted={() => overlay() && !card()} />
 
-      <If when={ready() && !failed() && (buffering() || !loaded())}>
-        <View
-          testID="buffering"
-          style={{ pointerEvents: "none", position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}
-        >
-          <View style={{ width: u(96), height: u(96), borderRadius: 999, borderCurve: "continuous", borderWidth: u(8), borderColor: alpha(colors.snow(), 0.16), borderTopColor: colors.snow(), animationName: "spin", animationDuration: 900, animationTimingFunction: "linear", animationIterationCount: "infinite", animationFrameRate: 30 }} />
+      <If when={started() && !failed() && buffering()}>
+        <BufferingNote text={bufferingText} />
+      </If>
+
+      <If when={staged() ? what() : null}>
+        {(w) => (
+          <PlayerStage
+            item={() => w().title}
+            subtitle={subtitle}
+            line={stageLine}
+            progress={stageProgress}
+            meta={stageMeta}
+          />
+        )}
+      </If>
+      <If when={staged()}>
+        <View style={{ position: "absolute", top: safe().y, left: safe().x }}>
+          <BackButton
+            focused={() => false}
+            onPress={stop}
+            label={() => t("player.back")}
+            background={() => alpha(colors.card(), 0.8)}
+          />
         </View>
       </If>
 
-      <If when={overlay() && !card()}>
+      <If when={overlay() && !card() && !staged()}>
         {/* Shade: dark at the top and the bottom, the picture clear between. */}
         <View
           style={{
@@ -318,7 +391,7 @@ export function Player() {
               <Text style={{ ...type.meta(), color: colors.ash() }}>{subtitle()}</Text>
             </If>
             <If when={status() !== ""}>
-              <Text style={{ ...type.meta(), color: failed() ? colors.red() : colors.ash() }}>{status()}</Text>
+              <Text style={{ ...type.meta(), color: colors.soft() }}>{status()}</Text>
             </If>
           </View>
         </View>

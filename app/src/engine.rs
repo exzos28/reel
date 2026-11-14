@@ -38,6 +38,8 @@ enum Job {
     NoSource,
     /// Not enough free space to start: the buffer plus the reserve (bytes).
     NoSpace { needed: u64, free: Option<u64> },
+    /// The catalog still searches for a release to play.
+    Searching,
     /// Fetching the metadata (magnet links need peers for it).
     Resolving,
     /// Playing; the link reaches the torrent's ring-buffer cache.
@@ -170,7 +172,7 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
         catalog::PlaySource::None => Ok(new_job(Job::NoSource)),
         catalog::PlaySource::Ready(source, episode) => open_release(&source, episode),
         catalog::PlaySource::Searching => {
-            let job = new_job(Job::Resolving);
+            let job = new_job(Job::Searching);
             if job == 0 {
                 return Ok(0);
             }
@@ -327,13 +329,23 @@ fn add_to(core: &Core, job: u32, url: &str) {
     });
 }
 
+/// How much of the file's start must be in before the player can open it
+/// (headers and the first seconds): what the loading screen counts up to.
+const START_BYTES: u64 = 8 * MIB;
+
 /// What the player shows for the job, as JSON with a `phase`:
 /// - `"no_source"`, `"no_space"` (`needed`, `free` bytes, `free` may be null),
-///   `"resolving"`, `"failed"` (`message`);
+///   `"failed"` (`message`);
+/// - `"resolving"`: `stage` is `"searching"` (the catalog still looks for a
+///   release) or `"finding"` (asking people for the torrent's metadata);
 /// - `"ready"`: `stream_url` (where the player opens the video), `file`,
 ///   `name`, `low_space` (the device ran out of room while playing),
-///   `speed` (MiB/s), `peers` (null when unknown), `progress` (0..1 of the
-///   video in the cache now: the buffer holds only a window of it).
+///   `speed` (MiB/s), `peers` (connected now) and `found` (people seen so
+///   far), both null when unknown, `progress` (0..1 of the video in the
+///   cache now: the buffer holds only a window of it), `start` (percent,
+///   0..=100, of the file's first `START_BYTES` in without a gap) and
+///   `stage`: `"connecting"` (no one connected yet), `"fetching"` (the start
+///   is coming in) or `"starting"` (the start is in; the player opens it).
 pub fn status(job: u32) -> Value {
     let Some(core) = CORE.get() else {
         return json!({ "phase": "failed", "message": "the engine is not started" });
@@ -344,7 +356,8 @@ pub fn status(job: u32) -> Value {
     match state {
         Job::NoSource => json!({ "phase": "no_source" }),
         Job::NoSpace { needed, free } => json!({ "phase": "no_space", "needed": needed, "free": free }),
-        Job::Resolving => json!({ "phase": "resolving" }),
+        Job::Searching => json!({ "phase": "resolving", "stage": "searching" }),
+        Job::Resolving => json!({ "phase": "resolving", "stage": "finding" }),
         Job::Failed(message) => json!({ "phase": "failed", "message": message }),
         Job::Ready(handle, link) => {
             let Some(file) = video_file(&handle, job) else {
@@ -367,6 +380,15 @@ pub fn status(job: u32) -> Value {
             let cached = stats.file_progress.get(file).copied().unwrap_or(0);
             let live = stats.live.as_ref();
             let peers = live.map(|l| l.snapshot.peer_stats.live);
+            let found = live.map(|l| l.snapshot.peer_stats.seen);
+            let start = start_percent(core, &handle, file);
+            let stage = if start >= 100 {
+                "starting"
+            } else if peers.unwrap_or(0) == 0 {
+                "connecting"
+            } else {
+                "fetching"
+            };
             json!({
                 "phase": "ready",
                 "name": handle.name(),
@@ -375,6 +397,9 @@ pub fn status(job: u32) -> Value {
                 "low_space": low_space(),
                 "speed": live.map(|l| l.download_speed.mbps).unwrap_or(0.0),
                 "peers": peers,
+                "found": found,
+                "start": start,
+                "stage": stage,
                 "progress": match file_len { Some(len) if len > 0 => cached as f64 / len as f64, _ => 0.0 },
             })
         }
@@ -436,11 +461,16 @@ pub fn timeline(job: u32, position: f64, duration: f64) -> Value {
     json!({ "ranges": ranges, "ahead": timeline::ready_ahead(&buckets, position, duration) })
 }
 
-/// File `file` of the torrent cut into `n` equal byte ranges, each the
-/// fraction in the cache (whole verified pieces only: evicted ones are not).
-/// None when unknown.
-fn file_buckets(core: &Core, handle: &Arc<librqbit::ManagedTorrent>, file: usize, n: usize) -> Option<Vec<f64>> {
-    let layout = handle
+/// Percent (0..=100) of the first `START_BYTES` of file `file` (all of a
+/// smaller file) downloaded without a gap from its first byte.
+fn start_percent(core: &Core, handle: &Arc<librqbit::ManagedTorrent>, file: usize) -> u64 {
+    let Some(layout) = file_layout(handle, file) else { return 0 };
+    let Ok((have, _)) = core.api.api_dump_haves(handle.id().into()) else { return 0 };
+    layout.start_percent(|piece| have.get(piece as usize).is_some_and(|b| *b), START_BYTES)
+}
+
+fn file_layout(handle: &Arc<librqbit::ManagedTorrent>, file: usize) -> Option<Layout> {
+    handle
         .with_metadata(|m| {
             let l = m.lengths();
             m.file_infos.get(file).map(|f| Layout {
@@ -450,7 +480,14 @@ fn file_buckets(core: &Core, handle: &Arc<librqbit::ManagedTorrent>, file: usize
                 file_length: f.len,
             })
         })
-        .ok()??;
+        .ok()?
+}
+
+/// File `file` of the torrent cut into `n` equal byte ranges, each the
+/// fraction in the cache (whole verified pieces only: evicted ones are not).
+/// None when unknown.
+fn file_buckets(core: &Core, handle: &Arc<librqbit::ManagedTorrent>, file: usize, n: usize) -> Option<Vec<f64>> {
+    let layout = file_layout(handle, file)?;
     // Not live yet (still checking the files on disk): nothing downloaded.
     let Ok((have, _)) = core.api.api_dump_haves(handle.id().into()) else {
         return Some(vec![0.0; n.max(1)]);
@@ -468,6 +505,23 @@ struct Layout {
 }
 
 impl Layout {
+    /// Percent (0..=100) of the file's first `want` bytes (all of a smaller
+    /// file) that lie in downloaded pieces without a gap from its first byte.
+    fn start_percent(&self, have: impl Fn(u32) -> bool, want: u64) -> u64 {
+        let want = want.min(self.file_length);
+        if want == 0 || self.piece_length == 0 {
+            return 0;
+        }
+        let end = self.file_offset + want;
+        let mut piece = self.file_offset / self.piece_length;
+        let mut ready = self.file_offset;
+        while ready < end && have(piece as u32) {
+            piece += 1;
+            ready = (piece * self.piece_length).min(self.total_length);
+        }
+        (ready.min(end) - self.file_offset) * 100 / want
+    }
+
     /// The file cut into `n` equal byte ranges (at least 1), each the fraction
     /// of its bytes that lie in pieces `have` says are downloaded.
     fn buckets(&self, have: impl Fn(u32) -> bool, n: usize) -> Vec<f64> {
@@ -543,6 +597,23 @@ mod tests {
         let b = l.buckets(|p| p == 1 || p == 2, 4);
         // Buckets: 50..150 (half), 150..250 (full), 250..350 (half), 350..450 (none).
         assert_eq!(b, vec![0.5, 1.0, 0.5, 0.0]);
+    }
+
+    #[test]
+    fn start_counts_from_the_first_byte_without_a_gap() {
+        // Pieces of 100 bytes; the file is bytes 50..1050; the start wanted is 400 bytes (50..450).
+        let l = Layout { piece_length: 100, total_length: 1100, file_offset: 50, file_length: 1000 };
+        assert_eq!(l.start_percent(|_| false, 400), 0);
+        // Piece 0 holds 50..100: 50 of 400.
+        assert_eq!(l.start_percent(|p| p == 0, 400), 12);
+        // Pieces 0, 1 and 3, not 2: 50..200, a gap after.
+        assert_eq!(l.start_percent(|p| p != 2, 400), 37);
+        assert_eq!(l.start_percent(|p| p <= 4, 400), 100);
+        // A file smaller than what is wanted: all of it.
+        let small = Layout { piece_length: 100, total_length: 150, file_offset: 0, file_length: 150 };
+        assert_eq!(small.start_percent(|p| p == 0, 400), 66);
+        assert_eq!(small.start_percent(|_| true, 400), 100);
+        assert_eq!(Layout { file_length: 0, ..small }.start_percent(|_| true, 400), 0);
     }
 
     #[test]

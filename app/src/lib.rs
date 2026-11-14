@@ -260,6 +260,17 @@ impl Fmt {
         }
     }
 
+    /// A download speed in MiB/s as "3.4 MB/s" (one decimal under 10, whole
+    /// above).
+    pub fn speed(mib_per_s: f64) -> String {
+        let v = if mib_per_s.is_finite() { mib_per_s.max(0.0) } else { 0.0 };
+        if v >= 9.95 {
+            format!("{} MB/s", v.round() as u64)
+        } else {
+            format!("{v:.1} MB/s")
+        }
+    }
+
     /// Minutes as hours and minutes, `[h, m]` (the UI words them).
     pub fn hours_minutes(minutes: u32) -> Vec<u32> {
         vec![minutes / 60, minutes % 60]
@@ -282,5 +293,13 @@ mod tests {
         assert_eq!(Fmt::size(1024.0 * 1024.0 * 1024.0), "1 GB");
         assert_eq!(Fmt::size(1.4 * 1024.0 * 1024.0 * 1024.0), "1.4 GB");
         assert_eq!(Fmt::size(12.3 * 1024.0 * 1024.0 * 1024.0), "12 GB");
+    }
+
+    #[test]
+    fn speed() {
+        assert_eq!(Fmt::speed(3.42), "3.4 MB/s");
+        assert_eq!(Fmt::speed(0.0), "0.0 MB/s");
+        assert_eq!(Fmt::speed(12.6), "13 MB/s");
+        assert_eq!(Fmt::speed(f64::NAN), "0.0 MB/s");
     }
 }

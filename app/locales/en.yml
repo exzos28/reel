@@ -237,12 +237,22 @@ compat:
 
 player:
   back: Back
-  resolving: Finding peers…
+  stage:
+    searching: Looking for a release
+    finding: Finding people sharing this film
+    connecting: Connecting to people sharing it
+    found:
+      one: Found 1 person, connecting
+      other: "Found %{count} people, connecting"
+    fetching: "Fetching the start of the film, %{percent}%"
+    starting: Starting
   buffering: Buffering
+  ahead_seconds: "%{seconds} s ready ahead"
+  rate_from: "%{speed} from %{count} people"
   ready_ahead: "%{minutes} min ready ahead"
   ready_ahead_short: Less than a minute ready ahead
-  speed: "streaming at %{speed} MB/s"
-  peers: "from %{count} people"
+  streaming: "streaming at %{speed}"
+  streaming_from: "streaming at %{speed} from %{count} people"
   left: "%{time} left"
   play: Play
   pause: Pause
@@ -257,10 +267,13 @@ player:
   play_now: Play now
   in_seconds: "in %{seconds} s"
   watch_credits: Watch credits
-  no_source: No release to play. Add a search source in Settings, or pick another release.
+  no_source: No release to play.
+  no_source_hint: Add a search source in Settings, or pick another release.
   failed: "Could not play: %{message}"
-  no_space: "Not enough space to play: needs %{needed}, %{free} free. Free up space on this device or lower the buffer size in Settings."
-  no_space_unknown: "Not enough space to play: needs %{needed}. Free up space on this device or lower the buffer size in Settings."
+  failed_hint: Go back and pick another release.
+  no_space: "Not enough space to play: needs %{needed}, %{free} free."
+  no_space_unknown: "Not enough space to play: needs %{needed}."
+  no_space_hint: Free up space on this device or lower the buffer size in Settings.
   low_space: This device is out of space, so playback is paused. Free up space or lower the buffer size in Settings.
 
 settings:
