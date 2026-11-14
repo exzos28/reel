@@ -19,6 +19,7 @@ import { back, openTitle } from "../../nav";
 import { play } from "../../playback";
 import { u } from "../../theme";
 import { AboutBlock, hasAbout } from "./AboutBlock";
+import { LazyBlock } from "../../layout/LazyBlock";
 import { CastRow } from "./CastRow";
 import { DetailsBlock, hasDetails } from "./DetailsBlock";
 import { action, castAt, focusTitle, item, season, similarAt, zone, type Zone } from "./focus";
@@ -174,6 +175,7 @@ export function TitleScreen(props: { id: string }) {
           <AboutBlock data={data} />
         </If>
         <If when={cast().length > 0}>
+          <LazyBlock page={page} height={() => u(300)}>
           <CastRow
             cast={cast}
             focusedAt={() => (zone() === "cast" ? castAt() : null)}
@@ -182,6 +184,7 @@ export function TitleScreen(props: { id: string }) {
               castAt.set(i);
             }}
           />
+          </LazyBlock>
         </If>
       </View>
       {/* So do the details and More like this. */}
@@ -190,11 +193,13 @@ export function TitleScreen(props: { id: string }) {
           <DetailsBlock data={data} />
         </If>
         <If when={similar().length > 0}>
+          <LazyBlock page={page} height={() => u(198 + 160)}>
           <SimilarShelf
             items={similar}
             focusedAt={() => (zone() === "similar" ? similarAt() : null)}
             onOpen={openSimilar}
           />
+          </LazyBlock>
         </If>
       </View>
     </Screen>

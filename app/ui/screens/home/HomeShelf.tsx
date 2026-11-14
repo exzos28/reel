@@ -2,7 +2,8 @@ import { View, type ViewRef } from "nsh";
 import { t } from "nsh/i18n";
 import type { Shelf as ShelfData } from "../../catalog";
 import { SectionTitle } from "../../layout/Section";
-import { scroller } from "../../layout/Scroller";
+import { LazyBlock } from "../../layout/LazyBlock";
+import { scroller, type ScrollCtl } from "../../layout/Scroller";
 import { Shelf } from "../../layout/Shelf";
 import { safe, u } from "../../theme";
 import { WideCard } from "./WideCard";
@@ -14,12 +15,16 @@ export function HomeShelf(props: {
   focusedAt: () => number | null;
   blockRef: (r: ViewRef) => void;
   onOpen: (col: number) => void;
+  /** The page's scroll: the row of cards mounts when the page nears it. */
+  page: ScrollCtl;
+  eager?: boolean;
 }) {
   /** The shelf puts the focused card at the left edge of its inset. */
   const line = scroller({ horizontal: true, anchor: () => safe().x });
   return (
     <View ref={props.blockRef} style={{ gap: u(22) }}>
       <SectionTitle text={() => t(`shelf.${props.shelf().id}`)} inset />
+      <LazyBlock page={props.page} eager={props.eager} height={() => u(198 + 110)}>
       <Shelf ctl={line} gap={24} top={0} bottom={24}>
         <Each of={props.shelf().items} key={(f) => f.id}>
           {(item, c) => (
@@ -33,6 +38,7 @@ export function HomeShelf(props: {
           )}
         </Each>
       </Shelf>
+      </LazyBlock>
     </View>
   );
 }

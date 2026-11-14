@@ -92,6 +92,8 @@ export function HomeScreen() {
               focusedAt={() => (zone() === "shelves" && row() === r() ? col(r()) : null)}
               blockRef={page.follow(() => zone() === "shelves" && row() === r(), r() === 0 ? "nearest" : "anchor")}
               onOpen={(c) => open(r(), c, shelf().items[c].id)}
+              page={page}
+              eager={r() < 2}
             />
           )}
         </Each>

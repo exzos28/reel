@@ -31,6 +31,8 @@ export interface ScrollCtl {
    * `when` turns true by a key; the first time (the screen opening, or
    * coming back to it), it only shows it, at once. */
   follow(when: () => boolean, placement?: Placement): (r: ViewRef) => void;
+  /** How far the view is scrolled (points), for `LazyBlock`. */
+  offset: ReturnType<typeof signal<number>>;
   /** @internal Where the view is now, from `Scroller`'s scroll events. */
   remember(offset: number): void;
   /** @internal The scroll view and its content, set by `Scroller`. */
@@ -98,7 +100,9 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
   };
   const ctl: ScrollCtl = {
     horizontal,
+    offset: signal(0),
     remember(offset) {
+      ctl.offset.set(offset);
       if (!frame) at = offset;
       if (opts.memory) offsets.set(opts.memory, offset);
     },
