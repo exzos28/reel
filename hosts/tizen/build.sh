@@ -93,6 +93,9 @@ build_core() {
         (cd "$HERE" && cargo build --locked --release -p reel-tizen-core --lib --target "$TRIPLE")
     else
         have zig || die "zig not found (or set REEL_TIZEN_CC; run '$0 check')"
+        # ring's ARM assembly needs NEON, which zig leaves off for plain armv7. Every Samsung
+        # TV SoC (Cortex-A53/A73 running 32-bit) has it; cortex_a7 = ARMv7-A + NEON + VFPv4.
+        export "CFLAGS_${TRIPLE//-/_}=${CFLAGS_ARMV7:--mcpu=cortex_a7}"
         have cargo-zigbuild || die "cargo-zigbuild not found (run '$0 check')"
         log "core: cargo zigbuild --target $TRIPLE.$GLIBC"
         (cd "$HERE" && cargo zigbuild --locked --release -p reel-tizen-core --lib --target "$TRIPLE.$GLIBC")
