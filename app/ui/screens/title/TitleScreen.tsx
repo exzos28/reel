@@ -14,7 +14,7 @@ import { clamp } from "../../focus/memory";
 import { useZones } from "../../focus/zones";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
-import { FloatingBack } from "../../layout/TopBar";
+import { backInTitleBar, FloatingBack } from "../../layout/TopBar";
 import { back, openTitle } from "../../nav";
 import { play } from "../../playback";
 import { u } from "../../theme";
@@ -86,7 +86,8 @@ export function TitleScreen(props: { id: string }) {
       actions: {
         left: () => action.set(Math.max(action() - 1, 0)),
         right: () => action.set(Math.min(action() + 1, actions.length - 1)),
-        up: () => zone.set("back"),
+        // On a Mac Back is in the title bar, out of the remote's reach (Esc goes back).
+        up: () => !backInTitleBar && zone.set("back"),
         down: () => {
           if (isShow()) zone.set("tabs");
           else if (listLength() > 0) enterList(0);

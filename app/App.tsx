@@ -15,6 +15,7 @@ import { back, route } from "./ui/nav";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
 import { loadSettings } from "./ui/preferences";
+import { backInTitleBar, TITLE_BAR_HEIGHT, TitleBarBack } from "./ui/layout/TopBar";
 import { colors } from "./ui/theme";
 
 setColorScheme("dark");
@@ -25,7 +26,7 @@ function App() {
   keymap.bind("mod+shift+f", () => setFpsEnabled(!fpsEnabled()));
   // On the Mac the window has no grey title bar: the app's own background (the
   // hero's still) runs up to the top edge, under the traffic lights.
-  if (platform.os === "macos") currentWindow().set({ titleBar: { style: "hidden" } });
+  if (platform.os === "macos") currentWindow().set({ titleBar: { style: "hidden", height: TITLE_BAR_HEIGHT } });
   const playing = () => status().phase !== "idle";
   /** Free space for the Settings screen, read when it opens. */
   const freeBytes = signal<number | null>(null);
@@ -45,6 +46,10 @@ function App() {
         desktop={{ windowDrag: true }}
         style={{ position: "absolute", top: 0, left: 0, right: 0, height: titleBar().height, zIndex: 10 }}
       />
+      {/* On a Mac, Back sits in the title bar beside the traffic lights. */}
+      <If when={backInTitleBar && !playing() && !isTopLevel(r().name)}>
+        <TitleBarBack onPress={back} />
+      </If>
       <If when={!playing()} else={<Player />}>
         <If when={isTopLevel(r().name)}>
           <TopLevel />
