@@ -60,38 +60,43 @@ pub fn caps_url(endpoint: &str, key: Option<&str>) -> anyhow::Result<String> {
     with_params(endpoint, key, &[("t", "caps".into())])
 }
 
+const MOVIE_CATS: &str = "2000,5070";
+const TV_CATS: &str = "5000";
+
 /// The URLs to try, best first: by IMDb id when the endpoint can, then by text.
 pub fn search_urls(endpoint: &str, key: Option<&str>, query: &Query, caps: &Caps) -> anyhow::Result<Vec<String>> {
     let mut urls = Vec::new();
+    // Only video: Torznab's Movies (2000) and TV (5000; anime films often sit
+    // under TV/Anime 5070), not the games and software a source also has.
+    let cats = if matches!(query, Query::Movie { .. }) { MOVIE_CATS } else { TV_CATS };
+    let url = |params: &[(&str, String)]| {
+        let mut p = params.to_vec();
+        p.push(("cat", cats.to_owned()));
+        with_params(endpoint, key, &p)
+    };
     match query {
         Query::Movie { imdb, title, year } => {
             if let (Some(id), true) = (imdb, caps.movie_imdb) {
-                urls.push(with_params(endpoint, key, &[("t", "movie".into()), ("imdbid", imdb_digits(id))])?);
+                urls.push(url(&[("t", "movie".into()), ("imdbid", imdb_digits(id))])?);
             }
             let q = match year {
                 Some(y) => format!("{title} {y}"),
                 None => title.clone(),
             };
-            urls.push(with_params(endpoint, key, &[("t", "search".into()), ("q", q)])?);
+            urls.push(url(&[("t", "search".into()), ("q", q)])?);
         }
         Query::Episode { imdb, title, season, episode } => {
             if let (Some(id), true) = (imdb, caps.tv_imdb) {
-                urls.push(with_params(
-                    endpoint,
-                    key,
-                    &[("t", "tvsearch".into()), ("imdbid", imdb_digits(id)), ("season", season.to_string()), ("ep", episode.to_string())],
+                urls.push(url(&[("t", "tvsearch".into()), ("imdbid", imdb_digits(id)), ("season", season.to_string()), ("ep", episode.to_string())],
                 )?);
             }
             if caps.tv_season_ep {
-                urls.push(with_params(
-                    endpoint,
-                    key,
-                    &[("t", "tvsearch".into()), ("q", title.clone()), ("season", season.to_string()), ("ep", episode.to_string())],
+                urls.push(url(&[("t", "tvsearch".into()), ("q", title.clone()), ("season", season.to_string()), ("ep", episode.to_string())],
                 )?);
             }
-            urls.push(with_params(endpoint, key, &[("t", "search".into()), ("q", format!("{title} S{season:02}E{episode:02}"))])?);
+            urls.push(url(&[("t", "search".into()), ("q", format!("{title} S{season:02}E{episode:02}"))])?);
             // Whole-season packs hold the episode too.
-            urls.push(with_params(endpoint, key, &[("t", "search".into()), ("q", format!("{title} S{season:02}"))])?);
+            urls.push(url(&[("t", "search".into()), ("q", format!("{title} S{season:02}"))])?);
         }
     }
     Ok(urls)
@@ -286,13 +291,13 @@ mod tests {
         let caps = Caps { movie_imdb: true, tv_imdb: false, tv_season_ep: true };
         let movie = Query::Movie { imdb: Some("tt1727587".into()), title: "Sintel".into(), year: Some(2010) };
         let u = search_urls("http://127.0.0.1:9117/api/v2.0/indexers/all/results/torznab/api", Some("k"), &movie, &caps).unwrap();
-        assert_eq!(u[0], "http://127.0.0.1:9117/api/v2.0/indexers/all/results/torznab/api?apikey=k&t=movie&imdbid=1727587");
-        assert!(u[1].ends_with("t=search&q=Sintel+2010"));
+        assert_eq!(u[0], "http://127.0.0.1:9117/api/v2.0/indexers/all/results/torznab/api?apikey=k&t=movie&imdbid=1727587&cat=2000%2C5070");
+        assert!(u[1].ends_with("t=search&q=Sintel+2010&cat=2000%2C5070"), "only films");
         let ep = Query::Episode { imdb: Some("tt0027623".into()), title: "Flash Gordon".into(), season: 1, episode: 3 };
         let u = search_urls("http://h/api", None, &ep, &caps).unwrap();
-        assert_eq!(u[0], "http://h/api?t=tvsearch&q=Flash+Gordon&season=1&ep=3", "no imdb tv search, no key");
-        assert!(u.iter().any(|x| x.ends_with("q=Flash+Gordon+S01E03")));
-        assert!(u.iter().any(|x| x.ends_with("q=Flash+Gordon+S01")));
+        assert_eq!(u[0], "http://h/api?t=tvsearch&q=Flash+Gordon&season=1&ep=3&cat=5000", "no imdb tv search, no key; only TV");
+        assert!(u.iter().any(|x| x.ends_with("q=Flash+Gordon+S01E03&cat=5000")));
+        assert!(u.iter().any(|x| x.ends_with("q=Flash+Gordon+S01&cat=5000")));
     }
 
     #[test]

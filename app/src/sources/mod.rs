@@ -61,6 +61,11 @@ impl Request {
         }
     }
 
+    /// Every name of the title: its title and the other ones.
+    fn names(&self) -> Vec<String> {
+        std::iter::once(self.title.clone()).chain(self.alt_titles.iter().cloned()).collect()
+    }
+
     /// The text queries after the first: each other title once (the IMDb id is
     /// only tried with the first, it doesn't depend on the name).
     fn alt_queries(&self) -> Vec<Query> {
@@ -196,10 +201,13 @@ async fn search(source: &Source, request: &Request) -> anyhow::Result<(Vec<Value
         urls.extend(torznab::search_urls(&source.url, source.key.as_deref(), &q, &caps)?);
     }
     urls.dedup();
+    let names = request.names();
     for url in urls {
         match get(&url).await.and_then(|xml| torznab::parse(&xml)) {
             Ok(items) => {
-                found.extend(items);
+                // A source that cannot search the way asked may answer with its
+                // latest releases instead: only those about this title count.
+                found.extend(items.into_iter().filter(|it| is_about(&it.title, &names, request.year, request.season.is_none())));
                 if rank(&found, &query).0.iter().any(|r| r["seeders"].as_u64().unwrap_or(0) > 0) {
                     break;
                 }
@@ -211,6 +219,38 @@ async fn search(source: &Source, request: &Request) -> anyhow::Result<(Vec<Value
     match (ranked.is_empty() && hidden.is_empty(), last_err) {
         (true, Some(e)) => Err(e),
         _ => Ok((ranked, hidden)),
+    }
+}
+
+/// The words of a name, lowercased, without punctuation ("ё" as "е").
+fn words(text: &str) -> Vec<String> {
+    text.to_lowercase()
+        .replace('ё', "е")
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .map(str::to_owned)
+        .collect()
+}
+
+/// The years a release's name gives (1900–2099).
+fn years_in(text: &str) -> Vec<u16> {
+    words(text).iter().filter_map(|w| w.parse::<u16>().ok()).filter(|y| (1900..2100).contains(y)).collect()
+}
+
+/// Whether a release's name is about the title: every word of one of its
+/// `names` is in it, and for a film a year it gives is the film's (±1).
+fn is_about(release: &str, names: &[String], year: Option<u16>, film: bool) -> bool {
+    let have = words(release);
+    let named = names.iter().map(|n| words(n)).filter(|w| !w.is_empty()).any(|name| name.iter().all(|w| have.contains(w)));
+    if !named {
+        return false;
+    }
+    match (film, year) {
+        (true, Some(y)) => {
+            let ys = years_in(release);
+            ys.is_empty() || ys.iter().any(|r| r.abs_diff(y) <= 1)
+        }
+        _ => true,
     }
 }
 
@@ -283,6 +323,20 @@ fn rank(items: &[Item], query: &Query) -> (Vec<Value>, Vec<Value>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_releases_about_the_title_count() {
+        let names = ["Годзилла: Минус ноль".to_owned(), "Godzilla Minus Zero".to_owned()];
+        let about = |t: &str| is_about(t, &names, Some(2026), true);
+        assert!(about("Годзилла: Минус ноль / Godzilla Minus Zero (2026) WEB-DL 1080p"));
+        assert!(about("Godzilla.Minus.Zero.2026.2160p.UHD.BluRay"));
+        assert!(!about("Assassin's Creed Black Flag [RUS]"), "a source's latest releases are not this film");
+        assert!(!about("4K Video Downloader Plus 26.1"));
+        assert!(!about("Годзилла: Минус один / Godzilla Minus One (2023) 1080p"), "another film of the series");
+        assert!(about("Годзилла Минус Ноль WEBRip"), "no year: kept");
+        assert!(is_about("Ёлки 2010 HDTV", &["Елки".to_owned()], Some(2010), true), "ё is е");
+        assert!(is_about("The Office S01E03 1080p", &["The Office".to_owned()], Some(2005), false), "a show's year is not checked");
+    }
 
     #[test]
     fn ranking_dedupes_and_orders() {
