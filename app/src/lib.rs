@@ -177,6 +177,12 @@ pub struct Settings;
 #[cfg(not(target_arch = "wasm32"))]
 #[module]
 impl Settings {
+    /// The kind of device, when the host knows better than the system ("tv" on a
+    /// Samsung TV, whose web view NSH takes for a desktop browser); empty otherwise.
+    pub fn device() -> String {
+        sources::compat::profile().device().unwrap_or_default().to_owned()
+    }
+
     /// Loads the settings from `data_dir` (the app's data directory, empty
     /// when the host has none) and configures the engine from them; JSON
     /// `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`.

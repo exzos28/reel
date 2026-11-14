@@ -159,6 +159,7 @@ export const Catalog: CatalogModule = {
 
 export const Settings: SettingsModule = {
   load: s("Settings", "load"),
+  device: s("Settings", "device"),
   setBufferMb: s("Settings", "setBufferMb"),
   setStreamDetails: s("Settings", "setStreamDetails"),
   setSource: s("Settings", "setSource"),

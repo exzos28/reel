@@ -3,6 +3,7 @@
 // token(); sizes are written in TV pixels and scaled by density.
 import { computed, platform, token, windowSize, type TextStyle, type ViewStyle } from "nsh";
 import geist from "../fonts/Geist.ttf";
+import { Settings } from "./native";
 
 export const font = geist;
 
@@ -47,8 +48,10 @@ export function alpha(color: string, opacity: number) {
  *   layout (shelves scroll) instead of zooming it.
  * TODO: the Tizen build runs the web target; detect it as ten-foot there. */
 export type Density = "ten-foot" | "regular" | "compact";
-export const density: Density =
-  platform.idiom === "tv" ? "ten-foot" : platform.idiom === "phone" ? "compact" : "regular";
+/** A TV: the system says so, or the core does (a Samsung TV's web view looks like a desktop
+ * browser to NSH, but the core there runs the TV's player). */
+const tv = platform.idiom === "tv" || Settings.device() === "tv";
+export const density: Density = tv ? "ten-foot" : platform.idiom === "phone" ? "compact" : "regular";
 
 const FIXED = { regular: 0.66, compact: 0.45 } as const;
 const scale = computed(() => (density === "ten-foot" ? windowSize().width / 1920 : FIXED[density]));

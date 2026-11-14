@@ -93,6 +93,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         let (tag,): (String,) = args(a)?;
         ret(Settings::set_language(tag))
     })
+    .sync("Settings", "device", |a| {
+        no_args(&a)?;
+        ret(Settings::device())
+    })
     .sync("Settings", "setContentLanguage", |a| {
         let (tag,): (String,) = args(a)?;
         ret(Settings::set_content_language(tag))

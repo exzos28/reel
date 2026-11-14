@@ -46,6 +46,15 @@ impl Profile {
         }
     }
 
+    /// The kind of device this host is when the system cannot say: "tv" for a TV's
+    /// player (the web build on a Samsung TV looks like a desktop browser to NSH).
+    pub fn device(self) -> Option<&'static str> {
+        match self {
+            Profile::Tizen => Some("tv"),
+            Profile::Mpv | Profile::AppleAvPlayer | Profile::AndroidMediaPlayer => None,
+        }
+    }
+
     /// The default for the platform this core was built for; a host with a
     /// different player (mpv on macOS, the Tizen service) sets its own.
     fn default_for_target() -> Profile {
