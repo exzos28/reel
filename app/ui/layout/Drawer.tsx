@@ -19,7 +19,7 @@ import { rounded } from "../kit/shape";
 import { metaText, sectionTitle } from "../kit/text";
 import { alpha, colors, safe, u } from "../theme";
 import closeIcon from "../icons/plus.svg";
-import { chrome } from "./chrome";
+import { frame } from "./chrome";
 import { scroller, Scroller, type ScrollCtl } from "./Scroller";
 
 const veil = () => alpha(colors.ink(), 0.6);
@@ -32,16 +32,16 @@ const tvPanel = (width: number): ViewStyle => ({
 });
 
 function sheetStyle(): ViewStyle {
-  if (chrome === "phone")
+  if (frame.panel === "bottom-sheet")
     return { height: "60%", backgroundColor: colors.card(), borderTopLeftRadius: 22, borderTopRightRadius: 22, borderCurve: "continuous" };
-  if (chrome === "tablet") return { width: 440, margin: 12, backgroundColor: colors.card(), ...rounded(22) };
+  if (frame.panel === "floating-sheet") return { width: 440, margin: 12, backgroundColor: colors.card(), ...rounded(22) };
   // A desktop's: over everything, the window bar too, the full height.
   return { width: 460, backgroundColor: colors.card(), borderLeftWidth: 1, borderLeftColor: alpha(colors.snow(), 0.08) };
 }
 const grabberStyle = (): ViewStyle => ({ width: 36, height: 5, borderRadius: 3, alignSelf: "center", backgroundColor: "#4A4A4A", marginTop: 8 });
 const closeStyle = (): ViewStyle => ({
   position: "absolute",
-  top: chrome === "phone" ? 18 : 14,
+  top: frame.panel === "bottom-sheet" ? 18 : 14,
   right: 14,
   width: 30,
   height: 30,
@@ -52,9 +52,9 @@ const closeStyle = (): ViewStyle => ({
   zIndex: 2,
 });
 const contentStyle = (): ViewStyle =>
-  chrome === "tv"
+  frame.panel === "tv"
     ? { paddingHorizontal: u(48), paddingTop: safe().y, paddingBottom: safe().y, gap: u(20) }
-    : { paddingHorizontal: 16, paddingTop: chrome === "phone" ? 8 : 16, paddingBottom: 24, gap: 12 };
+    : { paddingHorizontal: 16, paddingTop: frame.panel === "bottom-sheet" ? 8 : 16, paddingBottom: 24, gap: 12 };
 
 /** ✕: the plus turned a quarter. */
 function CloseButton(props: { onPress: () => void }) {
@@ -74,7 +74,7 @@ function Body(props: { title: () => string; note?: () => string; children: (list
     <Scroller ctl={list} style={{ flex: 1 }}>
       <View style={contentStyle()}>
         {/* Room on the right for the ✕ where there is one. */}
-        <View style={{ gap: u(6), paddingRight: chrome === "tv" ? 0 : 40 }}>
+        <View style={{ gap: u(6), paddingRight: frame.panel === "tv" ? 0 : 40 }}>
           <Text style={sectionTitle()}>{props.title()}</Text>
           <If when={props.note?.()}>
             <Text style={metaText()}>{props.note!()}</Text>
@@ -103,7 +103,7 @@ export function Drawer(props: {
   const close = () => props.open() && props.onClose();
   return (
     <If
-      when={chrome !== "tv"}
+      when={frame.panel !== "tv"}
       else={
         <If when={props.open()}>
           {[
@@ -118,8 +118,8 @@ export function Drawer(props: {
       <Sheet
         testID={`${props.id}-sheet`}
         open={props.open()}
-        side={chrome === "phone" ? "bottom" : "right"}
-        closeOnSwipe={chrome === "phone"}
+        side={frame.panel === "bottom-sheet" ? "bottom" : "right"}
+        closeOnSwipe={frame.panel === "bottom-sheet"}
         // Back (Escape, Android's back) closes it: the top overlay takes the key.
         closeOnEscape
         onOpenChange={(e) => !e.open && close()}
@@ -127,7 +127,7 @@ export function Drawer(props: {
         backdropStyle={{ backgroundColor: veil() }}
       >
         <View testID={`${props.id}-panel`} style={{ flex: 1 }}>
-          <If when={chrome === "phone"}>
+          <If when={frame.panel === "bottom-sheet"}>
             <View style={grabberStyle()} />
           </If>
           <CloseButton onPress={close} />

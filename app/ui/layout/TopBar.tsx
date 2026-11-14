@@ -8,7 +8,8 @@ import { Icon } from "../kit/Icon";
 import { rounded } from "../kit/shape";
 import { pageTitle } from "../kit/text";
 import { alpha, colors, u } from "../theme";
-import { chrome, isTouch } from "./chrome";
+import { caps } from "../platform";
+import { chrome } from "./chrome";
 
 /** The phone's discs over a hero, points: 40 across (a 44 touch area), 16 in from the edge, 4 under the status bar. */
 const DISC = 40;
@@ -39,7 +40,7 @@ export function FloatingBack(props: { onPress: () => void }) {
 /** A deep page's title (About), where no system header shows it (touch has one). */
 export function PageHeader(props: { title: () => string }) {
   return (
-    <If when={!isTouch}>
+    <If when={!caps.touch}>
       <Text style={pageTitle()}>{props.title()}</Text>
     </If>
   );

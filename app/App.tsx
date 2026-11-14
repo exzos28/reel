@@ -18,7 +18,7 @@ import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
 import { canGoBack, closeFirst, go, handleBack, isRoot, route, section, useTabStacks } from "./ui/nav";
 import { screenFor } from "./ui/screens/RouteScreen";
-import { chrome } from "./ui/layout/chrome";
+import { frame } from "./ui/layout/chrome";
 import { caps } from "./ui/platform";
 import { PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
 import { TouchStack } from "./ui/layout/TouchStack";
@@ -89,10 +89,10 @@ function App() {
         <If when={caps.touch} else={<OneScreen />}>
           <TouchStack page={screenFor} />
         </If>
-        <If when={chrome === "phone"}>
+        <If when={frame.nav === "tab-bar"}>
           <PhoneTabBar />
         </If>
-        <If when={chrome === "tablet"}>
+        <If when={frame.nav === "top-row"}>
           <TabletTopRow />
         </If>
       </If>

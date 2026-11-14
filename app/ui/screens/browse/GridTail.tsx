@@ -6,7 +6,8 @@ import { t } from "nsh/i18n";
 import { rounded } from "../../kit/shape";
 import { metaText } from "../../kit/text";
 import type { ScrollCtl } from "../../layout/Scroller";
-import { alpha, colors, density, safe, u } from "../../theme";
+import { caps } from "../../platform";
+import { alpha, colors, safe, u } from "../../theme";
 
 /** How far past the viewport's end (in viewports) the tail asks for more. */
 const AHEAD = 1;
@@ -47,7 +48,7 @@ export function GridTail(props: {
   };
   effect(() => {
     // A TV's page moves with the focus, which asks for itself (two rows before the end).
-    if (density === "ten-foot") return;
+    if (caps.remote) return;
     props.page.offset();
     props.grid();
     windowSize();

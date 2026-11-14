@@ -7,6 +7,7 @@
 // going there is the platform's scroll driver's (platform/scroll.ts).
 import { effect, reduceMotion, signal, type ScrollRef, type ViewRef } from "nsh";
 import { keyed } from "../focus/keys";
+import { caps } from "../platform";
 import { perf } from "../platform/diagnostics";
 import { density, ringRoom, safe } from "../theme";
 import { anchorOffset, nearestOffset } from "./anchor";
@@ -92,7 +93,7 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     };
     // A TV keeps one focus line: up and down move the page under it, never the focus over
     // a page standing still (only where the page cannot move: its very top and end).
-    const fixedLine = density === "ten-foot" && !horizontal;
+    const fixedLine = caps.remote && !horizontal;
     const target =
       placement === "start" ? 0
       : placement === "nearest" && !fixedLine ? nearestOffset(geometry, current)

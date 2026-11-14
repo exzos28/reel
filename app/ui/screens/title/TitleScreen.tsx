@@ -19,7 +19,8 @@ import { clamp } from "../../focus/memory";
 import { useZones } from "../../focus/zones";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
-import { chrome, isDesktop } from "../../layout/chrome";
+import { chrome, frame } from "../../layout/chrome";
+import { caps } from "../../platform";
 import { ListToggle } from "../../layout/ListToggle";
 import { discCorner, FloatingBack } from "../../layout/TopBar";
 import { handleBack, openTitle } from "../../nav";
@@ -130,7 +131,7 @@ export function TitleScreen(props: { id: string }) {
     trailer: openTrailer,
   };
   const toggle = () => toggleList(props.id);
-  if (isDesktop) keymap.bind({ "mod+d": toggle });
+  if (caps.shortcuts) keymap.bind({ "mod+d": toggle });
   /** The hero's last stop: the release button when there is one, else the actions. */
   const heroEnd = (): Zone => (data().release ? "release" : "actions");
   /** Down from the hero: a show's season tabs, else the rows below. */
@@ -184,7 +185,7 @@ export function TitleScreen(props: { id: string }) {
         left: () => action.set(Math.max(action() - 1, 0)),
         right: () => action.set(Math.min(action() + 1, actionCount() - 1)),
         // Add to list is above the actions on a TV (a desktop's is in the window bar, ⌘D / Ctrl+D).
-        up: () => chrome === "tv" && zone.set("header"),
+        up: () => caps.remote && zone.set("header"),
         down: () => (data().release ? zone.set("release") : underHero()),
         enter: () => {
           const a = heroRow()[clamp(action(), actionCount() - 1)];
@@ -249,7 +250,7 @@ export function TitleScreen(props: { id: string }) {
         />
       </View>
       {/* On a desktop Add to list is in the window bar, on a tablet in the top row. */}
-      <If when={chrome === "tv" || chrome === "phone"}>
+      <If when={frame.listInPage}>
         <View style={headerStyle()}>
           <ListToggle inList={() => data().inList} focused={() => zone() === "header"} onPress={toggle} />
         </View>

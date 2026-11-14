@@ -10,7 +10,7 @@ import { t } from "nsh/i18n";
 import { byKeys } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
 import { useRootBack } from "../../focus/rootBack";
-import { isTouch } from "../../layout/chrome";
+import { caps } from "../../platform";
 import { NAV_BOTTOM } from "../../layout/NavBar";
 import { NAV } from "../../layout/navItems";
 import { showNav } from "../../layout/navState";
@@ -145,9 +145,9 @@ export function SettingsScreen() {
   return (
     // On touch Settings is pushed on the current tab, under the system header (its title).
     <View style={{ flex: 1 }}>
-    <Screen ctl={page} nav={!isTouch}>
+    <Screen ctl={page} nav={!caps.touch}>
       <View style={pageStyle()}>
-        <If when={!isTouch}>
+        <If when={!caps.touch}>
           <Text style={pageTitle()}>{t("settings.title")}</Text>
         </If>
         {/* Each section is a block the page brings to the focus line when its row has the focus. */}

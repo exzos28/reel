@@ -9,7 +9,8 @@ import plusIcon from "../icons/plus.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
 import { alpha, colors, focusRing, font, u } from "../theme";
-import { chrome, isTouch } from "./chrome";
+import { caps } from "../platform";
+import { chrome } from "./chrome";
 
 /** Sizes, points (TV: TV pixels): height, icon, label, padding left / right. */
 const size = () =>
@@ -51,7 +52,7 @@ export function ListToggle(props: { inList: () => boolean; focused: () => boolea
   const tint = () => (props.inList() ? colors.snow() : colors.dim());
   return (
     <If
-      when={isTouch}
+      when={caps.touch}
       else={
         <View role="button" accessibilityLabel={label()} onPress={props.onPress} hoverStyle={{ backgroundColor: colors.raise() }} style={pillStyle(props.inList(), props.focused())}>
           <Icon src={icon} size={size().icon} color={tint} />

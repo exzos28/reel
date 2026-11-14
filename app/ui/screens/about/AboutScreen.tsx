@@ -7,7 +7,7 @@ import { Image, Text, View, type ImageStyle, type TextStyle, type ViewStyle } fr
 import { t } from "nsh/i18n";
 import { Meta } from "../../native";
 import { bodyText, labelText, metaText, sectionTitle } from "../../kit/text";
-import { isDesktop } from "../../layout/chrome";
+import { frame } from "../../layout/chrome";
 import { PageHeader } from "../../layout/TopBar";
 import { BAR_HEIGHT } from "../../layout/WindowBar";
 import { colors, safe, u } from "../../theme";
@@ -27,7 +27,7 @@ const pageStyle = (): ViewStyle => ({
   flex: 1,
   backgroundColor: colors.ink(),
   paddingHorizontal: safe().x,
-  paddingTop: isDesktop ? BAR_HEIGHT + 40 : safe().y,
+  paddingTop: frame.nav === "window-bar" ? BAR_HEIGHT + 40 : safe().y,
   paddingBottom: safe().y,
   gap: u(40),
 });
