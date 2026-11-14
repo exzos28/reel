@@ -758,7 +758,7 @@ pub(crate) fn spawn(task: impl std::future::Future<Output = ()> + Send + 'static
 /// What the scrubber draws for the job's video at `position` of `duration`
 /// seconds: `{"ranges": [[from, to], …] (0..1 of the film, ready), "ahead":
 /// seconds ready without a gap from the position}`; empty until known.
-pub fn timeline(job: u32, position: f64, duration: f64) -> Value {
+pub fn timeline(job: u32, position: f64, duration: f64, cached: f64) -> Value {
     let empty = json!({ "ranges": [], "ahead": 0 });
     let Some(core) = CORE.get() else { return empty };
     let Some(Job::Ready(handle, _)) = core.jobs.lock().unwrap().get(&job).cloned() else { return empty };
@@ -767,7 +767,9 @@ pub fn timeline(job: u32, position: f64, duration: f64) -> Value {
     // Exactly the pieces on disk now (evicted ones are not "have" any more): the scrubber never
     // shows a stretch as ready that is not.
     let Ok((have, _)) = core.api.api_dump_haves(handle.id().into()) else { return empty };
-    let ready = layout.ranges(|piece| have.get(piece as usize).is_some_and(|b| *b));
+    let on_disk = layout.ranges(|piece| have.get(piece as usize).is_some_and(|b| *b));
+    // What the player holds in memory ahead of the picture plays as well.
+    let ready = timeline::with_player_cache(on_disk, position, cached, duration);
     let ranges: Vec<[f64; 2]> = ready.iter().map(|&(a, b)| [a, b]).collect();
     json!({ "ranges": ranges, "ahead": timeline::ready_ahead(&ready, position, duration) })
 }
@@ -991,7 +993,7 @@ mod tests {
 
     /// Whether the scrubber shows `at` (0..1 of the film) as ready.
     fn ready_at(job: u32, at: f64) -> bool {
-        let t = super::timeline(job, 0.0, 100.0);
+        let t = super::timeline(job, 0.0, 100.0, 0.0);
         t["ranges"].as_array().unwrap().iter().any(|r| r[0].as_f64().unwrap() <= at && at < r[1].as_f64().unwrap())
     }
 

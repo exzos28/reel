@@ -117,6 +117,7 @@ pub struct Policy {
 }
 
 impl Policy {
+    #[cfg(test)]
     pub fn new(piece_len: u64, total_len: u64, budget: u64) -> Policy {
         Policy::with_player_cache(piece_len, total_len, budget, 0)
     }

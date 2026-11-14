@@ -74,8 +74,10 @@ impl Engine {
 
     /// What the scrubber draws at `position` of `duration` seconds:
     /// `{"ranges":[[from,to],…],"ahead":seconds}` (see `engine::timeline`).
-    pub fn timeline(job: u32, position: f64, duration: f64) -> String {
-        engine::timeline(job, position, duration).to_string()
+    /// `cached`: seconds the video view holds in memory ahead of `position` (mpv's cache),
+    /// shown as ready with what is on disk.
+    pub fn timeline(job: u32, position: f64, duration: f64, cached: f64) -> String {
+        engine::timeline(job, position, duration, cached).to_string()
     }
 
     /// Whether there is room to start playing, as JSON

@@ -34,8 +34,8 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         ret(Engine::status(job))
     })
     .sync("Engine", "timeline", |a| {
-        let (job, position, duration): (u32, f64, f64) = args(a)?;
-        ret(Engine::timeline(job, position, duration))
+        let (job, position, duration, cached): (u32, f64, f64, f64) = args(a)?;
+        ret(Engine::timeline(job, position, duration, cached))
     })
     .sync("Engine", "checkSpace", |a| {
         no_args(&a)?;

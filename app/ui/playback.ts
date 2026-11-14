@@ -56,6 +56,8 @@ export const pickReleaseFor = signal<string | null>(null);
 export const timeline = signal<Timeline>({ ranges: [], ahead: 0 });
 /** Where the player is, for the core's timeline (set by the player). */
 export const position = signal(0);
+/** Seconds the video view holds in memory ahead of `position` (mpv's cache; 0 where unknown). */
+export const cachedAhead = signal(0);
 export const duration = signal(0);
 /** Where the player seeks once the video loads (where the viewer stopped), seconds. */
 export const startAt = signal(0);
@@ -104,7 +106,7 @@ export async function play(what: Playing) {
       status.set(s);
       if (s.phase === "not_in_release") pickReleaseFor.set(playing()?.id ?? null);
       if (s.phase === "ready") {
-        const tl: Timeline = JSON.parse(await Engine.timeline(job, position(), duration()));
+        const tl: Timeline = JSON.parse(await Engine.timeline(job, position(), duration(), cachedAhead()));
         if (gen === generation) timeline.set(tl);
         if (gen === generation && Date.now() - savedAt >= SAVE_MS) saveProgress();
       } else if (s.phase !== "resolving") {

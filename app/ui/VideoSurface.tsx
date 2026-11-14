@@ -39,7 +39,7 @@ export interface VideoSurfaceProps {
   style?: ViewStyle;
   surfaceRef?: (r: SurfaceRef) => void;
   onLoad?: (e: { duration: number }) => void;
-  onProgress?: (e: { currentTime: number; duration: number }) => void;
+  onProgress?: (e: { currentTime: number; duration: number; cached?: number }) => void;
   onBuffer?: (e: { isBuffering: boolean }) => void;
   onEnd?: () => void;
   onError?: (e: { message: string }) => void;
@@ -58,7 +58,8 @@ interface MpvProps {
 
 interface MpvEvents {
   load: { duration: number };
-  progress: { currentTime: number; duration: number };
+  /** `cached`: seconds of the film the view holds ahead of `currentTime` (mpv's cache). */
+  progress: { currentTime: number; duration: number; cached?: number };
   buffer: { isBuffering: boolean };
   end: Record<string, never>;
   error: { message: string };

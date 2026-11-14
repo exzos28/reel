@@ -43,8 +43,10 @@ pub struct Player {
     src: String,
 }
 
-const OBSERVED: [(&str, c_int); 6] = [
+const OBSERVED: [(&str, c_int); 7] = [
     ("time-pos", ffi::FORMAT_DOUBLE),
+    // Seconds of the film mpv holds in memory ahead of the picture (the scrubber shows them).
+    ("demuxer-cache-time", ffi::FORMAT_DOUBLE),
     ("duration", ffi::FORMAT_DOUBLE),
     ("paused-for-cache", ffi::FORMAT_FLAG),
     // A seek waits for data too: the UI shows it as buffering.
@@ -209,6 +211,7 @@ impl Drop for Player {
 fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
     let mut time = 0.0;
     let mut duration = 0.0;
+    let mut cached_until = 0.0;
     let mut last_progress: Option<Instant> = None;
     let (mut buffering, mut cache_wait, mut seeking) = (false, false, false);
     loop {
@@ -243,8 +246,11 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
                         let every = Duration::from_millis(shared.interval_ms.load(Ordering::Relaxed));
                         if last_progress.is_none_or(|t| t.elapsed() >= every) {
                             last_progress = Some(Instant::now());
-                            emit("progress", json!({ "currentTime": time, "duration": duration }));
+                            emit("progress", json!({ "currentTime": time, "duration": duration, "cached": (cached_until - time).max(0.0) }));
                         }
+                    }
+                    (b"demuxer-cache-time", ffi::FORMAT_DOUBLE) => {
+                        cached_until = unsafe { *(p.data as *const f64) };
                     }
                     (b"duration", ffi::FORMAT_DOUBLE) => {
                         duration = unsafe { *(p.data as *const f64) };
