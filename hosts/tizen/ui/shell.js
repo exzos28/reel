@@ -116,16 +116,20 @@
     },
 
     open: function (url, emit) {
+      if (typeof webapis === 'undefined' || !webapis.avplay) throw new Error('webapis.avplay is not available');
       var p = webapis.avplay;
       try { p.stop(); p.close(); } catch (e) { /* nothing was open */ }
+      emit({ type: 'step', step: 'open ' + url });
       p.open(url);
       p.setDisplayRect(0, 0, 1920, 1080);
       p.setDisplayMethod('PLAYER_DISPLAY_MODE_LETTER_BOX');
       p.setListener(av.listener(emit));
+      emit({ type: 'step', step: 'prepareAsync, state ' + p.getState() });
       p.prepareAsync(function () {
         emit({ type: 'loaded', duration: p.getDuration() / 1000, tracks: av.tracks() });
         p.play();
-      }, function (e) { emit({ type: 'error', message: 'prepare: ' + (e && e.name) }); });
+        emit({ type: 'step', step: 'play, state ' + p.getState() });
+      }, function (e) { emit({ type: 'error', message: 'prepare: ' + (e && (e.name + ' ' + e.message)) }); });
     },
 
     tracks: function () {
@@ -253,8 +257,20 @@
         return poll();
       }).then(function (url) {
         opened.ok(url);
-        av.open(url, function (event) { if (event.type !== 'time') say('avplay ' + JSON.stringify(event)); });
-      }).catch(opened.fail);
+        // The core's side while it plays: speed, people, how much of the start is in.
+        var watch = setInterval(function () {
+          if (!job) return clearInterval(watch);
+          rpc('Engine', 'status', [job]).then(function (raw) { say('status ' + raw); }, function (e) { say('status: ' + e.message); });
+        }, 2000);
+        var lastTime = 0;
+        av.open(url, function (event) {
+          if (event.type === 'time') {
+            if (event.position - lastTime < 5) return;
+            lastTime = event.position;
+          }
+          say('avplay ' + JSON.stringify(event));
+        });
+      }).catch(function (e) { say('FAIL ' + (e && e.message || e)); opened.fail(e); });
     });
     stopBtn.addEventListener('click', function () {
       av.handle({ op: 'stop' }, say);
