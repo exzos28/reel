@@ -1,6 +1,6 @@
-import { effect, View, type JSX, type ViewStyle } from "nsh";
+import { effect, View, windowSize, type JSX, type ViewStyle } from "nsh";
 import { go, section, toTop } from "../nav";
-import { colors, safe, u } from "../theme";
+import { colors, density, safe, u } from "../theme";
 import { chrome, isDesktop } from "./chrome";
 import { PhoneHead, tabBarHeight } from "./TouchNav";
 import { NavBar } from "./NavBar";
@@ -10,6 +10,11 @@ import { Scroller, type ScrollCtl } from "./Scroller";
 import { BAR_HEIGHT, barSolid } from "./WindowBar";
 
 const screenStyle = (): ViewStyle => ({ flex: 1, backgroundColor: colors.ink() });
+/** On a TV, room under the content so its last rows still rise to the focus line (a third
+ * down the screen): what is left of the screen under the line, less a row's height. */
+const tvTail = () => (density === "ten-foot" ? Math.max(0, (windowSize().height * 2) / 3 - u(TV_ROW)) : 0);
+/** A typical row on a TV (a shelf's title and its cards), TV pixels. */
+const TV_ROW = 340;
 /** The nav sits over the top of the content (the Home hero runs under it) and
  * scrolls away with it. */
 const navStyle: ViewStyle = { position: "absolute", top: 0, left: 0, right: 0, zIndex: 3 };
@@ -40,7 +45,7 @@ export function Screen(props: { ctl: ScrollCtl; bottom?: number; nav?: boolean; 
   });
   return (
     <Scroller ctl={props.ctl} style={screenStyle()}>
-      <View style={{ paddingBottom: safe().y + u(props.bottom ?? 0) + (chrome === "phone" ? tabBarHeight() : 0) }}>
+      <View style={{ paddingBottom: safe().y + u(props.bottom ?? 0) + tvTail() + (chrome === "phone" ? tabBarHeight() : 0) }}>
         {props.children}
         <If when={props.nav && chrome === "phone"}>
           <PhoneHead />

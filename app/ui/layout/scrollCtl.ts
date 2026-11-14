@@ -105,9 +105,12 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
       // On a TV a block is kept clear of the title-safe edge too (the set may crop it).
       pad: density === "ten-foot" ? Math.max(ringRoom(), safe().y) : ringRoom(),
     };
+    // A TV keeps one focus line: up and down move the page under it, never the focus over
+    // a page standing still (only where the page cannot move: its very top and end).
+    const fixedLine = density === "ten-foot" && !horizontal;
     const target =
       placement === "start" ? 0
-      : placement === "nearest" ? nearestOffset(geometry, current)
+      : placement === "nearest" && !fixedLine ? nearestOffset(geometry, current)
       : anchorOffset({ ...geometry, anchor: opts.anchor(geometry.viewport) });
     go(target, !first);
   };
