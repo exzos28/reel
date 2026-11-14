@@ -17,6 +17,7 @@ import { status } from "./ui/playback";
 import { loadSettings } from "./ui/preferences";
 import { backInTitleBar, TITLE_BAR_HEIGHT, TitleBarBack } from "./ui/layout/TopBar";
 import { colors } from "./ui/theme";
+import { videoUnderUi } from "./ui/VideoSurface";
 
 setColorScheme("dark");
 loadSettings().catch((e) => console.warn("could not load settings", e));
@@ -40,7 +41,8 @@ function App() {
   const r = route;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.ink() }}>
+    // While a film plays under the UI (AVPlay on a TV), the app paints no background over it.
+    <View style={{ flex: 1, backgroundColor: playing() && videoUnderUi() ? "transparent" : colors.ink() }}>
       {/* Where the title bar was: dragging there moves the window, a double click zooms it. */}
       <View
         desktop={{ windowDrag: true }}

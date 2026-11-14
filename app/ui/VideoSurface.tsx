@@ -1,21 +1,27 @@
 // The picture of the player: reel's mpv view (`reel/mpv`, native, macOS
-// with libmpv) where the core says it can play, else NSH's `<Video>` (the
-// platform's player). Both take the same props and give the same events;
-// only mpv reports and switches tracks (`videoCaps().tracks`).
+// with libmpv) where the core says it can play, a Samsung TV's AVPlay under
+// the web UI (AvplaySurface) on the TV, else NSH's `<Video>` (the
+// platform's player). All take the same props and give the same events;
+// mpv and AVPlay report and switch tracks (`videoCaps().tracks`).
 import { cleanup, nativeComponent, signal, Video, View, type NativeComponentRef, type VideoRef, type ViewStyle } from "nsh";
 import { VideoEngine } from "app/native";
+import { AvplaySurface } from "./AvplaySurface";
 
 /** Which view plays here, as the core decides (`VideoEngine.kind`). */
 /** `still` is the headless tests' stand-in, a view that reports itself loaded
  * at once (a headless `<Video>` never loads). */
-export const videoKind = signal<"mpv" | "native" | "still">("native");
+export const videoKind = signal<"mpv" | "avplay" | "native" | "still">("native");
 // Asked once at start; choosing mpv also widens the releases searches offer.
 Promise.resolve(VideoEngine.kind())
-  .then((k) => videoKind.set(k === "mpv" || k === "still" ? k : "native"))
+  .then((k) => videoKind.set(k === "mpv" || k === "avplay" || k === "still" ? k : "native"))
   .catch((e) => console.warn("video engine", e));
 
 /** What the view that plays here can do. */
-export const videoCaps = () => ({ tracks: videoKind() === "mpv" });
+export const videoCaps = () => ({ tracks: videoKind() === "mpv" || videoKind() === "avplay" });
+
+/** The picture is drawn under the UI (AVPlay on the TV's video plane): the
+ * player's screen and the app around it must leave their backgrounds clear. */
+export const videoUnderUi = () => videoKind() === "avplay";
 
 export interface SurfaceRef {
   seek(seconds: number): void;
@@ -88,6 +94,14 @@ export function VideoSurface(props: VideoSurfaceProps) {
 }
 
 function OtherSurface(props: VideoSurfaceProps) {
+  return (
+    <If when={videoKind() === "avplay"} else={<TestOrNativeSurface {...props} />}>
+      <AvplaySurface {...props} />
+    </If>
+  );
+}
+
+function TestOrNativeSurface(props: VideoSurfaceProps) {
   return (
     <If when={videoKind() === "still"} else={<NativeSurface {...props} />}>
       <StillSurface {...props} />

@@ -20,7 +20,7 @@ import { duration, firstFrame, playing as what, play, position, startAt, status 
 import { alpha, colors, focusRing, font, radius, safe, type, u } from "./theme";
 import { SubtitleOverlay } from "./SubtitleOverlay";
 import { playerTracks, type TrackOption } from "./tracks";
-import { VideoSurface, type SurfaceRef } from "./VideoSurface";
+import { VideoSurface, videoUnderUi, type SurfaceRef } from "./VideoSurface";
 import playIcon from "./icons/play.svg";
 import pauseIcon from "./icons/pause.svg";
 import rewindIcon from "./icons/rewind.svg";
@@ -44,6 +44,10 @@ const PLAY_BUTTON = 1;
 interface Tracks {
   releases: Release[];
 }
+
+/** The player's own background: none where the picture is under the UI (the
+ * stage and the overlays keep theirs). */
+const screenBackground = () => (videoUnderUi() ? "transparent" : colors.ink());
 
 export function Player() {
   // Computed, so the twice-a-second status from the core wakes only what changed
@@ -310,7 +314,7 @@ export function Player() {
   return (
     <View
       testID="player"
-      style={{ flex: 1, backgroundColor: colors.ink() }}
+      style={{ flex: 1, backgroundColor: screenBackground() }}
       onMouseMove={() => { if (!card()) poke(); }}
       onPress={() => { if (!card()) poke(); }}
       focusable={false}
