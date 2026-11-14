@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>reel navigation: TV</title>
+<link rel="stylesheet" href="nav.css">
+<style>
+  /* Samsung Tizen and Android TV, 1920×1080, ten-foot density (TV px). Safe area 96 / 54. */
+  .screen { width: 1920px; height: 1080px; }
+  .nav { position: absolute; top: 50px; left: 96px; right: 96px; height: 62px; display: flex; justify-content: space-between; align-items: center; z-index: 3; }
+  .nav .logo { font-size: 40px; }
+  .nav .right { display: flex; align-items: center; gap: 10px; }
+  .pills { display: flex; gap: 2px; padding: 5px; border-radius: 15px; background: var(--card); }
+  .pill { height: 52px; padding: 0 20px; display: flex; align-items: center; gap: 10px; border-radius: 10px; font-size: 24px; font-weight: 500; color: var(--dim); }
+  .pill .ic { font-size: 24px; }
+  .nb { width: 62px; height: 62px; font-size: 26px; color: var(--dim); }
+  .nb.sel { background: var(--nav); }
+  .focus.pill, .focus.nb { transform: scale(1.03); }
+  .hdr { position: absolute; top: 54px; right: 96px; z-index: 3; }
+  .lb { height: 62px; padding: 0 28px 0 22px; display: flex; align-items: center; gap: 12px; border-radius: 31px; background: rgba(26,26,26,.82); font-size: 24px; font-weight: 500; color: var(--dim); }
+  .lb .ic { font-size: 24px; }
+  .lb.sel { background: var(--nav); color: var(--snow); }
+  .lb.focus { transform: scale(1.03); }
+  .relbtn { display: inline-flex; align-items: center; gap: 14px; height: 60px; margin-top: 16px; padding: 0 24px; border-radius: 10px; background: rgba(42,42,42,.7); font-size: 24px; color: var(--ash); }
+  .relbtn b { color: var(--snow); font-weight: 600; }
+  .relbtn .ic { font-size: 22px; color: var(--snow); }
+  .relbtn.focus { transform: scale(1.02); }
+
+  .still.hero { height: 860px; bottom: auto; }
+  .info { position: absolute; left: 96px; top: 230px; width: 1100px; z-index: 2; }
+  .info.film { top: 170px; }
+  .title { font-size: 88px; }
+  .meta { display: flex; align-items: center; gap: 16px; margin-top: 24px; font-size: 24px; font-weight: 500; }
+  .meta .badge { font-size: 20px; padding: 5px 8px; }
+  .genres { margin-top: 10px; font-size: 22px; color: var(--ash); }
+  .about { margin-top: 16px; font-size: 26px; line-height: 36px; color: #D6D6D6; max-width: 1000px; }
+  .release { margin-top: 14px; font-size: 22px; color: var(--ash); }
+  .release b { color: var(--snow); font-weight: 500; }
+  .actions { display: flex; align-items: center; gap: 16px; margin-top: 32px; }
+  .actions .btn { height: 60px; padding: 0 28px; border-radius: 10px; font-size: 26px; gap: 12px; }
+  .actions .ic { font-size: 22px; }
+
+  .shelf { position: absolute; left: 96px; right: 0; z-index: 2; }
+  .shelf h2, .sec { font-size: 30px; font-weight: 600; }
+  .cards { display: flex; gap: 28px; margin-top: 20px; }
+  .card { width: 400px; flex: none; }
+  .thumb { height: 225px; border-radius: 10px; }
+  .thumb .bar { height: 5px; }
+  .card .t { margin-top: 12px; font-size: 24px; font-weight: 600; }
+  .card .s { margin-top: 4px; font-size: 22px; color: var(--ash); }
+
+  .page { position: absolute; left: 96px; right: 96px; top: 170px; }
+  .page.deep { top: 54px; }
+  .page h1 { font-size: 60px; font-weight: 600; letter-spacing: -1px; }
+  .page .sub { margin-top: 10px; font-size: 26px; color: var(--ash); }
+  .posters { display: flex; gap: 28px; margin-top: 20px; }
+  .poster { width: 200px; height: 300px; border-radius: 10px; flex: none; }
+
+  .grid { position: absolute; left: 96px; right: 96px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 34px 32px; }
+  .grid .thumb { height: 230px; }
+
+  .veil { position: absolute; inset: 0; background: rgba(15,15,15,.72); z-index: 10; }
+  .dialog { position: absolute; left: 50%; top: 50%; width: 760px; transform: translate(-50%, -50%); padding: 48px; border-radius: 28px; background: var(--card); z-index: 11; }
+  .dialog h2 { font-size: 44px; font-weight: 600; }
+  .dialog p { margin-top: 14px; font-size: 26px; color: var(--ash); line-height: 36px; }
+  .dialog .actions { margin-top: 40px; }
+
+  .panel { position: absolute; top: 0; right: 0; bottom: 0; width: 1080px; padding: 54px 96px 54px 64px; background: var(--card); border-radius: 28px 0 0 28px; z-index: 11; }
+  .panel h2 { font-size: 44px; font-weight: 600; }
+  .panel .sub { margin-top: 8px; font-size: 24px; color: var(--ash); }
+  .rel { display: flex; align-items: center; gap: 22px; height: 96px; padding: 0 26px; margin-top: 16px; border-radius: 10px; background: var(--raise); font-size: 24px; }
+  .panel .sub { margin-bottom: 30px; }
+  .rel .badge { font-size: 20px; padding: 6px 8px; }
+  .rel b { font-weight: 600; }
+  .rel .grow { flex: 1; color: var(--ash); }
+  .rel.chosen { box-shadow: inset 6px 0 0 var(--snow); }
+  .rel.focus { transform: scale(1.01); }
+
+  .tabs { display: flex; gap: 12px; }
+  .tab { height: 60px; padding: 0 26px; display: flex; align-items: center; gap: 10px; border-radius: 10px; font-size: 24px; font-weight: 500; background: var(--card); color: var(--dim); }
+  .tab span { color: var(--ash); font-weight: 400; }
+  .tab.sel span { color: var(--dim); }
+
+  .setrow { display: flex; align-items: center; justify-content: space-between; height: 76px; padding: 0 28px; margin-top: 12px; border-radius: 10px; background: var(--card); font-size: 26px; max-width: 1100px; }
+  .setrow .ic { font-size: 26px; }
+  .field { display: flex; align-items: center; gap: 20px; height: 84px; width: 1100px; padding: 0 30px; border-radius: 10px; background: var(--card); font-size: 30px; color: var(--ash); margin-top: 36px; }
+  .field .ic { font-size: 30px; color: var(--snow); }
+
+  .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(15,15,15,.8) 0%, rgba(15,15,15,0) 26%, rgba(15,15,15,0) 58%, rgba(15,15,15,.9) 100%); }
+  .ptop { position: absolute; top: 54px; left: 96px; right: 96px; }
+  .ptop .t { font-size: 34px; font-weight: 600; }
+  .ptop .s { margin-top: 6px; font-size: 24px; color: var(--ash); }
+  .pbot { position: absolute; left: 96px; right: 96px; bottom: 54px; }
+  .pbot .ahead { font-size: 24px; color: var(--ash); }
+  .pbot .ahead b { color: var(--snow); font-weight: 600; }
+  .track { position: relative; height: 8px; margin-top: 22px; border-radius: 4px; background: rgba(245,245,245,.16); }
+  .track i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 4px; }
+  .times { display: flex; justify-content: space-between; margin-top: 14px; font-size: 22px; color: var(--ash); }
+  .ctl { display: flex; align-items: center; gap: 14px; margin-top: 26px; }
+  .ctl .round { width: 76px; height: 76px; font-size: 30px; background: rgba(42,42,42,.85); }
+  .ctl .round.on { background: #3A3A3A; }
+  .tip { position: absolute; bottom: 100%; left: 50%; transform: translate(-50%, -14px); padding: 8px 14px; border-radius: 8px; background: var(--card); font-size: 20px; white-space: nowrap; }
+  .tracks { position: absolute; top: 150px; right: 96px; width: 1020px; padding: 26px; display: flex; gap: 26px; border-radius: 36px; background: rgba(26,26,26,.95); z-index: 4; }
+  .tracks .col { flex: 1; }
+  .tracks h3 { font-size: 24px; font-weight: 600; color: var(--ash); padding: 6px 18px 12px; }
+  .opt { display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 18px; border-radius: 10px; font-size: 24px; }
+  .opt.chosen { background: var(--card); }
+  .opt.focus { background: var(--snow); color: var(--ink); outline: none; }
+</style>
+</head>
+<body>
+<h1 class="board">TV: Samsung Tizen and Android TV (1920×1080, remote: arrows, OK, Back)</h1>
+<p>No on-screen Back anywhere: the remote's Back key is the way back. The nav is on every page it leads to (Home, Movies, Shows, Anime, Search, Settings) and scrolls away with the page; title, About and the player have no nav. Back closes what is open, then brings the focus to the nav, then goes Home, then asks before exiting.</p>
+
+<!-- 1 -->
+<section class="frame" id="home" data-size="1920,1080" data-scale="1">
+<div class="screen">
+  <div class="still hero s-amber"></div>
+  <div class="nav">
+    <div class="logo">reel</div>
+    <div class="right">
+      <div class="pills">
+        <div class="pill sel"><i class="ic ic-home"></i>Home</div>
+        <div class="pill"><i class="ic ic-movies"></i>Movies</div>
+        <div class="pill"><i class="ic ic-shows"></i>Shows</div>
+        <div class="pill"><i class="ic ic-anime"></i>Anime</div>
+      </div>
+      <div class="round nb"><i class="ic ic-search"></i></div>
+      <div class="round nb"><i class="ic ic-gear"></i></div>
+    </div>
+  </div>
+  <div class="info">
+    <div class="title logotype">The General</div>
+    <div class="meta"><span><span class="star">★</span> 8.1</span><span class="ash">97K</span><span>1926</span><span>1 h 18 min</span><span class="badge">1080p</span><span class="badge">Silent</span></div>
+    <div class="genres">Comedy, Action, War</div>
+    <p class="about">A locomotive engineer chases his stolen train across the front line of the Civil War, and then has to bring it back.</p>
+    <div class="release"><b>1080p</b> · 3.0 GB · 518 people sharing · starts in seconds</div>
+    <div class="actions"><div class="btn primary"><i class="ic ic-play"></i>Resume 10:10</div><div class="btn secondary"><i class="ic ic-plus"></i>Add to list</div></div>
+  </div>
+  <div class="shelf" style="top:700px">
+    <h2>Continue watching</h2>
+    <div class="cards">
+      <div class="card"><div class="ph thumb g1 focus lift"><span class="bar"><i style="width:13%"></i></span></div><div class="t">The General</div><div class="s">1 h 8 min left</div></div>
+      <div class="card" style="opacity:.78"><div class="ph thumb g2"><span class="bar"><i style="width:62%"></i></span></div><div class="t">Flash Gordon</div><div class="s">S3:E4 · 7 min left</div></div>
+      <div class="card" style="opacity:.78"><div class="ph thumb g3"><span class="bar"><i style="width:36%"></i></span></div><div class="t">Charade</div><div class="s">1 h 12 min left</div></div>
+      <div class="card" style="opacity:.78"><div class="ph thumb g4"><span class="bar"><i style="width:48%"></i></span></div><div class="t">Metropolis</div><div class="s">1 h 19 min left</div></div>
+    </div>
+  </div>
+</div>
+<p class="cap"><b>Home, app start.</b> The focus lands on the first card of Continue watching (or the first shelf). The nav is at the top: logo left, the destinations right, Home in the lighter selected fill (no ring). It belongs to the page and scrolls away with it. Back here: the focus goes up to the nav (next frame).</p>
+</section>
+
+<!-- 2 -->
+<section class="frame" id="home-back-to-nav" data-size="1920,1080" data-scale="1">
+<div class="screen">
+  <div class="still hero s-amber"></div>
+  <div class="nav">
+    <div class="logo">reel</div>
+    <div class="right">
+      <div class="pills">
+        <div class="pill sel focus"><i class="ic ic-home"></i>Home</div>
+        <div class="pill"><i class="ic ic-movies"></i>Movies</div>
+        <div class="pill"><i class="ic ic-shows"></i>Shows</div>
+        <div class="pill"><i class="ic ic-anime"></i>Anime</div>
+      </div>
+      <div class="round nb"><i class="ic ic-search"></i></div>
+      <div class="round nb"><i class="ic ic-gear"></i></div>
+    </div>
+  </div>
+  <div class="info">
+    <div class="title logotype">The General</div>
+    <div class="meta"><span><span class="star">★</span> 8.1</span><span class="ash">97K</span><span>1926</span><span>1 h 18 min</span><span class="badge">1080p</span><span class="badge">Silent</span></div>
+    <div class="genres">Comedy, Action, War</div>
+    <p class="about">A locomotive engineer chases his stolen train across the front line of the Civil War, and then has to bring it back.</p>
+    <div class="release"><b>1080p</b> · 3.0 GB · 518 people sharing · starts in seconds</div>
+    <div class="actions"><div class="btn primary"><i class="ic ic-play"></i>Resume 10:10</div><div class="btn secondary"><i class="ic ic-plus"></i>Add to list</div></div>
+  </div>
+  <div class="shelf" style="top:700px">
+    <h2>Continue watching</h2>
+    <div class="cards">
+      <div class="card"><div class="ph thumb g1"><span class="bar"><i style="width:13%"></i></span></div><div class="t">The General</div><div class="s">1 h 8 min left</div></div>
+      <div class="card"><div class="ph thumb g2"><span class="bar"><i style="width:62%"></i></span></div><div class="t">Flash Gordon</div><div class="s">S3:E4 · 7 min left</div></div>
+      <div class="card"><div class="ph thumb g3"><span class="bar"><i style="width:36%"></i></span></div><div class="t">Charade</div><div class="s">1 h 12 min left</div></div>
+      <div class="card"><div class="ph thumb g4"><span class="bar"><i style="width:48%"></i></span></div><div class="t">Metropolis</div><div class="s">1 h 19 min left</div></div>
+    </div>
+  </div>
+</div>
+<p class="cap"><b>Home, Back from anywhere in the page.</b> The page scrolls to the top and the focus lands on the current item, Home (ring + the selected fill). Shelves keep their focus memory: Down returns to the card you left. Back again: the exit question.</p>
+</section>
+
+<!-- 3 -->
+<section class="frame" id="home-exit" data-size="1920,1080" data-scale="1">
+<div class="screen">
+  <div class="still hero s-amber"></div>
+  <div class="nav">
+    <div class="logo">reel</div>
+    <div class="right">
+      <div class="pills">
+        <div class="pill sel"><i class="ic ic-home"></i>Home</div>
+        <div class="pill"><i class="ic ic-movies"></i>Movies</div>
+        <div class="pill"><i class="ic ic-shows"></i>Shows</div>
+        <div class="pill"><i class="ic ic-anime"></i>Anime</div>
+      </div>
+      <div class="round nb"><i class="ic ic-search"></i></div>
+      <div class="round nb"><i class="ic ic-gear"></i></div>
+    </div>
+  </div>
+  <div class="info">
+    <div class="title logotype">The General</div>
+    <div class="meta"><span><span class="star">★</span> 8.1</span><span class="ash">97K</span><span>1926</span><span>1 h 18 min</span></div>
+  </div>
+  <div class="veil"></div>
+  <div class="dialog">
+    <h2>Exit reel?</h2>
+    <p>Anything playing stops. What you watched is kept.</p>
+    <div class="actions"><div class="btn primary focus grow">Stay</div><div class="btn secondary">Exit</div></div>
+  </div>
+</div>
+<p class="cap"><b>Home, Back on the nav.</b> A small dialog, focus on Stay (a double Back press never quits by accident). Back again or Stay closes it; Exit closes the app (Tizen: <code>tizen.application.getCurrentApplication().exit()</code>; Android TV: <code>finish()</code>). The only dialog on the TV.</p>
+</section>
+
+<!-- 4 -->
+<section class="frame" id="movies-scrolled" data-size="1920,1080" data-scale="1">
+<div class="screen">
+  <div class="grid" style="top:54px">
+    <div><div class="ph thumb g3"></div><div class="card"><div class="t">Detour</div><div class="s"><span class="star">★</span> 7.2 · 1945 · Movie</div></div></div>
+    <div><div class="ph thumb g5"></div><div class="card"><div class="t">His Girl Friday</div><div class="s"><span class="star">★</span> 7.8 · 1940 · Movie</div></div></div>
+    <div><div class="ph thumb g8"></div><div class="card"><div class="t">The Cabinet of Dr. Caligari</div><div class="s"><span class="star">★</span> 8.0 · 1920 · Movie</div></div></div>
+    <div><div class="ph thumb g7"></div><div class="card"><div class="t">A Trip to the Moon</div><div class="s"><span class="star">★</span> 8.1 · 1902 · Short</div></div></div>
+    <div><div class="ph thumb g2"></div><div class="card"><div class="t">Sherlock Jr.</div><div class="s"><span class="star">★</span> 8.2 · 1924 · Movie</div></div></div>
+    <div><div class="ph thumb g6 focus lift"></div><div class="card"><div class="t">Night of the Living Dead</div><div class="s"><span class="star">★</span> 7.8 · 1968 · Movie</div></div></div>
+    <div><div class="ph thumb g1"></div><div class="card"><div class="t">Metropolis</div><div class="s"><span class="star">★</span> 8.3 · 1927 · Movie</div></div></div>
+    <div><div class="ph thumb g4"></div><div class="card"><div class="t">Nosferatu</div><div class="s"><span class="star">★</span> 7.8 · 1922 · Movie</div></div></div>
+    <div><div class="ph thumb g5"></div><div class="card"><div class="t">The Kid</div><div class="s"><span class="star">★</span> 8.2 · 1921 · Movie</div></div></div>
+    <div><div class="ph thumb g3"></div><div class="card"><div class="t">The Lodger</div><div class="s"><span class="star">★</span> 7.3 · 1927 · Movie</div></div></div>
+    <div><div class="ph thumb g8"></div><div class="card"><div class="t">Safety Last!</div><div class="s"><span class="star">★</span> 8.1 · 1923 · Movie</div></div></div>
+    <div><div class="ph thumb g2"></div><div class="card"><div class="t">The Phantom Carriage</div><div class="s"><span class="star">★</span> 8.0 · 1921 · Movie</div></div></div>
+  </div>
+</div>
+<p class="cap"><b>Movies, deep in the grid.</b> The nav has scrolled away with the page: on a TV the whole screen is content, and the focused row sits in the upper third. Nothing is pinned. Back: the page scrolls to the top and the focus goes to Movies in the nav (next frame).</p>
+</section>
+
+<!-- 5 -->
+<section class="frame" id="movies-back-to-nav" data-size="1920,1080" data-scale="1">
+<div class="screen">
+  <div class="nav">
+    <div class="logo">reel</div>
+    <div class="right">
+      <div class="pills">
+        <div class="pill"><i class="ic ic-home"></i>Home</div>
+        <div class="pill sel focus"><i class="ic ic-movies"></i>Movies</div>
+        <div class="pill"><i class="ic ic-shows"></i>Shows</div>
+        <div class="pill"><i class="ic ic-anime"></i>Anime</div>
+      </div>
+      <div class="round nb"><i class="ic ic-search"></i></div>
+      <div class="round nb"><i class="ic ic-gear"></i></div>
+    </div>
+  </div>
+  <div class="page">
+    <h1>Movies</h1>
+    <div class="sub">Discover the latest and greatest films</div>
+    <div class="sec" style="margin-top:56px">Trending</div>
+    <div class="posters">
+      <div class="ph poster g1"></div><div class="ph poster g4"></div><div class="ph poster g3"></div><div class="ph poster g7"></div>
+      <div class="ph poster g2"></div><div class="ph poster g5"></div><div class="ph poster g6"></div><div class="ph poster g8"></div>
+    </div>
+  </div>
+</div>
+<p class="cap"><b>Movies (Shows, Anime, Search, Settings the same), Back once.</b> Focus on Movies in the nav, page at the top. Left/Right walk the nav; moving onto another item does not open it, OK does (no page swap while passing over items). Back again: Home opens with the focus on Home in the nav, so a third Back asks to exit.</p>
+</section>
+
+<!-- 6 -->
+<section class="frame" id="film" data-size="1920,1080" data-scale="1">
+<div class="screen">
+  <div class="still hero s-slate"></div>
+  <div class="hdr"><div class="lb"><i class="ic ic-plus"></i>Add to list</div></div>
+  <div class="info film">
+    <div class="title logotype" style="font-size:96px">Nosferatu</div>
+    <div class="meta"><span><span class="star">★</span> 7.8</span><span class="ash">112K</span><span>1922</span><span>1 h 34 min</span><span class="badge">4K</span><span class="badge">Silent</span></div>
+    <div class="genres">Horror, Fantasy</div>
+    <p class="about">An estate agent travels to Transylvania to meet Count Orlok, who is buying a house in his home town.</p>
+    <div class="actions"><div class="btn primary focus grow"><i class="ic ic-play"></i>Play</div><div class="btn secondary"><i class="ic ic-play" style="font-size:16px"></i>Trailer</div></div>
+    <div class="relbtn"><b>1080p BluRay</b> · 6.4 GB · 286 people sharing <i class="ic ic-down"></i></div>
+  </div>
+  <div class="shelf" style="top:720px; right:96px">
+    <div class="sec">Releases <span class="ash" style="font-size:24px; font-weight:400; margin-left:12px">5 found, the best of each quality first</span></div>
+    <div class="rel" style="margin-top:22px"><span class="badge">720p</span><b>WEB</b><span class="grow">1.9 GB · piano score, EN subs</span><span>940 sharing</span><span class="ash">Starts fast</span></div>
+    <div class="rel"><span class="badge">1080p</span><b>BluRay restoration</b><span class="grow">6.4 GB · orchestral score, EN subs</span><span>286 sharing</span><span><i class="ic ic-check"></i> Plays now</span></div>
+  </div>
+</div>
+<p class="cap"><b>Film, just opened.</b> No back button and no nav: the full-bleed still and the title say where you are. The top-right corner holds the page's one header action, <b>Add to list</b> (pill 62 px, icon + label, at the safe area's top-right). The action row is Play and Trailer; the release button (what Play will use, ▾ opens the panel) sits on its own line under it. The focus lands on Play. Back returns to the page you came from, with the focus on the card that opened this title.</p>
+</section>
+
+<!-- 6b -->
+<section class="frame" id="film-add-to-list" data-size="1920,1080" data-scale="1">
+<div class="screen">
+  <div class="still hero s-slate"></div>
+  <div class="hdr"><div class="lb focus"><i class="ic ic-plus"></i>Add to list</div></div>
+  <div class="info film">
+    <div class="title logotype" style="font-size:96px">Nosferatu</div>
+    <div class="meta"><span><span class="star">★</span> 7.8</span><span class="ash">112K</span><span>1922</span><span>1 h 34 min</span><span class="badge">4K</span><span class="badge">Silent</span></div>
+    <div class="genres">Horror, Fantasy</div>
+    <p class="about">An estate agent travels to Transylvania to meet Count Orlok, who is buying a house in his home town.</p>
+    <div class="actions"><div class="btn primary"><i class="ic ic-play"></i>Play</div><div class="btn secondary"><i class="ic ic-play" style="font-size:16px"></i>Trailer</div></div>
+    <div class="relbtn"><b>1080p BluRay</b> · 6.4 GB · 286 people sharing <i class="ic ic-down"></i></div>
+  </div>
+  <div class="shelf" style="top:720px; right:96px">
+    <div class="sec">Releases <span class="ash" style="font-size:24px; font-weight:400; margin-left:12px">5 found, the best of each quality first</span></div>
+    <div class="rel" style="margin-top:22px"><span class="badge">720p</span><b>WEB</b><span class="grow">1.9 GB · piano score, EN subs</span><span>940 sharing</span><span class="ash">Starts fast</span></div>
+    <div class="rel"><span class="badge">1080p</span><b>BluRay restoration</b><span class="grow">6.4 GB · orchestral score, EN subs</span><span>286 sharing</span><span><i class="ic ic-check"></i> Plays now</span></div>
+  </div>
+</div>
+<p class="cap"><b>Film, Up from the actions.</b> Up from Play or Trailer goes to Add to list in the header (the only thing above the actions); Down returns to the button you left; Left/Right do nothing there. OK toggles it: "In my list" with a check and the lighter selected fill (see the show frame). Down from the actions goes to the release button, then to Releases.</p>
+</section>
+
+<!-- 7 -->
+<section class="frame" id="film-releases" data-size="1920,1080" data-scale="1">
+<div class="screen">
+  <div class="still hero s-slate"></div>
+  <div class="hdr"><div class="lb"><i class="ic ic-plus"></i>Add to list</div></div>
+  <div class="info film">
+    <div class="title logotype" style="font-size:96px">Nosferatu</div>
+    <div class="meta"><span><span class="star">★</span> 7.8</span><span class="ash">112K</span><span>1922</span><span>1 h 34 min</span></div>
+  </div>
+  <div class="veil" style="background:rgba(15,15,15,.6)"></div>
+  <div class="panel">
+    <h2>Releases</h2>
+    <div class="sub">5 found, the best of each quality first</div>
+    <div class="rel"><span class="badge">720p</span><b>WEB</b><span class="grow">1.9 GB</span><span>940 sharing</span></div>
+    <div class="rel chosen"><span class="badge">1080p</span><b>BluRay restoration</b><span class="grow">6.4 GB</span><span><i class="ic ic-check"></i> Plays now</span></div>
+    <div class="rel focus"><span class="badge">4K</span><b>UHD remaster HDR</b><span class="grow">38.2 GB</span><span class="ash">Needs 25 Mbit/s</span></div>
+    <div class="rel"><span class="badge">1080p</span><b>BluRay</b><span class="grow">7.1 GB</span><span class="ash">Few people sharing</span></div>
+    <div class="rel"><span class="ash" style="flex:1">Show 3 more</span></div>
+  </div>
+</div>
+<p class="cap"><b>Film, release panel.</b> A side panel over the right; the focus goes into it on the release Play uses (lighter bar + check = selected, ring = focus). No close button on the TV: Back closes the panel and returns the focus to the release button under the actions that opened it. Only the second Back leaves the title.</p>
+</section>
+
+<!-- 8 -->
+<section class="frame" id="show" data-size="1920,1080" data-scale="1">
+<div class="screen">
+  <div class="still hero s-teal"></div>
+  <div class="hdr"><div class="lb sel"><i class="ic ic-check"></i>In my list</div></div>
+  <div class="info film">
+    <div class="title logotype" style="font-size:96px">Flash Gordon</div>
+    <div class="meta"><span><span class="star">★</span> 7.1</span><span class="ash">4K</span><span>1936–1940</span><span>3 Seasons</span><span class="badge">1080p</span></div>
+    <div class="genres">Adventure, Science Fiction</div>
+    <p class="about">Flash Gordon, Dale Arden and Dr. Zarkov fly to the planet Mongo to stop Ming the Merciless.</p>
+    <div class="actions"><div class="btn primary"><i class="ic ic-play"></i>Resume S3:E4</div><div class="btn secondary"><i class="ic ic-play" style="font-size:16px"></i>Trailer</div></div>
+    <div class="relbtn"><b>1080p WEB</b> · season pack 9.8 GB · 174 people sharing <i class="ic ic-down"></i></div>
+  </div>
+  <div class="shelf" style="top:730px; right:96px">
+    <div class="tabs"><div class="tab">Season 1 <span>1936</span></div><div class="tab">Season 2 <span>1938</span></div><div class="tab sel focus grow">Season 3 <span>1940</span></div></div>
+    <div class="ash" style="font-size:24px; margin-top:18px">12 episodes · Flash Gordon Conquers the Universe</div>
+    <div class="rel" style="margin-top:22px; background:var(--card)"><span style="font-size:44px; font-weight:300; color:#555; width:60px">4</span><b>Trapped in the Turret</b><span class="grow">19 min · Apr 24, 1940</span><span class="ash">1080p · plays now</span></div>
+  </div>
+</div>
+<p class="cap"><b>Show.</b> Same top as a film: no back, no nav; this show is in the list, so the header shows "In my list" with a check in the selected fill. Here the focus has moved down to the season tabs (selected = Season 3 fill, focus = ring). Back from anywhere on the page (tabs, episodes, cast) leaves the title in one press, back to where it was opened; it does not first climb to Resume.</p>
+</section>
+
+<!-- 9 -->
+<section class="frame" id="settings" data-size="1920,1080" data-scale="1">
+<div class="screen">
+  <div class="nav">
+    <div class="logo">reel</div>
+    <div class="right">
+      <div class="pills">
+        <div class="pill"><i class="ic ic-home"></i>Home</div>
+        <div class="pill"><i class="ic ic-movies"></i>Movies</div>
+        <div class="pill"><i class="ic ic-shows"></i>Shows</div>
+        <div class="pill"><i class="ic ic-anime"></i>Anime</div>
+      </div>
+      <div class="round nb"><i class="ic ic-search"></i></div>
+      <div class="round nb sel"><i class="ic ic-gear"></i></div>
+    </div>
+  </div>
+  <div class="page">
+    <h1>Settings</h1>
+    <div class="sec" style="margin-top:48px">Language</div>
+    <div class="sub" style="font-size:24px; max-width:1100px">The language of titles, descriptions and episode names.</div>
+    <div class="setrow" style="margin-top:24px; background:var(--raise)"><span>English</span><i class="ic ic-check"></i></div>
+    <div class="setrow focus grow"><span>Deutsch</span></div>
+    <div class="setrow"><span>Français</span></div>
+    <div class="setrow"><span>Polski</span></div>
+  </div>
+</div>
+<p class="cap"><b>Settings is a nav destination</b> (the gear in the nav is selected), so it looks and behaves like Movies: nav at the top, page title under it, no back button, and the hint "OK chooses, Back closes." is gone. The focus starts on the chosen language. Back: focus to the gear in the nav, then Home.</p>
+</section>
+
+<!-- 10 -->
+<section class="frame" id="about" data-size="1920,1080" data-scale="1">
+<div class="screen">
+  <div class="page deep">
+    <h1>About reel</h1>
+    <p class="sub" style="max-width:1100px; line-height:38px; color:#D6D6D6; margin-top:36px">reel streams films and series from the search source you add in Settings. It ships no sources of its own.</p>
+    <div class="sec" style="margin-top:56px">Data sources</div>
+    <p class="sub" style="max-width:1100px; line-height:38px">This product uses the TMDB API but is not endorsed or certified by TMDB. Anime data from AniList and Jikan.</p>
+  </div>
+</div>
+<p class="cap"><b>About (a page below Settings).</b> No nav and no back button: its title sits where the nav would be, at the safe area's top-left (96, 54). Nothing on it takes focus. Back returns to Settings with the focus on "About reel and its data sources".</p>
+</section>
+
+<!-- 11 -->
+<section class="frame" id="search" data-size="1920,1080" data-scale="1">
+<div class="screen">
+  <div class="nav">
+    <div class="logo">reel</div>
+    <div class="right">
+      <div class="pills">
+        <div class="pill"><i class="ic ic-home"></i>Home</div>
+        <div class="pill"><i class="ic ic-movies"></i>Movies</div>
+        <div class="pill"><i class="ic ic-shows"></i>Shows</div>
+        <div class="pill"><i class="ic ic-anime"></i>Anime</div>
+      </div>
+      <div class="round nb sel"><i class="ic ic-search"></i></div>
+      <div class="round nb"><i class="ic ic-gear"></i></div>
+    </div>
+  </div>
+  <div class="page">
+    <h1>Search</h1>
+    <div class="field focus"><i class="ic ic-search"></i>Films, shows, people</div>
+    <p class="sub" style="margin-top:28px">Search is not here yet. Browse Movies and Shows for now.</p>
+  </div>
+</div>
+<p class="cap"><b>Search is a nav destination too:</b> nav visible, the search button selected, focus on the field (OK opens the TV keyboard). While the on-screen keyboard is up, Back closes the keyboard first. Back again: focus to the nav, then Home.</p>
+</section>
+
+<!-- 12 -->
+<section class="frame" id="player" data-size="1920,1080" data-scale="1">
+<div class="screen">
+  <div class="still s-teal" style="filter:brightness(1.25)"></div>
+  <div class="shade"></div>
+  <div class="ptop">
+    <div class="t">Flash Gordon · S3:E4 Trapped in the Turret</div>
+    <div class="s">1080p WEB · resumed from 12:40</div>
+  </div>
+  <div class="pbot">
+    <div class="ahead"><b>6 min ready ahead</b> · streaming at 3.4 MB/s from 37 people</div>
+    <div class="track"><i style="width:58%; background:rgba(245,245,245,.45)"></i><i style="width:41%; background:var(--snow)"></i></div>
+    <div class="times"><span>12:40</span><span>19:02</span></div>
+    <div class="ctl">
+      <div class="round"><i class="ic ic-rew"></i></div>
+      <div class="round focus grow" style="position:relative"><i class="ic ic-pause"></i><span class="tip">Pause</span></div>
+      <div class="round"><i class="ic ic-ffw"></i></div>
+      <div style="width:40px"></div>
+      <div class="round"><i class="ic ic-subs"></i></div>
+    </div>
+  </div>
+</div>
+<p class="cap"><b>Player, controls up.</b> The back button is gone from the top-left: the top only says what plays. Back with the controls up hides them; Back with the picture alone stops and returns to the title (the position is saved). Two presses to leave, because a torrent takes seconds to start again; an accidental exit costs more than on a streaming service.</p>
+</section>
+
+<!-- 13 -->
+<section class="frame" id="player-tracks" data-size="1920,1080" data-scale="1">
+<div class="screen">
+  <div class="still s-teal" style="filter:brightness(1.25)"></div>
+  <div class="shade"></div>
+  <div class="ptop">
+    <div class="t">Flash Gordon · S3:E4 Trapped in the Turret</div>
+    <div class="s">1080p WEB · resumed from 12:40</div>
+  </div>
+  <div class="tracks">
+    <div class="col"><h3>Audio</h3><div class="opt chosen">English, stereo <i class="ic ic-check"></i></div><div class="opt">Commentary</div></div>
+    <div class="col"><h3>Subtitles</h3><div class="opt">Off</div><div class="opt chosen">English <i class="ic ic-check"></i></div><div class="opt focus">German</div></div>
+  </div>
+  <div class="pbot">
+    <div class="ahead"><b>6 min ready ahead</b> · streaming at 3.4 MB/s from 37 people</div>
+    <div class="track"><i style="width:58%; background:rgba(245,245,245,.45)"></i><i style="width:41%; background:var(--snow)"></i></div>
+    <div class="times"><span>12:40</span><span>19:02</span></div>
+    <div class="ctl">
+      <div class="round"><i class="ic ic-rew"></i></div>
+      <div class="round"><i class="ic ic-pause"></i></div>
+      <div class="round"><i class="ic ic-ffw"></i></div>
+      <div style="width:40px"></div>
+      <div class="round on"><i class="ic ic-subs"></i></div>
+    </div>
+  </div>
+</div>
+<p class="cap"><b>Player, Audio and subtitles panel.</b> Back closes the panel and the focus returns to its button (still in the lighter fill until then). Order of Back in the player: panel → Up next card → controls → leave the player.</p>
+</section>
+<script src="solo.js"></script>
+</body>
+</html>

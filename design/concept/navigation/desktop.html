@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>reel navigation: desktop</title>
+<link rel="stylesheet" href="nav.css">
+<style>
+  /* macOS, Windows, Linux: a 1440×900 window, regular density (pt). Content margin 64. */
+  .screen { width: 1440px; height: 900px; }
+
+  /* the window bar: one row on every page, over the content */
+  .wb { position: absolute; top: 0; left: 0; right: 0; height: 52px; display: flex; align-items: center; z-index: 6; }
+  .wb.solid { background: rgba(15,15,15,.96); box-shadow: inset 0 -1px 0 rgba(255,255,255,.08); }
+  .wb .logo { font-size: 20px; }
+  .wb .end { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .pills { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: rgba(26,26,26,.82); }
+  .wb.solid .pills { background: var(--card); }
+  .pill { height: 28px; padding: 0 12px; display: flex; align-items: center; gap: 6px; border-radius: 7px; font-size: 13px; font-weight: 500; color: var(--dim); }
+  .pill .ic { font-size: 15px; }
+  .nb { width: 34px; height: 34px; font-size: 15px; color: var(--dim); background: rgba(26,26,26,.82); }
+  .nb.sel { background: var(--nav); color: var(--snow); }
+  .addl { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px 0 11px; margin-right: 10px; border-radius: 17px; background: rgba(26,26,26,.82); font-size: 13px; font-weight: 500; color: var(--dim); }
+  .addl .ic { font-size: 15px; }
+  .wb.solid .addl { background: var(--card); }
+  .relbtn { display: inline-flex; align-items: center; gap: 8px; height: 36px; margin-top: 10px; padding: 0 14px; border-radius: 8px; background: rgba(42,42,42,.7); font-size: 13px; color: var(--ash); }
+  .relbtn b { color: var(--snow); font-weight: 600; }
+  .relbtn .ic { font-size: 14px; color: var(--snow); }
+  .bk { display: grid; place-items: center; color: var(--snow); font-size: 17px; position: relative; }
+  .tip { position: absolute; top: calc(100% + 8px); left: 0; padding: 5px 9px; border-radius: 6px; background: #2A2A2A; box-shadow: 0 6px 20px rgba(0,0,0,.5); font-size: 12px; font-weight: 500; white-space: nowrap; color: var(--snow); }
+  .tip kbd { font-family: var(--font); color: var(--ash); margin-left: 6px; }
+
+  /* macOS: traffic lights at 20/20, Back 28 tall after them, like Music and TV */
+  .mac .lights { display: flex; gap: 8px; margin-left: 20px; }
+  .mac .lights i { width: 12px; height: 12px; border-radius: 50%; }
+  .mac .bk { width: 32px; height: 28px; margin-left: 18px; border-radius: 7px; }
+  .mac .logo { margin-left: 12px; }
+  .mac .end { margin-right: 16px; }
+  /* Windows 11: Back 40×36 at the left edge, caption buttons 46×52 at the right */
+  .win .bk { width: 40px; height: 36px; margin-left: 6px; border-radius: 6px; font-size: 16px; }
+  .win .logo { margin-left: 14px; }
+  .win .end { margin-right: 10px; }
+  .caps { display: flex; align-self: stretch; }
+  .caps i { width: 46px; display: grid; place-items: center; font-size: 16px; color: var(--dim); }
+  .caps i::after { content: ""; width: 16px; height: 16px; background: currentColor; -webkit-mask: var(--m) center / contain no-repeat; }
+  /* GNOME (libadwaita header bar): Back 34×34 flat button, one close button right */
+  .gnome .bk { width: 34px; height: 34px; margin-left: 8px; border-radius: 8px; background: rgba(255,255,255,.08); font-size: 16px; }
+  .gnome .logo { margin-left: 14px; }
+  .gnome .end { margin-right: 10px; }
+  .gnome .x { width: 24px; height: 24px; margin-left: 10px; border-radius: 50%; background: rgba(255,255,255,.1); display: grid; place-items: center; font-size: 14px; }
+
+  .still.hero { height: 640px; bottom: auto; }
+  .info { position: absolute; left: 64px; top: 190px; width: 820px; z-index: 2; }
+  .title { font-size: 54px; }
+  .meta { display: flex; align-items: center; gap: 10px; margin-top: 18px; font-size: 14px; font-weight: 500; }
+  .meta .badge { font-size: 11px; padding: 3px 5px; }
+  .genres { margin-top: 8px; font-size: 13px; color: var(--ash); }
+  .about { margin-top: 10px; max-width: 540px; font-size: 15px; line-height: 1.45; color: #D6D6D6; }
+  .release { margin-top: 10px; font-size: 13px; color: var(--ash); }
+  .release b { color: var(--snow); font-weight: 500; }
+  .actions { display: flex; gap: 10px; margin-top: 20px; }
+  .actions .btn { height: 38px; padding: 0 16px; border-radius: 8px; font-size: 14px; gap: 8px; }
+  .actions .ic { font-size: 14px; }
+
+  .shelf { position: absolute; left: 64px; right: 0; z-index: 2; }
+  .shelf h2, .sec { font-size: 18px; font-weight: 600; }
+  .cards { display: flex; gap: 16px; margin-top: 14px; }
+  .card { width: 252px; flex: none; }
+  .thumb { height: 142px; border-radius: 8px; }
+  .thumb .bar { height: 3px; }
+  .card .t { margin-top: 9px; font-size: 14px; font-weight: 600; }
+  .card .s { margin-top: 2px; font-size: 12.5px; color: var(--ash); }
+  .grid { position: absolute; left: 64px; right: 64px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px 20px; }
+  .grid .thumb { height: 166px; }
+
+  .page { position: absolute; left: 64px; right: 64px; top: 92px; }
+  .page h1 { font-size: 34px; font-weight: 600; letter-spacing: -.5px; }
+  .page .sub { margin-top: 6px; font-size: 15px; color: var(--ash); line-height: 1.5; max-width: 700px; }
+  .setrow { display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 16px; margin-top: 8px; border-radius: 8px; background: var(--card); font-size: 14px; max-width: 720px; }
+
+  .veil { position: absolute; left: 0; right: 0; top: 52px; bottom: 0; background: rgba(15,15,15,.6); z-index: 4; }
+  .panel { position: absolute; top: 52px; right: 0; bottom: 0; width: 460px; padding: 24px 28px; background: var(--card); border-radius: 14px 0 0 0; z-index: 5; }
+  .panel .head { display: flex; align-items: center; justify-content: space-between; }
+  .panel h2 { font-size: 22px; font-weight: 600; }
+  .panel .x { width: 30px; height: 30px; font-size: 14px; background: var(--raise); }
+  .panel .sub { margin-top: 4px; font-size: 13px; color: var(--ash); margin-bottom: 18px; }
+  .rel { display: flex; align-items: center; gap: 12px; height: 54px; padding: 0 14px; margin-top: 8px; border-radius: 8px; background: var(--raise); font-size: 13.5px; }
+  .rel .badge { font-size: 11px; padding: 3px 5px; }
+  .rel b { font-weight: 600; }
+  .rel .grow { flex: 1; color: var(--ash); }
+  .rel.chosen { box-shadow: inset 4px 0 0 var(--snow); }
+
+  .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(15,15,15,.85) 0%, rgba(15,15,15,0) 22%, rgba(15,15,15,0) 62%, rgba(15,15,15,.9) 100%); }
+  .ptitle { margin-left: 14px; }
+  .ptitle .t { font-size: 14px; font-weight: 600; }
+  .ptitle .s { font-size: 12px; color: var(--ash); margin-top: 1px; }
+  .pbot { position: absolute; left: 64px; right: 64px; bottom: 36px; }
+  .pbot .ahead { font-size: 13px; color: var(--ash); }
+  .pbot .ahead b { color: var(--snow); font-weight: 600; }
+  .track { position: relative; height: 5px; margin-top: 14px; border-radius: 3px; background: rgba(245,245,245,.16); }
+  .track i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 3px; }
+  .times { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--ash); }
+  .ctl { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  .ctl .round { width: 44px; height: 44px; font-size: 18px; background: rgba(42,42,42,.85); }
+</style>
+</head>
+<body>
+<h1 class="board">Desktop: macOS, Windows, Linux (1440×900 window, mouse + keyboard)</h1>
+<p>One window bar, 52 pt, on every page: Back, the logo, then the nav on the right. It stays put while the page scrolls: clear over a hero, solid once content passes under it. The nav is there on deep pages too, with the section the page belongs to still selected. Back is ⌘[ / Alt+←, the mouse back button and Esc (Esc closes a panel first).</p>
+
+<!-- 1 -->
+<section class="frame" id="mac-home" data-size="1440,900" data-scale="1">
+<div class="screen mac">
+  <div class="still hero s-amber"></div>
+  <div class="wb">
+    <div class="lights"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i></div>
+    <div class="bk disabled"><i class="ic ic-back"></i></div>
+    <div class="logo">reel</div>
+    <div class="end">
+      <div class="pills"><div class="pill sel"><i class="ic ic-home"></i>Home</div><div class="pill"><i class="ic ic-movies"></i>Movies</div><div class="pill"><i class="ic ic-shows"></i>Shows</div><div class="pill"><i class="ic ic-anime"></i>Anime</div></div>
+      <div class="round nb"><i class="ic ic-search"></i></div><div class="round nb"><i class="ic ic-gear"></i></div>
+    </div>
+  </div>
+  <div class="info">
+    <div class="title logotype">The General</div>
+    <div class="meta"><span><span class="star">★</span> 8.1</span><span class="ash">97K</span><span>1926</span><span>1 h 18 min</span><span class="badge">1080p</span><span class="badge">Silent</span></div>
+    <div class="genres">Comedy, Action, War</div>
+    <p class="about">A locomotive engineer chases his stolen train across the front line of the Civil War, and then has to bring it back.</p>
+    <div class="release"><b>1080p</b> · 3.0 GB · 518 people sharing · starts in seconds</div>
+    <div class="actions"><div class="btn primary"><i class="ic ic-play"></i>Resume 10:10</div><div class="btn secondary"><i class="ic ic-plus"></i>Add to list</div></div>
+  </div>
+  <div class="shelf" style="top:560px">
+    <h2>Continue watching</h2>
+    <div class="cards">
+      <div class="card"><div class="ph thumb g1"><span class="bar"><i style="width:13%"></i></span></div><div class="t">The General</div><div class="s">1 h 8 min left</div></div>
+      <div class="card"><div class="ph thumb g2"><span class="bar"><i style="width:62%"></i></span></div><div class="t">Flash Gordon</div><div class="s">S3:E4 · 7 min left</div></div>
+      <div class="card"><div class="ph thumb g3"><span class="bar"><i style="width:36%"></i></span></div><div class="t">Charade</div><div class="s">1 h 12 min left</div></div>
+      <div class="card"><div class="ph thumb g4"><span class="bar"><i style="width:48%"></i></span></div><div class="t">Metropolis</div><div class="s">1 h 19 min left</div></div>
+      <div class="card"><div class="ph thumb g6"><span class="bar"><i style="width:20%"></i></span></div><div class="t">Les Vampires</div><div class="s">S1:E2 · 31 min left</div></div>
+    </div>
+  </div>
+</div>
+<p class="cap"><b>macOS, Home.</b> Hidden title bar; the window bar is the top 52 pt: traffic lights (20, 20), Back 32×28 at x 90 (disabled here: Home is a root, nothing to go back to; it stays in place so nothing shifts), "reel", and the nav right. Clear over the hero. Dragging empty bar space moves the window, a double click zooms it.</p>
+</section>
+
+<!-- 2 -->
+<section class="frame" id="mac-movies-scrolled" data-size="1440,900" data-scale="1">
+<div class="screen mac">
+  <div class="grid" style="top:30px">
+    <div><div class="ph thumb g3"></div><div class="card"><div class="t">Detour</div><div class="s"><span class="star">★</span> 7.2 · 1945 · Movie</div></div></div>
+    <div><div class="ph thumb g5"></div><div class="card"><div class="t">His Girl Friday</div><div class="s"><span class="star">★</span> 7.8 · 1940 · Movie</div></div></div>
+    <div><div class="ph thumb g8"></div><div class="card"><div class="t">The Cabinet of Dr. Caligari</div><div class="s"><span class="star">★</span> 8.0 · 1920 · Movie</div></div></div>
+    <div><div class="ph thumb g7"></div><div class="card"><div class="t">A Trip to the Moon</div><div class="s"><span class="star">★</span> 8.1 · 1902 · Short</div></div></div>
+    <div><div class="ph thumb g2"></div><div class="card"><div class="t">Sherlock Jr.</div><div class="s"><span class="star">★</span> 8.2 · 1924 · Movie</div></div></div>
+    <div><div class="ph thumb g6"></div><div class="card"><div class="t">Night of the Living Dead</div><div class="s"><span class="star">★</span> 7.8 · 1968 · Movie</div></div></div>
+    <div><div class="ph thumb g1"></div><div class="card"><div class="t">Metropolis</div><div class="s"><span class="star">★</span> 8.3 · 1927 · Movie</div></div></div>
+    <div><div class="ph thumb g4"></div><div class="card"><div class="t">Nosferatu</div><div class="s"><span class="star">★</span> 7.8 · 1922 · Movie</div></div></div>
+    <div><div class="ph thumb g5"></div><div class="card"><div class="t">The Kid</div><div class="s"><span class="star">★</span> 8.2 · 1921 · Movie</div></div></div>
+    <div><div class="ph thumb g3"></div><div class="card"><div class="t">The Lodger</div><div class="s"><span class="star">★</span> 7.3 · 1927 · Movie</div></div></div>
+    <div><div class="ph thumb g8"></div><div class="card"><div class="t">Safety Last!</div><div class="s"><span class="star">★</span> 8.1 · 1923 · Movie</div></div></div>
+    <div><div class="ph thumb g2"></div><div class="card"><div class="t">The Phantom Carriage</div><div class="s"><span class="star">★</span> 8.0 · 1921 · Movie</div></div></div>
+  </div>
+  <div class="wb solid">
+    <div class="lights"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i></div>
+    <div class="bk disabled"><i class="ic ic-back"></i></div>
+    <div class="logo">reel</div>
+    <div class="end">
+      <div class="pills"><div class="pill"><i class="ic ic-home"></i>Home</div><div class="pill sel"><i class="ic ic-movies"></i>Movies</div><div class="pill"><i class="ic ic-shows"></i>Shows</div><div class="pill"><i class="ic ic-anime"></i>Anime</div></div>
+      <div class="round nb"><i class="ic ic-search"></i></div><div class="round nb"><i class="ic ic-gear"></i></div>
+    </div>
+  </div>
+</div>
+<p class="cap"><b>macOS, Movies scrolled.</b> The bar stays: once content runs under it, it turns solid ink (96%) with a 1 px hairline; no blur. Movies selected. Clicking the selected Movies again scrolls to the top. ⌘1–⌘4 open Home, Movies, Shows, Anime; ⌘F Search; ⌘, Settings.</p>
+</section>
+
+<!-- 3 -->
+<section class="frame" id="mac-film" data-size="1440,900" data-scale="1">
+<div class="screen mac">
+  <div class="still hero s-slate"></div>
+  <div class="wb">
+    <div class="lights"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i></div>
+    <div class="bk hover"><i class="ic ic-back"></i><span class="tip">Back to Movies<kbd>⌘[</kbd></span></div>
+    <div class="logo">reel</div>
+    <div class="end">
+      <div class="addl"><i class="ic ic-plus"></i>Add to list</div>
+      <div class="pills"><div class="pill"><i class="ic ic-home"></i>Home</div><div class="pill sel"><i class="ic ic-movies"></i>Movies</div><div class="pill"><i class="ic ic-shows"></i>Shows</div><div class="pill"><i class="ic ic-anime"></i>Anime</div></div>
+      <div class="round nb"><i class="ic ic-search"></i></div><div class="round nb"><i class="ic ic-gear"></i></div>
+    </div>
+  </div>
+  <div class="info">
+    <div class="title logotype">Nosferatu</div>
+    <div class="meta"><span><span class="star">★</span> 7.8</span><span class="ash">112K</span><span>1922</span><span>1 h 34 min</span><span class="badge">4K</span><span class="badge">Silent</span></div>
+    <div class="genres">Horror, Fantasy</div>
+    <p class="about">An estate agent travels to Transylvania to meet Count Orlok, who is buying a house in his home town.</p>
+    <div class="actions"><div class="btn primary"><i class="ic ic-play"></i>Play</div><div class="btn secondary"><i class="ic ic-play" style="font-size:10px"></i>Trailer</div></div>
+    <div class="relbtn"><b>1080p BluRay</b> · 6.4 GB · 286 people sharing <i class="ic ic-down"></i></div>
+  </div>
+  <div class="shelf" style="top:600px; right:64px">
+    <div class="sec">Releases <span class="ash" style="font-size:13px; font-weight:400; margin-left:8px">5 found, the best of each quality first</span></div>
+    <div class="rel" style="margin-top:14px"><span class="badge">720p</span><b>WEB</b><span class="grow">1.9 GB · piano score, EN subs</span><span>940 sharing</span></div>
+    <div class="rel"><span class="badge">1080p</span><b>BluRay restoration</b><span class="grow">6.4 GB · orchestral score, EN subs</span><span><i class="ic ic-check"></i> Plays now</span></div>
+  </div>
+</div>
+<p class="cap"><b>macOS, film opened from Movies.</b> Same bar, Back enabled; the page's own action, <b>Add to list</b> (34 pt pill, icon + label), sits in the bar's right part before the nav. The hero keeps Play and Trailer, the release button under them. Back enabled (hovered: tooltip names where it goes and the shortcut). Movies stays selected: the title lives in that section. No round back button over the hero any more. Back also: ⌘[, ⌘←, mouse button 4, two-finger swipe right, Esc.</p>
+</section>
+
+<!-- 4 -->
+<section class="frame" id="mac-film-releases" data-size="1440,900" data-scale="1">
+<div class="screen mac">
+  <div class="still hero s-slate"></div>
+  <div class="info">
+    <div class="title logotype">Nosferatu</div>
+    <div class="meta"><span><span class="star">★</span> 7.8</span><span class="ash">112K</span><span>1922</span><span>1 h 34 min</span></div>
+  </div>
+  <div class="veil"></div>
+  <div class="wb">
+    <div class="lights"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i></div>
+    <div class="bk"><i class="ic ic-back"></i></div>
+    <div class="logo">reel</div>
+    <div class="end">
+      <div class="addl"><i class="ic ic-plus"></i>Add to list</div>
+      <div class="pills"><div class="pill"><i class="ic ic-home"></i>Home</div><div class="pill sel"><i class="ic ic-movies"></i>Movies</div><div class="pill"><i class="ic ic-shows"></i>Shows</div><div class="pill"><i class="ic ic-anime"></i>Anime</div></div>
+      <div class="round nb"><i class="ic ic-search"></i></div><div class="round nb"><i class="ic ic-gear"></i></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="head"><h2>Releases</h2><div class="round x"><i class="ic ic-close"></i></div></div>
+    <div class="sub">5 found, the best of each quality first</div>
+    <div class="rel"><span class="badge">720p</span><b>WEB</b><span class="grow">1.9 GB</span><span>940 sharing</span></div>
+    <div class="rel chosen"><span class="badge">1080p</span><b>BluRay restoration</b><span class="grow">6.4 GB</span><i class="ic ic-check"></i></div>
+    <div class="rel focus"><span class="badge">4K</span><b>UHD remaster HDR</b><span class="grow">38.2 GB</span><span class="ash">Needs 25 Mbit/s</span></div>
+    <div class="rel"><span class="badge">1080p</span><b>BluRay</b><span class="grow">7.1 GB</span><span class="ash">Few sharing</span></div>
+  </div>
+</div>
+<p class="cap"><b>macOS, release panel.</b> A side panel 460 pt wide under the bar (the bar stays usable). It has its own close button (pointer users need one). Esc, the close button, a click on the dimmed page, and Back (bar, ⌘[) all close the panel first; the next Back leaves the title. Keyboard focus ring shown on a row.</p>
+</section>
+
+<!-- 5 -->
+<section class="frame" id="mac-settings" data-size="1440,900" data-scale="1">
+<div class="screen mac">
+  <div class="wb solid">
+    <div class="lights"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i></div>
+    <div class="bk disabled"><i class="ic ic-back"></i></div>
+    <div class="logo">reel</div>
+    <div class="end">
+      <div class="pills"><div class="pill"><i class="ic ic-home"></i>Home</div><div class="pill"><i class="ic ic-movies"></i>Movies</div><div class="pill"><i class="ic ic-shows"></i>Shows</div><div class="pill"><i class="ic ic-anime"></i>Anime</div></div>
+      <div class="round nb"><i class="ic ic-search"></i></div><div class="round nb sel"><i class="ic ic-gear"></i></div>
+    </div>
+  </div>
+  <div class="page">
+    <h1>Settings</h1>
+    <div class="sec" style="margin-top:28px">Language</div>
+    <div class="sub">The language of titles, descriptions and episode names.</div>
+    <div class="setrow" style="margin-top:14px; background:var(--raise)"><span>English</span><i class="ic ic-check"></i></div>
+    <div class="setrow"><span>Deutsch</span></div>
+    <div class="setrow"><span>Français</span></div>
+    <div class="sec" style="margin-top:32px">About</div>
+    <div class="setrow" style="margin-top:12px"><span>About reel and its data sources</span><i class="ic ic-fwd ash"></i></div>
+  </div>
+</div>
+<p class="cap"><b>macOS, Settings.</b> A nav destination: the gear is selected, the bar is solid (no hero), Back is disabled like on any root. The page title sits under the bar at (64, 92), never beside a back button. ⌘, opens it from anywhere.</p>
+</section>
+
+<!-- 6 -->
+<section class="frame" id="mac-about" data-size="1440,900" data-scale="1">
+<div class="screen mac">
+  <div class="wb solid">
+    <div class="lights"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i></div>
+    <div class="bk"><i class="ic ic-back"></i></div>
+    <div class="logo">reel</div>
+    <div class="end">
+      <div class="pills"><div class="pill"><i class="ic ic-home"></i>Home</div><div class="pill"><i class="ic ic-movies"></i>Movies</div><div class="pill"><i class="ic ic-shows"></i>Shows</div><div class="pill"><i class="ic ic-anime"></i>Anime</div></div>
+      <div class="round nb"><i class="ic ic-search"></i></div><div class="round nb sel"><i class="ic ic-gear"></i></div>
+    </div>
+  </div>
+  <div class="page">
+    <h1>About reel</h1>
+    <p class="sub" style="color:#D6D6D6; margin-top:20px">reel streams films and series from the search source you add in Settings. It ships no sources of its own.</p>
+    <div class="sec" style="margin-top:32px">Data sources</div>
+    <p class="sub">This product uses the TMDB API but is not endorsed or certified by TMDB. Anime data from AniList and Jikan.</p>
+  </div>
+</div>
+<p class="cap"><b>macOS, About (below Settings).</b> Back is enabled and returns to Settings; the gear stays selected because About is part of Settings.</p>
+</section>
+
+<!-- 7 -->
+<section class="frame" id="mac-player" data-size="1440,900" data-scale="1">
+<div class="screen mac">
+  <div class="still s-teal" style="filter:brightness(1.25)"></div>
+  <div class="shade"></div>
+  <div class="wb">
+    <div class="lights"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i></div>
+    <div class="bk" style="background:rgba(42,42,42,.85)"><i class="ic ic-back"></i></div>
+    <div class="ptitle"><div class="t">Flash Gordon · S3:E4 Trapped in the Turret</div><div class="s">1080p WEB · resumed from 12:40</div></div>
+  </div>
+  <div class="pbot">
+    <div class="ahead"><b>6 min ready ahead</b> · streaming at 3.4 MB/s from 37 people</div>
+    <div class="track"><i style="width:58%; background:rgba(245,245,245,.45)"></i><i style="width:41%; background:var(--snow)"></i></div>
+    <div class="times"><span>12:40</span><span>19:02</span></div>
+    <div class="ctl"><div class="round"><i class="ic ic-rew"></i></div><div class="round"><i class="ic ic-pause"></i></div><div class="round"><i class="ic ic-ffw"></i></div><div style="width:24px"></div><div class="round"><i class="ic ic-subs"></i></div></div>
+  </div>
+</div>
+<p class="cap"><b>macOS, player (window).</b> No nav. Back keeps the same spot as on every page (after the traffic lights) with the title beside it; it fades out with the controls after 3 s without a mouse move. Esc: closes the tracks panel, else leaves full screen, else leaves the player. In full screen the lights are gone and Back moves to (20, 12).</p>
+</section>
+
+<!-- 8 -->
+<section class="frame" id="win-film" data-size="1440,900" data-scale="1">
+<div class="screen win">
+  <div class="still hero s-slate"></div>
+  <div class="wb">
+    <div class="bk hover"><i class="ic ic-arrow"></i><span class="tip">Back<kbd>Alt+Left</kbd></span></div>
+    <div class="logo">reel</div>
+    <div class="end">
+      <div class="addl"><i class="ic ic-plus"></i>Add to list</div>
+      <div class="pills"><div class="pill"><i class="ic ic-home"></i>Home</div><div class="pill sel"><i class="ic ic-movies"></i>Movies</div><div class="pill"><i class="ic ic-shows"></i>Shows</div><div class="pill"><i class="ic ic-anime"></i>Anime</div></div>
+      <div class="round nb"><i class="ic ic-search"></i></div><div class="round nb"><i class="ic ic-gear"></i></div>
+    </div>
+    <div class="caps"><i class="ic-min"></i><i class="ic-max"></i><i class="ic-x1"></i></div>
+  </div>
+  <div class="info">
+    <div class="title logotype">Nosferatu</div>
+    <div class="meta"><span><span class="star">★</span> 7.8</span><span class="ash">112K</span><span>1922</span><span>1 h 34 min</span><span class="badge">4K</span><span class="badge">Silent</span></div>
+    <div class="genres">Horror, Fantasy</div>
+    <p class="about">An estate agent travels to Transylvania to meet Count Orlok, who is buying a house in his home town.</p>
+    <div class="actions"><div class="btn primary"><i class="ic ic-play"></i>Play</div><div class="btn secondary"><i class="ic ic-play" style="font-size:10px"></i>Trailer</div></div>
+    <div class="relbtn"><b>1080p BluRay</b> · 6.4 GB · 286 people sharing <i class="ic ic-down"></i></div>
+  </div>
+</div>
+<p class="cap"><b>Windows 11, film.</b> The app draws its own title bar (52 px): Back is a Fluent arrow 40×36 at the left edge, where Windows apps (Settings, Store) put it; the system caption buttons (minimise, maximise, close, 46 px each) stay at the right. On a root page the Back button is not shown and the logo starts at 16. Alt+Left, Backspace, mouse XButton1 and Esc go back.</p>
+</section>
+
+<!-- 9 -->
+<section class="frame" id="win-movies-scrolled" data-size="1440,900" data-scale="1">
+<div class="screen win">
+  <div class="grid" style="top:30px">
+    <div><div class="ph thumb g3"></div><div class="card"><div class="t">Detour</div><div class="s"><span class="star">★</span> 7.2 · 1945 · Movie</div></div></div>
+    <div><div class="ph thumb g5"></div><div class="card"><div class="t">His Girl Friday</div><div class="s"><span class="star">★</span> 7.8 · 1940 · Movie</div></div></div>
+    <div><div class="ph thumb g8"></div><div class="card"><div class="t">The Cabinet of Dr. Caligari</div><div class="s"><span class="star">★</span> 8.0 · 1920 · Movie</div></div></div>
+    <div><div class="ph thumb g7"></div><div class="card"><div class="t">A Trip to the Moon</div><div class="s"><span class="star">★</span> 8.1 · 1902 · Short</div></div></div>
+    <div><div class="ph thumb g2"></div><div class="card"><div class="t">Sherlock Jr.</div><div class="s"><span class="star">★</span> 8.2 · 1924 · Movie</div></div></div>
+    <div><div class="ph thumb g6"></div><div class="card"><div class="t">Night of the Living Dead</div><div class="s"><span class="star">★</span> 7.8 · 1968 · Movie</div></div></div>
+    <div><div class="ph thumb g1"></div><div class="card"><div class="t">Metropolis</div><div class="s"><span class="star">★</span> 8.3 · 1927 · Movie</div></div></div>
+    <div><div class="ph thumb g4"></div><div class="card"><div class="t">Nosferatu</div><div class="s"><span class="star">★</span> 7.8 · 1922 · Movie</div></div></div>
+    <div><div class="ph thumb g5"></div><div class="card"><div class="t">The Kid</div><div class="s"><span class="star">★</span> 8.2 · 1921 · Movie</div></div></div>
+    <div><div class="ph thumb g3"></div><div class="card"><div class="t">The Lodger</div><div class="s"><span class="star">★</span> 7.3 · 1927 · Movie</div></div></div>
+    <div><div class="ph thumb g8"></div><div class="card"><div class="t">Safety Last!</div><div class="s"><span class="star">★</span> 8.1 · 1923 · Movie</div></div></div>
+    <div><div class="ph thumb g2"></div><div class="card"><div class="t">The Phantom Carriage</div><div class="s"><span class="star">★</span> 8.0 · 1921 · Movie</div></div></div>
+  </div>
+  <div class="wb solid">
+    <div class="logo" style="margin-left:16px">reel</div>
+    <div class="end">
+      <div class="pills"><div class="pill"><i class="ic ic-home"></i>Home</div><div class="pill sel"><i class="ic ic-movies"></i>Movies</div><div class="pill"><i class="ic ic-shows"></i>Shows</div><div class="pill"><i class="ic ic-anime"></i>Anime</div></div>
+      <div class="round nb"><i class="ic ic-search"></i></div><div class="round nb"><i class="ic ic-gear"></i></div>
+    </div>
+    <div class="caps"><i class="ic-min"></i><i class="ic-max"></i><i class="ic-x1"></i></div>
+  </div>
+</div>
+<p class="cap"><b>Windows 11, Movies scrolled.</b> A root: no Back button, logo at the left. Solid bar while content is under it. Ctrl+1–4 for the destinations, Ctrl+F Search, Ctrl+, Settings.</p>
+</section>
+
+<!-- 10 -->
+<section class="frame" id="linux-film" data-size="1440,900" data-scale="1">
+<div class="screen gnome">
+  <div class="still hero s-slate"></div>
+  <div class="wb">
+    <div class="bk"><i class="ic ic-back"></i></div>
+    <div class="logo">reel</div>
+    <div class="end">
+      <div class="addl"><i class="ic ic-plus"></i>Add to list</div>
+      <div class="pills"><div class="pill"><i class="ic ic-home"></i>Home</div><div class="pill sel"><i class="ic ic-movies"></i>Movies</div><div class="pill"><i class="ic ic-shows"></i>Shows</div><div class="pill"><i class="ic ic-anime"></i>Anime</div></div>
+      <div class="round nb"><i class="ic ic-search"></i></div><div class="round nb"><i class="ic ic-gear"></i></div>
+      <div class="x"><i class="ic ic-close"></i></div>
+    </div>
+  </div>
+  <div class="info">
+    <div class="title logotype">Nosferatu</div>
+    <div class="meta"><span><span class="star">★</span> 7.8</span><span class="ash">112K</span><span>1922</span><span>1 h 34 min</span><span class="badge">4K</span><span class="badge">Silent</span></div>
+    <div class="genres">Horror, Fantasy</div>
+    <p class="about">An estate agent travels to Transylvania to meet Count Orlok, who is buying a house in his home town.</p>
+    <div class="actions"><div class="btn primary"><i class="ic ic-play"></i>Play</div><div class="btn secondary"><i class="ic ic-play" style="font-size:10px"></i>Trailer</div></div>
+    <div class="relbtn"><b>1080p BluRay</b> · 6.4 GB · 286 people sharing <i class="ic ic-down"></i></div>
+  </div>
+</div>
+<p class="cap"><b>Linux (GNOME), film.</b> A header bar like libadwaita's: a flat 34 px Back button at the start, the window's close button at the end (the system decides which buttons and on which side; if it puts them on the left, Back moves after them). Alt+Left, the mouse back button and Esc go back. With server-side decorations (KDE, others) the bar is the same row under the system title bar.</p>
+</section>
+
+<!-- 11 -->
+<section class="frame" id="linux-settings" data-size="1440,900" data-scale="1">
+<div class="screen gnome">
+  <div class="wb solid">
+    <div class="logo" style="margin-left:16px">reel</div>
+    <div class="end">
+      <div class="pills"><div class="pill"><i class="ic ic-home"></i>Home</div><div class="pill"><i class="ic ic-movies"></i>Movies</div><div class="pill"><i class="ic ic-shows"></i>Shows</div><div class="pill"><i class="ic ic-anime"></i>Anime</div></div>
+      <div class="round nb"><i class="ic ic-search"></i></div><div class="round nb sel"><i class="ic ic-gear"></i></div>
+      <div class="x"><i class="ic ic-close"></i></div>
+    </div>
+  </div>
+  <div class="page">
+    <h1>Settings</h1>
+    <div class="sec" style="margin-top:28px">Language</div>
+    <div class="sub">The language of titles, descriptions and episode names.</div>
+    <div class="setrow" style="margin-top:14px; background:var(--raise)"><span>English</span><i class="ic ic-check"></i></div>
+    <div class="setrow"><span>Deutsch</span></div>
+    <div class="setrow"><span>Français</span></div>
+  </div>
+</div>
+<p class="cap"><b>Linux, Settings.</b> A root: no Back, logo at the start, the gear selected. Same layout as Windows; only the window buttons differ.</p>
+</section>
+<script src="solo.js"></script>
+</body>
+</html>

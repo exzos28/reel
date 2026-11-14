@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>reel navigation: tablet</title>
+<link rel="stylesheet" href="nav.css">
+<style>
+  /* iPad 1180×820 pt (landscape), Android tablet 1280×800 dp; regular density. Margin 32. */
+  .screen { width: 1180px; height: 820px; }
+  .screen.and { width: 1280px; height: 800px; }
+  .status { position: absolute; top: 0; left: 0; right: 0; height: 24px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 13px; font-weight: 600; z-index: 8; }
+  .status .r { display: flex; gap: 6px; align-items: center; }
+  .bat { display: block; width: 24px; height: 11px; border: 1.3px solid var(--snow); border-radius: 3px; padding: 1.3px; } .bat i { display: block; height: 100%; width: 70%; background: var(--snow); border-radius: 1px; }
+  .and .status { height: 32px; padding: 0 24px; font-weight: 500; }
+
+  /* the top row: back or logo left, tabs centred (iPadOS 18 tab bar), settings right */
+  .top { position: absolute; top: 24px; left: 0; right: 0; height: 60px; display: flex; align-items: center; padding: 0 24px; z-index: 6; }
+  .and .top { top: 32px; height: 64px; }
+  .top.solid { background: rgba(15,15,15,.96); box-shadow: inset 0 -1px 0 rgba(255,255,255,.08); }
+  .top .logo { font-size: 22px; }
+  .tabs { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 2px; padding: 4px; border-radius: 22px; background: rgba(26,26,26,.85); }
+  .top.solid .tabs { background: var(--card); }
+  .tab { height: 36px; padding: 0 16px; display: flex; align-items: center; gap: 7px; border-radius: 18px; font-size: 15px; font-weight: 500; color: var(--dim); }
+  .tab .ic { font-size: 17px; }
+  .tab.ico { padding: 0 12px; }
+  .gear { margin-left: auto; width: 40px; height: 40px; font-size: 18px; background: rgba(26,26,26,.85); color: var(--dim); }
+  .addl { margin-left: auto; margin-right: 10px; width: 40px; height: 40px; font-size: 18px; background: rgba(26,26,26,.85); color: var(--snow); }
+  .addl + .gear { margin-left: 0; }
+  .relbtn { display: inline-flex; align-items: center; gap: 8px; height: 40px; margin-top: 10px; padding: 0 14px; border-radius: 10px; background: rgba(42,42,42,.7); font-size: 14px; color: var(--ash); }
+  .relbtn b { color: var(--snow); font-weight: 600; }
+  .relbtn .ic { font-size: 15px; color: var(--snow); }
+  .back { display: flex; align-items: center; gap: 4px; height: 40px; padding: 0 16px 0 10px; border-radius: 20px; background: rgba(26,26,26,.85); font-size: 16px; font-weight: 500; }
+  .back .ic { font-size: 20px; }
+  .back.solo { width: 40px; padding: 0; justify-content: center; }
+
+  .still.hero { height: 600px; bottom: auto; }
+  .info { position: absolute; left: 32px; top: 200px; width: 700px; z-index: 2; }
+  .title { font-size: 46px; }
+  .meta { display: flex; align-items: center; gap: 9px; margin-top: 14px; font-size: 14px; font-weight: 500; }
+  .meta .badge { font-size: 11px; padding: 3px 5px; }
+  .genres { margin-top: 6px; font-size: 13px; color: var(--ash); }
+  .about { margin-top: 8px; max-width: 520px; font-size: 15px; line-height: 1.45; color: #D6D6D6; }
+  .release { margin-top: 8px; font-size: 13px; color: var(--ash); }
+  .release b { color: var(--snow); font-weight: 500; }
+  .actions { display: flex; gap: 10px; margin-top: 18px; }
+  .actions .btn { height: 44px; padding: 0 18px; border-radius: 10px; font-size: 15px; gap: 8px; }
+  .actions .ic { font-size: 15px; }
+  .shelf { position: absolute; left: 32px; right: 0; z-index: 2; }
+  .shelf h2, .sec { font-size: 18px; font-weight: 600; }
+  .cards { display: flex; gap: 14px; margin-top: 12px; }
+  .card { width: 260px; flex: none; }
+  .thumb { height: 146px; border-radius: 8px; }
+  .thumb .bar { height: 3px; }
+  .card .t { margin-top: 8px; font-size: 14px; font-weight: 600; }
+  .card .s { margin-top: 2px; font-size: 12.5px; color: var(--ash); }
+  .rel { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 16px; margin-top: 8px; border-radius: 10px; background: var(--raise); font-size: 14px; }
+  .rel .badge { font-size: 11px; padding: 3px 5px; }
+  .rel b { font-weight: 600; }
+  .rel .grow { flex: 1; color: var(--ash); }
+  .rel.chosen { box-shadow: inset 4px 0 0 var(--snow); }
+
+  .page { position: absolute; left: 32px; right: 32px; top: 100px; }
+  .page h1 { font-size: 34px; font-weight: 700; letter-spacing: -.4px; }
+  .page .sub { margin-top: 6px; font-size: 14px; color: var(--ash); line-height: 1.5; max-width: 640px; }
+  .setrow { display: flex; align-items: center; justify-content: space-between; height: 48px; padding: 0 16px; margin-top: 8px; border-radius: 10px; background: var(--card); font-size: 15px; max-width: 700px; }
+
+  .veil { position: absolute; inset: 0; background: rgba(15,15,15,.6); z-index: 9; }
+  .sheet { position: absolute; top: 36px; right: 12px; bottom: 12px; width: 440px; padding: 20px 20px; background: var(--card); border-radius: 22px; z-index: 10; }
+  .sheet .head { display: flex; align-items: center; justify-content: space-between; }
+  .sheet h2 { font-size: 20px; font-weight: 600; }
+  .sheet .x { width: 32px; height: 32px; font-size: 15px; background: var(--raise); }
+  .sheet .sub { margin: 4px 0 14px; font-size: 13px; color: var(--ash); }
+
+  .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(15,15,15,.85) 0%, rgba(15,15,15,0) 24%, rgba(15,15,15,0) 60%, rgba(15,15,15,.9) 100%); }
+  .ptop { position: absolute; top: 24px; left: 24px; right: 24px; display: flex; align-items: center; gap: 14px; }
+  .ptop .x { width: 44px; height: 44px; font-size: 18px; background: rgba(42,42,42,.85); }
+  .ptop .t { font-size: 15px; font-weight: 600; }
+  .ptop .s { font-size: 12.5px; color: var(--ash); margin-top: 1px; }
+  .pbot { position: absolute; left: 32px; right: 32px; bottom: 28px; }
+  .pbot .ahead { font-size: 13px; color: var(--ash); }
+  .pbot .ahead b { color: var(--snow); font-weight: 600; }
+  .track { position: relative; height: 5px; margin-top: 14px; border-radius: 3px; background: rgba(245,245,245,.16); }
+  .track i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 3px; }
+  .times { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--ash); }
+  .ctl { display: flex; align-items: center; justify-content: center; gap: 28px; margin-top: 10px; }
+  .ctl .round { width: 52px; height: 52px; font-size: 22px; background: rgba(42,42,42,.85); }
+  .ctl .big { width: 64px; height: 64px; font-size: 26px; }
+  .home-ind { position: absolute; bottom: 8px; left: 50%; width: 320px; height: 5px; margin-left: -160px; border-radius: 3px; background: rgba(245,245,245,.85); z-index: 12; }
+  .and .home-ind { width: 108px; margin-left: -54px; height: 4px; bottom: 10px; }
+</style>
+</head>
+<body>
+<h1 class="board">Tablet: iPadOS and Android tablets (touch)</h1>
+<p>One top row on every page: Back (or the logo on a root) left, the destinations as a floating tab bar centred (iPadOS 18 puts tabs at the top; reel's pill nav already is one), Settings right. It stays while the page scrolls and turns solid once content passes under it. Back: the labelled button, the left-edge swipe on iPad, the system back on Android.</p>
+
+<!-- 1 -->
+<section class="frame" id="ipad-home" data-size="1180,820" data-scale="2">
+<div class="screen">
+  <div class="status"><span>9:41 Sat Nov 14</span><span class="r">100% <span class="bat"><i></i></span></span></div>
+  <div class="still hero s-amber"></div>
+  <div class="top">
+    <div class="logo">reel</div>
+    <div class="tabs"><div class="tab sel"><i class="ic ic-home"></i>Home</div><div class="tab"><i class="ic ic-movies"></i>Movies</div><div class="tab"><i class="ic ic-shows"></i>Shows</div><div class="tab"><i class="ic ic-anime"></i>Anime</div><div class="tab ico"><i class="ic ic-search"></i></div></div>
+    <div class="round gear"><i class="ic ic-gear"></i></div>
+  </div>
+  <div class="info">
+    <div class="title logotype">The General</div>
+    <div class="meta"><span><span class="star">★</span> 8.1</span><span class="ash">97K</span><span>1926</span><span>1 h 18 min</span><span class="badge">1080p</span><span class="badge">Silent</span></div>
+    <div class="genres">Comedy, Action, War</div>
+    <p class="about">A locomotive engineer chases his stolen train across the front line of the Civil War, and then has to bring it back.</p>
+    <div class="release"><b>1080p</b> · 3.0 GB · 518 people sharing · starts in seconds</div>
+    <div class="actions"><div class="btn primary"><i class="ic ic-play"></i>Resume 10:10</div><div class="btn secondary"><i class="ic ic-plus"></i>Add to list</div></div>
+  </div>
+  <div class="shelf" style="top:560px">
+    <h2>Continue watching</h2>
+    <div class="cards">
+      <div class="card"><div class="ph thumb g1"><span class="bar"><i style="width:13%"></i></span></div><div class="t">The General</div><div class="s">1 h 8 min left</div></div>
+      <div class="card"><div class="ph thumb g2"><span class="bar"><i style="width:62%"></i></span></div><div class="t">Flash Gordon</div><div class="s">S3:E4 · 7 min left</div></div>
+      <div class="card"><div class="ph thumb g3"><span class="bar"><i style="width:36%"></i></span></div><div class="t">Charade</div><div class="s">1 h 12 min left</div></div>
+      <div class="card"><div class="ph thumb g4"><span class="bar"><i style="width:48%"></i></span></div><div class="t">Metropolis</div><div class="s">1 h 19 min left</div></div>
+    </div>
+  </div>
+  <div class="home-ind"></div>
+</div>
+<p class="cap"><b>iPad, Home.</b> Status bar 24 pt; the top row (60 pt) under it: logo at x 24, the tab bar centred (Home, Movies, Shows, Anime, Search as an icon tab), Settings as a 40 pt round button at the right. Tapping the selected tab again scrolls to the top (or pops to the tab's root).</p>
+</section>
+
+<!-- 2 -->
+<section class="frame" id="ipad-film" data-size="1180,820" data-scale="2">
+<div class="screen">
+  <div class="status"><span>9:41 Sat Nov 14</span><span class="r">100% <span class="bat"><i></i></span></span></div>
+  <div class="still hero s-slate"></div>
+  <div class="top">
+    <div class="back"><i class="ic ic-back"></i>Movies</div>
+    <div class="tabs"><div class="tab"><i class="ic ic-home"></i>Home</div><div class="tab sel"><i class="ic ic-movies"></i>Movies</div><div class="tab"><i class="ic ic-shows"></i>Shows</div><div class="tab"><i class="ic ic-anime"></i>Anime</div><div class="tab ico"><i class="ic ic-search"></i></div></div>
+    <div class="round addl"><i class="ic ic-plus"></i></div><div class="round gear"><i class="ic ic-gear"></i></div>
+  </div>
+  <div class="info">
+    <div class="title logotype">Nosferatu</div>
+    <div class="meta"><span><span class="star">★</span> 7.8</span><span class="ash">112K</span><span>1922</span><span>1 h 34 min</span><span class="badge">4K</span><span class="badge">Silent</span></div>
+    <div class="genres">Horror, Fantasy</div>
+    <p class="about">An estate agent travels to Transylvania to meet Count Orlok, who is buying a house in his home town.</p>
+    <div class="actions"><div class="btn primary"><i class="ic ic-play"></i>Play</div><div class="btn secondary"><i class="ic ic-play" style="font-size:11px"></i>Trailer</div></div>
+    <div class="relbtn"><b>1080p BluRay</b> · 6.4 GB · 286 people sharing <i class="ic ic-down"></i></div>
+  </div>
+  <div class="shelf" style="top:600px; right:32px">
+    <div class="sec">Releases <span class="ash" style="font-size:13px; font-weight:400; margin-left:8px">5 found, the best of each quality first</span></div>
+    <div class="rel" style="margin-top:12px"><span class="badge">720p</span><b>WEB</b><span class="grow">1.9 GB · piano score, EN subs</span><span>940 sharing</span></div>
+    <div class="rel"><span class="badge">1080p</span><b>BluRay restoration</b><span class="grow">6.4 GB · orchestral score, EN subs</span><span><i class="ic ic-check"></i> Plays now</span></div>
+  </div>
+  <div class="home-ind"></div>
+</div>
+<p class="cap"><b>iPad, film opened from Movies.</b> The logo's place takes the back button, labelled with where it goes ("‹ Movies", 40 pt tall, at x 24): iOS convention, and the label answers "where am I" together with the selected Movies tab. The left-edge swipe goes back too. The tab bar stays. <b>Add to list</b> is a 40 pt disc (+, then ✓ in the selected fill once added) left of Settings in the row; the hero keeps Play and Trailer with the release button under them.</p>
+</section>
+
+<!-- 3 -->
+<section class="frame" id="ipad-film-scrolled" data-size="1180,820" data-scale="2">
+<div class="screen">
+  <div class="status" style="background:rgba(15,15,15,.96)"><span>9:41 Sat Nov 14</span><span class="r">100% <span class="bat"><i></i></span></span></div>
+  <div class="shelf" style="top:100px; right:32px">
+    <div class="sec">Releases <span class="ash" style="font-size:13px; font-weight:400; margin-left:8px">5 found, the best of each quality first</span></div>
+    <div class="rel" style="margin-top:12px"><span class="badge">720p</span><b>WEB</b><span class="grow">1.9 GB · piano score, EN subs</span><span>940 sharing</span></div>
+    <div class="rel"><span class="badge">1080p</span><b>BluRay restoration</b><span class="grow">6.4 GB · orchestral score, EN subs</span><span><i class="ic ic-check"></i> Plays now</span></div>
+    <div class="rel"><span class="badge">4K</span><b>UHD remaster HDR</b><span class="grow">38.2 GB · orchestral score</span><span class="ash">Needs 25 Mbit/s</span></div>
+    <div class="sec" style="margin-top:28px">Cast</div>
+    <div class="cards">
+      <div class="ph g4" style="width:96px;height:96px;border-radius:50%"></div><div class="ph g1" style="width:96px;height:96px;border-radius:50%"></div><div class="ph g6" style="width:96px;height:96px;border-radius:50%"></div><div class="ph g2" style="width:96px;height:96px;border-radius:50%"></div><div class="ph g5" style="width:96px;height:96px;border-radius:50%"></div>
+    </div>
+    <div class="sec" style="margin-top:28px">More like this</div>
+    <div class="cards">
+      <div class="ph g3" style="width:140px;height:210px;border-radius:8px"></div><div class="ph g8" style="width:140px;height:210px;border-radius:8px"></div><div class="ph g7" style="width:140px;height:210px;border-radius:8px"></div><div class="ph g2" style="width:140px;height:210px;border-radius:8px"></div><div class="ph g6" style="width:140px;height:210px;border-radius:8px"></div><div class="ph g1" style="width:140px;height:210px;border-radius:8px"></div>
+    </div>
+  </div>
+  <div class="top solid">
+    <div class="back"><i class="ic ic-back"></i>Movies</div>
+    <div class="tabs"><div class="tab"><i class="ic ic-home"></i>Home</div><div class="tab sel"><i class="ic ic-movies"></i>Movies</div><div class="tab"><i class="ic ic-shows"></i>Shows</div><div class="tab"><i class="ic ic-anime"></i>Anime</div><div class="tab ico"><i class="ic ic-search"></i></div></div>
+    <div class="round addl"><i class="ic ic-plus"></i></div><div class="round gear"><i class="ic ic-gear"></i></div>
+  </div>
+  <div class="home-ind"></div>
+</div>
+<p class="cap"><b>iPad, film scrolled.</b> The row and the status bar area turn solid ink once content runs under them; nothing hides or shrinks. (The title is not repeated in the row: the tab bar holds the centre.)</p>
+</section>
+
+<!-- 4 -->
+<section class="frame" id="ipad-releases" data-size="1180,820" data-scale="2">
+<div class="screen">
+  <div class="status"><span>9:41 Sat Nov 14</span><span class="r">100% <span class="bat"><i></i></span></span></div>
+  <div class="still hero s-slate"></div>
+  <div class="top">
+    <div class="back"><i class="ic ic-back"></i>Movies</div>
+    <div class="tabs"><div class="tab"><i class="ic ic-home"></i>Home</div><div class="tab sel"><i class="ic ic-movies"></i>Movies</div><div class="tab"><i class="ic ic-shows"></i>Shows</div><div class="tab"><i class="ic ic-anime"></i>Anime</div><div class="tab ico"><i class="ic ic-search"></i></div></div>
+    <div class="round addl"><i class="ic ic-plus"></i></div><div class="round gear"><i class="ic ic-gear"></i></div>
+  </div>
+  <div class="info">
+    <div class="title logotype">Nosferatu</div>
+    <div class="meta"><span><span class="star">★</span> 7.8</span><span class="ash">112K</span><span>1922</span><span>1 h 34 min</span></div>
+  </div>
+  <div class="veil"></div>
+  <div class="sheet">
+    <div class="head"><h2>Releases</h2><div class="round x"><i class="ic ic-close"></i></div></div>
+    <div class="sub">5 found, the best of each quality first</div>
+    <div class="rel"><span class="badge">720p</span><b>WEB</b><span class="grow">1.9 GB</span><span>940 sharing</span></div>
+    <div class="rel chosen"><span class="badge">1080p</span><b>BluRay restoration</b><span class="grow">6.4 GB</span><i class="ic ic-check"></i></div>
+    <div class="rel"><span class="badge">4K</span><b>UHD remaster HDR</b><span class="grow">38.2 GB</span><span class="ash">Needs 25 Mbit/s</span></div>
+    <div class="rel"><span class="badge">1080p</span><b>BluRay</b><span class="grow">7.1 GB</span><span class="ash">Few sharing</span></div>
+    <div class="rel" style="background:none; color:var(--ash)">Show 3 more</div>
+  </div>
+  <div class="home-ind"></div>
+</div>
+<p class="cap"><b>iPad, release panel.</b> A floating side sheet 440 pt wide, inset 12 pt, over a dimmed page (it covers the top row: the sheet is modal). Close: ✕, a tap on the dimmed page, a swipe right on the sheet; Android: system back.</p>
+</section>
+
+<!-- 5 -->
+<section class="frame" id="ipad-settings" data-size="1180,820" data-scale="2">
+<div class="screen">
+  <div class="status"><span>9:41 Sat Nov 14</span><span class="r">100% <span class="bat"><i></i></span></span></div>
+  <div class="top">
+    <div class="back"><i class="ic ic-back"></i>Home</div>
+    <div class="tabs"><div class="tab sel"><i class="ic ic-home"></i>Home</div><div class="tab"><i class="ic ic-movies"></i>Movies</div><div class="tab"><i class="ic ic-shows"></i>Shows</div><div class="tab"><i class="ic ic-anime"></i>Anime</div><div class="tab ico"><i class="ic ic-search"></i></div></div>
+    <div class="round gear sel"><i class="ic ic-gear"></i></div>
+  </div>
+  <div class="page">
+    <h1>Settings</h1>
+    <div class="sec" style="margin-top:24px">Language</div>
+    <div class="sub">The language of titles, descriptions and episode names.</div>
+    <div class="setrow" style="margin-top:12px; background:var(--raise)"><span>English</span><i class="ic ic-check"></i></div>
+    <div class="setrow"><span>Deutsch</span></div>
+    <div class="setrow"><span>Français</span></div>
+    <div class="sec" style="margin-top:28px">About</div>
+    <div class="setrow" style="margin-top:12px"><span>About reel and its data sources</span><i class="ic ic-fwd ash"></i></div>
+  </div>
+  <div class="home-ind"></div>
+</div>
+<p class="cap"><b>iPad, Settings.</b> On touch, Settings is pushed onto the current tab (it is not a tab): "‹ Home" goes back to where it was opened, the gear shows selected while it is open. Large title 34 pt bold at (32, 100). About pushes on top with "‹ Settings".</p>
+</section>
+
+<!-- 6 -->
+<section class="frame" id="ipad-player" data-size="1180,820" data-scale="2">
+<div class="screen">
+  <div class="still s-teal" style="filter:brightness(1.25)"></div>
+  <div class="shade"></div>
+  <div class="ptop">
+    <div class="round x"><i class="ic ic-close"></i></div>
+    <div><div class="t">Flash Gordon · S3:E4 Trapped in the Turret</div><div class="s">1080p WEB · resumed from 12:40</div></div>
+  </div>
+  <div class="pbot">
+    <div class="ahead"><b>6 min ready ahead</b> · streaming at 3.4 MB/s from 37 people</div>
+    <div class="track"><i style="width:58%; background:rgba(245,245,245,.45)"></i><i style="width:41%; background:var(--snow)"></i></div>
+    <div class="times"><span>12:40</span><span>19:02</span></div>
+    <div class="ctl"><div class="round"><i class="ic ic-rew"></i></div><div class="round big"><i class="ic ic-pause"></i></div><div class="round"><i class="ic ic-ffw"></i></div></div>
+  </div>
+  <div class="round" style="position:absolute; right:32px; bottom:44px; width:52px; height:52px; font-size:22px; background:rgba(42,42,42,.85)"><i class="ic ic-subs"></i></div>
+</div>
+<p class="cap"><b>Tablet, player.</b> Full screen, status bar hidden. The player is a full-screen cover, so it closes with ✕ (44 pt, top-left at 24, 24), not a back chevron; a swipe down closes it too, the Android system back as well. Play controls centred for thumbs.</p>
+</section>
+
+<!-- 7 -->
+<section class="frame" id="android-tablet-film" data-size="1280,800" data-scale="2">
+<div class="screen and">
+  <div class="status"><span>9:41</span><span class="r">▾ ▴ <span class="bat"><i></i></span></span></div>
+  <div class="still hero s-slate"></div>
+  <div class="top">
+    <div class="back solo"><i class="ic ic-arrow"></i></div>
+    <div class="logo" style="margin-left:14px">reel</div>
+    <div class="tabs"><div class="tab"><i class="ic ic-home"></i>Home</div><div class="tab sel"><i class="ic ic-movies"></i>Movies</div><div class="tab"><i class="ic ic-shows"></i>Shows</div><div class="tab"><i class="ic ic-anime"></i>Anime</div><div class="tab ico"><i class="ic ic-search"></i></div></div>
+    <div class="round addl"><i class="ic ic-plus"></i></div><div class="round gear"><i class="ic ic-gear"></i></div>
+  </div>
+  <div class="info" style="top:210px">
+    <div class="title logotype">Nosferatu</div>
+    <div class="meta"><span><span class="star">★</span> 7.8</span><span class="ash">112K</span><span>1922</span><span>1 h 34 min</span><span class="badge">4K</span><span class="badge">Silent</span></div>
+    <div class="genres">Horror, Fantasy</div>
+    <p class="about">An estate agent travels to Transylvania to meet Count Orlok, who is buying a house in his home town.</p>
+    <div class="actions"><div class="btn primary"><i class="ic ic-play"></i>Play</div><div class="btn secondary"><i class="ic ic-play" style="font-size:11px"></i>Trailer</div></div>
+    <div class="relbtn"><b>1080p BluRay</b> · 6.4 GB · 286 people sharing <i class="ic ic-down"></i></div>
+  </div>
+  <div class="home-ind"></div>
+</div>
+<p class="cap"><b>Android tablet, film.</b> Same row, Material's way: an unlabelled ← (48 dp touch target, 40 dp disc) as the top app bar's navigation icon, then the logo. System back and the predictive back gesture do the same; on Movies (a root) system back goes to Home, on Home it leaves the app.</p>
+</section>
+<script src="solo.js"></script>
+</body>
+</html>

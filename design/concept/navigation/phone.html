@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>reel navigation: phone</title>
+<link rel="stylesheet" href="nav.css">
+<style>
+  /* iPhone 393×852 pt (Dynamic Island), Android phone 393×852 dp; compact density. Margin 20. */
+  .screen { width: 393px; height: 852px; }
+  .screen.land { width: 852px; height: 393px; }
+  .status { position: absolute; top: 0; left: 0; right: 0; height: 54px; display: flex; justify-content: space-between; align-items: center; padding: 6px 30px 0 44px; font-size: 16px; font-weight: 600; z-index: 8; }
+  .island { position: absolute; top: 11px; left: 50%; width: 124px; height: 36px; margin-left: -62px; border-radius: 18px; background: #000; z-index: 9; }
+  .bat { display: block; width: 25px; height: 12px; border: 1.5px solid var(--snow); border-radius: 4px; padding: 1.5px; } .bat i { display: block; height: 100%; width: 70%; background: var(--snow); border-radius: 1.5px; }
+  .and .status { height: 40px; padding: 0 22px; font-size: 14px; font-weight: 500; }
+  .and .island { width: 12px; height: 12px; margin-left: -6px; top: 14px; }
+
+  /* the top of a root page: logo, settings */
+  .head { position: absolute; top: 54px; left: 20px; right: 20px; height: 44px; display: flex; align-items: center; justify-content: space-between; z-index: 6; }
+  .head .logo { font-size: 22px; }
+  .rb { width: 36px; height: 36px; font-size: 17px; background: rgba(26,26,26,.78); color: var(--snow); }
+  /* the iOS nav bar, solid once content scrolls under it */
+  .bar44 { position: absolute; top: 0; left: 0; right: 0; height: 98px; padding-top: 54px; background: rgba(15,15,15,.96); box-shadow: inset 0 -1px 0 rgba(255,255,255,.08); z-index: 6; display: flex; align-items: center; }
+  .bar44 .ttl { position: absolute; left: 0; right: 0; text-align: center; font-size: 17px; font-weight: 600; pointer-events: none; }
+  .bar44 .bk { display: flex; align-items: center; gap: 2px; margin-left: 8px; font-size: 17px; color: var(--snow); }
+  .bar44 .bk .ic { font-size: 24px; }
+  .bar44 .end { margin-left: auto; margin-right: 16px; }
+  .float-back { position: absolute; top: 58px; left: 16px; width: 40px; height: 40px; font-size: 20px; background: rgba(26,26,26,.78); z-index: 6; }
+  .and .float-back { top: 48px; }
+  .float-add { position: absolute; top: 58px; right: 16px; width: 40px; height: 40px; font-size: 20px; background: rgba(26,26,26,.78); z-index: 6; }
+  .and .float-add { top: 48px; }
+  .bar44 .addb { margin-left: auto; margin-right: 16px; font-size: 22px; display: grid; place-items: center; }
+  .relbtn { display: flex; align-items: center; gap: 8px; height: 40px; margin-top: 8px; padding: 0 12px; border-radius: 10px; background: rgba(42,42,42,.7); font-size: 12.5px; color: var(--ash); }
+  .relbtn b { color: var(--snow); font-weight: 600; }
+  .relbtn .ic { font-size: 14px; color: var(--snow); margin-left: auto; }
+
+  .still.hero { height: 480px; bottom: auto; }
+  .still.hero::after { background: linear-gradient(0deg, var(--ink) 0%, rgba(15,15,15,.85) 22%, rgba(15,15,15,0) 58%), linear-gradient(180deg, rgba(15,15,15,.55), rgba(15,15,15,0) 22%); }
+  .info { position: absolute; left: 20px; right: 20px; top: 270px; z-index: 2; }
+  .title { font-size: 34px; }
+  .meta { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12.5px; font-weight: 500; }
+  .meta .badge { font-size: 10px; padding: 2px 4px; }
+  .genres { margin-top: 5px; font-size: 12px; color: var(--ash); }
+  .release { margin-top: 6px; font-size: 11.5px; color: var(--ash); }
+  .release b { color: var(--snow); font-weight: 500; }
+  .actions { display: flex; gap: 8px; margin-top: 14px; }
+  .actions .btn { height: 44px; border-radius: 10px; font-size: 14px; gap: 8px; padding: 0 16px; }
+  .actions .primary { flex: 1; }
+  .actions .ic { font-size: 14px; }
+  .shelf { position: absolute; left: 20px; right: 0; z-index: 2; }
+  .shelf h2, .sec { font-size: 16px; font-weight: 600; }
+  .cards { display: flex; gap: 10px; margin-top: 10px; }
+  .card { width: 210px; flex: none; }
+  .thumb { height: 118px; border-radius: 8px; }
+  .thumb .bar { height: 3px; }
+  .card .t { margin-top: 7px; font-size: 13px; font-weight: 600; }
+  .card .s { margin-top: 1px; font-size: 11.5px; color: var(--ash); }
+  .grid { position: absolute; left: 20px; right: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px 12px; }
+  .grid .thumb { height: 99px; }
+  .rel { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 12px; margin-top: 8px; border-radius: 10px; background: var(--raise); font-size: 13px; }
+  .rel .badge { font-size: 10px; padding: 2px 4px; }
+  .rel b { font-weight: 600; }
+  .rel .grow { flex: 1; color: var(--ash); }
+  .rel.chosen { box-shadow: inset 4px 0 0 var(--snow); }
+  .page { position: absolute; left: 20px; right: 20px; top: 98px; }
+  .page h1 { font-size: 34px; font-weight: 700; letter-spacing: -.4px; }
+  .page .sub { margin-top: 4px; font-size: 13px; color: var(--ash); line-height: 1.45; }
+  .setrow { display: flex; align-items: center; justify-content: space-between; height: 48px; padding: 0 14px; margin-top: 8px; border-radius: 10px; background: var(--card); font-size: 15px; }
+
+  /* bottom tab bar: 49 pt + 34 pt home indicator area */
+  .tabs { position: absolute; left: 0; right: 0; bottom: 0; height: 83px; padding: 6px 8px 0; display: flex; justify-content: space-around; background: var(--ink); border-top: 1px solid var(--card); z-index: 7; }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 70px; font-size: 10.5px; font-weight: 500; color: var(--ash); }
+  .tab .pl { width: 52px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 21px; }
+  .tab.on { color: var(--snow); }
+  .tab.on .pl { background: var(--raise); }
+  .and .tabs { height: 104px; padding-top: 12px; }
+  .and .tab { gap: 4px; font-size: 12px; }
+  .and .tab .pl { width: 64px; height: 32px; border-radius: 16px; }
+  .home-ind { position: absolute; bottom: 8px; left: 50%; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: var(--snow); z-index: 9; }
+  .and .home-ind { width: 108px; height: 4px; margin-left: -54px; bottom: 10px; }
+
+  .veil { position: absolute; inset: 0; background: rgba(15,15,15,.6); z-index: 10; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 330px; padding: 8px 16px 0; background: var(--card); border-radius: 22px 22px 0 0; z-index: 11; }
+  .grab { width: 36px; height: 5px; margin: 0 auto 10px; border-radius: 3px; background: #4A4A4A; }
+  .sheet .hd { display: flex; align-items: center; justify-content: space-between; }
+  .sheet h2 { font-size: 19px; font-weight: 600; }
+  .sheet .x { width: 30px; height: 30px; font-size: 14px; background: var(--raise); }
+  .sheet .sub { margin: 2px 0 10px; font-size: 12px; color: var(--ash); }
+
+  .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(15,15,15,.8) 0%, rgba(15,15,15,0) 30%, rgba(15,15,15,0) 55%, rgba(15,15,15,.9) 100%); }
+  .ptop { position: absolute; top: 18px; left: 62px; right: 62px; display: flex; align-items: center; gap: 12px; }
+  .ptop .x { width: 40px; height: 40px; font-size: 17px; background: rgba(42,42,42,.85); }
+  .ptop .t { font-size: 14px; font-weight: 600; }
+  .ptop .s { font-size: 11.5px; color: var(--ash); margin-top: 1px; }
+  .pbot { position: absolute; left: 62px; right: 62px; bottom: 22px; }
+  .track { position: relative; height: 4px; border-radius: 2px; background: rgba(245,245,245,.16); }
+  .track i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 2px; }
+  .times { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--ash); }
+  .pmid { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); display: flex; justify-content: center; gap: 44px; align-items: center; }
+  .pmid .round { width: 48px; height: 48px; font-size: 20px; background: rgba(42,42,42,.85); }
+  .pmid .big { width: 60px; height: 60px; font-size: 24px; }
+</style>
+</head>
+<body>
+<h1 class="board">Phone: iOS and Android (touch)</h1>
+<p>Destinations in a bottom tab bar (always visible, also on title pages). Root pages have a slim head (logo, Settings). Deeper pages: a round back button floating over the hero that becomes a standard nav bar ("‹ Movies" + title) once you scroll; edge swipe on iOS, system back on Android. Panels are bottom sheets.</p>
+
+<!-- 1 -->
+<section class="frame" id="ios-home" data-size="393,852" data-scale="2">
+<div class="screen">
+  <div class="status"><span>9:41</span><span class="bat"><i></i></span></div><div class="island"></div>
+  <div class="still hero s-amber"></div>
+  <div class="head"><div class="logo">reel</div><div class="round rb"><i class="ic ic-gear"></i></div></div>
+  <div class="info">
+    <div class="title logotype">The General</div>
+    <div class="meta"><span><span class="star">★</span> 8.1</span><span class="ash">97K</span><span>1926</span><span>1 h 18 min</span><span class="badge">1080p</span></div>
+    <div class="genres">Comedy, Action, War</div>
+    <div class="release"><b>1080p</b> · 3.0 GB · 518 people sharing</div>
+    <div class="actions"><div class="btn primary"><i class="ic ic-play"></i>Resume 10:10</div><div class="btn secondary"><i class="ic ic-plus"></i>My list</div></div>
+  </div>
+  <div class="shelf" style="top:500px">
+    <h2>Continue watching</h2>
+    <div class="cards">
+      <div class="card"><div class="ph thumb g2"><span class="bar"><i style="width:62%"></i></span></div><div class="t">Flash Gordon</div><div class="s">S3:E4 · 7 min left</div></div>
+      <div class="card"><div class="ph thumb g4"><span class="bar"><i style="width:48%"></i></span></div><div class="t">Metropolis</div><div class="s">1 h 19 min left</div></div>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab on"><span class="pl"><i class="ic ic-home"></i></span>Home</div>
+    <div class="tab"><span class="pl"><i class="ic ic-movies"></i></span>Movies</div>
+    <div class="tab"><span class="pl"><i class="ic ic-shows"></i></span>Shows</div>
+    <div class="tab"><span class="pl"><i class="ic ic-anime"></i></span>Anime</div>
+    <div class="tab"><span class="pl"><i class="ic ic-search"></i></span>Search</div>
+  </div>
+  <div class="home-ind"></div>
+</div>
+<p class="cap"><b>iPhone, Home.</b> Tab bar: Home, Movies, Shows, Anime, Search (5 tabs, 49 pt + 34 pt indicator area; the selected tab gets the lighter pill). Head under the status bar (y 54, 44 pt): logo left, Settings right. It scrolls away with the page.</p>
+</section>
+
+<!-- 2 -->
+<section class="frame" id="ios-movies-scrolled" data-size="393,852" data-scale="2">
+<div class="screen">
+  <div class="grid" style="top:110px">
+    <div><div class="ph thumb g3"></div><div class="card" style="width:auto"><div class="t">Detour</div><div class="s"><span class="star">★</span> 7.2 · 1945</div></div></div>
+    <div><div class="ph thumb g5"></div><div class="card" style="width:auto"><div class="t">His Girl Friday</div><div class="s"><span class="star">★</span> 7.8 · 1940</div></div></div>
+    <div><div class="ph thumb g8"></div><div class="card" style="width:auto"><div class="t">Caligari</div><div class="s"><span class="star">★</span> 8.0 · 1920</div></div></div>
+    <div><div class="ph thumb g7"></div><div class="card" style="width:auto"><div class="t">A Trip to the Moon</div><div class="s"><span class="star">★</span> 8.1 · 1902</div></div></div>
+    <div><div class="ph thumb g2"></div><div class="card" style="width:auto"><div class="t">Sherlock Jr.</div><div class="s"><span class="star">★</span> 8.2 · 1924</div></div></div>
+    <div><div class="ph thumb g6"></div><div class="card" style="width:auto"><div class="t">Night of the Living Dead</div><div class="s"><span class="star">★</span> 7.8 · 1968</div></div></div>
+    <div><div class="ph thumb g1"></div><div class="card" style="width:auto"><div class="t">Metropolis</div><div class="s"><span class="star">★</span> 8.3 · 1927</div></div></div>
+    <div><div class="ph thumb g4"></div><div class="card" style="width:auto"><div class="t">Nosferatu</div><div class="s"><span class="star">★</span> 7.8 · 1922</div></div></div>
+    <div><div class="ph thumb g5"></div><div class="card" style="width:auto"><div class="t">The Kid</div><div class="s"><span class="star">★</span> 8.2 · 1921</div></div></div>
+    <div><div class="ph thumb g3"></div><div class="card" style="width:auto"><div class="t">The Lodger</div><div class="s"><span class="star">★</span> 7.3 · 1927</div></div></div>
+  </div>
+  <div class="bar44"><span class="ttl">Movies</span><span class="end"><span class="round rb"><i class="ic ic-gear"></i></span></span></div>
+  <div class="status"><span>9:41</span><span class="bat"><i></i></span></div><div class="island"></div>
+  <div class="tabs">
+    <div class="tab"><span class="pl"><i class="ic ic-home"></i></span>Home</div>
+    <div class="tab on"><span class="pl"><i class="ic ic-movies"></i></span>Movies</div>
+    <div class="tab"><span class="pl"><i class="ic ic-shows"></i></span>Shows</div>
+    <div class="tab"><span class="pl"><i class="ic ic-anime"></i></span>Anime</div>
+    <div class="tab"><span class="pl"><i class="ic ic-search"></i></span>Search</div>
+  </div>
+  <div class="home-ind"></div>
+</div>
+<p class="cap"><b>iPhone, Movies scrolled.</b> The large page title ("Movies", 34 pt) scrolls away and the inline nav bar appears: solid ink behind the status bar, the title centred 17 pt, Settings right. Tapping Movies in the tab bar again scrolls to the top.</p>
+</section>
+
+<!-- 3 -->
+<section class="frame" id="ios-film" data-size="393,852" data-scale="2">
+<div class="screen">
+  <div class="status"><span>9:41</span><span class="bat"><i></i></span></div><div class="island"></div>
+  <div class="still hero s-slate"></div>
+  <div class="round float-add"><i class="ic ic-plus"></i></div>
+  <div class="round float-back"><i class="ic ic-back"></i></div>
+  <div class="info">
+    <div class="title logotype">Nosferatu</div>
+    <div class="meta"><span><span class="star">★</span> 7.8</span><span class="ash">112K</span><span>1922</span><span>1 h 34 min</span><span class="badge">4K</span></div>
+    <div class="genres">Horror, Fantasy</div>
+    <div class="actions"><div class="btn primary"><i class="ic ic-play"></i>Play</div><div class="btn secondary"><i class="ic ic-play" style="font-size:10px"></i>Trailer</div></div>
+    <div class="relbtn"><b>1080p BluRay</b> · 6.4 GB · 286 sharing <i class="ic ic-down"></i></div>
+  </div>
+  <div class="shelf" style="top:520px; right:20px">
+    <div class="sec">Releases <span class="ash" style="font-size:12px; font-weight:400; margin-left:6px">5 found</span></div>
+    <div class="rel" style="margin-top:10px"><span class="badge">720p</span><b>WEB</b><span class="grow">1.9 GB</span><span>940 sharing</span></div>
+    <div class="rel"><span class="badge">1080p</span><b>BluRay restoration</b><span class="grow">6.4 GB</span><i class="ic ic-check"></i></div>
+  </div>
+  <div class="tabs">
+    <div class="tab"><span class="pl"><i class="ic ic-home"></i></span>Home</div>
+    <div class="tab on"><span class="pl"><i class="ic ic-movies"></i></span>Movies</div>
+    <div class="tab"><span class="pl"><i class="ic ic-shows"></i></span>Shows</div>
+    <div class="tab"><span class="pl"><i class="ic ic-anime"></i></span>Anime</div>
+    <div class="tab"><span class="pl"><i class="ic ic-search"></i></span>Search</div>
+  </div>
+  <div class="home-ind"></div>
+</div>
+<p class="cap"><b>iPhone, film opened from Movies.</b> A round back button (40 pt disc, 44 pt touch area) at (16, 58), just under the status bar, over the hero; no label (it would cover the still). The left-edge swipe goes back. The tab bar stays, Movies selected. <b>Add to list</b> is the matching disc at the top-right (+, ✓ once added); the hero keeps Play (wide) and Trailer, the release button full width under them.</p>
+</section>
+
+<!-- 4 -->
+<section class="frame" id="ios-film-scrolled" data-size="393,852" data-scale="2">
+<div class="screen">
+  <div class="shelf" style="top:110px; right:20px">
+    <div class="sec">Releases <span class="ash" style="font-size:12px; font-weight:400; margin-left:6px">5 found</span></div>
+    <div class="rel" style="margin-top:10px"><span class="badge">720p</span><b>WEB</b><span class="grow">1.9 GB</span><span>940 sharing</span></div>
+    <div class="rel chosen"><span class="badge">1080p</span><b>BluRay restoration</b><span class="grow">6.4 GB</span><i class="ic ic-check"></i></div>
+    <div class="rel"><span class="badge">4K</span><b>UHD remaster</b><span class="grow">38.2 GB</span><span class="ash">25 Mbit/s</span></div>
+    <div class="rel"><span class="badge">1080p</span><b>BluRay</b><span class="grow">7.1 GB</span><span class="ash">Few sharing</span></div>
+    <div class="sec" style="margin-top:24px">More like this</div>
+    <div class="cards"><div class="ph g3" style="width:110px;height:165px;border-radius:8px"></div><div class="ph g8" style="width:110px;height:165px;border-radius:8px"></div><div class="ph g7" style="width:110px;height:165px;border-radius:8px"></div><div class="ph g2" style="width:110px;height:165px;border-radius:8px"></div></div>
+  </div>
+  <div class="bar44"><span class="ttl">Nosferatu</span><span class="bk"><i class="ic ic-back"></i>Movies</span><span class="addb"><i class="ic ic-plus"></i></span></div>
+  <div class="status"><span>9:41</span><span class="bat"><i></i></span></div><div class="island"></div>
+  <div class="tabs">
+    <div class="tab"><span class="pl"><i class="ic ic-home"></i></span>Home</div>
+    <div class="tab on"><span class="pl"><i class="ic ic-movies"></i></span>Movies</div>
+    <div class="tab"><span class="pl"><i class="ic ic-shows"></i></span>Shows</div>
+    <div class="tab"><span class="pl"><i class="ic ic-anime"></i></span>Anime</div>
+    <div class="tab"><span class="pl"><i class="ic ic-search"></i></span>Search</div>
+  </div>
+  <div class="home-ind"></div>
+</div>
+<p class="cap"><b>iPhone, film scrolled past the hero.</b> The floating disc turns into the standard nav bar: "‹ Movies" (chevron + previous page's title, 17 pt) and the film's title centred. Back stays in the same corner, now with a label; Add to list becomes the bar's right button (+).</p>
+</section>
+
+<!-- 5 -->
+<section class="frame" id="ios-releases" data-size="393,852" data-scale="2">
+<div class="screen">
+  <div class="status"><span>9:41</span><span class="bat"><i></i></span></div><div class="island"></div>
+  <div class="still hero s-slate"></div>
+  <div class="round float-add"><i class="ic ic-plus"></i></div>
+  <div class="round float-back"><i class="ic ic-back"></i></div>
+  <div class="info"><div class="title logotype">Nosferatu</div></div>
+  <div class="veil"></div>
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="hd"><h2>Releases</h2><div class="round x"><i class="ic ic-close"></i></div></div>
+    <div class="sub">5 found, the best of each quality first</div>
+    <div class="rel"><span class="badge">720p</span><b>WEB</b><span class="grow">1.9 GB</span><span>940 sharing</span></div>
+    <div class="rel chosen"><span class="badge">1080p</span><b>BluRay restoration</b><span class="grow">6.4 GB</span><i class="ic ic-check"></i></div>
+    <div class="rel"><span class="badge">4K</span><b>UHD remaster</b><span class="grow">38.2 GB</span><span class="ash">25 Mbit/s</span></div>
+    <div class="rel"><span class="badge">1080p</span><b>BluRay</b><span class="grow">7.1 GB</span><span class="ash">Few sharing</span></div>
+    <div class="rel" style="background:none; color:var(--ash)">Show 3 more</div>
+  </div>
+  <div class="home-ind"></div>
+</div>
+<p class="cap"><b>Phone, release panel.</b> A bottom sheet (medium height, grabber, ✕) covering the tab bar. Close: swipe down, ✕, tap above it; Android system back. Picking a release closes it.</p>
+</section>
+
+<!-- 6 -->
+<section class="frame" id="ios-settings" data-size="393,852" data-scale="2">
+<div class="screen">
+  <div class="bar44" style="background:var(--ink); box-shadow:none"><span class="bk"><i class="ic ic-back"></i>Home</span></div>
+  <div class="status"><span>9:41</span><span class="bat"><i></i></span></div><div class="island"></div>
+  <div class="page" style="top:104px">
+    <h1>Settings</h1>
+    <div class="sec" style="margin-top:20px">Language</div>
+    <div class="sub">The language of titles, descriptions and episode names.</div>
+    <div class="setrow" style="margin-top:10px; background:var(--raise)"><span>English</span><i class="ic ic-check"></i></div>
+    <div class="setrow"><span>Deutsch</span></div>
+    <div class="setrow"><span>Français</span></div>
+    <div class="sec" style="margin-top:24px">About</div>
+    <div class="setrow" style="margin-top:10px"><span>About reel and its data sources</span><i class="ic ic-fwd ash"></i></div>
+  </div>
+  <div class="tabs">
+    <div class="tab on"><span class="pl"><i class="ic ic-home"></i></span>Home</div>
+    <div class="tab"><span class="pl"><i class="ic ic-movies"></i></span>Movies</div>
+    <div class="tab"><span class="pl"><i class="ic ic-shows"></i></span>Shows</div>
+    <div class="tab"><span class="pl"><i class="ic ic-anime"></i></span>Anime</div>
+    <div class="tab"><span class="pl"><i class="ic ic-search"></i></span>Search</div>
+  </div>
+  <div class="home-ind"></div>
+</div>
+<p class="cap"><b>iPhone, Settings.</b> Pushed onto the current tab from the gear: nav bar with "‹ Home", large title 34 pt bold under it (collapses into the bar on scroll). About pushes on top with "‹ Settings". Tab bar visible.</p>
+</section>
+
+<!-- 7 -->
+<section class="frame" id="android-film" data-size="393,852" data-scale="2">
+<div class="screen and">
+  <div class="status"><span>9:41</span><span class="bat"><i></i></span></div><div class="island"></div>
+  <div class="still hero s-slate"></div>
+  <div class="round float-add"><i class="ic ic-plus"></i></div>
+  <div class="round float-back"><i class="ic ic-arrow"></i></div>
+  <div class="info">
+    <div class="title logotype">Nosferatu</div>
+    <div class="meta"><span><span class="star">★</span> 7.8</span><span class="ash">112K</span><span>1922</span><span>1 h 34 min</span><span class="badge">4K</span></div>
+    <div class="genres">Horror, Fantasy</div>
+    <div class="actions"><div class="btn primary"><i class="ic ic-play"></i>Play</div><div class="btn secondary"><i class="ic ic-play" style="font-size:10px"></i>Trailer</div></div>
+    <div class="relbtn"><b>1080p BluRay</b> · 6.4 GB · 286 sharing <i class="ic ic-down"></i></div>
+  </div>
+  <div class="tabs">
+    <div class="tab"><span class="pl"><i class="ic ic-home"></i></span>Home</div>
+    <div class="tab on"><span class="pl"><i class="ic ic-movies"></i></span>Movies</div>
+    <div class="tab"><span class="pl"><i class="ic ic-shows"></i></span>Shows</div>
+    <div class="tab"><span class="pl"><i class="ic ic-anime"></i></span>Anime</div>
+    <div class="tab"><span class="pl"><i class="ic ic-search"></i></span>Search</div>
+  </div>
+  <div class="home-ind"></div>
+</div>
+<p class="cap"><b>Android phone, film.</b> Edge-to-edge under a 40 dp status bar. Same disc with Material's ← arrow at (16, 48); scrolled, it becomes a 64 dp top app bar with ← and the title left-aligned (no back label on Android). Navigation bar 80 dp with a 64×32 pill indicator, over the gesture area. System back and predictive back do the same as ←.</p>
+</section>
+
+<!-- 8 -->
+<section class="frame" id="phone-player" data-size="852,393" data-scale="2">
+<div class="screen land">
+  <div class="still s-teal" style="filter:brightness(1.25)"></div>
+  <div class="shade"></div>
+  <div class="ptop">
+    <div class="round x"><i class="ic ic-close"></i></div>
+    <div><div class="t">Flash Gordon · S3:E4 Trapped in the Turret</div><div class="s">1080p WEB · 6 min ready ahead</div></div>
+    <div class="round x" style="margin-left:auto"><i class="ic ic-subs"></i></div>
+  </div>
+  <div class="pmid"><div class="round"><i class="ic ic-rew"></i></div><div class="round big"><i class="ic ic-pause"></i></div><div class="round"><i class="ic ic-ffw"></i></div></div>
+  <div class="pbot">
+    <div class="track"><i style="width:58%; background:rgba(245,245,245,.45)"></i><i style="width:41%; background:var(--snow)"></i></div>
+    <div class="times"><span>12:40</span><span>19:02</span></div>
+  </div>
+</div>
+<p class="cap"><b>Phone, player (landscape).</b> ✕ at the top-left inside the landscape safe area (x 62, clear of the Dynamic Island), title beside it, Audio and subtitles at the top-right, play controls in the centre for thumbs. Swipe down closes too; Android system back: hides the controls if up, else closes.</p>
+</section>
+<script src="solo.js"></script>
+</body>
+</html>
