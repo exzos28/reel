@@ -8,7 +8,13 @@
 
 use serde_json::Value;
 
-use super::{cache::CacheKind, id::MetaId, model::*, provider::*};
+use super::{
+    cache::CacheKind,
+    discover::{self, DiscoverKind, Filter, Sort},
+    id::MetaId,
+    model::*,
+    provider::*,
+};
 
 pub const API: &str = "https://api.themoviedb.org/3";
 pub const SITE: &str = "https://www.themoviedb.org";
@@ -151,6 +157,92 @@ impl Tmdb {
 
     pub fn configuration_request(&self) -> Result<Request, ProviderError> {
         self.get("/configuration", vec![], CacheKind::Config)
+    }
+
+    /// The films (`Movie`) or series (`Tv`) `filter` lets through, first page.
+    /// `today` ("YYYY-MM-DD") keeps "newest" to what is out.
+    pub fn discover_request(
+        &self,
+        kind: DiscoverKind,
+        filter: &Filter,
+        lang: &str,
+        today: &str,
+    ) -> Result<Request, ProviderError> {
+        let (path, date, min_votes) = match kind {
+            DiscoverKind::Movie => ("/discover/movie", "primary_release_date", 300),
+            DiscoverKind::Tv => ("/discover/tv", "first_air_date", 200),
+            DiscoverKind::Anime => return Err(ProviderError::Unsupported),
+        };
+        let mut query = vec![("language", lang.to_owned()), ("include_adult", "false".into())];
+        let sort = match filter.sort {
+            Sort::Popular => "popularity.desc".to_owned(),
+            Sort::TopRated => {
+                query.push(("vote_count.gte", min_votes.to_string()));
+                "vote_average.desc".to_owned()
+            }
+            Sort::Newest => {
+                // Some votes, so the first page is not placeholders of last week.
+                query.push(("vote_count.gte", "10".into()));
+                format!("{date}.desc")
+            }
+        };
+        query.push(("sort_by", sort));
+        let genres: Vec<&str> =
+            filter.genres.iter().map(String::as_str).filter(|g| g.bytes().all(|b| b.is_ascii_digit())).collect();
+        if !genres.is_empty() {
+            // Comma: a title has every genre.
+            query.push(("with_genres", genres.join(",")));
+        }
+        let (from, to) = filter.years.as_deref().and_then(discover::years_of).unwrap_or((None, None));
+        let mut until = to.map(|y| format!("{y}-12-31"));
+        if filter.sort == Sort::Newest && until.as_deref().is_none_or(|u| u > today) {
+            until = Some(today.to_owned());
+        }
+        let (gte, lte) = match kind {
+            DiscoverKind::Movie => ("primary_release_date.gte", "primary_release_date.lte"),
+            _ => ("first_air_date.gte", "first_air_date.lte"),
+        };
+        if let Some(y) = from {
+            query.push((gte, format!("{y}-01-01")));
+        }
+        if let Some(u) = until {
+            query.push((lte, u));
+        }
+        if let Some(c) = &filter.country {
+            query.push(("with_origin_country", c.clone()));
+        }
+        self.get(path, query, CacheKind::Shelf)
+    }
+
+    /// TMDB's genres of films or series, in `lang`.
+    pub fn genres_request(&self, kind: DiscoverKind, lang: &str) -> Result<Request, ProviderError> {
+        let path = match kind {
+            DiscoverKind::Movie => "/genre/movie/list",
+            DiscoverKind::Tv => "/genre/tv/list",
+            DiscoverKind::Anime => return Err(ProviderError::Unsupported),
+        };
+        self.get(path, vec![("language", lang.to_owned())], CacheKind::Config)
+    }
+
+    /// `[(id, name)]` of a genre list.
+    pub fn map_genres(&self, body: &Value) -> Result<Vec<(String, String)>, ProviderError> {
+        let genres = body.get("genres").and_then(Value::as_array).ok_or_else(|| parse_err("no genres"))?;
+        Ok(genres.iter().filter_map(|g| Some((u(g, "id")?.to_string(), s(g, "name")?))).collect())
+    }
+
+    /// Every country with its name in `lang`.
+    pub fn countries_request(&self, lang: &str) -> Result<Request, ProviderError> {
+        self.get("/configuration/countries", vec![("language", lang.to_owned())], CacheKind::Config)
+    }
+
+    /// `{code: name}` of the country list (the name in the language asked
+    /// for, which TMDB calls `native_name`).
+    pub fn map_countries(&self, body: &Value) -> Result<Vec<(String, String)>, ProviderError> {
+        let list = body.as_array().ok_or_else(|| parse_err("no countries"))?;
+        Ok(list
+            .iter()
+            .filter_map(|c| Some((s(c, "iso_3166_1")?, s(c, "native_name").or_else(|| s(c, "english_name"))?)))
+            .collect())
     }
 
     /// The TMDB season `n` of series `id`, mapped. `absolute_base` is how many

@@ -72,6 +72,8 @@ fn reset(tmdb_on: bool, source: bool) {
     SEARCHES.lock().unwrap().clear();
     CHOSEN.lock().unwrap().clear();
     LIST.lock().unwrap().clear();
+    SHOWN.lock().unwrap().clear();
+    filters::clear();
     progress::clear();
     *TEST_TMDB.lock().unwrap() = Some(tmdb_on);
     *TEST_SOURCE.lock().unwrap() = Some(source);
@@ -405,6 +407,113 @@ fn a_releases_files_settle_what_its_name_only_suggests() {
     assert_eq!(eps[3]["inRelease"], "no", "its files stop at episode 3 (eps[3] is episode 13)");
     assert!(matches!(play_source("tmdb:tv:1429:s3e13"), PlaySource::NotInRelease));
     TORRENT_FILES.lock().unwrap().clear();
+}
+
+fn group<'a>(page: &'a Value, id: &str) -> &'a Value {
+    page["filters"].as_array().unwrap().iter().find(|g| g["id"] == id).unwrap()
+}
+
+fn selected(page: &Value, id: &str) -> Vec<String> {
+    list_of(&group(page, id)["options"])
+        .iter()
+        .filter(|o| o["selected"] == true)
+        .map(|o| o["id"].as_str().unwrap().to_owned())
+        .collect()
+}
+
+fn discover_cards(fixture_name: &str) -> Value {
+    json!({ "items": tmdb().map_cards(&fixture(fixture_name), &cx()).unwrap() })
+}
+
+#[test]
+fn browse_filters_offer_and_mark() {
+    let _g = fresh(true, false);
+    let genres = tmdb().map_genres(&fixture("tmdb_genre_movie.json")).unwrap();
+    let countries = tmdb().map_countries(&fixture("tmdb_countries_pl.json")).unwrap();
+    seed(Call::FilterOptions(DiscoverKind::Movie), json!({ "genres": genres, "countries": countries }));
+    seed(Call::Discover(DiscoverKind::Movie, Filter::default()), discover_cards("tmdb_trending_movie.json"));
+    let page = browse("movies");
+    assert_eq!(page["allState"], "done");
+    assert!(!page["all"].as_array().unwrap().is_empty());
+    let ids: Vec<&str> = list_of(&page["filters"]).iter().map(|g| g["id"].as_str().unwrap()).collect();
+    assert_eq!(ids, ["genres", "years", "countries", "sort"]);
+    assert_eq!(group(&page, "genres")["multi"], true);
+    assert_eq!(group(&page, "sort")["clear"], false);
+    assert_eq!(group(&page, "genres")["options"][5], json!({ "id": "18", "name": "Drama", "key": null, "n": null, "selected": false }));
+    let years = &group(&page, "years")["options"];
+    assert_eq!(years[1], json!({ "id": "2010", "name": null, "key": "decade", "n": 2010, "selected": false }));
+    assert_eq!(list_of(years).last().unwrap()["key"], "older");
+    // Names in the content language from TMDB, the English ones where it has none.
+    let france = list_of(&group(&page, "countries")["options"]).iter().find(|o| o["id"] == "FR").unwrap().clone();
+    assert_eq!(france["name"], "Francja");
+    let uk = list_of(&group(&page, "countries")["options"]).iter().find(|o| o["id"] == "GB").unwrap().clone();
+    assert_eq!(uk["name"], "United Kingdom");
+    assert_eq!(selected(&page, "sort"), ["popular"]);
+    assert_eq!(group(&page, "sort")["options"][1]["key"], "top_rated");
+
+    assert!(choose_filter("movies", "genres", "18"));
+    assert!(choose_filter("movies", "genres", "80"));
+    assert!(choose_filter("movies", "years", "2010"));
+    assert!(choose_filter("movies", "sort", "top_rated"));
+    assert!(!choose_filter("movies", "sort", "top_rated"));
+    let page = browse("movies");
+    assert_eq!(selected(&page, "genres"), ["80", "18"]);
+    assert_eq!(selected(&page, "years"), ["2010"]);
+    assert_eq!(selected(&page, "sort"), ["top_rated"]);
+    // Other pages keep their own.
+    assert!(selected(&browse("shows"), "genres").is_empty());
+}
+
+#[test]
+fn a_new_filter_keeps_the_last_grid_until_its_answer() {
+    let _g = fresh(true, false);
+    seed(Call::Discover(DiscoverKind::Movie, Filter::default()), discover_cards("tmdb_trending_movie.json"));
+    let before = browse("movies")["all"].clone();
+    assert!(!before.as_array().unwrap().is_empty());
+
+    choose_filter("movies", "countries", "FR");
+    let page = browse("movies");
+    assert_eq!(page["allState"], "loading");
+    assert_eq!(page["all"], before, "the last grid while the new one loads");
+    assert_eq!(selected(&page, "countries"), ["FR"]);
+
+    let mut fr = Filter::default();
+    fr.country = Some("FR".into());
+    seed(Call::Discover(DiscoverKind::Movie, fr.clone()), json!({ "items": [] }));
+    let page = browse("movies");
+    assert_eq!(page["allState"], "empty");
+    assert!(page["all"].as_array().unwrap().is_empty());
+
+    seed(Call::Discover(DiscoverKind::Movie, fr), discover_cards("tmdb_discover_tv.json"));
+    let page = browse("movies");
+    assert_eq!(page["allState"], "done");
+    assert_ne!(page["all"], before);
+
+    // Clearing goes back to the first grid, known already.
+    assert!(choose_filter("movies", "countries", ""));
+    assert_eq!(browse("movies")["all"], before);
+}
+
+#[test]
+fn anime_filters_are_anilists() {
+    let _g = fresh(false, false);
+    // Shows without TMDB browse anime, with the Anime page's filters.
+    choose_filter("anime", "genres", "Mecha");
+    let page = browse("shows");
+    assert_eq!(selected(&page, "genres"), Vec::<String>::new(), "the genre names are not in yet");
+    seed(
+        Call::FilterOptions(DiscoverKind::Anime),
+        json!({ "genres": [["Mecha", "Mecha"], ["Drama", "Drama"]], "countries": [] }),
+    );
+    let page = browse("shows");
+    assert_eq!(selected(&page, "genres"), ["Mecha"]);
+    let countries: Vec<&str> =
+        list_of(&group(&page, "countries")["options"]).iter().map(|o| o["id"].as_str().unwrap()).collect();
+    assert_eq!(countries, ["JP", "CN", "KR", "TW"]);
+    assert_eq!(group(&page, "countries")["options"][0]["name"], "Japan");
+    // Movies has nothing to filter without TMDB.
+    assert_eq!(browse("movies")["filters"], json!([]));
+    assert!(!choose_filter("movies", "genres", "18"));
 }
 
 #[test]

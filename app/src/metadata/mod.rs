@@ -28,6 +28,7 @@
 pub mod anilist;
 pub mod animemap;
 pub mod cache;
+pub mod discover;
 pub mod http;
 pub mod id;
 pub mod jikan;
@@ -55,6 +56,7 @@ use tokio::runtime::Runtime;
 use anilist::Anilist;
 use animemap::AnimeIds;
 use cache::{Cache, Freshness, freshness, now};
+use discover::{DiscoverKind, Filter};
 use http::Limiter;
 use id::MetaId;
 use jikan::Jikan;
@@ -433,6 +435,60 @@ async fn trending_work(kind: String, lang: String) -> CallResult {
     Ok((json!({ "items": items }), age))
 }
 
+async fn discover_work(kind: DiscoverKind, filter: Filter, lang: String) -> CallResult {
+    let svc = service();
+    let mut age = Age::default();
+    let anime = kind == DiscoverKind::Anime;
+    let cx = map_cx(&lang, &mut age, !anime).await;
+    let items = if anime {
+        let got = cached(Anilist.discover_request(&filter)).await.map_err(|e| (e, Some(ProviderId::Anilist)))?;
+        age.add(&got);
+        let cards = Anilist.map_cards(&got.body, &cx).map_err(|e| (e, Some(ProviderId::Anilist)))?;
+        canonicalize(cards, svc.tmdb().configured())
+    } else {
+        let src = svc.tmdb();
+        let today = cache::date_of(now());
+        let req = src.discover_request(kind, &filter, &lang, &today).map_err(|e| (e, Some(ProviderId::Tmdb)))?;
+        let got = cached(req).await.map_err(|e| (e, Some(ProviderId::Tmdb)))?;
+        age.add(&got);
+        let mut cards = src.map_cards(&got.body, &cx).map_err(|e| (e, Some(ProviderId::Tmdb)))?;
+        mark_anime(&mut cards);
+        cards
+    };
+    Ok((json!({ "items": items }), age))
+}
+
+/// What the filters of `kind` offer that a source names: `{"genres":[[id,
+/// name]…],"countries":[[code,name]…]}`. TMDB's genres in `lang` (AniList's
+/// fixed English ones for anime); country names in `lang` from TMDB, empty
+/// without a TMDB key.
+async fn filter_options_work(kind: DiscoverKind, lang: String) -> CallResult {
+    let tmdb = service().tmdb();
+    let mut age = Age::default();
+    let genres: Vec<(String, String)> = if kind == DiscoverKind::Anime {
+        discover::ANIME_GENRES.iter().map(|g| (g.to_string(), g.to_string())).collect()
+    } else {
+        let req = tmdb.genres_request(kind, &lang).map_err(|e| (e, Some(ProviderId::Tmdb)))?;
+        let got = cached(req).await.map_err(|e| (e, Some(ProviderId::Tmdb)))?;
+        age.add(&got);
+        tmdb.map_genres(&got.body).map_err(|e| (e, Some(ProviderId::Tmdb)))?
+    };
+    let mut countries = Vec::new();
+    if tmdb.configured() {
+        match tmdb.countries_request(&lang) {
+            Ok(req) => match cached(req).await.and_then(|got| {
+                age.add(&got);
+                tmdb.map_countries(&got.body)
+            }) {
+                Ok(list) => countries = list,
+                Err(e) => age.warn(ProviderId::Tmdb, &e),
+            },
+            Err(e) => age.warn(ProviderId::Tmdb, &e),
+        }
+    }
+    Ok((json!({ "genres": genres, "countries": countries }), age))
+}
+
 /// The AniList scores of `entries` (one batched request) and the MAL score
 /// of the primary one (Jikan), written into the entries.
 async fn entry_ratings(entries: &mut [AnimeEntry], primary: usize, age: &mut Age) {
@@ -792,6 +848,16 @@ pub fn attribution() -> Value {
 
 pub async fn trending(kind: String, language: String) -> String {
     run(trending_work(kind, language)).await
+}
+
+/// The first page of `kind` through `filter` (`data`: `{"items":[TitleCard]}`).
+pub async fn discover(kind: DiscoverKind, filter: Filter, language: String) -> String {
+    run(discover_work(kind, filter, language)).await
+}
+
+/// What the filters of `kind` offer (see `filter_options_work`).
+pub async fn filter_options(kind: DiscoverKind, language: String) -> String {
+    run(filter_options_work(kind, language)).await
 }
 
 pub async fn title(id: String, language: String) -> String {

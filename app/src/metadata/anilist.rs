@@ -8,7 +8,13 @@
 
 use serde_json::{Value, json};
 
-use super::{cache::CacheKind, id::MetaId, model::*, provider::*};
+use super::{
+    cache::CacheKind,
+    discover::{self, Filter, Sort},
+    id::MetaId,
+    model::*,
+    provider::*,
+};
 
 pub const API: &str = "https://graphql.anilist.co";
 pub const SITE: &str = "https://anilist.co";
@@ -38,6 +44,20 @@ const MEDIA_QUERY: &str = "query ($id: Int) {
       edges { role node { id name { full } } voiceActors(language: JAPANESE) { id name { full } image { large medium } } }
     }
     staff(sort: [RELEVANCE], perPage: 8) { edges { role node { id name { full } image { large medium } } } }
+  }
+}";
+
+/// Browsing with filters (`Anilist::discover_request`); the fields are `LIST_QUERY`'s.
+const DISCOVER_QUERY: &str = "query ($sort: [MediaSort], $genres: [String], $from: FuzzyDateInt, $until: FuzzyDateInt,
+  $country: CountryCode, $minPopularity: Int, $statusNot: MediaStatus) {
+  Page(page: 1, perPage: 30) {
+    media(type: ANIME, isAdult: false, sort: $sort, genre_in: $genres, startDate_greater: $from,
+      startDate_lesser: $until, countryOfOrigin: $country, popularity_greater: $minPopularity, status_not: $statusNot) {
+      id idMal format status episodes duration season seasonYear averageScore
+      title { romaji english native } synonyms description(asHtml: false)
+      coverImage { extraLarge large medium color } bannerImage
+      startDate { year month day } endDate { year month day } genres isAdult
+    }
   }
 }";
 
@@ -77,6 +97,40 @@ pub fn current_season(now: i64) -> (&'static str, u16) {
 }
 
 impl Anilist {
+    /// The anime `filter` lets through, first page. Genres are AniList's
+    /// names; a decade is a start-date range (exclusive bounds, YYYYMMDD).
+    pub fn discover_request(&self, filter: &Filter) -> Request {
+        let sort = match filter.sort {
+            Sort::Popular => "POPULARITY_DESC",
+            Sort::TopRated => "SCORE_DESC",
+            Sort::Newest => "START_DATE_DESC",
+        };
+        let mut vars = json!({ "sort": [sort] });
+        let genres: Vec<&str> =
+            filter.genres.iter().map(String::as_str).filter(|g| discover::ANIME_GENRES.contains(g)).collect();
+        if !genres.is_empty() {
+            vars["genres"] = json!(genres);
+        }
+        if let Some((from, to)) = filter.years.as_deref().and_then(discover::years_of) {
+            if let Some(y) = from {
+                vars["from"] = json!(u32::from(y) * 10_000 - 1);
+            }
+            if let Some(y) = to {
+                vars["until"] = json!((u32::from(y) + 1) * 10_000);
+            }
+        }
+        if let Some(c) = &filter.country {
+            vars["country"] = json!(c);
+        }
+        match filter.sort {
+            // Scores of a handful of viewers say little.
+            Sort::TopRated => vars["minPopularity"] = json!(5000),
+            Sort::Newest => vars["statusNot"] = json!("NOT_YET_RELEASED"),
+            Sort::Popular => {}
+        }
+        request(format!("anilist:discover:{}", filter.key()), CacheKind::Shelf, DISCOVER_QUERY, vars)
+    }
+
     pub fn entries_request(&self, ids: &[u64]) -> Request {
         let mut ids = ids.to_vec();
         ids.sort_unstable();
