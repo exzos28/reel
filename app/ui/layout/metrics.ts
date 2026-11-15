@@ -2,7 +2,7 @@
 // a page (the nav, the heads, the window bar, the system's bars), so screens never work it
 // out. `computeMetrics` is pure (tests call it for each family); `metrics(kind)` is this
 // device's, reactive (rotation, a resized window).
-import { safeArea } from "nsh";
+import { safeArea, windowSize } from "nsh";
 import { look } from "../platform/look";
 import { u } from "../theme";
 import { frame } from "./chrome";
@@ -38,6 +38,8 @@ export interface MetricsInput {
   unit: number;
   /** The phone's tab bar's row, points (without the system's area under it). */
   tabRow: number;
+  /** A landscape phone: the tabs are a rail at the left, not a bar under the content. */
+  rail?: boolean;
 }
 
 export interface Metrics {
@@ -69,17 +71,23 @@ export function computeMetrics(i: MetricsInput): Metrics {
   return {
     headBottom,
     titleTop: headBottom + px(TITLE_GAP),
-    bottomRoom: px(54) + i.safeBottom + (i.nav === "tab-bar" ? i.tabRow : 0),
+    bottomRoom: px(54) + i.safeBottom + (i.nav === "tab-bar" && !i.rail ? i.tabRow : 0),
   };
 }
 
 /** The phone's tab bar's row over the system's area, points: Material's 80, iOS's 49. */
 export const TAB_ROW = look.system === "material" ? 80 : 49;
 
+/** A phone held sideways (little height): its tabs are a rail at the left. */
+export const phoneRail = () => frame.nav === "tab-bar" && windowSize().height < 500;
+/** The rail's width, points (with the system's area at the left: a notch). */
+export const RAIL = 76;
+export const railWidth = () => (phoneRail() ? RAIL + safeArea().left : 0);
+
 /** This device's metrics for a page of `kind`. */
 export function metrics(kind: PageKind): Metrics {
   const a = safeArea();
-  return computeMetrics({ nav: frame.nav, kind, safeTop: a.top, safeBottom: a.bottom, unit: u(1), tabRow: TAB_ROW });
+  return computeMetrics({ nav: frame.nav, kind, safeTop: a.top, safeBottom: a.bottom, unit: u(1), tabRow: TAB_ROW, rail: phoneRail() });
 }
 
 /** Where a hero's text starts, points: its design's place (`design`, TV pixels), or lower

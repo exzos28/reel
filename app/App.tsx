@@ -20,6 +20,7 @@ import { canGoBack, closeFirst, go, handleBack, isRoot, route, section, useTabSt
 import { screenFor } from "./ui/screens/RouteScreen";
 import { frame } from "./ui/layout/chrome";
 import { caps } from "./ui/platform";
+import { railWidth } from "./ui/layout/metrics";
 import { PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
 import { TouchStack } from "./ui/layout/TouchStack";
 import { ExitDialog } from "./ui/layout/ExitDialog";
@@ -98,7 +99,10 @@ function App() {
     >
       <If when={!playing()} else={<Player />}>
         <If when={caps.touch} else={<OneScreen />}>
-          <TouchStack page={screenFor} />
+          {/* Right of the phone's rail when it is held sideways. */}
+          <View style={{ flex: 1, marginLeft: railWidth() }}>
+            <TouchStack page={screenFor} />
+          </View>
         </If>
         <If when={frame.nav === "tab-bar"}>
           <PhoneTabBar />

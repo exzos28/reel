@@ -9,6 +9,8 @@ nav:
   anime: Anime
   search: Search
   settings: Settings
+  # The phone's last tab: the destinations that do not fit in its tab bar.
+  more: More
   back: Back
   # Desktop tooltip of Back and its accessibility label: the page it goes to.
   back_to: "Back to %{page}"

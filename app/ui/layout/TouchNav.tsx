@@ -5,20 +5,22 @@
 // Tablet: one top row on every page: the logo (Back in its place on a deeper
 // page), the floating tabs centred, Add to list on a title, Settings; solid
 // once content is under it.
-import { safeArea, Scroll, Text, View, windowSize, type TextStyle, type ViewStyle } from "nsh";
+import { safeArea, signal, Text, View, windowSize, type ImageAsset, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { title as titleOf, titleText, toggleList } from "../catalog";
 import backIcon from "../icons/back.svg";
 import settingsIcon from "../icons/settings.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
-import { canGoBack, go, handleBack, openSettings, route, section, stack, type Route } from "../nav";
+import { canGoBack, go, handleBack, openSettings, route, section, stack, type Destination, type Route } from "../nav";
 import { look } from "../platform/look";
 import { alpha, colors, font, iconPt, u } from "../theme";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
 import { frameSolid } from "./frameState";
-import { PHONE_BACK_HEAD, TAB_ROW, TOP_ROW } from "./metrics";
+import { PHONE_BACK_HEAD, phoneRail, railWidth, TAB_ROW, TOP_ROW } from "./metrics";
+import { ChoicePanel, type Choice } from "./ChoicePanel";
+import moreIcon from "../icons/more.svg";
 
 /** The tabs: the nav's destinations but Settings. */
 const TABS = NAV.filter((n) => n.id !== "settings");
@@ -59,27 +61,36 @@ function SettingsButton(props: { size: number }) {
 // ---- Phone ---------------------------------------------------------------
 
 const tabBarStyle = (): ViewStyle => ({
+  flexDirection: "row",
   position: "absolute",
   left: 0,
   right: 0,
   bottom: 0,
   height: tabBarHeight(),
   paddingTop: android ? 12 : 6,
+  paddingHorizontal: 8 + Math.max(safeArea().left, safeArea().right),
   backgroundColor: colors.ink(),
   borderTopWidth: 1,
   borderTopColor: colors.card(),
   zIndex: 10,
 });
-const tabStyle: ViewStyle = { width: 70, alignItems: "center", gap: android ? 4 : 3 };
-/** The tabs in a row that scrolls sideways when they do not fit (six of 70 pt on a 412 pt
- * phone); when they fit, they spread over the width as before. */
-const tabRowStyle = (): ViewStyle => ({
-  flexDirection: "row",
-  justifyContent: "space-around",
-  alignItems: "flex-start",
-  paddingHorizontal: 8,
-  minWidth: windowSize().width,
+/** Landscape: the tabs in a column at the left, centred in the height. */
+const railStyle = (): ViewStyle => ({
+  position: "absolute",
+  top: 0,
+  bottom: 0,
+  left: 0,
+  width: railWidth(),
+  paddingLeft: safeArea().left,
+  justifyContent: "center",
+  gap: 6,
+  backgroundColor: colors.ink(),
+  borderRightWidth: 1,
+  borderRightColor: colors.card(),
+  zIndex: 10,
 });
+/** A tab: an equal share of the bar's width (a rail's row), at least 48 pt tall. */
+const tabStyle = (inRail: boolean): ViewStyle => ({ ...(inRail ? { height: 60 } : { flex: 1 }), minHeight: 48, alignItems: "center", gap: android ? 4 : 3 });
 const indicatorStyle = (on: boolean): ViewStyle => ({
   width: android ? 64 : 52,
   height: android ? 32 : 30,
@@ -90,28 +101,51 @@ const indicatorStyle = (on: boolean): ViewStyle => ({
 });
 const tabText = (on: boolean): TextStyle => ({ fontFamily: font, fontSize: android ? 12 : 10.5, fontWeight: 500, color: on ? colors.snow() : colors.ash() });
 
-/** The phone's bottom tab bar. Tapping the selected tab pops it to its root. */
-export function PhoneTabBar() {
+/** The phone's tabs: the destinations that fit (Home, Movies, Series, Search), then More for
+ * the others (Cartoons, Anime), which it lists in a sheet. */
+const PHONE_TABS: Destination[] = ["home", "movies", "shows", "search"];
+const MORE = TABS.filter((n) => !PHONE_TABS.includes(n.id));
+const inMore = () => MORE.some((n) => n.id === section());
+
+function Tab(props: { label: string; icon: ImageAsset; on: () => boolean; inRail: boolean; onPress: () => void }) {
   return (
-    <View testID="tab-bar" style={tabBarStyle()}>
-      <Scroll horizontal scrollbar={false} bounces={false}>
-      <View style={tabRowStyle()}>
-      <Each of={TABS} key={(n) => n.id}>
-        {(n) => {
-          const on = () => section() === n().id;
-          return (
-            <View role="tab" accessibilityLabel={t(`nav.${n().id}`)} accessibilityState={{ selected: on() }} onPress={() => go(n().id)} style={tabStyle}>
-              <View style={indicatorStyle(on())}>
-                <Icon src={() => n().icon} size={pt(21)} color={() => (on() ? colors.snow() : colors.ash())} />
-              </View>
-              <Text style={tabText(on())}>{t(`nav.${n().id}`)}</Text>
-            </View>
-          );
-        }}
-      </Each>
+    <View role="tab" accessibilityLabel={props.label} accessibilityState={{ selected: props.on() }} onPress={props.onPress} style={tabStyle(props.inRail)}>
+      <View style={indicatorStyle(props.on())}>
+        <Icon src={() => props.icon} size={pt(21)} color={() => (props.on() ? colors.snow() : colors.ash())} />
       </View>
-      </Scroll>
+      <Text style={tabText(props.on())}>{props.label}</Text>
     </View>
+  );
+}
+
+/** The phone's tabs: a bar under the content, or (held sideways) a rail at its left. Tapping
+ * the selected tab pops it to its root; More lists the destinations that did not fit. */
+export function PhoneTabBar() {
+  const more = signal(false);
+  const tabs = TABS.filter((n) => PHONE_TABS.includes(n.id));
+  const choices = (): Choice[] => MORE.map((n) => ({ key: n.id, text: t(`nav.${n.id}`), selected: section() === n.id }));
+  return (
+    <>
+      <View testID={phoneRail() ? "nav-rail" : "tab-bar"} style={phoneRail() ? railStyle() : tabBarStyle()}>
+        <Each of={tabs} key={(n) => n.id}>
+          {(n) => <Tab label={t(`nav.${n().id}`)} icon={n().icon} on={() => section() === n().id} inRail={phoneRail()} onPress={() => go(n().id)} />}
+        </Each>
+        <Tab label={t("nav.more")} icon={moreIcon} on={inMore} inRail={phoneRail()} onPress={() => more.set(true)} />
+      </View>
+      <If when={more()}>
+        <ChoicePanel
+          id="more"
+          title={() => t("nav.more")}
+          choices={choices}
+          focusedAt={() => -1}
+          onPick={(i) => {
+            more.set(false);
+            go(MORE[i].id);
+          }}
+          onClose={() => more.set(false)}
+        />
+      </If>
+    </>
   );
 }
 
@@ -193,32 +227,32 @@ const topRowStyle = (solid: boolean): ViewStyle => ({
   zIndex: 10,
   backgroundColor: solid ? alpha(colors.ink(), 0.96) : "transparent",
 });
-const tabsStyle = (): ViewStyle => ({
-  ...row(2),
-  position: "absolute",
-  top: safeArea().top + (TOP_ROW - 44) / 2,
-  left: 0,
-  right: 0,
-  justifyContent: "center",
-  pointerEvents: "box-none",
-});
+/** The row's three slots: the sides as wide as each other, so the tabs between them are
+ * centred and never run into Back, the logo or the buttons. */
+const sideWidth = () => Math.min(220, windowSize().width * 0.24);
+const sideStyle = (end: boolean): ViewStyle => ({ ...row(10), width: sideWidth(), justifyContent: end ? "flex-end" : "flex-start" });
+const centerStyle: ViewStyle = { flex: 1, alignItems: "center" };
+/** The tabs keep only their icons where their labels do not fit between the sides. */
+const iconsOnly = () => windowSize().width < 1080;
 const tabsGroup = (solid: boolean): ViewStyle => ({
   ...row(2),
-  height: 44,
+  height: 52,
   padding: 4,
-  ...rounded(22),
+  ...rounded(26),
   backgroundColor: solid ? colors.card() : alpha(colors.card(), 0.85),
 });
 const topTab = (on: boolean, iconOnly: boolean): ViewStyle => ({
   ...row(7),
-  height: 36,
+  height: 44,
+  minWidth: 44,
+  justifyContent: "center",
   paddingHorizontal: iconOnly ? 12 : 16,
-  ...rounded(18),
+  ...rounded(22),
   backgroundColor: on ? colors.nav() : "transparent",
 });
 const topTabText = (on: boolean): TextStyle => ({ fontFamily: font, fontSize: 15, fontWeight: 500, color: on ? colors.snow() : colors.dim() });
-const capsuleStyle = (): ViewStyle => ({ ...row(2), height: 40, paddingLeft: 8, paddingRight: 14, ...rounded(20), backgroundColor: alpha(colors.card(), 0.78) });
-const capsuleText = (): TextStyle => ({ fontFamily: font, fontSize: 16, fontWeight: 500, color: colors.snow() });
+const capsuleStyle = (): ViewStyle => ({ ...row(2), height: 44, maxWidth: sideWidth(), paddingLeft: 8, paddingRight: 14, ...rounded(22), backgroundColor: alpha(colors.card(), 0.78) });
+const capsuleText = (): TextStyle => ({ numberOfLines: 1, flexShrink: 1, fontFamily: font, fontSize: 16, fontWeight: 500, color: colors.snow() });
 
 /** What the page under this one is called ("‹ Movies"). */
 function underName(): string {
@@ -245,7 +279,7 @@ function TabletBack() {
       }
     >
       <View style={row(12)}>
-        <View role="button" accessibilityLabel={t("nav.back_to", { page: underName() })} onPress={handleBack} style={disc(40)}>
+        <View role="button" accessibilityLabel={t("nav.back_to", { page: underName() })} onPress={handleBack} style={disc(44)}>
           <Icon src={() => backIcon} size={pt(20)} />
         </View>
         <Logo />
@@ -269,20 +303,25 @@ function RowListToggle() {
   );
 }
 
-/** The tablet's top row. */
+/** The tablet's top row: Back (or the logo) | the tabs | Add to list and Settings. */
 export function TabletTopRow() {
   return (
     <View testID="top-row" style={topRowStyle(frameSolid())}>
-      <View style={tabsStyle()}>
+      <View style={sideStyle(false)}>
+        <If when={canGoBack()} else={<Logo />}>
+          <TabletBack />
+        </If>
+      </View>
+      <View style={centerStyle}>
         <View style={tabsGroup(frameSolid())}>
           <Each of={TABS} key={(n) => n.id}>
             {(n) => {
               const on = () => section() === n().id && !isSettings();
-              const iconOnly = n().id === "search";
+              const iconOnly = () => n().id === "search" || iconsOnly();
               return (
-                <View role="tab" accessibilityLabel={t(`nav.${n().id}`)} accessibilityState={{ selected: on() }} onPress={() => go(n().id)} style={topTab(on(), iconOnly)}>
+                <View role="tab" accessibilityLabel={t(`nav.${n().id}`)} accessibilityState={{ selected: on() }} onPress={() => go(n().id)} style={topTab(on(), iconOnly())}>
                   <Icon src={() => n().icon} size={pt(17)} color={() => (on() ? colors.snow() : colors.dim())} />
-                  <If when={!iconOnly}>
+                  <If when={!iconOnly()}>
                     <Text style={topTabText(on())}>{t(`nav.${n().id}`)}</Text>
                   </If>
                 </View>
@@ -291,13 +330,9 @@ export function TabletTopRow() {
           </Each>
         </View>
       </View>
-      <If when={canGoBack()} else={<Logo />}>
-        <TabletBack />
-      </If>
-      <View style={{ flex: 1 }} />
-      <View style={row(10)}>
+      <View style={sideStyle(true)}>
         <RowListToggle />
-        <SettingsButton size={40} />
+        <SettingsButton size={44} />
       </View>
     </View>
   );

@@ -9,7 +9,7 @@ const phone = () => openApp({ platform: "ios", width: 393, height: 852, safeArea
 test("phone: a bottom tab bar; a tab keeps its place; the selected tab chosen again goes to its root", async () => {
   const app = await phone();
   expect(app.shows("tab-bar")).toBe(true);
-  for (const tab of ["Home", "Movies", "Series", "Cartoons", "Anime", "Search"]) expect(app.shows(`label:${tab}`)).toBe(true);
+  for (const tab of ["Home", "Movies", "Series", "Search", "More"]) expect(app.shows(`label:${tab}`)).toBe(true);
   await app.press("label:Movies");
   expect(app.texts()).toContain("All movies");
   await app.press("label:Dune >> nth=0");
@@ -20,6 +20,25 @@ test("phone: a bottom tab bar; a tab keeps its place; the selected tab chosen ag
   await app.press("label:Movies"); // back to Movies: the film is still open
   expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
   await app.press("label:Movies"); // chosen again: its root
+  expect(app.texts()).toContain("All movies");
+});
+
+test("phone: five tabs; More lists the destinations that do not fit and opens one", async () => {
+  const app = await phone();
+  expect(app.count("role:tab")).toBe(5);
+  expect(app.shows("label:Cartoons")).toBe(false);
+  await app.press("label:More");
+  expect(app.shows("more-panel")).toBe(true);
+  await app.press("label:Anime");
+  expect(app.shows("more-panel")).toBe(false);
+  expect(app.texts()).toContain("All anime");
+});
+
+test("phone held sideways: the tabs are a rail at the left", async () => {
+  const app = await openApp({ platform: "ios", width: 852, height: 393, safeArea: { top: 0, bottom: 21, left: 62, right: 62 }, modules: { "app/native": NATIVE } });
+  expect(app.shows("nav-rail")).toBe(true);
+  expect(app.shows("tab-bar")).toBe(false);
+  await app.press("label:Movies");
   expect(app.texts()).toContain("All movies");
 });
 
