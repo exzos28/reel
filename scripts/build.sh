@@ -156,6 +156,8 @@ case "$target" in
       suffix=debug
     fi
     package android ${flags[@]+"${flags[@]}"}
+    # reel's own Java (native views: app/android), which nsh does not package.
+    "$repo/scripts/android-views.sh" "$(one "$pkg/*.apk")"
     cp "$(one "$pkg/*.apk")" "$out/reel-android-$suffix.apk"
     ;;
 

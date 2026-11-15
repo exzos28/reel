@@ -167,6 +167,15 @@ impl VideoEngine {
         }
         "native".into()
     }
+
+    /// Whether reel's own native views are registered on this device (Android: the Java ones
+    /// `scripts/android-views.sh` adds to the APK; registered on the first call).
+    pub fn views() -> bool {
+        #[cfg(target_os = "android")]
+        return crate::adapters::android_views::installed();
+        #[cfg(not(target_os = "android"))]
+        false
+    }
 }
 
 /// The user's settings, kept on the device.

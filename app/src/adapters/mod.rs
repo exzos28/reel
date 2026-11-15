@@ -2,6 +2,8 @@
 //! `Playback` on builds without the engine (the engine itself is reel-engine), and the mpv
 //! video view on macOS.
 
+#[cfg(target_os = "android")]
+pub mod android_views;
 pub mod http_client;
 pub mod metadata;
 #[cfg_attr(feature = "engine", allow(dead_code))]

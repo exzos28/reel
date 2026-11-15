@@ -197,6 +197,8 @@ export const Meta: MetaModule = {
 
 export const VideoEngine: VideoEngineModule = {
   kind: s("VideoEngine", "kind"),
+  // A TV's web view has no native views of reel's.
+  views: () => false,
 };
 
 export const Hosted: HostedModule = {
