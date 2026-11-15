@@ -81,8 +81,7 @@ export function TitleHero(props: {
       fit
     >
       <View style={actionsRow(false)}>
-        {/* With a source, Play waits for the release; with none it asks for one (the drawer). */}
-        <PlayButton label={() => playLabel(props.data())} focused={focused("play")} onPress={props.onPlay} disabled={() => props.data().playable && !props.data().release} />
+        <PlayButton label={() => playLabel(props.data())} focused={focused("play")} onPress={props.onPlay} />
         <If when={props.data().trailer}>
           <TrailerButton focused={focused("trailer")} onPress={props.onTrailer} />
         </If>

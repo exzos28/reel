@@ -11,8 +11,14 @@ import { colors, u } from "../../theme";
 import { SourceByPhone, SourceForm } from "./SourceForm";
 import { sourceForm } from "./sourceState";
 
+/** Why it is open: there is no source, or the one set did not answer. */
+type Why = "missing" | "failed";
 const shown = signal(false);
-export const openSourceDrawer = () => shown.set(true);
+const why = signal<Why>("missing");
+export const openSourceDrawer = (reason: Why = "missing") => {
+  why.set(reason);
+  shown.set(true);
+};
 
 /** How long "Connected" shows before the drawer closes, ms. */
 const CONNECTED_MS = 1200;
@@ -24,7 +30,7 @@ function Body() {
   });
   return (
     <View style={{ gap: u(24) }}>
-      <Text style={bodyText(colors.soft())}>{t("settings.source_drawer.about")}</Text>
+      <Text style={bodyText(colors.soft())}>{t(why() === "failed" ? "settings.source_drawer.failed_about" : "settings.source_drawer.about")}</Text>
       <SourceByPhone />
       <SourceForm form={form} />
     </View>
@@ -42,7 +48,7 @@ export function SourceDrawer() {
     openSourceDrawer();
   });
   return (
-    <Drawer id="source" open={shown} onClose={() => shown.set(false)} title={() => t("settings.source_drawer.title")} tvWidth={900}>
+    <Drawer id="source" open={shown} onClose={() => shown.set(false)} title={() => t(why() === "failed" ? "settings.source_drawer.failed_title" : "settings.source_drawer.title")} tvWidth={900}>
       {() => (
         <If when={shown()}>
           <Body />

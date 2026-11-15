@@ -20,6 +20,7 @@ import { caps } from "../../platform";
 import { ListToggle } from "../../layout/ListToggle";
 import { openTitle } from "../../nav";
 import { openSourceDrawer } from "../source/SourceDrawer";
+import { playGate } from "../source/playGate";
 import { pickReleaseFor, play as startPlay, playing } from "../../playback";
 import { u } from "../../theme";
 import { AboutBlock, hasAbout } from "./AboutBlock";
@@ -62,6 +63,7 @@ export function TitleScreen(props: { id: string }) {
     releaseAt.set(Math.max(0, shownReleases().findIndex((r) => r.selected)));
     zone.set("releases");
   };
+  const gate = playGate(data, () => startPlay({ ...data().play, title: data() }));
   /** Play; with no search source the drawer that adds one (the player would only fail). */
   const play = (p: Parameters<typeof startPlay>[0]) => (data().playable ? startPlay(p) : openSourceDrawer());
   const closePanel = () => {
@@ -119,8 +121,8 @@ export function TitleScreen(props: { id: string }) {
     if (url) openUrl(url).catch((e) => console.warn(`reel: the trailer did not open: ${e}`));
   };
   const run: Record<HeroAction, () => void> = {
-    // Play waits for the release (the button is dimmed) unless there is no source to search.
-    play: () => (data().release || !data().playable ? play({ ...data().play, title: data() }) : undefined),
+    // Play waits for the source's answer: the release plays once known, the drawer opens if there is none.
+    play: gate.press,
     trailer: openTrailer,
   };
   const toggle = () => toggleList(props.id);

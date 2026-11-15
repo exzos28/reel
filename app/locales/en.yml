@@ -356,6 +356,8 @@ settings:
   source_drawer:
     title: Add a search source
     about: reel plays from releases it finds on your own search source, and there is none yet. Enter the Torznab address of your Jackett (or Prowlarr, JacRed…) and its API key; Play works once it connects.
+    failed_title: Your search source did not answer
+    failed_about: reel could not search it for releases. Check its address and API key, then Save and check; Play works once it connects.
     failed: "Could not reach the source: %{message}"
   about:
     title: About reel

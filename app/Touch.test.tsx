@@ -87,16 +87,15 @@ test("phone: the release button opens the releases in a bottom sheet; ✕ closes
   expect(app.texts()).toContain("All movies");
 });
 
-test("phone, with a source: Home's Play waits while the hero's release is searched", async () => {
+test("phone, with a source: Home's Play waits for the source's answer, then opens the drawer when it did not answer", async () => {
   const home = JSON.parse(NATIVE["Catalog.home"] as string);
   for (const shelf of home) for (const card of shelf.items ?? []) card.release = null;
-  const film = { ...JSON.parse(NATIVE["Catalog.title"] as string), release: null, releases: [], releasesState: "searching" };
+  const film = { ...JSON.parse(NATIVE["Catalog.title"] as string), release: null, releases: [], releasesState: "failed" };
   const app = await openApp({
     platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 },
     modules: { "app/native": { ...NATIVE, "Catalog.home": JSON.stringify(home), "Catalog.title": JSON.stringify(film) } },
   });
-  expect(app.texts()).toContain("Searching your source…");
-  let refused = "";
-  await app.press("label:Resume 41:12").catch((e: Error) => (refused = String(e.message ?? e)));
-  expect(refused.includes("disabled")).toBe(true);
+  expect(app.texts()).toContain("Your search source did not answer. Check it in Settings.");
+  await app.press("label:Resume 41:12");
+  expect(app.shows("source-panel")).toBe(true);
 });

@@ -19,9 +19,7 @@ export function HomeHero(props: {
   focusedAt: () => number | null;
   onPlay: () => void;
   onToggle: () => void;
-  /** The release is searched: Play is dimmed. */
-  waiting: () => boolean;
-  /** While it waits, the title as its page has it (what the search is doing). */
+  /** While its release is not known, the title as its page has it (what the search is doing). */
   state: () => Title | null;
 }) {
   return (
@@ -30,7 +28,7 @@ export function HomeHero(props: {
     <Hero item={props.item} height={HOME_HERO.height} titleSize={96} top={heroTop("root", caps.touch ? 0 : HOME_HERO.top)} steadyAbout={!caps.touch} fit={caps.touch} room={56}>
       <ReleaseText item={props.item} />
       <View style={actionsRow(false)}>
-        <PlayButton label={() => playLabel(props.item())} focused={() => props.focusedAt() === 0} onPress={props.onPlay} disabled={props.waiting} />
+        <PlayButton label={() => playLabel(props.item())} focused={() => props.focusedAt() === 0} onPress={props.onPlay} />
         <ListButton
           inList={() => props.item().inList}
           addKey="title.my_list"

@@ -8,6 +8,7 @@ import { useZones } from "../../focus/zones";
 import { NAV } from "../../layout/navItems";
 import { PageFrame } from "../../layout/PageFrame";
 import { openSourceDrawer } from "../source/SourceDrawer";
+import { playGate } from "../source/playGate";
 import { scroller } from "../../layout/Scroller";
 import { showNav } from "../../layout/navState";
 import { go, goFromNav, openTitle } from "../../nav";
@@ -41,12 +42,12 @@ export function HomeScreen() {
   cleanup(() => clearTimeout(settle));
   /** The hero's title as its page has it: asking for it starts the search for its release. */
   const heroTitle = () => title(hero().id);
-  /** Play waits for the release while the source is searched (one is set, the release is not known). */
-  const waiting = () => hero().playable && !hero().release && !heroTitle()?.release;
-  /** Play; with no search source the drawer that adds one; nothing while the release is searched. */
+  /** Play waits for the source's answer (`playGate`); a release the card already knows plays at once. */
+  const gate = playGate(heroTitle, () => play({ ...hero().play, title: hero() }));
   const playFocused = () => {
-    if (!hero().playable) return openSourceDrawer();
-    if (!waiting()) play({ ...hero().play, title: hero() });
+    if (!hero().playable) return openSourceDrawer("missing");
+    if (hero().release) return play({ ...hero().play, title: hero() });
+    gate.press();
   };
   const heroActions = [playFocused, () => toggleList(focused().id)];
 
@@ -99,10 +100,9 @@ export function HomeScreen() {
           item={hero}
           focusedAt={() => (zone() === "hero" ? heroAt() : null)}
           onPlay={playFocused}
-          waiting={waiting}
           state={() => {
             const t = heroTitle();
-            return waiting() && t ? t : null;
+            return hero().playable && !hero().release && t && !t.release ? t : null;
           }}
           onToggle={heroActions[1]}
         />

@@ -203,15 +203,22 @@ test("touch, with no search source: Play opens the drawer that adds one, not the
   expect(app.shows("label:Save and check")).toBe(true);
 });
 
-test("with a source, Play waits for the release: dimmed while it is searched, a press does nothing", async () => {
+test("with a source, Play waits for the source's answer: while it searches, a press opens neither the player nor the drawer", async () => {
   const native = titleWith({ release: null, playable: true, releases: [], releasesState: "searching" });
   const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
-  // The harness refuses to press a disabled control: that is the check.
-  let refused = "";
-  await app.press("label:Resume 41:12").catch((e: Error) => (refused = String(e.message ?? e)));
-  expect(refused.includes("disabled")).toBe(true);
+  await app.press("label:Resume 41:12");
   expect(app.shows("source-panel")).toBe(false);
   expect(app.texts()).toContain("Searching your source…");
+});
+
+test("with a source that did not answer, Play opens the drawer to fix it", async () => {
+  const native = titleWith({ release: null, playable: true, releases: [], releasesState: "failed" });
+  const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  await app.press("label:Resume 41:12");
+  expect(app.shows("source-panel")).toBe(true);
+  expect(app.texts()).toContain("Your search source did not answer");
 });
