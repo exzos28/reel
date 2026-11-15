@@ -2,7 +2,7 @@
 // Remote: the focus starts on the first card; Up goes to the hero's
 // buttons, then to the nav. OK on a card opens its title; on Play, plays.
 import { cleanup, computed, effect, signal, View } from "nsh";
-import { home, toggleList, type Summary } from "../../catalog";
+import { home, title, toggleList, type Summary } from "../../catalog";
 import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
 import { NAV } from "../../layout/navItems";
@@ -39,8 +39,15 @@ export function HomeScreen() {
     settle = setTimeout(() => hero.set(f), HERO_SETTLE_MS);
   });
   cleanup(() => clearTimeout(settle));
-  /** Play; with no search source the drawer that adds one. */
-  const playFocused = () => (focused().playable ? play({ ...focused().play, title: focused() }) : openSourceDrawer());
+  /** The hero's title as its page has it: asking for it starts the search for its release. */
+  const heroTitle = () => title(hero().id);
+  /** Play waits for the release while the source is searched (one is set, the release is not known). */
+  const waiting = () => hero().playable && !hero().release && !heroTitle()?.release;
+  /** Play; with no search source the drawer that adds one; nothing while the release is searched. */
+  const playFocused = () => {
+    if (!hero().playable) return openSourceDrawer();
+    if (!waiting()) play({ ...hero().play, title: hero() });
+  };
   const heroActions = [playFocused, () => toggleList(focused().id)];
 
   /** The page puts the focused shelf in its upper third. */
@@ -92,6 +99,11 @@ export function HomeScreen() {
           item={hero}
           focusedAt={() => (zone() === "hero" ? heroAt() : null)}
           onPlay={playFocused}
+          waiting={waiting}
+          state={() => {
+            const t = heroTitle();
+            return waiting() && t ? t : null;
+          }}
           onToggle={heroActions[1]}
         />
       </View>

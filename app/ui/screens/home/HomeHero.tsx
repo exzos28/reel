@@ -1,5 +1,6 @@
 import { View } from "nsh";
-import { playLabel, type Summary } from "../../catalog";
+import { playLabel, type Summary, type Title } from "../../catalog";
+import { ReleaseState } from "../title/TitleHero";
 import { Hero } from "../../layout/Hero";
 import { actionsRow, ListButton, PlayButton } from "../../layout/HeroActions";
 import { ReleaseText } from "../../layout/HeroMeta";
@@ -13,14 +14,23 @@ export const HOME_HERO = density === "ten-foot" ? { height: 640, top: 180 } : { 
 
 
 /** The hero for the focused card: Play and My list under its release. */
-export function HomeHero(props: { item: () => Summary; focusedAt: () => number | null; onPlay: () => void; onToggle: () => void }) {
+export function HomeHero(props: {
+  item: () => Summary;
+  focusedAt: () => number | null;
+  onPlay: () => void;
+  onToggle: () => void;
+  /** The release is searched: Play is dimmed. */
+  waiting: () => boolean;
+  /** While it waits, the title as its page has it (what the search is doing). */
+  state: () => Title | null;
+}) {
   return (
     // Steady where the focus moves the hero from card to card (keys); on touch it stays on one
     // title, its text right under the head, as tall as its text (the still fades under what follows).
     <Hero item={props.item} height={HOME_HERO.height} titleSize={96} top={heroTop("root", caps.touch ? 0 : HOME_HERO.top)} steadyAbout={!caps.touch} fit={caps.touch} room={56}>
       <ReleaseText item={props.item} />
       <View style={actionsRow(false)}>
-        <PlayButton label={() => playLabel(props.item())} focused={() => props.focusedAt() === 0} onPress={props.onPlay} />
+        <PlayButton label={() => playLabel(props.item())} focused={() => props.focusedAt() === 0} onPress={props.onPlay} disabled={props.waiting} />
         <ListButton
           inList={() => props.item().inList}
           addKey="title.my_list"
@@ -28,6 +38,7 @@ export function HomeHero(props: { item: () => Summary; focusedAt: () => number |
           onPress={props.onToggle}
         />
       </View>
+      <If when={props.state()}>{(t) => <ReleaseState title={t} />}</If>
     </Hero>
   );
 }
