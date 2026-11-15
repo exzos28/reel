@@ -12,7 +12,7 @@ import backIcon from "../icons/back.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
 import { canGoBack, go, handleBack, route, section, stack, type Destination, type Route } from "../nav";
-import { alpha, colors, font, u } from "../theme";
+import { alpha, colors, font, iconPt, u } from "../theme";
 import { chrome } from "./chrome";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
@@ -104,7 +104,7 @@ const roundStyle = (selected: boolean, solid: boolean): ViewStyle => ({
   backgroundColor: selected ? colors.nav() : solid ? colors.card() : alpha(colors.card(), 0.82),
 });
 /** Points as TV pixels, for `Icon`'s size. */
-const pt = (points: number) => points / u(1);
+const pt = iconPt;
 
 /** Back in the bar's slot: the page it goes to and the shortcut as a tooltip.
  * Disabled on a root on a Mac (it keeps its slot); none there elsewhere. */

@@ -14,7 +14,7 @@ import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
 import { canGoBack, go, handleBack, openSettings, route, section, stack, type Route } from "../nav";
 import { look } from "../platform/look";
-import { alpha, colors, font, u } from "../theme";
+import { alpha, colors, font, iconPt, u } from "../theme";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
 import { barSolid } from "./WindowBar";
@@ -24,7 +24,7 @@ const TABS = NAV.filter((n) => n.id !== "settings");
 /** Android's Material bar, else iOS's. */
 const android = look.system === "material";
 /** Points as TV pixels, for `Icon`'s size. */
-const pt = (points: number) => points / u(1);
+const pt = iconPt;
 
 /** The phone's tab bar, points: its row over the home indicator / gesture area. */
 const TAB_ROW = android ? 80 : 49;

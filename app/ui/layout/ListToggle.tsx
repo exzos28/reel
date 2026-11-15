@@ -8,7 +8,7 @@ import checkIcon from "../icons/check.svg";
 import plusIcon from "../icons/plus.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
-import { alpha, colors, cs, focusRing, font, u } from "../theme";
+import { alpha, colors, cs, focusRing, font, iconPt, u } from "../theme";
 import { caps } from "../platform";
 import { chrome } from "./chrome";
 
@@ -16,7 +16,7 @@ import { chrome } from "./chrome";
 const size = () =>
   chrome === "tv"
     ? { height: cs(62), icon: 24, label: u(24), left: u(22), right: u(28), gap: u(12) }
-    : { height: 34, icon: 15 / u(1), label: 13, left: 12, right: 14, gap: 7 };
+    : { height: 34, icon: iconPt(15), label: 13, left: 12, right: 14, gap: 7 };
 /** The touch disc, points. */
 const DISC = 40;
 
@@ -61,7 +61,7 @@ export function ListToggle(props: { inList: () => boolean; focused: () => boolea
       }
     >
       <View role="button" accessibilityLabel={label()} onPress={props.onPress} style={discStyle(props.inList())}>
-        <Icon src={icon} size={20 / u(1)} color={tint} />
+        <Icon src={icon} size={iconPt(20)} color={tint} />
       </View>
     </If>
   );

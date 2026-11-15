@@ -61,6 +61,8 @@ export const ts = (px: number) => (density === "compact" ? px * TEXT_COMPACT : u
  * the layout's 0.45 made a 60 px button 27 pt, under a finger's 44: there they scale by 0.75. */
 const CONTROL_COMPACT = 0.75;
 export const cs = (px: number) => (density === "compact" ? px * CONTROL_COMPACT : u(px));
+/** An `Icon`'s size for a size in points (`Icon` scales its size by `cs`). */
+export const iconPt = (points: number) => points / cs(1);
 
 /** Where content starts from the screen's edges: a TV picture's title-safe
  * 5%; elsewhere the system's safe area plus the family's margin (`chrome`). */

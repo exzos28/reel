@@ -7,7 +7,7 @@ import backIcon from "../icons/back.svg";
 import { Icon } from "../kit/Icon";
 import { rounded } from "../kit/shape";
 import { pageTitle } from "../kit/text";
-import { alpha, colors, u } from "../theme";
+import { alpha, colors, iconPt, u } from "../theme";
 import { caps } from "../platform";
 import { chrome } from "./chrome";
 
@@ -30,7 +30,7 @@ export function FloatingBack(props: { onPress: () => void }) {
       <View style={discCorner("left")}>
         {/* Its touch area is 44 points. */}
         <View role="button" accessibilityLabel={t("nav.back")} onPress={props.onPress} hitSlop={2} style={discStyle()}>
-          <Icon src={() => backIcon} size={20 / u(1)} />
+          <Icon src={() => backIcon} size={iconPt(20)} />
         </View>
       </View>
     </If>

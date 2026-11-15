@@ -17,7 +17,7 @@ import { t } from "nsh/i18n";
 import { Icon } from "../kit/Icon";
 import { rounded } from "../kit/shape";
 import { metaText, sectionTitle } from "../kit/text";
-import { alpha, colors, safe, u } from "../theme";
+import { alpha, colors, iconPt, safe, u } from "../theme";
 import closeIcon from "../icons/plus.svg";
 import { frame } from "./chrome";
 import { scroller, Scroller, type ScrollCtl } from "./Scroller";
@@ -61,7 +61,7 @@ function CloseButton(props: { onPress: () => void }) {
   return (
     <View role="button" accessibilityLabel={t("player.close")} onPress={props.onPress} style={closeStyle()}>
       <View style={{ transform: "rotate(45deg)" }}>
-        <Icon src={() => closeIcon} size={14 / u(1)} />
+        <Icon src={() => closeIcon} size={iconPt(14)} />
       </View>
     </View>
   );
