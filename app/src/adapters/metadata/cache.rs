@@ -186,7 +186,7 @@ impl Cache {
             })
             .optional()
             .unwrap_or_else(|e| {
-                eprintln!("reel meta: cache read: {e}");
+                tracing::warn!("reel meta: cache read: {e}");
                 None
             });
         let (kind, fetched_at, body) = row?;
@@ -200,7 +200,7 @@ impl Cache {
             params![key, provider.as_str(), kind.as_str(), now, body.to_string()],
         );
         if let Err(e) = result {
-            eprintln!("reel meta: cache write: {e}");
+            tracing::warn!("reel meta: cache write: {e}");
         }
     }
 

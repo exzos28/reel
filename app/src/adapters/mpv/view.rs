@@ -178,7 +178,7 @@ fn has_frame(&self) -> bool {
             let mut made: ffi::RenderContext = std::ptr::null_mut();
             let r = unsafe { (ivars.lib.render_context_create)(&mut made, ivars.raw.0, params.as_mut_ptr()) };
             if r < 0 {
-                eprintln!("reel mpv: render context: {}", ffi::error_text(ivars.lib, r));
+                tracing::warn!("reel mpv: render context: {}", ffi::error_text(ivars.lib, r));
                 ivars.closed.store(true, Ordering::Release);
                 return;
             }

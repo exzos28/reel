@@ -57,7 +57,7 @@ impl Engine {
     /// not start (see the log).
     pub fn open(id: String) -> u32 {
         playback().open(&id).unwrap_or_else(|e| {
-            eprintln!("reel engine: {e}");
+            tracing::warn!("reel engine: {e}");
             0
         })
     }
@@ -89,7 +89,7 @@ impl Engine {
     pub fn open_release(source: String, season: u32, episode: u32) -> u32 {
         let ep = (season > 0 && episode > 0).then(|| (season as u16, episode as u16));
         playback().open_release(&source, ep).unwrap_or_else(|e| {
-            eprintln!("reel engine: {e}");
+            tracing::warn!("reel engine: {e}");
             0
         })
     }
@@ -487,7 +487,7 @@ impl Sources {
         match serde_json::from_str::<reel_domain::search::Request>(&request) {
             Ok(r) => playback().search(source, r),
             Err(e) => {
-                eprintln!("reel sources: bad request {request}: {e}");
+                tracing::warn!("reel sources: bad request {request}: {e}");
                 0
             }
         }

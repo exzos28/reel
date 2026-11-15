@@ -126,10 +126,10 @@ pub fn lib() -> Option<&'static Lib> {
             }
             match unsafe { load(&path) } {
                 Ok(lib) => {
-                    eprintln!("reel mpv: using {}", path.display());
+                    tracing::warn!("reel mpv: using {}", path.display());
                     return Some(lib);
                 }
-                Err(e) => eprintln!("reel mpv: {}: {e}", path.display()),
+                Err(e) => tracing::warn!("reel mpv: {}: {e}", path.display()),
             }
         }
         None

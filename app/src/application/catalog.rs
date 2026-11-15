@@ -244,7 +244,7 @@ fn ask(call: Call, rev: u64) {
         };
         let envelope: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
         if !envelope["error"].is_null() {
-            eprintln!("reel catalog: {}: {}", call.key(), envelope["error"]);
+            tracing::warn!("reel catalog: {}: {}", call.key(), envelope["error"]);
         }
         land(&call, &envelope, rev);
     });

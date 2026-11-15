@@ -83,7 +83,7 @@ pub fn job_files(job: u32) -> Option<Vec<SubFile>> {
                 Err(_) => Loaded::Failed("timed out".into()),
             };
             if let Loaded::Failed(e) = &loaded {
-                eprintln!("reel subtitles: {}: {e}", file.path);
+                tracing::warn!("reel subtitles: {}: {e}", file.path);
             }
             if let Some(state) = JOBS.lock().unwrap().get_mut(&job) {
                 state.loaded.insert(file.id, loaded);

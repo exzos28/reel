@@ -9,6 +9,8 @@ description = "reel's local engine: librqbit, the ring-buffer cache and the Torz
 
 # Native only: reel-app depends on it outside wasm32 (app/Cargo.toml).
 [dependencies]
+# Logs that reach the platform's log (Android's logcat through NSH), unlike stderr.
+tracing = "0.1"
 reel-domain = { path = "../domain" }
 serde_json = "1"
 # rustls (ring) instead of OpenSSL: the TV has no OpenSSL to link against. The vendored,

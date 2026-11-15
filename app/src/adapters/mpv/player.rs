@@ -88,7 +88,7 @@ impl Player {
         for (name, value) in options {
             let r = unsafe { (lib.set_option_string)(handle, cstr(name).as_ptr(), cstr(value).as_ptr()) };
             if r < 0 {
-                eprintln!("reel mpv: option {name}={value}: {}", ffi::error_text(lib, r));
+                tracing::warn!("reel mpv: option {name}={value}: {}", ffi::error_text(lib, r));
             }
         }
         let r = unsafe { (lib.initialize)(handle) };
@@ -117,7 +117,7 @@ impl Player {
     fn set(&self, name: &str, value: &str) {
         let r = unsafe { (self.lib.set_property_string)(self.raw.0, cstr(name).as_ptr(), cstr(value).as_ptr()) };
         if r < 0 {
-            eprintln!("reel mpv: {name}={value}: {}", ffi::error_text(self.lib, r));
+            tracing::warn!("reel mpv: {name}={value}: {}", ffi::error_text(self.lib, r));
         }
     }
 
@@ -127,7 +127,7 @@ impl Player {
         ptrs.push(std::ptr::null());
         let r = unsafe { (self.lib.command)(self.raw.0, ptrs.as_mut_ptr()) };
         if r < 0 {
-            eprintln!("reel mpv: {}: {}", args.join(" "), ffi::error_text(self.lib, r));
+            tracing::warn!("reel mpv: {}: {}", args.join(" "), ffi::error_text(self.lib, r));
         }
     }
 

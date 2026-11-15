@@ -87,7 +87,7 @@ fn write(file: &Path, saved: &Saved) {
         .and_then(|_| std::fs::write(&tmp, serde_json::to_vec(saved).expect("plain data")))
         .and_then(|_| std::fs::rename(&tmp, file));
     if let Err(e) = result {
-        eprintln!("reel progress: writing {}: {e}", file.display());
+        tracing::warn!("reel progress: writing {}: {e}", file.display());
     }
 }
 

@@ -167,7 +167,7 @@ fn write(file: &Path, saved: &Saved) {
     let result = std::fs::create_dir_all(file.parent().unwrap_or(Path::new(".")))
         .and_then(|_| std::fs::write(file, serde_json::to_string_pretty(saved).expect("plain data")));
     if let Err(e) = result {
-        eprintln!("reel settings: writing {}: {e}", file.display());
+        tracing::warn!("reel settings: writing {}: {e}", file.display());
     }
 }
 
@@ -213,7 +213,7 @@ pub fn load(data_dir: Option<&Path>) -> Value {
     }
     let file = data_dir.map(|d| d.join("settings.json"));
     if file.is_none() {
-        eprintln!("reel settings: no data directory, settings last until the app closes");
+        tracing::warn!("reel settings: no data directory, settings last until the app closes");
     }
     let before = file.as_deref().map(read).unwrap_or_default();
     let saved = with_default_source(before.clone(), DEFAULT_SOURCE);

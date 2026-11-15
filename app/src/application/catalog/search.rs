@@ -117,7 +117,7 @@ fn start(query: String, lang: String, key: String) -> Option<tokio::task::AbortH
         let text = metadata().search(query, lang).await;
         let envelope: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
         if !envelope["error"].is_null() {
-            eprintln!("reel catalog: search: {}", envelope["error"]);
+            tracing::warn!("reel catalog: search: {}", envelope["error"]);
         }
         land(&key, &envelope);
     });

@@ -110,7 +110,7 @@ pub fn check_space() -> Value {
     match disk::free_bytes(&dir) {
         Ok(free) => json!({ "ok": free >= needed, "free": free, "needed": needed, "buffer": buffer_mb() }),
         Err(e) => {
-            eprintln!("reel engine: free space of {}: {e}", dir.display());
+            tracing::warn!("reel engine: free space of {}: {e}", dir.display());
             json!({ "ok": true, "free": null, "needed": needed, "buffer": buffer_mb() })
         }
     }
@@ -178,7 +178,7 @@ pub fn close(job: u32) {
         let session = core.session.clone();
         core.rt.spawn(async move {
             if let Err(e) = session.delete(handle.id().into(), true).await {
-                eprintln!("reel engine: deleting torrent {}: {e:#}", handle.id());
+                tracing::warn!("reel engine: deleting torrent {}: {e:#}", handle.id());
             }
         });
     }
