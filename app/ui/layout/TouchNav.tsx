@@ -17,7 +17,8 @@ import { look } from "../platform/look";
 import { alpha, colors, font, iconPt, u } from "../theme";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
-import { barSolid } from "./WindowBar";
+import { frameSolid } from "./frameState";
+import { PHONE_BACK_HEAD, TAB_ROW, TOP_ROW } from "./metrics";
 
 /** The tabs: the nav's destinations but Settings. */
 const TABS = NAV.filter((n) => n.id !== "settings");
@@ -26,13 +27,9 @@ const android = look.system === "material";
 /** Points as TV pixels, for `Icon`'s size. */
 const pt = iconPt;
 
-/** The phone's tab bar, points: its row over the home indicator / gesture area. */
-const TAB_ROW = android ? 80 : 49;
 /** How tall the phone's tab bar is with the system's area under it. */
-export const tabBarHeight = () => TAB_ROW + safeArea().bottom;
-/** The tablet's top row under the status bar, points. */
-export const TOP_ROW = 60;
-export const topRowBottom = () => safeArea().top + TOP_ROW;
+const tabBarHeight = () => TAB_ROW + safeArea().bottom;
+const topRowBottom = () => safeArea().top + TOP_ROW;
 
 const isSettings = () => route().name === "settings" || route().name === "about";
 
@@ -50,10 +47,10 @@ function Logo() {
   return <Text style={logoStyle()}>{t("app.name")}</Text>;
 }
 
-/** Settings, a round button: it pushes Settings on the current tab. */
+/** Settings, a round button: it pushes Settings on the current tab (a 44 pt touch area). */
 function SettingsButton(props: { size: number }) {
   return (
-    <View role="button" accessibilityLabel={t("nav.settings")} onPress={openSettings} style={disc(props.size, isSettings())}>
+    <View role="button" accessibilityLabel={t("nav.settings")} onPress={openSettings} hitSlop={(44 - props.size) / 2} style={disc(props.size, isSettings())}>
       <Icon src={() => settingsIcon} size={pt(props.size * 0.47)} color={() => (isSettings() ? colors.snow() : colors.dim())} />
     </View>
   );
@@ -134,7 +131,50 @@ export function PhoneHead() {
   return (
     <View style={headStyle()}>
       <Logo />
-      <SettingsButton size={36} />
+      <SettingsButton size={40} />
+    </View>
+  );
+}
+
+/** A phone's disc over a page, at its top corner under the status bar. */
+export const phoneDisc = (side: "left" | "right"): ViewStyle => ({ position: "absolute", top: safeArea().top + 4, [side]: 16, zIndex: 3 });
+
+/** Back, a disc (40 across, a 44 pt touch area). */
+function BackDisc() {
+  return (
+    <View role="button" accessibilityLabel={t("nav.back")} onPress={handleBack} hitSlop={2} style={disc(40)}>
+      <Icon src={() => backIcon} size={pt(20)} />
+    </View>
+  );
+}
+
+/** Back over a title's hero; it scrolls away with the page. */
+export function PhoneTitleBack() {
+  return (
+    <View style={phoneDisc("left")}>
+      <BackDisc />
+    </View>
+  );
+}
+
+const backHeadStyle = (): ViewStyle => ({
+  ...row(0),
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  height: safeArea().top + PHONE_BACK_HEAD,
+  paddingTop: safeArea().top,
+  paddingLeft: 16 + safeArea().left,
+  backgroundColor: colors.ink(),
+  zIndex: 10,
+});
+
+/** The top of a phone's deep page (Settings, About): Back, fixed; the title is the page's. */
+export function PhoneBackHead() {
+  return (
+    <View testID="back-head" style={backHeadStyle()}>
+      <BackDisc />
     </View>
   );
 }
@@ -232,9 +272,9 @@ function RowListToggle() {
 /** The tablet's top row. */
 export function TabletTopRow() {
   return (
-    <View testID="top-row" style={topRowStyle(barSolid())}>
+    <View testID="top-row" style={topRowStyle(frameSolid())}>
       <View style={tabsStyle()}>
-        <View style={tabsGroup(barSolid())}>
+        <View style={tabsGroup(frameSolid())}>
           <Each of={TABS} key={(n) => n.id}>
             {(n) => {
               const on = () => section() === n().id && !isSettings();

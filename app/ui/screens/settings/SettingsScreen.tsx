@@ -12,17 +12,14 @@ import { byKeys } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
 import { useRootBack } from "../../focus/rootBack";
 import { caps } from "../../platform";
-import { navRoom } from "../../layout/NavBar";
 import { NAV } from "../../layout/navItems";
 import { showNav } from "../../layout/navState";
 import { rowStyle } from "../../kit/Row";
-import { labelText, pageTitle } from "../../kit/text";
-import { Screen } from "../../layout/Screen";
+import { labelText } from "../../kit/text";
+import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { go, goFromNav, onBack, openAbout } from "../../nav";
-import {
-  bufferChoices, chooseBuffer, chooseContentLanguage, contentLanguage, contentLanguages, toggleStreamDetails,
-} from "../../preferences";
+import { bufferChoices, chooseBuffer, chooseContentLanguage, contentLanguage, contentLanguages, toggleStreamDetails } from "../../preferences";
 import { colors, cs, safe, u } from "../../theme";
 import { BufferSection, bufferChoiceList } from "./BufferSection";
 import { DetailsSection } from "./DetailsSection";
@@ -53,8 +50,8 @@ function AboutRow(props: { focused: () => boolean; viewRef: (r: ViewRef) => void
 }
 
 /** The title where a destination's page starts (170 on a TV). */
-/** Settings is pushed under the system header on touch (`navRoom(true)`). */
-const pageStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: navRoom(true) + u(navRoom(true) ? 58 : 40), gap: u(32) });
+/** The sections under the page's title (the frame's). */
+const pageStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(32), gap: u(32) });
 const SETTINGS_AT = NAV.findIndex((n) => n.id === "settings");
 
 /** Back from About finds the focus on its row. */
@@ -145,14 +142,10 @@ export function SettingsScreen() {
   showNav(() => (onNav() ? navAt() : null));
   useRootBack({ ctl: page, onNav, toNav });
   return (
-    // On touch Settings is pushed on the current tab, under the system header (its title).
+    // A destination with the nav over it; on touch a page pushed on the current tab.
     <View style={{ flex: 1 }}>
-    <Screen ctl={page} nav={!caps.touch}>
+    <PageFrame ctl={page} kind={caps.touch ? "deep" : "root"} title={() => t("settings.title")}>
       <View style={pageStyle()}>
-        {/* Its own title where no system header shows one (all but a phone). */}
-        <If when={navRoom(true) > 0}>
-          <Text style={pageTitle()}>{t("settings.title")}</Text>
-        </If>
         {/* Each section is a block the page brings to the focus line when its row has the focus. */}
         <View ref={page.follow(() => at() === LANGUAGE_AT)}>
           <LanguageSection focused={() => at() === LANGUAGE_AT && !picker()} onOpen={() => open("language")} />
@@ -166,7 +159,7 @@ export function SettingsScreen() {
         <SourceSection />
         <AboutRow focused={() => at() === aboutAt()} viewRef={page.follow(() => at() === aboutAt(), "nearest")} onPress={about} />
       </View>
-    </Screen>
+    </PageFrame>
       <If when={picker()}>
         <ChoicePanel
           title={() => t(picker() === "buffer" ? "settings.buffer.title" : "settings.language.title")}

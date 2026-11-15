@@ -1,6 +1,7 @@
 import { Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { playLabel, releaseLine, releasesText, type Title } from "../../catalog";
 import { Hero } from "../../layout/Hero";
+import { heroTop } from "../../layout/metrics";
 import { actionsRow, PlayButton, ReleaseButton, TrailerButton } from "../../layout/HeroActions";
 import { rounded } from "../../kit/shape";
 import { alpha, colors, cs, ts, type, u } from "../../theme";
@@ -57,7 +58,7 @@ export function TitleHero(props: {
       height={show() ? 640 : 700}
       backdropLeft={show() ? 520 : 560}
       titleSize={show() ? 76 : 88}
-      top={show() ? 150 : 176}
+      top={heroTop("title", show() ? 150 : 176)}
       fit
     >
       <View style={actionsRow(false)}>

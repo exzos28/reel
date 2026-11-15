@@ -5,45 +5,20 @@
 // stack state; switching tabs shows the other tab's.
 import { effect, type JSX } from "nsh";
 import { createNavStack, NavPage, NavStack, type NavStackState } from "nsh/base";
-import { t } from "nsh/i18n";
-import { title as titleOf, titleText } from "../catalog";
 import { section, stack, type Destination, type Route } from "../nav";
-import { look } from "../platform/look";
-import { chrome } from "./chrome";
-import { colors } from "../theme";
+import { PageRoute } from "./frameState";
 
 const stacks = new Map<Destination, NavStackState<Route>>();
 const same = (a: readonly Route[], b: readonly Route[]) => a.length === b.length && a.every((r, i) => r === b[i]);
 
-/** The system header's back label leading back to `r`. */
-function nameOf(r: Route): string {
-  if (r.name === "title") {
-    const s = titleOf(r.id);
-    return s ? titleText(s) : t("nav.back");
-  }
-  return r.name === "about" ? t("settings.about.title") : t(`nav.${r.name}`);
-}
-
-/** One page: roots and titles draw their own top (the head, the back disc
- * over the hero), Settings and About take the system header, Settings with
- * a large title. */
+/** One page. reel draws every page's top itself (the frame: the head, Back, the discs over a
+ * hero), the same on every page, so the system header never shows; the native stack keeps
+ * its back gestures. The page knows its route (`PageRoute`): only the page on top sets the
+ * frame's state. The status bar stays light: reel is dark. */
 function Page(props: { route: Route; children: JSX.Element }) {
-  const r = props.route;
-  // A phone's Settings and About take the system header; a tablet's keep reel's top row
-  // (Back, the tabs), which the system header would sit under.
-  const own = (r.name !== "settings" && r.name !== "about") || chrome !== "phone";
   return (
-    <NavPage
-      headerVisible={!own}
-      title={own ? undefined : r.name === "about" ? t("settings.about.title") : t("settings.title")}
-      // A large title is iOS's: on Android the content went under it; Material's bar is plain.
-      headerLargeTitle={r.name === "settings" && look.system === "ios"}
-      headerBackTitle={nameOf(r)}
-      // The app's colours, not the system's light bar over a dark app.
-      headerStyle={{ backgroundColor: colors.ink(), color: colors.snow(), tintColor: colors.snow() }}
-      statusBar={{ foreground: "light" }}
-    >
-      {props.children}
+    <NavPage headerVisible={false} statusBar={{ foreground: "light" }}>
+      <PageRoute.Provider value={props.route}>{props.children}</PageRoute.Provider>
     </NavPage>
   );
 }

@@ -4,7 +4,7 @@
 // (a title's Add to list), the nav pills, search and settings, the room of
 // the system's caption buttons (Windows, GNOME). Its empty parts drag the
 // window. Clear over a hero, solid once content is under it.
-import { signal, Text, View, type JSX, type TextStyle, type ViewStyle } from "nsh";
+import { Text, View, type JSX, type TextStyle, type ViewStyle } from "nsh";
 import { titleBar } from "nsh/desktop";
 import { t } from "nsh/i18n";
 import { title as titleOf, titleText, toggleList } from "../catalog";
@@ -14,14 +14,13 @@ import { rounded, row } from "../kit/shape";
 import { canGoBack, go, handleBack, route, section, stack, type Destination, type Route } from "../nav";
 import { alpha, colors, font, iconPt, u } from "../theme";
 import { chrome } from "./chrome";
+import { frameSolid as barSolid } from "./frameState";
+import { BAR_HEIGHT } from "./metrics";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
 
-/** The bar's height, points; the system's window controls are centred in it. */
-export const BAR_HEIGHT = 52;
-
-/** Content is under the bar (the page set it from its scroll): the bar turns solid. */
-export const barSolid = signal(false);
+/** The bar's height, points (`metrics`); the system's window controls are centred in it. */
+export { BAR_HEIGHT };
 
 /** Back's box per system, points: size, corner, where it starts, its fill. */
 const BACK = {

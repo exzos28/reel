@@ -6,7 +6,7 @@ import { home, toggleList, type Summary } from "../../catalog";
 import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
 import { NAV } from "../../layout/navItems";
-import { Screen } from "../../layout/Screen";
+import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { showNav } from "../../layout/navState";
 import { go, goFromNav, openTitle } from "../../nav";
@@ -84,7 +84,7 @@ export function HomeScreen() {
   };
 
   return (
-    <Screen ctl={page} nav hero={HOME_HERO.height}>
+    <PageFrame ctl={page} kind="root" hero={HOME_HERO.height}>
       <View ref={page.follow(() => zone() !== "shelves", "start")}>
         <HomeHero
           item={hero}
@@ -107,6 +107,6 @@ export function HomeScreen() {
           )}
         </Each>
       </View>
-    </Screen>
+    </PageFrame>
   );
 }

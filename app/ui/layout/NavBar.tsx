@@ -1,7 +1,7 @@
 // The nav: logo left; the destinations as pills (the current one in a
 // lighter pill, the same width as when it is not), then round search and
 // settings buttons.
-import { safeArea, Text, View, type TextStyle, type ViewStyle } from "nsh";
+import { Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { Icon } from "../kit/Icon";
 import { IconButton } from "../kit/IconButton";
@@ -10,21 +10,11 @@ import { rounded, row } from "../kit/shape";
 import { labelText } from "../kit/text";
 import type { Destination } from "../nav";
 import { colors, density, font, radius, safe, ts, u } from "../theme";
+import { NAV_ROW, NAV_TOP } from "./metrics";
 import { NAV } from "./navItems";
 
-/** Where the nav sits from the top and how tall its row is, TV pixels; a
- * screen's content starts under `NAV_BOTTOM`. */
-const NAV_TOP = 50;
-const NAV_ROW = 62;
-export const NAV_BOTTOM = NAV_TOP + NAV_ROW;
-/** The one place that knows what sits over a page's top, so pages never work it out:
- * - a TV and a desktop: the nav (`NAV_BOTTOM`);
- * - a phone's root page: its head (the logo and Settings, 44 pt) under the system's top bar;
- * - a page pushed under the system header (`pushed`, a phone's Settings and About): nothing,
- *   the header is above the page already (a tablet's keep reel's top row, as root pages).
- * Pages add their own gap to their title on top of it. */
-export const navRoom = (pushed = false) =>
-  pushed && density === "compact" ? 0 : density === "compact" ? safeArea().top + 52 : u(NAV_BOTTOM);
+/** Where the nav sits from the top and how tall its row is (`metrics`, TV pixels). */
+const NAV_BOTTOM = NAV_TOP + NAV_ROW;
 
 const barStyle = (): ViewStyle => ({
   ...row(0),

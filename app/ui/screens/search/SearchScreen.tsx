@@ -11,13 +11,12 @@ import { t } from "nsh/i18n";
 import { rememberSearch, search, type SearchAnswer } from "../../catalog";
 import { byKeys } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
-import { metaText, pageTitle } from "../../kit/text";
+import { metaText } from "../../kit/text";
 import { row as inRow } from "../../kit/shape";
 import { useRootBack } from "../../focus/rootBack";
-import { navRoom } from "../../layout/NavBar";
 import { NAV } from "../../layout/navItems";
 import { showNav } from "../../layout/navState";
-import { Screen } from "../../layout/Screen";
+import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { go, goFromNav, handleBack, onBack, openTitle } from "../../nav";
 import { density, safe, u } from "../../theme";
@@ -26,8 +25,8 @@ import { cols, navAt, query, recentAt, row, zone } from "./focus";
 import { RecentSearches } from "./RecentSearches";
 import { SearchField } from "./SearchField";
 
-/** The title where a destination's page starts (170 on a TV), the field under it. */
-const topStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: navRoom() + u(58), gap: u(28) });
+/** The field under the page's title (the frame's). */
+const topStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(28), gap: u(28) });
 
 /** The line under the field: what is going on, or nothing. */
 function statusText(a: SearchAnswer): string {
@@ -141,9 +140,8 @@ export function SearchScreen() {
   useRootBack({ ctl: page, onNav: () => zone() === "nav", toNav });
 
   return (
-    <Screen ctl={page} nav>
-      <View ref={page.follow(() => zone() !== "results", "start")} style={topStyle()}>
-        <Text style={pageTitle()}>{t("nav.search")}</Text>
+    <PageFrame ctl={page} kind="root" title={() => t("nav.search")} topRef={page.follow(() => zone() !== "results", "start")}>
+      <View style={topStyle()}>
         <View style={inRow(u(24))}>
           <SearchField
             value={query}
@@ -187,6 +185,6 @@ export function SearchScreen() {
           )}
         </Each>
       </View>
-    </Screen>
+    </PageFrame>
   );
 }

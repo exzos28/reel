@@ -15,9 +15,8 @@ import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
 import { metaText } from "../../kit/text";
 import { cellWidth, Grid, gridColumns, gridRows } from "../../layout/Grid";
-import { navRoom } from "../../layout/NavBar";
 import { NAV } from "../../layout/navItems";
-import { Screen } from "../../layout/Screen";
+import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { showNav } from "../../layout/navState";
 import { go, goFromNav, openTitle } from "../../nav";
@@ -179,8 +178,7 @@ export function BrowseScreen(props: { page: Page }) {
 
   return (
     <View style={{ flex: 1 }}>
-      <Screen ctl={page} nav>
-        <View ref={page.follow(() => zone() === "nav", "start")} style={{ height: navRoom() }} />
+      <PageFrame ctl={page} kind="root" title={() => t(`browse.${props.page}.title`)} topRef={page.follow(() => zone() === "nav", "start")}>
         <BrowseHeader page={props.page} />
         <Trending
           items={() => data().trending}
@@ -227,7 +225,7 @@ export function BrowseScreen(props: { page: Page }) {
           grid={data}
           onNear={askMore}
         />
-      </Screen>
+      </PageFrame>
       <If when={panelOpen()}>
         <FilterPanel group={() => panelGroup()!} focusedAt={row} onPress={pick} onClose={closePanel} />
       </If>

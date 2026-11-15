@@ -9,23 +9,19 @@
 // makes it the one Play uses, on an episode plays it; Down past the list
 // walks the cast row, then More like this, where OK opens the title. Back
 // closes the release panel, then goes one level up.
-import { computed, effect, keymap, openUrl, signal, View, type ViewStyle } from "nsh";
+import { computed, effect, keymap, openUrl, signal, View } from "nsh";
 import { t } from "nsh/i18n";
-import {
-  chooseRelease, episodeCode, episodeReleases, episodes, releaseLine, releasesText, title as titleOf, toggleList,
-  type Episode, type Title,
-} from "../../catalog";
+import { chooseRelease, episodeCode, episodeReleases, episodes, releaseLine, releasesText, title as titleOf, toggleList, type Episode, type Title } from "../../catalog";
 import { clamp } from "../../focus/memory";
 import { useZones } from "../../focus/zones";
-import { Screen } from "../../layout/Screen";
+import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { chrome, frame } from "../../layout/chrome";
 import { caps } from "../../platform";
 import { ListToggle } from "../../layout/ListToggle";
-import { discCorner, FloatingBack } from "../../layout/TopBar";
-import { handleBack, openTitle } from "../../nav";
+import { openTitle } from "../../nav";
 import { pickReleaseFor, play, playing } from "../../playback";
-import { safe, u } from "../../theme";
+import { u } from "../../theme";
 import { AboutBlock, hasAbout } from "./AboutBlock";
 import { LazyBlock } from "../../layout/LazyBlock";
 import { CastRow } from "./CastRow";
@@ -36,12 +32,6 @@ import { SeriesEpisodes } from "./SeriesEpisodes";
 import { SimilarShelf } from "./SimilarShelf";
 import { heroActions, TitleHero, type HeroAction } from "./TitleHero";
 
-/** The page's header action, at the safe area's top-right. */
-/** The page's header action: at the safe area's top-right on a TV, the disc
- * across from the back disc on a phone (a desktop's is in the window bar, a
- * tablet's in its top row). */
-const headerStyle = (): ViewStyle =>
-  chrome === "phone" ? discCorner("right") : { position: "absolute", top: safe().y, right: safe().x, zIndex: 3 };
 
 export function TitleScreen(props: { id: string }) {
   const data = computed(() => titleOf(props.id) as Title);
@@ -237,8 +227,14 @@ export function TitleScreen(props: { id: string }) {
 
   return (
     <View style={{ flex: 1 }}>
-    <Screen ctl={page} bottom={40} hero={isShow() ? 640 : 700}>
-      <FloatingBack onPress={handleBack} />
+    <PageFrame
+      ctl={page}
+      kind="title"
+      bottom={40}
+      hero={isShow() ? 640 : 700}
+      // Add to list: the frame puts it (a desktop's window bar and a tablet's top row carry their own).
+      action={<ListToggle inList={() => data().inList} focused={() => zone() === "header"} onPress={toggle} />}
+    >
       <View ref={page.follow(() => zone() === "header" || zone() === "actions" || zone() === "release", "start")}>
         <TitleHero
           data={data}
@@ -249,12 +245,6 @@ export function TitleScreen(props: { id: string }) {
           onReleases={() => openPanel()}
         />
       </View>
-      {/* On a desktop Add to list is in the window bar, on a tablet in the top row. */}
-      <If when={frame.listInPage}>
-        <View style={headerStyle()}>
-          <ListToggle inList={() => data().inList} focused={() => zone() === "header"} onPress={toggle} />
-        </View>
-      </If>
       <If when={isShow()}>
         <SeriesEpisodes
           data={data}
@@ -306,7 +296,7 @@ export function TitleScreen(props: { id: string }) {
           </LazyBlock>
         </If>
       </View>
-    </Screen>
+    </PageFrame>
     <ReleasePanel
         open={panelOpen}
         title={releasesTitle}
