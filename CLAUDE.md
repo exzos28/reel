@@ -43,6 +43,11 @@ Samsung Tizen TV (first), macOS, Android / Android TV, iOS / iPadOS, Windows, Li
 - TV first: everything works with arrows, OK and Back; focus (white ring + lift) differs from
   selected (lighter fill + check); leave `ringRoom()` around items in scroll views.
 - Small components and named style helpers; no long inline style objects in markup.
+- Screens render content only, inside `PageFrame` (`app/ui/layout/PageFrame.tsx`): it places
+  what is over and under a page (nav, heads, Back, the status bar's scrim), the page's title and
+  the room under it, from `layout/metrics.ts`. Sideways rows are `Rail`; touch targets reach
+  44 / 48 pt through `theme.targetSlop`. A screen never reads `safeArea`, `ringRoom`, the family
+  or positions overlays: `scripts/ui-rules.sh` checks it.
 
 ## Secrets
 
@@ -52,8 +57,8 @@ Samsung Tizen TV (first), macOS, Android / Android TV, iOS / iPadOS, Windows, Li
 
 ## Build and test (from `app/`)
 
-- `cargo test --workspace`, `cargo build --no-default-features`, `nsh check .`, `nsh test .` must
-  pass before every commit. The layers and crates (reel-domain, reel-engine, reel-app) are in
+- `cargo test --workspace`, `cargo build --no-default-features`, `nsh check .`, `nsh test .` and
+  `../scripts/ui-rules.sh` must pass before every commit. The layers and crates (reel-domain, reel-engine, reel-app) are in
   `app/ARCHITECTURE.md`.
 - `nsh package . --target macos` (with `.env` loaded) for a demo build; `scripts/build.sh <target>`
   is what CI runs.

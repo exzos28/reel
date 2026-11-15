@@ -1,9 +1,11 @@
 // A pill in a row of choices: the nav's destinations, a show's seasons.
 import type { ViewStyle } from "nsh";
-import { cs, focusRing, targetSlop, u } from "../theme";
+import { cs, focusRing, ringRoom, targetSlop, u } from "../theme";
 import { rounded, row } from "./shape";
 
 const PILL = 52;
+/** Pills that wrap onto more lines (recent searches), `gap` TV pixels apart, with room for the ring. */
+export const pillWrap = (gap: number): ViewStyle => ({ flexDirection: "row", flexWrap: "wrap", gap: u(gap), paddingVertical: ringRoom() / 2 });
 /** A pill's `hitSlop` on touch (a 44 / 48 pt target). */
 export const pillSlop = () => targetSlop(cs(PILL));
 

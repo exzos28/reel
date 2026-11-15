@@ -6,12 +6,10 @@ import { pillStyle } from "../../kit/Pill";
 import { labelText, metaText } from "../../kit/text";
 import { Rail } from "../../layout/Rail";
 import { scroller, type Follow } from "../../layout/Scroller";
-import { colors, ringRoom, safe, selectedFill, type, u } from "../../theme";
+import { colors, safe, selectedFill, type, u } from "../../theme";
 
 type Season = { number: number; year: number; episodes: number };
 
-/** The tabs in a rail (the first one at the inset); the ring's room above them is taken from the gap over them. */
-const blockStyle = (): ViewStyle => ({ marginTop: u(36) - ringRoom() });
 const tabLabel = (selected: boolean): TextStyle => ({ ...labelText(selected ? colors.snow() : colors.ash()), fontWeight: 600 });
 const subStyle = (): TextStyle => ({ ...metaText(), marginHorizontal: safe().x, marginTop: u(4) });
 
@@ -27,8 +25,8 @@ export function SeasonTabs(props: {
   const tabs = scroller({ horizontal: true, anchor: () => safe().x });
   const chosen = (s: Season) => props.season() === s.number;
   return (
-    <View ref={props.follow(props.focused)} style={blockStyle()}>
-      <Rail ctl={tabs} gap={6}>
+    <View ref={props.follow(props.focused)}>
+      <Rail ctl={tabs} gap={6} top={36}>
           <Each of={props.seasons()} key={(s) => s.number}>
             {(s) => (
               <View

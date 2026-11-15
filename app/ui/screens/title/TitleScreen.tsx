@@ -16,7 +16,6 @@ import { clamp } from "../../focus/memory";
 import { useZones } from "../../focus/zones";
 import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
-import { chrome, frame } from "../../layout/chrome";
 import { caps } from "../../platform";
 import { ListToggle } from "../../layout/ListToggle";
 import { openTitle } from "../../nav";

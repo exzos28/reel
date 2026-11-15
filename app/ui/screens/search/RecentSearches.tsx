@@ -1,9 +1,9 @@
 import { Text, View } from "nsh";
 import { t } from "nsh/i18n";
-import { pillSlop, pillStyle } from "../../kit/Pill";
+import { pillSlop, pillStyle, pillWrap } from "../../kit/Pill";
 import { labelText } from "../../kit/text";
 import { SectionTitle } from "../../layout/Section";
-import { colors, ringRoom, u } from "../../theme";
+import { colors, u } from "../../theme";
 
 /** The last searches as pills: OK (or a click) searches one again.
  * `focusedAt`: the pill the focus is on, null while it is elsewhere. */
@@ -15,7 +15,7 @@ export function RecentSearches(props: {
   return (
     <View style={{ gap: u(18) }}>
       <SectionTitle text={() => t("search.recent")} />
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: u(16), paddingVertical: ringRoom() / 2 }}>
+      <View style={pillWrap(16)}>
         <Each of={props.queries()} key={(q) => q}>
           {(q, i) => (
             <View
