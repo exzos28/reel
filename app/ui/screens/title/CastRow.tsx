@@ -7,7 +7,7 @@ import type { CastMember } from "../../catalog";
 import { fontText, labelText, metaText } from "../../kit/text";
 import { SectionTitle } from "../../layout/Section";
 import { scroller, type Follow } from "../../layout/Scroller";
-import { Shelf } from "../../layout/Shelf";
+import { Rail } from "../../layout/Rail";
 import { colors, focusRing, safe, ts, u } from "../../theme";
 
 const PHOTO = 150;
@@ -57,7 +57,7 @@ export function CastRow(props: { cast: () => CastMember[]; focusedAt: () => numb
   return (
     <View style={{ gap: u(18) }}>
       <SectionTitle text={() => t("about.cast")} inset />
-      <Shelf ctl={line} gap={20} top={0} bottom={8}>
+      <Rail ctl={line} gap={20} top={0} bottom={8}>
         <Each of={props.cast()} key="index">
           {(p, i) => (
             <Person
@@ -68,7 +68,7 @@ export function CastRow(props: { cast: () => CastMember[]; focusedAt: () => numb
             />
           )}
         </Each>
-      </Shelf>
+      </Rail>
     </View>
   );
 }

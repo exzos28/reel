@@ -8,7 +8,9 @@ import { Icon } from "../../kit/Icon";
 import { pillSlop, pillStyle } from "../../kit/Pill";
 import { row } from "../../kit/shape";
 import { metaText, oneLine, sectionTitle } from "../../kit/text";
-import { colors, safe, u } from "../../theme";
+import { colors, density, safe, u } from "../../theme";
+import { Rail } from "../../layout/Rail";
+import { scroller } from "../../layout/Scroller";
 import chevronIcon from "../../icons/chevron.svg";
 
 const barStyle = (): ViewStyle => ({ ...row(u(12)), paddingHorizontal: safe().x, marginTop: u(26) });
@@ -47,6 +49,7 @@ export function FilterBar(props: {
   blockRef: (r: ViewRef) => void;
   onOpen: (i: number) => void;
 }) {
+  const line = scroller({ horizontal: true, anchor: () => safe().x });
   const sortAt = () => props.groups().findIndex((g) => g.id === "sort");
   const picked = (g: FilterGroup) => g.options.some((o) => o.selected);
   const pill = (i: () => number) => ({
@@ -54,25 +57,45 @@ export function FilterBar(props: {
     focused: () => props.focusedAt() === i(),
     onPress: () => props.onOpen(i()),
   });
-  return (
-    <View ref={props.blockRef} style={barStyle()}>
-      <Text style={{ ...sectionTitle(), marginRight: u(22) }}>{props.title()}</Text>
-      <Each of={props.groups().filter((g) => g.id !== "sort")} key={(g) => g.id}>
-        {(g, i) => (
-          <Pill {...pill(i)} lit={() => picked(g()) || props.openAt() === i()}>
-            <Text style={pillText(picked(g()))}>{filterText(g())}</Text>
-          </Pill>
-        )}
-      </Each>
-      <View style={{ flex: 1 }} />
-      <If when={sortAt() >= 0}>
-        <Pill {...pill(sortAt)} lit={() => props.openAt() === sortAt()}>
-          <Text style={pillText(false)}>
-            {`${t("browse.sort")} `}
-            <Text style={{ fontWeight: 500, color: colors.snow() }}>{sortText(props.groups()[sortAt()])}</Text>
-          </Text>
+  const groupPills = () => (
+    <Each of={props.groups().filter((g) => g.id !== "sort")} key={(g) => g.id}>
+      {(g, i) => (
+        <Pill {...pill(i)} lit={() => picked(g()) || props.openAt() === i()}>
+          <Text style={pillText(picked(g()))}>{filterText(g())}</Text>
         </Pill>
-      </If>
-    </View>
+      )}
+    </Each>
+  );
+  const sortPill = () => (
+    <If when={sortAt() >= 0}>
+      <Pill {...pill(sortAt)} lit={() => props.openAt() === sortAt()}>
+        <Text style={pillText(false)}>
+          {`${t("browse.sort")} `}
+          <Text style={{ fontWeight: 500, color: colors.snow() }}>{sortText(props.groups()[sortAt()])}</Text>
+        </Text>
+      </Pill>
+    </If>
+  );
+  return (
+    // A phone has no width for the row: the title over the pills, which scroll, Sort with them.
+    <If
+      when={density === "compact"}
+      else={
+        <View ref={props.blockRef} style={barStyle()}>
+          <Text style={{ ...sectionTitle(), marginRight: u(22) }}>{props.title()}</Text>
+          {groupPills()}
+          <View style={{ flex: 1 }} />
+          {sortPill()}
+        </View>
+      }
+    >
+      <View ref={props.blockRef} style={{ marginTop: u(26), gap: u(4) }}>
+        <Text style={{ ...sectionTitle(), paddingHorizontal: safe().x }}>{props.title()}</Text>
+        <Rail ctl={line} gap={12}>
+          {groupPills()}
+          {sortPill()}
+        </Rail>
+      </View>
+    </If>
   );
 }

@@ -4,7 +4,7 @@ import type { Shelf as ShelfData } from "../../catalog";
 import { SectionTitle } from "../../layout/Section";
 import { LazyBlock } from "../../layout/LazyBlock";
 import { scroller, type ScrollCtl } from "../../layout/Scroller";
-import { Shelf } from "../../layout/Shelf";
+import { Rail } from "../../layout/Rail";
 import { RowGap, rowWindow } from "../../layout/reach";
 import { safe, u } from "../../theme";
 import { WideCard } from "./WideCard";
@@ -30,7 +30,7 @@ export function HomeShelf(props: {
     <View ref={props.blockRef} style={{ gap: u(22) }}>
       <SectionTitle text={props.title ?? (() => t(`shelf.${props.shelf().id}`))} inset />
       <LazyBlock page={props.page} eager={props.eager} height={() => u(198 + 110)}>
-      <Shelf ctl={line} gap={24} top={0} bottom={24}>
+      <Rail ctl={line} gap={24} top={0} bottom={24}>
         <RowGap window={win} step={step} gap={24} />
         <Each of={props.shelf().items.slice(win().from, win().to)} key={(f) => f.id}>
           {(item, c) => (
@@ -43,7 +43,7 @@ export function HomeShelf(props: {
             />
           )}
         </Each>
-      </Shelf>
+      </Rail>
       </LazyBlock>
     </View>
   );

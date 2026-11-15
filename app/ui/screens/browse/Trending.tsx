@@ -1,7 +1,7 @@
 import { View, type ViewRef } from "nsh";
 import { airsText, type Summary } from "../../catalog";
 import { scroller } from "../../layout/Scroller";
-import { Shelf } from "../../layout/Shelf";
+import { Rail } from "../../layout/Rail";
 import { RowGap, rowWindow } from "../../layout/reach";
 import { safe, u } from "../../theme";
 import { PosterCard, posterWidth } from "./PosterCard";
@@ -22,7 +22,7 @@ export function Trending(props: {
   const win = rowWindow({ line, focusedAt: props.focusedAt, step });
   return (
     <View ref={props.blockRef}>
-      <Shelf ctl={line} gap={20} top={26} bottom={16}>
+      <Rail ctl={line} gap={20} top={26} bottom={16}>
         <RowGap window={win} step={step} gap={20} />
         <Each of={props.items().slice(win().from, win().to)} key={(s) => s.id}>
           {(item, i) => (
@@ -35,7 +35,7 @@ export function Trending(props: {
             />
           )}
         </Each>
-      </Shelf>
+      </Rail>
     </View>
   );
 }

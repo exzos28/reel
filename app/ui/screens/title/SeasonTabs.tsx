@@ -4,15 +4,16 @@ import { Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { pillStyle } from "../../kit/Pill";
 import { labelText, metaText } from "../../kit/text";
-import { scroller, Scroller, type Follow } from "../../layout/Scroller";
+import { Rail } from "../../layout/Rail";
+import { scroller, type Follow } from "../../layout/Scroller";
 import { colors, ringRoom, safe, selectedFill, type, u } from "../../theme";
 
 type Season = { number: number; year: number; episodes: number };
 
-const blockStyle = (): ViewStyle => ({ paddingHorizontal: safe().x - u(12) - ringRoom(), marginTop: u(36) - ringRoom() });
-const tabsRow = (): ViewStyle => ({ flexDirection: "row", gap: u(6), paddingHorizontal: ringRoom(), paddingVertical: ringRoom() });
+/** The tabs in a rail (the first one at the inset); the ring's room above them is taken from the gap over them. */
+const blockStyle = (): ViewStyle => ({ marginTop: u(36) - ringRoom() });
 const tabLabel = (selected: boolean): TextStyle => ({ ...labelText(selected ? colors.snow() : colors.ash()), fontWeight: 600 });
-const subStyle = (): TextStyle => ({ ...metaText(), marginLeft: u(32), marginTop: u(4) });
+const subStyle = (): TextStyle => ({ ...metaText(), marginHorizontal: safe().x, marginTop: u(4) });
 
 export function SeasonTabs(props: {
   seasons: () => Season[];
@@ -22,13 +23,12 @@ export function SeasonTabs(props: {
   onPick: (n: number) => void;
   sub: () => string;
 }) {
-  /** The tabs put the focused season at the left edge of their inset. */
-  const tabs = scroller({ horizontal: true, anchor: () => ringRoom() });
+  /** The tabs put the focused season at the inset. */
+  const tabs = scroller({ horizontal: true, anchor: () => safe().x });
   const chosen = (s: Season) => props.season() === s.number;
   return (
     <View ref={props.follow(props.focused)} style={blockStyle()}>
-      <Scroller ctl={tabs}>
-        <View style={tabsRow()}>
+      <Rail ctl={tabs} gap={6}>
           <Each of={props.seasons()} key={(s) => s.number}>
             {(s) => (
               <View
@@ -45,8 +45,7 @@ export function SeasonTabs(props: {
               </View>
             )}
           </Each>
-        </View>
-      </Scroller>
+      </Rail>
       <Text style={subStyle()}>{props.sub()}</Text>
     </View>
   );

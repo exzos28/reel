@@ -4,7 +4,7 @@ import { t } from "nsh/i18n";
 import type { Summary } from "../../catalog";
 import { SectionTitle } from "../../layout/Section";
 import { scroller } from "../../layout/Scroller";
-import { Shelf } from "../../layout/Shelf";
+import { Rail } from "../../layout/Rail";
 import { RowGap, rowWindow } from "../../layout/reach";
 import { safe, u } from "../../theme";
 import { WideCard } from "../home/WideCard";
@@ -17,7 +17,7 @@ export function SimilarShelf(props: { items: () => Summary[]; focusedAt: () => n
   return (
     <View style={{ gap: u(22) }}>
       <SectionTitle text={() => t("about.similar")} inset />
-      <Shelf ctl={line} gap={24} top={0} bottom={24}>
+      <Rail ctl={line} gap={24} top={0} bottom={24}>
         <RowGap window={win} step={step} gap={24} />
         <Each of={props.items().slice(win().from, win().to)} key={(s) => s.id}>
           {(item, i) => (
@@ -30,7 +30,7 @@ export function SimilarShelf(props: { items: () => Summary[]; focusedAt: () => n
             />
           )}
         </Each>
-      </Shelf>
+      </Rail>
     </View>
   );
 }
