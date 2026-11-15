@@ -3,13 +3,14 @@
 // (themoviedb.org/about/logos-attribution, "blue short", its CSS class
 // written as a fill); the notice and the other sources come from the core
 // (`Meta.attribution()`). Back closes it (the app's Back).
-import { Image, Text, View, type ImageStyle, type TextStyle, type ViewStyle } from "nsh";
+import { appInfo, Image, openUrl, Text, View, type ImageStyle, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { Meta } from "../../native";
 import { bodyText, labelText, metaText, sectionTitle } from "../../kit/text";
 import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
-import { colors, safe, u } from "../../theme";
+import { caps } from "../../platform";
+import { colors, safe, targetSlop, u } from "../../theme";
 import tmdbLogo from "../../brand/tmdb.svg";
 
 /** One source as the core lists it. */
@@ -28,20 +29,27 @@ const listStyle = (): ViewStyle => ({ gap: u(32), maxWidth: u(1100) });
 const logoStyle = (): ImageStyle => ({ width: u(360), height: u((360 * 35.52) / 273.42) });
 const nameStyle = (): TextStyle => ({ ...labelText(), fontWeight: 600 });
 const noticeStyle = (): TextStyle => bodyText(colors.soft());
+/** A link: white and underlined where a finger or a pointer opens it; a TV only shows it. */
+const linkStyle = (): TextStyle => (caps.remote ? metaText() : { ...metaText(colors.snow()), textDecorationLine: "underline" });
+const open = (url: string) => openUrl(url).catch((e) => console.warn(`reel: ${url} did not open: ${e}`));
 
 function Source(props: { source: () => Attribution }) {
   const s = props.source;
   return (
     <View style={{ gap: u(10) }}>
       <If when={s().provider === "tmdb"} else={<Text style={nameStyle()}>{s().name}</Text>}>
-        <View accessibilityLabel={t("settings.about.tmdb_logo")}>
+        <View accessibilityLabel={t("settings.about.tmdb_logo")} style={{ marginBottom: u(10) }}>
           <Image src={tmdbLogo} style={logoStyle()} />
         </View>
       </If>
       <If when={s().notice}>
         <Text style={noticeStyle()}>{s().notice!}</Text>
       </If>
-      <Text style={metaText()}>{s().url}</Text>
+      <If when={!caps.remote} else={<Text style={metaText()}>{s().url}</Text>}>
+        <View role="link" accessibilityLabel={s().url} onPress={() => open(s().url)} hitSlop={targetSlop(20)} style={{ alignSelf: "flex-start" }}>
+          <Text style={linkStyle()}>{s().url}</Text>
+        </View>
+      </If>
     </View>
   );
 }
@@ -58,6 +66,7 @@ export function AboutScreen() {
           {(s) => <Source source={s} />}
         </Each>
       </View>
+      <Text style={metaText()}>{t("settings.about.version", { version: appInfo().version ?? "", build: appInfo().build ?? "" })}</Text>
       </View>
     </PageFrame>
   );

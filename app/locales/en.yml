@@ -362,6 +362,7 @@ settings:
     open: About reel and its data sources
     data: Data sources
     tmdb_logo: The Movie Database (TMDB)
+    version: "Version %{version} (%{build})"
   details:
     title: Stream details
     about: While a film plays or waits, show how fast it comes, from how many people, and how much is ready ahead.
