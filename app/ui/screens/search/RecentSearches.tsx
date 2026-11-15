@@ -1,6 +1,6 @@
 import { Text, View } from "nsh";
 import { t } from "nsh/i18n";
-import { pillStyle } from "../../kit/Pill";
+import { pillSlop, pillStyle } from "../../kit/Pill";
 import { labelText } from "../../kit/text";
 import { SectionTitle } from "../../layout/Section";
 import { colors, ringRoom, u } from "../../theme";
@@ -20,6 +20,7 @@ export function RecentSearches(props: {
           {(q, i) => (
             <View
               role="button"
+              hitSlop={pillSlop()}
               accessibilityLabel={q()}
               onPress={() => props.onPick(i())}
               hoverStyle={{ backgroundColor: colors.raise() }}

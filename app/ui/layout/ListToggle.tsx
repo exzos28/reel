@@ -8,7 +8,7 @@ import checkIcon from "../icons/check.svg";
 import plusIcon from "../icons/plus.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
-import { alpha, colors, cs, focusRing, font, iconPt, u } from "../theme";
+import { alpha, colors, cs, focusRing, font, iconPt, targetSlop, u } from "../theme";
 import { caps } from "../platform";
 import { chrome } from "./chrome";
 
@@ -54,13 +54,13 @@ export function ListToggle(props: { inList: () => boolean; focused: () => boolea
     <If
       when={caps.touch}
       else={
-        <View role="button" accessibilityLabel={label()} onPress={props.onPress} hoverStyle={{ backgroundColor: colors.raise() }} style={pillStyle(props.inList(), props.focused())}>
+        <View role="button" hitSlop={targetSlop(size().height)} accessibilityLabel={label()} onPress={props.onPress} hoverStyle={{ backgroundColor: colors.raise() }} style={pillStyle(props.inList(), props.focused())}>
           <Icon src={icon} size={size().icon} color={tint} />
           <Text style={labelStyle(props.inList())}>{label()}</Text>
         </View>
       }
     >
-      <View role="button" accessibilityLabel={label()} onPress={props.onPress} style={discStyle(props.inList())}>
+      <View role="button" hitSlop={targetSlop(DISC)} accessibilityLabel={label()} onPress={props.onPress} style={discStyle(props.inList())}>
         <Icon src={icon} size={iconPt(20)} color={tint} />
       </View>
     </If>

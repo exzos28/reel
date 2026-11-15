@@ -1,5 +1,5 @@
 import { Text, View, type ImageAsset, type ViewStyle } from "nsh";
-import { colors, cs, focusRing, u } from "../theme";
+import { colors, cs, focusRing, targetSlop, u } from "../theme";
 import { Icon } from "./Icon";
 import { rounded, row } from "./shape";
 import { labelText } from "./text";
@@ -30,6 +30,7 @@ export function Button(props: {
   return (
     <View
       role="button"
+      hitSlop={targetSlop(cs(props.height ?? 60))}
       onPress={props.onPress}
       hoverStyle={{ opacity: 0.9 }}
       style={buttonStyle(props.kind, props.focused(), props.height ?? 60)}

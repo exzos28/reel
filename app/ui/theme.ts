@@ -65,6 +65,12 @@ export const cs = (px: number) => (density === "compact" ? px * CONTROL_COMPACT 
 /** An `Icon`'s size for a size in points (`Icon` scales its size by `cs`). */
 export const iconPt = (points: number) => points / cs(1);
 
+/** The smallest a touch target may be, points: Material's 48, iOS's 44; a remote and a mouse
+ * need none. Controls keep their look and reach the rest with `hitSlop` (`targetSlop`). */
+export const MIN_TARGET = chrome === "phone" || chrome === "tablet" ? (look.system === "material" ? 48 : 44) : 0;
+/** The `hitSlop` a control `size` points across (its smaller side) needs to be a touch target. */
+export const targetSlop = (size: number) => Math.max(0, Math.ceil((MIN_TARGET - size) / 2));
+
 /** Where content starts from the screen's edges: a TV picture's title-safe
  * 5%; elsewhere the system's safe area plus the family's margin (`chrome`). */
 export const safe = () => ({ x: chrome === "tv" ? u(96) : sideInset(), y: u(54) });

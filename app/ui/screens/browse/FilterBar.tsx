@@ -5,7 +5,7 @@ import { Text, View, type JSX, type TextStyle, type ViewRef, type ViewStyle } fr
 import { t } from "nsh/i18n";
 import { filterText, sortText, type FilterGroup } from "../../catalog";
 import { Icon } from "../../kit/Icon";
-import { pillStyle } from "../../kit/Pill";
+import { pillSlop, pillStyle } from "../../kit/Pill";
 import { row } from "../../kit/shape";
 import { metaText, oneLine, sectionTitle } from "../../kit/text";
 import { colors, safe, u } from "../../theme";
@@ -25,6 +25,7 @@ function Pill(props: {
     <View
       testID={`filter-${props.group().id}`}
       role="button"
+      hitSlop={pillSlop()}
       accessibilityLabel={filterText(props.group())}
       onPress={props.onPress}
       hoverStyle={{ backgroundColor: colors.raise() }}

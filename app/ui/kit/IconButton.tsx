@@ -1,5 +1,5 @@
 import { View, type ImageAsset, type ViewStyle } from "nsh";
-import { colors, cs, focusRing, u } from "../theme";
+import { colors, cs, focusRing, targetSlop, u } from "../theme";
 import { Icon } from "./Icon";
 import { rounded } from "./shape";
 
@@ -28,6 +28,7 @@ export function IconButton(props: {
   return (
     <View
       role="button"
+      hitSlop={targetSlop(cs(size))}
       accessibilityLabel={props.label()}
       onPress={props.onPress}
       hoverStyle={{ backgroundColor: colors.raise() }}

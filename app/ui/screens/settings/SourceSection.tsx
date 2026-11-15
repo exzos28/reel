@@ -6,7 +6,7 @@ import { rounded, row } from "../../kit/shape";
 import { bodyText, labelText, metaText, sectionTitle } from "../../kit/text";
 import { hostedQr, hostedUrl } from "../../hosted";
 import { source } from "../../preferences";
-import { colors, cs, type, u } from "../../theme";
+import { colors, cs, targetSlop, type, u } from "../../theme";
 import { sourceForm } from "./sourceForm";
 
 const fieldStyle = (): InputStyle => ({
@@ -62,7 +62,7 @@ export function SourceSection() {
         style={fieldStyle()}
       />
       <View style={{ ...row(u(20)), marginTop: u(6) }}>
-        <View role="button" onPress={form.save} hoverStyle={{ backgroundColor: colors.dim() }} style={saveStyle()}>
+        <View role="button" hitSlop={targetSlop(cs(60))} onPress={form.save} hoverStyle={{ backgroundColor: colors.dim() }} style={saveStyle()}>
           <Text style={labelText(colors.ink())}>{t("settings.source.save")}</Text>
         </View>
         <If when={form.result()}>{(r) => <Text style={resultStyle(r().bad)}>{r().text}</Text>}</If>

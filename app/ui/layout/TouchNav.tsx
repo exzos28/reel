@@ -14,7 +14,7 @@ import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
 import { canGoBack, go, handleBack, openSettings, route, section, stack, type Destination, type Route } from "../nav";
 import { look } from "../platform/look";
-import { alpha, colors, font, iconPt, u } from "../theme";
+import { alpha, colors, font, iconPt, targetSlop, u } from "../theme";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
 import { frameSolid } from "./frameState";
@@ -52,7 +52,7 @@ function Logo() {
 /** Settings, a round button: it pushes Settings on the current tab (a 44 pt touch area). */
 function SettingsButton(props: { size: number }) {
   return (
-    <View role="button" accessibilityLabel={t("nav.settings")} onPress={openSettings} hitSlop={(44 - props.size) / 2} style={disc(props.size, isSettings())}>
+    <View role="button" accessibilityLabel={t("nav.settings")} onPress={openSettings} hitSlop={targetSlop(props.size)} style={disc(props.size, isSettings())}>
       <Icon src={() => settingsIcon} size={pt(props.size * 0.47)} color={() => (isSettings() ? colors.snow() : colors.dim())} />
     </View>
   );
@@ -176,7 +176,7 @@ export const phoneDisc = (side: "left" | "right"): ViewStyle => ({ position: "ab
 /** Back, a disc (40 across, a 44 pt touch area). */
 function BackDisc() {
   return (
-    <View role="button" accessibilityLabel={t("nav.back")} onPress={handleBack} hitSlop={2} style={disc(40)}>
+    <View role="button" accessibilityLabel={t("nav.back")} onPress={handleBack} hitSlop={targetSlop(40)} style={disc(40)}>
       <Icon src={() => backIcon} size={pt(20)} />
     </View>
   );

@@ -19,7 +19,7 @@ import { rounded } from "./kit/shape";
 import plusIcon from "./icons/plus.svg";
 import { streamDetails } from "./preferences";
 import { cachedAhead, duration, firstFrame, readAt, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
-import { alpha, colors, focusRing, font, iconPt, radius, safe, ts, type, u } from "./theme";
+import { alpha, colors, focusRing, font, iconPt, radius, safe, targetSlop, ts, type, u } from "./theme";
 import { chrome } from "./layout/chrome";
 import { caps } from "./platform";
 import { useFullscreen } from "./platform/window";
@@ -70,7 +70,7 @@ const closeDisc = (): ViewStyle => ({
 /** ✕ (touch): leaves the player. */
 function CloseButton(props: { onPress: () => void }) {
   return (
-    <View role="button" accessibilityLabel={t("player.close")} onPress={props.onPress} style={closeDisc()}>
+    <View role="button" hitSlop={targetSlop(CLOSE)} accessibilityLabel={t("player.close")} onPress={props.onPress} style={closeDisc()}>
       <View style={{ transform: "rotate(45deg)" }}>
         <Icon src={() => plusIcon} size={iconPt(17)} />
       </View>
