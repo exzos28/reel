@@ -7,7 +7,7 @@ import { rowStyle } from "../../kit/Row";
 import { row } from "../../kit/shape";
 import { SignalBars } from "../../kit/SignalBars";
 import { fontText, oneLine } from "../../kit/text";
-import { colors, density, ts, u } from "../../theme";
+import { colors, cs, density, ts, u } from "../../theme";
 import checkIcon from "../../icons/check.svg";
 
 /** Columns on a TV and a Mac; a phone keeps what decides the choice. */
@@ -16,14 +16,14 @@ const column = (width: number): ViewStyle => ({ width: wide ? u(width) : undefin
 
 const releaseRowStyle = (selected: boolean, focused: boolean): ViewStyle => ({
   ...rowStyle(selected, focused, wide ? u(24) : u(14)),
-  minHeight: u(76),
-  paddingHorizontal: u(28),
+  minHeight: cs(76),
+  paddingHorizontal: cs(28),
   paddingVertical: u(12),
 });
 const sourceStyle = (): TextStyle => ({ ...oneLine, flex: 1, minWidth: u(120), ...fontText(23, colors.snow(), 600) });
 const groupStyle = (): TextStyle => ({ fontWeight: 400, fontSize: ts(22), color: colors.ash() });
-const cellText = (width: number): TextStyle => ({ width: u(width), ...fontText(23, colors.ash()) });
-const checkStyle = (): ViewStyle => ({ width: u(28), ...row(0), justifyContent: "flex-end" });
+const cellText = (width: number): TextStyle => ({ width: cs(width), ...fontText(23, colors.ash()) });
+const checkStyle = (): ViewStyle => ({ width: cs(28), ...row(0), justifyContent: "flex-end" });
 
 /** A release: quality, source and group, size, tracks and people sharing; the one Play
  * uses is selected (lighter, with a check). */
@@ -77,7 +77,7 @@ const narrowStyle = (selected: boolean, focused: boolean): ViewStyle => ({
   ...rowStyle(selected, focused, u(8)),
   flexDirection: "column",
   alignItems: "stretch",
-  paddingHorizontal: u(22),
+  paddingHorizontal: cs(22),
   paddingVertical: u(14),
 });
 

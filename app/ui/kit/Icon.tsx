@@ -1,7 +1,7 @@
 import { Image, type ImageAsset, type ImageStyle } from "nsh";
-import { colors, u } from "../theme";
+import { colors, cs, u } from "../theme";
 
-const iconStyle = (size: number, color: string): ImageStyle => ({ width: u(size), height: u(size), tintColor: color });
+const iconStyle = (size: number, color: string): ImageStyle => ({ width: cs(size), height: cs(size), tintColor: color });
 
 /** A tinted SVG icon, `size` TV pixels square (`snow` unless `color` says). */
 export function Icon(props: { src: () => ImageAsset | string; size: number; color?: () => string }) {

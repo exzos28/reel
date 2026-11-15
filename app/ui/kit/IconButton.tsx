@@ -1,11 +1,11 @@
 import { View, type ImageAsset, type ViewStyle } from "nsh";
-import { colors, focusRing, u } from "../theme";
+import { colors, cs, focusRing, u } from "../theme";
 import { Icon } from "./Icon";
 import { rounded } from "./shape";
 
 const iconButtonStyle = (size: number, fill: string, focused: boolean): ViewStyle => ({
-  width: u(size),
-  height: u(size),
+  width: cs(size),
+  height: cs(size),
   ...rounded(999),
   alignItems: "center",
   justifyContent: "center",

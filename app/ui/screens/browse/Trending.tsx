@@ -4,7 +4,7 @@ import { scroller } from "../../layout/Scroller";
 import { Shelf } from "../../layout/Shelf";
 import { RowGap, rowWindow } from "../../layout/reach";
 import { safe, u } from "../../theme";
-import { PosterCard } from "./PosterCard";
+import { PosterCard, posterWidth } from "./PosterCard";
 
 /** The trending row of posters (with `airs`, a poster says when its next
  * episode airs).
@@ -18,7 +18,7 @@ export function Trending(props: {
 }) {
   /** The row puts the focused poster at the left edge of its inset. */
   const line = scroller({ horizontal: true, anchor: () => safe().x });
-  const step = () => u(196 + 20);
+  const step = () => posterWidth() + u(20);
   const win = rowWindow({ line, focusedAt: props.focusedAt, step });
   return (
     <View ref={props.blockRef}>

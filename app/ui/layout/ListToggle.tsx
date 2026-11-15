@@ -8,14 +8,14 @@ import checkIcon from "../icons/check.svg";
 import plusIcon from "../icons/plus.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
-import { alpha, colors, focusRing, font, u } from "../theme";
+import { alpha, colors, cs, focusRing, font, u } from "../theme";
 import { caps } from "../platform";
 import { chrome } from "./chrome";
 
 /** Sizes, points (TV: TV pixels): height, icon, label, padding left / right. */
 const size = () =>
   chrome === "tv"
-    ? { height: u(62), icon: 24, label: u(24), left: u(22), right: u(28), gap: u(12) }
+    ? { height: cs(62), icon: 24, label: u(24), left: u(22), right: u(28), gap: u(12) }
     : { height: 34, icon: 15 / u(1), label: 13, left: 12, right: 14, gap: 7 };
 /** The touch disc, points. */
 const DISC = 40;

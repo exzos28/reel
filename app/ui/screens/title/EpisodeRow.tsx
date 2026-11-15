@@ -5,19 +5,19 @@ import { Icon } from "../../kit/Icon";
 import { rowStyle } from "../../kit/Row";
 import { row } from "../../kit/shape";
 import { fontText, oneLine } from "../../kit/text";
-import { colors, u } from "../../theme";
+import { colors, cs, u } from "../../theme";
 import { EpisodeThumb } from "./EpisodeThumb";
 import checkIcon from "../../icons/check.svg";
 
 const episodeRowStyle = (focused: boolean): ViewStyle => ({
   ...rowStyle(false, focused, u(26)),
-  minHeight: u(118),
+  minHeight: cs(118),
   paddingLeft: u(18),
   paddingRight: u(26),
   paddingVertical: u(7),
 });
 const numberStyle = (watched: boolean): TextStyle => ({
-  width: u(74),
+  width: cs(74),
   textAlign: "center",
   ...fontText(44, watched ? colors.ash() : colors.faint(), 300),
 });

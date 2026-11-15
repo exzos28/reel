@@ -8,6 +8,8 @@ import { createNavStack, NavPage, NavStack, type NavStackState } from "nsh/base"
 import { t } from "nsh/i18n";
 import { title as titleOf, titleText } from "../catalog";
 import { section, stack, type Destination, type Route } from "../nav";
+import { look } from "../platform/look";
+import { colors } from "../theme";
 
 const stacks = new Map<Destination, NavStackState<Route>>();
 const same = (a: readonly Route[], b: readonly Route[]) => a.length === b.length && a.every((r, i) => r === b[i]);
@@ -31,8 +33,12 @@ function Page(props: { route: Route; children: JSX.Element }) {
     <NavPage
       headerVisible={!own}
       title={own ? undefined : r.name === "about" ? t("settings.about.title") : t("settings.title")}
-      headerLargeTitle={r.name === "settings"}
+      // A large title is iOS's: on Android the content went under it; Material's bar is plain.
+      headerLargeTitle={r.name === "settings" && look.system === "ios"}
       headerBackTitle={nameOf(r)}
+      // The app's colours, not the system's light bar over a dark app.
+      headerStyle={{ backgroundColor: colors.ink(), color: colors.snow(), tintColor: colors.snow() }}
+      statusBar={{ foreground: "light" }}
     >
       {props.children}
     </NavPage>

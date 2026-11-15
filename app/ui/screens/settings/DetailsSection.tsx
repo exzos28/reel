@@ -6,14 +6,14 @@ import { Icon } from "../../kit/Icon";
 import { rowStyle } from "../../kit/Row";
 import { bodyText, labelText, sectionTitle } from "../../kit/text";
 import { streamDetails, toggleStreamDetails } from "../../preferences";
-import { colors, u } from "../../theme";
+import { colors, cs, u } from "../../theme";
 import checkIcon from "../../icons/check.svg";
 
 const toggleRowStyle = (on: boolean, focused: boolean): ViewStyle => ({
   ...rowStyle(on, focused),
   justifyContent: "space-between",
-  height: u(68),
-  paddingHorizontal: u(28),
+  height: cs(68),
+  paddingHorizontal: cs(28),
 });
 
 export function DetailsSection(props: { focused: () => boolean; onFocus: () => void }) {

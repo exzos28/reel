@@ -3,7 +3,7 @@ import { playLabel, releaseLine, releasesText, type Title } from "../../catalog"
 import { Hero } from "../../layout/Hero";
 import { actionsRow, PlayButton, ReleaseButton, TrailerButton } from "../../layout/HeroActions";
 import { rounded } from "../../kit/shape";
-import { alpha, colors, ts, type, u } from "../../theme";
+import { alpha, colors, cs, ts, type, u } from "../../theme";
 
 /** The hero's action row, left to right as the remote walks it: Play, then
  * the trailer when there is one. Add to list is the page's header action
@@ -13,13 +13,13 @@ export const heroActions = (title: Title): HeroAction[] => ["play", ...(title.tr
 
 /** The release row's place: the button's height and its margin over it, so
  * nothing moves when the release arrives. */
-const rowPlace = (): ViewStyle => ({ height: u(60), marginTop: u(16), justifyContent: "center" });
+const rowPlace = (): ViewStyle => ({ height: cs(60), marginTop: u(16), justifyContent: "center" });
 const releasesNote = (): TextStyle => ({ ...type.meta(), fontSize: ts(22), color: colors.ash() });
 /** The release row while the release is not known yet: the button's size,
  * pulsing as the release list's skeleton does. */
 const skeletonStyle = (): ViewStyle => ({
   ...rowPlace(),
-  width: u(560),
+  width: cs(560),
   ...rounded(),
   backgroundColor: alpha(colors.snow(), 0.05),
   animationName: "pulse",

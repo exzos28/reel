@@ -15,7 +15,7 @@ import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
 import { metaText } from "../../kit/text";
 import { cellWidth, Grid, gridColumns, gridRows } from "../../layout/Grid";
-import { NAV_BOTTOM } from "../../layout/NavBar";
+import { navRoom } from "../../layout/NavBar";
 import { NAV } from "../../layout/navItems";
 import { Screen } from "../../layout/Screen";
 import { scroller } from "../../layout/Scroller";
@@ -180,7 +180,7 @@ export function BrowseScreen(props: { page: Page }) {
   return (
     <View style={{ flex: 1 }}>
       <Screen ctl={page} nav>
-        <View ref={page.follow(() => zone() === "nav", "start")} style={{ height: u(NAV_BOTTOM) }} />
+        <View ref={page.follow(() => zone() === "nav", "start")} style={{ height: navRoom() }} />
         <BrowseHeader page={props.page} />
         <Trending
           items={() => data().trending}

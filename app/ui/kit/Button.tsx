@@ -1,5 +1,5 @@
 import { Text, View, type ImageAsset, type ViewStyle } from "nsh";
-import { colors, focusRing, u } from "../theme";
+import { colors, cs, focusRing, u } from "../theme";
 import { Icon } from "./Icon";
 import { rounded, row } from "./shape";
 import { labelText } from "./text";
@@ -10,8 +10,8 @@ const foreground = (kind: Kind) => (kind === "primary" ? colors.ink() : colors.s
 
 const buttonStyle = (kind: Kind, focused: boolean, height: number): ViewStyle => ({
   ...row(u(12)),
-  height: u(height),
-  paddingHorizontal: u(28),
+  height: cs(height),
+  paddingHorizontal: cs(28),
   ...rounded(),
   backgroundColor: kind === "primary" ? colors.snow() : colors.raise(),
   ...focusRing(focused),

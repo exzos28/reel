@@ -4,14 +4,14 @@ import { Text, View, type ViewStyle } from "nsh";
 import { Icon } from "../../kit/Icon";
 import { rowStyle } from "../../kit/Row";
 import { labelText } from "../../kit/text";
-import { colors, u } from "../../theme";
+import { colors, cs, u } from "../../theme";
 import chevronIcon from "../../icons/chevron.svg";
 
 const pickerRowStyle = (focused: boolean): ViewStyle => ({
   ...rowStyle(false, focused),
   justifyContent: "space-between",
-  height: u(68),
-  paddingHorizontal: u(28),
+  height: cs(68),
+  paddingHorizontal: cs(28),
 });
 
 export function PickerRow(props: { label: string; value: () => string; focused: () => boolean; onOpen: () => void }) {

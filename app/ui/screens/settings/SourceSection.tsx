@@ -6,19 +6,19 @@ import { rounded, row } from "../../kit/shape";
 import { bodyText, labelText, metaText, sectionTitle } from "../../kit/text";
 import { hostedQr, hostedUrl } from "../../hosted";
 import { source } from "../../preferences";
-import { colors, type, u } from "../../theme";
+import { colors, cs, type, u } from "../../theme";
 import { sourceForm } from "./sourceForm";
 
 const fieldStyle = (): InputStyle => ({
-  height: u(64),
-  paddingHorizontal: u(22),
+  height: cs(64),
+  paddingHorizontal: cs(22),
   ...rounded(),
   backgroundColor: colors.card(),
   color: colors.snow(),
   placeholderColor: colors.ash(),
   ...type.body(),
 });
-const saveStyle = (): ViewStyle => ({ height: u(60), paddingHorizontal: u(30), justifyContent: "center", ...rounded(), backgroundColor: colors.snow() });
+const saveStyle = (): ViewStyle => ({ height: cs(60), paddingHorizontal: cs(30), justifyContent: "center", ...rounded(), backgroundColor: colors.snow() });
 const resultStyle = (bad: boolean): TextStyle => ({ ...metaText(bad ? colors.red() : colors.ash()), flexShrink: 1 });
 
 export function SourceSection() {
@@ -33,7 +33,7 @@ export function SourceSection() {
           <View style={{ ...row(u(28)), alignItems: "center" }}>
             {/* Scanned with a phone's camera, it opens the settings page there. */}
             <If when={hostedQr()}>
-              {(qr) => <Image testID="hosted-qr" src={qr()} style={{ width: u(200), height: u(200), ...rounded() }} />}
+              {(qr) => <Image testID="hosted-qr" src={qr()} style={{ width: cs(200), height: cs(200), ...rounded() }} />}
             </If>
             <Text testID="hosted-address" style={{ ...bodyText(colors.snow()), flexShrink: 1 }}>{t("settings.source.phone", { url: url() })}</Text>
           </View>

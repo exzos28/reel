@@ -1,17 +1,23 @@
-import { Text, type TextStyle, type ViewRef } from "nsh";
+import { Text, type TextStyle, type ViewRef, windowSize } from "nsh";
 import { cardMeta, titleText, type Summary } from "../../catalog";
 import { Card, cardBox } from "../../kit/Card";
 import { Picture } from "../../kit/Picture";
 import { CardMeta } from "../../kit/Rating";
 import { rounded } from "../../kit/shape";
 import { fontText, oneLine } from "../../kit/text";
-import { colors, type, u } from "../../theme";
+import { colors, density, safe, type, u } from "../../theme";
 
 const titleStyle = (): TextStyle => ({ ...oneLine, ...fontText(21, colors.snow(), 600), marginTop: u(12) });
 const subStyle = (): TextStyle => ({ ...oneLine, ...type.small(), color: colors.ash() });
 
 /** A 2:3 poster with the title and a line under it (`sub`, else its
  * rating, year and kind). */
+
+/** A poster's width: 196 TV pixels, but on a phone about three to the screen's width
+ * (0.45 of 196 made 88 pt, four and more small ones in a row). */
+export const posterWidth = () =>
+  density === "compact" ? Math.round((windowSize().width - 2 * safe().x - 2 * u(20)) / 3.15) : u(196);
+
 export function PosterCard(props: {
   item: () => Summary;
   sub: () => string | null;
@@ -25,7 +31,7 @@ export function PosterCard(props: {
       label={() => titleText(s())}
       focused={props.focused}
       onPress={props.onPress}
-      style={cardBox(u(196), 3)}
+      style={cardBox(posterWidth(), 3)}
       viewRef={props.follow(props.focused)}
       picture={<Picture item={s} src={() => s().poster} titleSize={22} style={{ height: u(290), ...rounded() }} />}
     >

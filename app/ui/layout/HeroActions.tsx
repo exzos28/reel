@@ -4,7 +4,7 @@ import { Text, View, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { Button } from "../kit/Button";
 import { row } from "../kit/shape";
-import { ts, u } from "../theme";
+import { cs, ts, u } from "../theme";
 import playIcon from "../icons/play.svg";
 import plusIcon from "../icons/plus.svg";
 import checkIcon from "../icons/check.svg";
@@ -42,9 +42,9 @@ export function TrailerButton(props: { focused: () => boolean; onPress: () => vo
 
 const releaseButtonStyle = (focused: boolean): ViewStyle => ({
   ...row(u(14)),
-  height: u(60),
+  height: cs(60),
   marginTop: u(16),
-  paddingHorizontal: u(24),
+  paddingHorizontal: cs(24),
   ...rounded(),
   backgroundColor: alpha(colors.raise(), 0.7),
   ...focusRing(focused, "row"),

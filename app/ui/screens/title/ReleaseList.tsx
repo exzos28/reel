@@ -8,7 +8,7 @@ import { rowStyle } from "../../kit/Row";
 import { labelText } from "../../kit/text";
 import type { Follow } from "../../layout/Scroller";
 import { SectionHeader } from "../../layout/Section";
-import { alpha, colors, safe, u } from "../../theme";
+import { alpha, colors, cs, safe, u } from "../../theme";
 import { ReleaseRow } from "./ReleaseRow";
 
 /** Grey rows while searching. */
@@ -16,7 +16,7 @@ const SKELETON_ROWS = 3;
 
 const skeletonStyle = (): ViewStyle => ({
   ...rowStyle(false, false),
-  height: u(76),
+  height: cs(76),
   backgroundColor: alpha(colors.snow(), 0.05),
   animationName: "pulse",
   animationDuration: 1400,
@@ -25,8 +25,8 @@ const skeletonStyle = (): ViewStyle => ({
 });
 const moreStyle = (focused: boolean): ViewStyle => ({
   ...rowStyle(false, focused),
-  height: u(68),
-  paddingHorizontal: u(28),
+  height: cs(68),
+  paddingHorizontal: cs(28),
   justifyContent: "center",
 });
 

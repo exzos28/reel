@@ -57,6 +57,10 @@ export const u = (px: number) => px * scale();
  * 0.45 made body text 12 pt and meta 10 pt: there text scales by 0.6 (body 15.6 pt). */
 const TEXT_COMPACT = 0.6;
 export const ts = (px: number) => (density === "compact" ? px * TEXT_COMPACT : u(px));
+/** Control sizes (buttons, pills, fields, rows, icons): the same as `u` but on a phone, where
+ * the layout's 0.45 made a 60 px button 27 pt, under a finger's 44: there they scale by 0.75. */
+const CONTROL_COMPACT = 0.75;
+export const cs = (px: number) => (density === "compact" ? px * CONTROL_COMPACT : u(px));
 
 /** Where content starts from the screen's edges: a TV picture's title-safe
  * 5%; elsewhere the system's safe area plus the family's margin (`chrome`). */

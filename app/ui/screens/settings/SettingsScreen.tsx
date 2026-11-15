@@ -12,7 +12,7 @@ import { byKeys } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
 import { useRootBack } from "../../focus/rootBack";
 import { caps } from "../../platform";
-import { NAV_BOTTOM } from "../../layout/NavBar";
+import { navRoom } from "../../layout/NavBar";
 import { NAV } from "../../layout/navItems";
 import { showNav } from "../../layout/navState";
 import { rowStyle } from "../../kit/Row";
@@ -23,7 +23,7 @@ import { go, goFromNav, onBack, openAbout } from "../../nav";
 import {
   bufferChoices, chooseBuffer, chooseContentLanguage, contentLanguage, contentLanguages, toggleStreamDetails,
 } from "../../preferences";
-import { colors, safe, u } from "../../theme";
+import { colors, cs, safe, u } from "../../theme";
 import { BufferSection, bufferChoiceList } from "./BufferSection";
 import { DetailsSection } from "./DetailsSection";
 import { languageChoices, LanguageSection } from "./LanguageSection";
@@ -32,8 +32,8 @@ import { SourceSection } from "./SourceSection";
 
 const aboutRow = (focused: boolean): ViewStyle => ({
   ...rowStyle(false, focused),
-  height: u(68),
-  paddingHorizontal: u(28),
+  height: cs(68),
+  paddingHorizontal: cs(28),
   maxWidth: u(720),
 });
 
@@ -53,7 +53,8 @@ function AboutRow(props: { focused: () => boolean; viewRef: (r: ViewRef) => void
 }
 
 /** The title where a destination's page starts (170 on a TV). */
-const pageStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(NAV_BOTTOM + 58), gap: u(32) });
+/** Settings is pushed under the system header on touch (`navRoom(true)`). */
+const pageStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: navRoom(true) + u(caps.touch ? 40 : 58), gap: u(32) });
 const SETTINGS_AT = NAV.findIndex((n) => n.id === "settings");
 
 /** Back from About finds the focus on its row. */

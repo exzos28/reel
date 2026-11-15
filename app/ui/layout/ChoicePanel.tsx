@@ -5,14 +5,14 @@ import { Text, View, type ViewRef, type ViewStyle } from "nsh";
 import { Icon } from "../kit/Icon";
 import { rowStyle } from "../kit/Row";
 import { labelText } from "../kit/text";
-import { colors, u } from "../theme";
+import { colors, cs, u } from "../theme";
 import checkIcon from "../icons/check.svg";
 import { Drawer } from "./Drawer";
 
 const optionStyle = (selected: boolean, focused: boolean): ViewStyle => ({
   ...rowStyle(selected, focused, u(16)),
-  height: u(68),
-  paddingHorizontal: u(28),
+  height: cs(68),
+  paddingHorizontal: cs(28),
   justifyContent: "space-between",
 });
 

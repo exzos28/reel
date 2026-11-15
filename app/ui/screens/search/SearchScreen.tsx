@@ -14,7 +14,7 @@ import { clamp } from "../../focus/memory";
 import { metaText, pageTitle } from "../../kit/text";
 import { row as inRow } from "../../kit/shape";
 import { useRootBack } from "../../focus/rootBack";
-import { NAV_BOTTOM } from "../../layout/NavBar";
+import { navRoom } from "../../layout/NavBar";
 import { NAV } from "../../layout/navItems";
 import { showNav } from "../../layout/navState";
 import { Screen } from "../../layout/Screen";
@@ -27,7 +27,7 @@ import { RecentSearches } from "./RecentSearches";
 import { SearchField } from "./SearchField";
 
 /** The title where a destination's page starts (170 on a TV), the field under it. */
-const topStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(NAV_BOTTOM + 58), gap: u(28) });
+const topStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: navRoom() + u(58), gap: u(28) });
 
 /** The line under the field: what is going on, or nothing. */
 function statusText(a: SearchAnswer): string {
