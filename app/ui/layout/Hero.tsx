@@ -71,6 +71,8 @@ export function Hero(props: {
   /** As tall as its text (the backdrop still fades out under what follows),
    * so a title screen's next block starts right under the actions. */
   fit?: boolean;
+  /** Room under the actions before what follows, TV pixels (56 when not `fit`, else none). */
+  room?: number;
   /** The about keeps the height of three lines and the text stands on the hero's bottom
    * (Home: the hero follows the focus, its buttons stay put). */
   steadyAbout?: boolean;
@@ -81,7 +83,7 @@ export function Hero(props: {
     <View style={heroStyle(props.height, !!props.fit)}>
       <Backdrop item={s} height={props.height} left={props.backdropLeft ?? 0} />
       {/* Not fit to its text: room under the actions before what follows. */}
-      <View style={props.steadyAbout ? steadyBlockStyle(props.top, props.height) : textBlockStyle(props.top, props.fit ? 0 : u(56))}>
+      <View style={props.steadyAbout ? steadyBlockStyle(props.top, props.height) : textBlockStyle(props.top, u(props.room ?? (props.fit ? 0 : 56)))}>
         <Text style={logotypeStyle(props.titleSize)}>{titleText(s())}</Text>
         <MetaLine item={s} />
         <Text style={{ ...metaText(), fontSize: ts(24) }}>{genresText(s())}</Text>
