@@ -191,3 +191,13 @@ test("with no release at all, the row says why in the button's place", async () 
   expect(app.shows("release-row-skeleton")).toBe(false);
   expect(app.texts()).toContain("Add a search source in Settings to find releases.");
 });
+
+test("touch, with no search source: Open Settings next to the line, and Play goes to Settings, not the player", async () => {
+  const native = titleWith({ release: null, playable: false, releases: [], releasesState: "no_source" });
+  const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  expect(app.shows("label:Open Settings")).toBe(true);
+  await app.press("label:Resume 41:12");
+  expect(app.texts()).toContain("Playback buffer");
+});

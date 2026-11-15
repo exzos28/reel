@@ -36,7 +36,7 @@ export function PosterCard(props: {
       picture={<Picture item={s} src={() => s().poster} titleSize={22} style={{ height: u(290), ...rounded() }} />}
     >
       <Text style={titleStyle()}>{titleText(s())}</Text>
-      <If when={props.sub()} else={<CardMeta text={() => cardMeta(s())} size={20} />}>
+      <If when={props.sub()} else={<CardMeta text={() => cardMeta(s())} rated={() => !!s().rating} size={20} />}>
         <Text style={subStyle()}>{props.sub()}</Text>
       </If>
     </Card>

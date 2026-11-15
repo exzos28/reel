@@ -30,6 +30,7 @@ export function Button(props: {
   return (
     <View
       role="button"
+      accessibilityLabel={props.label()}
       hitSlop={targetSlop(cs(props.height ?? 60))}
       onPress={props.onPress}
       hoverStyle={{ opacity: 0.9 }}

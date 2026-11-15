@@ -19,8 +19,8 @@ import { scroller } from "../../layout/Scroller";
 import { chrome, frame } from "../../layout/chrome";
 import { caps } from "../../platform";
 import { ListToggle } from "../../layout/ListToggle";
-import { openTitle } from "../../nav";
-import { pickReleaseFor, play, playing } from "../../playback";
+import { openSettings, openTitle } from "../../nav";
+import { pickReleaseFor, play as startPlay, playing } from "../../playback";
 import { u } from "../../theme";
 import { AboutBlock, hasAbout } from "./AboutBlock";
 import { LazyBlock } from "../../layout/LazyBlock";
@@ -62,6 +62,8 @@ export function TitleScreen(props: { id: string }) {
     releaseAt.set(Math.max(0, shownReleases().findIndex((r) => r.selected)));
     zone.set("releases");
   };
+  /** Play, or with no search source Settings, where one is added (the player would only fail). */
+  const play = (p: Parameters<typeof startPlay>[0]) => (data().releasesState === "no_source" ? openSettings() : startPlay(p));
   const closePanel = () => {
     const e = panelEpisode();
     panelEpisode.set(null);

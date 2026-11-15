@@ -1,5 +1,8 @@
 import { Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { playLabel, releaseLine, releasesText, type Title } from "../../catalog";
+import { t } from "nsh/i18n";
+import { StateLine } from "../../kit/StateLine";
+import { openSettings } from "../../nav";
 import { Hero } from "../../layout/Hero";
 import { heroTop } from "../../layout/metrics";
 import { actionsRow, PlayButton, ReleaseButton, TrailerButton } from "../../layout/HeroActions";
@@ -15,7 +18,10 @@ export const heroActions = (title: Title): HeroAction[] => ["play", ...(title.tr
 /** The release row's place: the button's height and its margin over it, so
  * nothing moves when the release arrives. */
 const rowPlace = (): ViewStyle => ({ height: cs(60), marginTop: u(16), justifyContent: "center" });
-const releasesNote = (): TextStyle => ({ ...type.meta(), fontSize: ts(22), color: colors.ash() });
+/** The line saying why there is no release: the row's place, taller when it wraps. */
+const notePlace = (): ViewStyle => ({ minHeight: cs(60), marginTop: u(16), justifyContent: "center" });
+/** No release because of the search source (none set, or it did not answer): Settings fixes it. */
+const needsSource = (title: Title) => title.releasesState === "no_source" || title.releasesState === "failed";
 /** The release row while the release is not known yet: the button's size,
  * pulsing as the release list's skeleton does. */
 const skeletonStyle = (): ViewStyle => ({
@@ -28,6 +34,8 @@ const skeletonStyle = (): ViewStyle => ({
   animationIterationCount: "infinite",
   animationFrameRate: 30,
 });
+
+const skeletonText = (): TextStyle => ({ ...type.meta(), fontSize: ts(22), color: colors.ash(), paddingHorizontal: cs(24) });
 
 /** The release is still coming: the search runs, or releases are found and
  * the one Play uses is not picked yet. */
@@ -71,12 +79,14 @@ export function TitleHero(props: {
           (not focusable), or the line saying why there is none, all the same height. */}
       <If when={!props.data().release && releasePending(props.data())}>
         <View testID="release-row-skeleton" style={{ flexDirection: "row" }}>
-          <View style={skeletonStyle()} />
+          <View style={skeletonStyle()}>
+            <Text style={skeletonText()}>{t("releases.state.searching")}</Text>
+          </View>
         </View>
       </If>
       <If when={!props.data().release && !releasePending(props.data())}>
-        <View style={rowPlace()}>
-          <Text style={releasesNote()}>{releasesText(props.data())}</Text>
+        <View style={notePlace()}>
+          <StateLine text={() => releasesText(props.data())} action={() => (needsSource(props.data()) ? { label: t("releases.open_settings"), onPress: openSettings } : null)} />
         </View>
       </If>
       <If when={props.data().release}>

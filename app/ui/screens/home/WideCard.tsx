@@ -36,7 +36,7 @@ export function WideCard(props: {
       ]}
     >
       <Text style={titleStyle()}>{titleText(s())}</Text>
-      <If when={props.continuing} else={<CardMeta text={() => cardMeta(s())} />}>
+      <If when={props.continuing} else={<CardMeta text={() => cardMeta(s())} rated={() => !!s().rating} />}>
         <Text style={{ ...oneLine, ...metaText() }}>{leftText(s())}</Text>
       </If>
     </Card>

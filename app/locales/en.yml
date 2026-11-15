@@ -59,13 +59,12 @@ title:
   trailer: Trailer
 
 card:
-  meta: "%{rating} · %{year} · %{kind}"
   left: "%{time} left"
 
 kind:
   movie: Movie
   short: Short
-  show: Show
+  show: Series
   season_one: 1 Season
   seasons: "%{count} Seasons"
 
@@ -129,6 +128,8 @@ releases:
     searching: Searching your source…
     failed: Your search source did not answer. Check it in Settings.
     none: Nothing found on your search source.
+  # The button next to a missing or failing search source.
+  open_settings: Open Settings
 
 score:
   tmdb: TMDB

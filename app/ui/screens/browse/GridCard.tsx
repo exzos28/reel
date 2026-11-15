@@ -29,7 +29,7 @@ export function GridCard(props: { item: () => Summary; width: () => number; focu
       ]}
     >
       <Text style={titleStyle()}>{titleText(s())}</Text>
-      <CardMeta text={() => cardMeta(s())} size={20} />
+      <CardMeta text={() => cardMeta(s())} rated={() => !!s().rating} size={20} />
     </Card>
   );
 }

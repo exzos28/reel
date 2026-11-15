@@ -336,8 +336,9 @@ export function kindText(s: Summary) {
 /** Runtime of a film, seasons of a show. */
 export const lengthText = (s: Summary) => (s.kind === "show" ? kindText(s) : s.minutes ? runtime(s.minutes) : "");
 
-/** Under a card: "★ 7.9 · 1963 · Movie" without the star (drawn red). */
-export const cardMeta = (s: Summary) => t("card.meta", { rating: s.rating, year: s.year ?? "", kind: kindText(s) });
+/** Under a card: "★ 7.9 · 1963 · Movie" without the star (drawn red, `CardMeta`), what is not
+ * known left out ("1963 · Movie"). */
+export const cardMeta = (s: Summary) => [s.rating, s.year == null ? "" : String(s.year), kindText(s)].filter((x) => x).join(" · ");
 
 /** Under a Continue watching card: "1 h 12 min left", "S3:E4 · 7 min left". */
 export function leftText(s: Summary) {

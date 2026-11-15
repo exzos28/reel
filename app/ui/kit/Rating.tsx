@@ -35,10 +35,13 @@ export function RatingChip(props: { rating: () => string }) {
 }
 
 /** Under a card: a red star, then "7.9 · 1963 · Movie". */
-export function CardMeta(props: { text: () => string; size?: number }) {
+/** `rated`: the line starts with a rating (the star goes before it). */
+export function CardMeta(props: { text: () => string; rated?: () => boolean; size?: number }) {
   return (
     <Text style={{ ...oneLine, ...type.meta(), fontSize: ts(props.size ?? 22), color: colors.ash() }}>
-      <Text style={{ color: colors.red() }}>★ </Text>
+      <If when={props.rated?.() ?? true}>
+        <Text style={{ color: colors.red() }}>★ </Text>
+      </If>
       {props.text()}
     </Text>
   );
