@@ -23,7 +23,7 @@ use reel_domain::{
 use anyhow::Context;
 use librqbit::{
     AddTorrent, AddTorrentOptions, Api, ConnectionOptions, ListenerMode, ListenerOptions,
-    PeerConnectionOptions, Session, SessionOptions,
+    DhtSessionConfig, PeerConnectionOptions, Session, SessionOptions,
     http_api::HttpApi,
 };
 use librqbit_dualstack_sockets::{BindOpts, TcpListener};
@@ -353,6 +353,16 @@ fn session_options() -> SessionOptions {
             ..Default::default()
         }),
         peer_limit: Some(PEER_LIMIT),
+        // The DHT's state in reel's own file: librqbit's default asks the OS for a project
+        // directory, which Android has none of ("cannot determine project directory"), and
+        // the session did not start. Beside the cache, not in it (the cache is wiped).
+        dht: Some(DhtSessionConfig {
+            persistence: Some(librqbit::dht::DhtPersistenceConfig {
+                config_filename: Some(std::env::temp_dir().join("reel-dht.json")),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }),
         ..Default::default()
     }
 }
