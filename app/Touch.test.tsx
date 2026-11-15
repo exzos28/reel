@@ -95,7 +95,8 @@ test("phone, with a source: Home's Play waits for the source's answer, then open
     platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 },
     modules: { "app/native": { ...NATIVE, "Catalog.home": JSON.stringify(home), "Catalog.title": JSON.stringify(film) } },
   });
-  expect(app.texts()).toContain("Your search source did not answer. Check it in Settings.");
+  // Home says nothing under Play: the press finds out.
+  expect(app.texts()).not.toContain("Your search source did not answer. Check it in Settings.");
   await app.press("label:Resume 41:12");
   expect(app.shows("source-panel")).toBe(true);
 });

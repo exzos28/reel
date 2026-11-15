@@ -1,6 +1,5 @@
 import { View } from "nsh";
-import { playLabel, type Summary, type Title } from "../../catalog";
-import { ReleaseState } from "../title/TitleHero";
+import { playLabel, type Summary } from "../../catalog";
 import { Hero } from "../../layout/Hero";
 import { actionsRow, ListButton, PlayButton } from "../../layout/HeroActions";
 import { ReleaseText } from "../../layout/HeroMeta";
@@ -19,8 +18,6 @@ export function HomeHero(props: {
   focusedAt: () => number | null;
   onPlay: () => void;
   onToggle: () => void;
-  /** While its release is not known, the title as its page has it (what the search is doing). */
-  state: () => Title | null;
 }) {
   return (
     // Steady where the focus moves the hero from card to card (keys); on touch it stays on one
@@ -36,7 +33,6 @@ export function HomeHero(props: {
           onPress={props.onToggle}
         />
       </View>
-      <If when={props.state()}>{(t) => <ReleaseState title={t} />}</If>
     </Hero>
   );
 }

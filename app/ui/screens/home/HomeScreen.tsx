@@ -40,7 +40,7 @@ export function HomeScreen() {
     settle = setTimeout(() => hero.set(f), HERO_SETTLE_MS);
   });
   cleanup(() => clearTimeout(settle));
-  /** The hero's title as its page has it: asking for it starts the search for its release. */
+  /** The hero's title as its page has it: asking for it (once Play is pressed) starts the search for its release. */
   const heroTitle = () => title(hero().id);
   /** Play waits for the source's answer (`playGate`); a release the card already knows plays at once. */
   const gate = playGate(heroTitle, () => play({ ...hero().play, title: hero() }));
@@ -100,10 +100,6 @@ export function HomeScreen() {
           item={hero}
           focusedAt={() => (zone() === "hero" ? heroAt() : null)}
           onPlay={playFocused}
-          state={() => {
-            const t = heroTitle();
-            return hero().playable && !hero().release && t && !t.release ? t : null;
-          }}
           onToggle={heroActions[1]}
         />
       </View>

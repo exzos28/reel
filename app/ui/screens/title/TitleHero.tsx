@@ -43,11 +43,6 @@ const skeletonStyle = (): ViewStyle => ({
 
 const skeletonText = (): TextStyle => ({ ...type.meta(), fontSize: ts(22), color: colors.ash(), paddingHorizontal: cs(24) });
 
-/** Why a title has no release, with what to do about it (the source drawer, Settings). */
-export function ReleaseState(props: { title: () => Title }) {
-  return <StateLine text={() => releasesText(props.title())} action={() => sourceAction(props.title())} />;
-}
-
 /** The release is still coming: the search runs, or releases are found and
  * the one Play uses is not picked yet. */
 const releasePending = (title: Title) =>
