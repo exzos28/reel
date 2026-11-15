@@ -150,3 +150,12 @@ On Android the session's HTTP client (trackers, `.torrent` links) checks certifi
 Mozilla's roots built in (`webpki-root-certs`), via reqwest's `tls_certs_only`. reqwest's default
 verifier asks the platform there, which needs the app's Java side initialised; reel's app does not
 do that, so every HTTPS request failed. Other platforms are unchanged.
+
+## Streamed-only torrents keep their seeders (src/torrent_state/live/mod.rs)
+
+reel adds a torrent with no file selected: only its streams fetch what they read. librqbit calls
+such a torrent "finished" after every piece, and when no stream was open at that moment it
+disconnected every peer that has the whole torrent, its seeders, as not needed. Android's player
+opens and closes HTTP connections (the file's end, then its start), so there were such moments:
+347 of 622 peers ended "not needed", 5 stayed, and the stream ran at 0 MB/s. A torrent that
+selects no file now never drops its seeders that way.

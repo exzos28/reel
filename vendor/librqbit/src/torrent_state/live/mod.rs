@@ -905,6 +905,11 @@ impl TorrentStateLive {
         }
 
         let chunks = locked.get_chunks()?;
+        // reel: a torrent that selects no file is streamed only (its streams fetch what they
+        // read): "finished" says nothing about it, and its seeders are what the next stream
+        // needs. A player that opens and closes connections (Android's) left moments without a
+        // stream, and every seeder was dropped as not needed.
+        let streamed_only = !chunks.get_selected_pieces().any();
         if chunks.is_finished() {
             if chunks.get_selected_pieces()[id.get_usize()] {
                 locked.try_flush_bitv(&self.shared, false);
@@ -912,7 +917,7 @@ impl TorrentStateLive {
             }
             self.finished_notify.notify_waiters();
 
-            if !self.has_active_streams_unfinished_files(locked) {
+            if !streamed_only && !self.has_active_streams_unfinished_files(locked) {
                 // prevent deadlocks.
                 drop(g);
                 // There is not point being connected to peers that have all the torrent, when
