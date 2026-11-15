@@ -18,8 +18,8 @@ import { alpha, colors, focusRing } from "../theme";
 export const actionsRow = (wrap: boolean): ViewStyle =>
   wrap ? { ...row(u(16)), flexWrap: "wrap", marginTop: u(12) } : { flexDirection: "row", gap: u(16), marginTop: u(12) };
 
-export function PlayButton(props: { label: () => string; focused: () => boolean; onPress: () => void }) {
-  return <Button kind="primary" icon={() => playIcon} label={props.label} focused={props.focused} onPress={props.onPress} />;
+export function PlayButton(props: { label: () => string; focused: () => boolean; onPress: () => void; disabled?: () => boolean }) {
+  return <Button kind="primary" icon={() => playIcon} label={props.label} focused={props.focused} onPress={props.onPress} disabled={props.disabled} />;
 }
 
 /** "My list" / "Add to list" (`addKey`), "In my list" with a check once added. */

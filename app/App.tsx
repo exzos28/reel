@@ -22,6 +22,7 @@ import { frame } from "./ui/layout/chrome";
 import { caps } from "./ui/platform";
 import { railWidth } from "./ui/layout/metrics";
 import { PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
+import { SourceDrawer } from "./ui/screens/source/SourceDrawer";
 import { TouchStack } from "./ui/layout/TouchStack";
 import { ExitDialog } from "./ui/layout/ExitDialog";
 import { keysInUse } from "./ui/focus/keys";
@@ -114,6 +115,8 @@ function App() {
       {/* A desktop's window bar (the player's drag strips while a film plays). */}
       <WindowFrame playing={playing} />
       <ExitDialog />
+      {/* Play with no search source: the drawer that asks for one. */}
+      <SourceDrawer />
       {/* A phone pairing for the settings page: its code, over any screen. */}
       <PairingDialog />
     </View>

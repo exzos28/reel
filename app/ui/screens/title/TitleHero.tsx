@@ -3,6 +3,7 @@ import { playLabel, releaseLine, releasesText, type Title } from "../../catalog"
 import { t } from "nsh/i18n";
 import { StateLine } from "../../kit/StateLine";
 import { openSettings } from "../../nav";
+import { openSourceDrawer } from "../source/SourceDrawer";
 import { Hero } from "../../layout/Hero";
 import { heroTop } from "../../layout/metrics";
 import { actionsRow, PlayButton, ReleaseButton, TrailerButton } from "../../layout/HeroActions";
@@ -20,8 +21,13 @@ export const heroActions = (title: Title): HeroAction[] => ["play", ...(title.tr
 const rowPlace = (): ViewStyle => ({ height: cs(60), marginTop: u(16), justifyContent: "center" });
 /** The line saying why there is no release: the row's place, taller when it wraps. */
 const notePlace = (): ViewStyle => ({ minHeight: cs(60), marginTop: u(16), justifyContent: "center" });
-/** No release because of the search source (none set, or it did not answer): Settings fixes it. */
-const needsSource = (title: Title) => title.releasesState === "no_source" || title.releasesState === "failed";
+/** No release because of the search source: none set (the drawer adds one) or it did not answer (Settings checks it). */
+const sourceAction = (title: Title) =>
+  title.releasesState === "no_source"
+    ? { label: t("settings.source_drawer.title"), onPress: openSourceDrawer }
+    : title.releasesState === "failed"
+      ? { label: t("releases.open_settings"), onPress: openSettings }
+      : null;
 /** The release row while the release is not known yet: the button's size,
  * pulsing as the release list's skeleton does. */
 const skeletonStyle = (): ViewStyle => ({
@@ -70,7 +76,8 @@ export function TitleHero(props: {
       fit
     >
       <View style={actionsRow(false)}>
-        <PlayButton label={() => playLabel(props.data())} focused={focused("play")} onPress={props.onPlay} />
+        {/* With a source, Play waits for the release; with none it asks for one (the drawer). */}
+        <PlayButton label={() => playLabel(props.data())} focused={focused("play")} onPress={props.onPlay} disabled={() => props.data().playable && !props.data().release} />
         <If when={props.data().trailer}>
           <TrailerButton focused={focused("trailer")} onPress={props.onTrailer} />
         </If>
@@ -86,7 +93,7 @@ export function TitleHero(props: {
       </If>
       <If when={!props.data().release && !releasePending(props.data())}>
         <View style={notePlace()}>
-          <StateLine text={() => releasesText(props.data())} action={() => (needsSource(props.data()) ? { label: t("releases.open_settings"), onPress: openSettings } : null)} />
+          <StateLine text={() => releasesText(props.data())} action={() => sourceAction(props.data())} />
         </View>
       </If>
       <If when={props.data().release}>

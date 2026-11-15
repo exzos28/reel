@@ -25,16 +25,20 @@ export function Button(props: {
   focused: () => boolean;
   onPress: () => void;
   height?: number;
+  /** It cannot do its job yet (Play while the release is searched): dimmed, a press does nothing. */
+  disabled?: () => boolean;
 }) {
   const fg = () => foreground(props.kind);
+  const off = () => props.disabled?.() ?? false;
   return (
     <View
       role="button"
       accessibilityLabel={props.label()}
       hitSlop={targetSlop(cs(props.height ?? 60))}
-      onPress={props.onPress}
-      hoverStyle={{ opacity: 0.9 }}
-      style={buttonStyle(props.kind, props.focused(), props.height ?? 60)}
+      accessibilityState={{ disabled: off() }}
+      onPress={() => !off() && props.onPress()}
+      hoverStyle={{ opacity: off() ? 0.4 : 0.9 }}
+      style={{ ...buttonStyle(props.kind, props.focused(), props.height ?? 60), opacity: off() ? 0.4 : 1 }}
     >
       <If when={props.icon}>
         <Icon src={props.icon!} size={24} color={fg} />

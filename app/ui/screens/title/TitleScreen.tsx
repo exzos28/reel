@@ -19,7 +19,8 @@ import { scroller } from "../../layout/Scroller";
 import { chrome, frame } from "../../layout/chrome";
 import { caps } from "../../platform";
 import { ListToggle } from "../../layout/ListToggle";
-import { openSettings, openTitle } from "../../nav";
+import { openTitle } from "../../nav";
+import { openSourceDrawer } from "../source/SourceDrawer";
 import { pickReleaseFor, play as startPlay, playing } from "../../playback";
 import { u } from "../../theme";
 import { AboutBlock, hasAbout } from "./AboutBlock";
@@ -62,8 +63,8 @@ export function TitleScreen(props: { id: string }) {
     releaseAt.set(Math.max(0, shownReleases().findIndex((r) => r.selected)));
     zone.set("releases");
   };
-  /** Play, or with no search source Settings, where one is added (the player would only fail). */
-  const play = (p: Parameters<typeof startPlay>[0]) => (data().releasesState === "no_source" ? openSettings() : startPlay(p));
+  /** Play; with no search source the drawer that adds one (the player would only fail). */
+  const play = (p: Parameters<typeof startPlay>[0]) => (data().playable ? startPlay(p) : openSourceDrawer());
   const closePanel = () => {
     const e = panelEpisode();
     panelEpisode.set(null);
@@ -119,7 +120,8 @@ export function TitleScreen(props: { id: string }) {
     if (url) openUrl(url).catch((e) => console.warn(`reel: the trailer did not open: ${e}`));
   };
   const run: Record<HeroAction, () => void> = {
-    play: () => play({ ...data().play, title: data() }),
+    // Play waits for the release (the button is dimmed) unless there is no source to search.
+    play: () => (data().release || !data().playable ? play({ ...data().play, title: data() }) : undefined),
     trailer: openTrailer,
   };
   const toggle = () => toggleList(props.id);

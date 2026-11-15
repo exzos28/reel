@@ -7,6 +7,7 @@ import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
 import { NAV } from "../../layout/navItems";
 import { PageFrame } from "../../layout/PageFrame";
+import { openSourceDrawer } from "../source/SourceDrawer";
 import { scroller } from "../../layout/Scroller";
 import { showNav } from "../../layout/navState";
 import { go, goFromNav, openTitle } from "../../nav";
@@ -38,7 +39,8 @@ export function HomeScreen() {
     settle = setTimeout(() => hero.set(f), HERO_SETTLE_MS);
   });
   cleanup(() => clearTimeout(settle));
-  const playFocused = () => play({ ...focused().play, title: focused() });
+  /** Play; with no search source the drawer that adds one. */
+  const playFocused = () => (focused().playable ? play({ ...focused().play, title: focused() }) : openSourceDrawer());
   const heroActions = [playFocused, () => toggleList(focused().id)];
 
   /** The page puts the focused shelf in its upper third. */

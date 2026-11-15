@@ -19,13 +19,14 @@ test("home starts on Continue watching and the hero follows the focus", async ()
   expect(app.texts()).toContain("Play");
 });
 
-test("a title without a release says so instead of playing", async () => {
+test("when the engine has no source to play from, the drawer that adds one opens instead of the player", async () => {
   const app = await app_({ ...NATIVE, "Engine.status": JSON.stringify({ phase: "no_source" }) });
   await app.keyboard.press("up"); // the hero's Resume
   await app.keyboard.press("enter");
-  expect(app.texts()).toContain("No release to play.");
-  expect(app.texts()).toContain("Add a search source in Settings, or pick another release.");
+  expect(app.shows("source-panel")).toBe(true);
+  expect(app.texts()).not.toContain("No release to play.");
   await app.keyboard.press("escape");
+  expect(app.shows("source-panel")).toBe(false);
   expect(app.texts()).toContain("Continue watching");
 });
 

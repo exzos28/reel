@@ -352,6 +352,10 @@ settings:
     removed: Search source removed.
     ok_imdb: Connected. It searches by IMDb id.
     ok_text: Connected. It searches by title.
+  # The drawer that opens on Play while no search source is set.
+  source_drawer:
+    title: Add a search source
+    about: reel plays from releases it finds on your own search source, and there is none yet. Enter the Torznab address of your Jackett (or Prowlarr, JacRed…) and its API key; Play works once it connects.
     failed: "Could not reach the source: %{message}"
   about:
     title: About reel

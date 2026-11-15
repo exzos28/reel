@@ -47,5 +47,8 @@ export function sourceForm() {
     return { text: c.movieImdb ? t("settings.source.ok_imdb") : t("settings.source.ok_text"), bad: false };
   };
 
-  return { url, key, save, result };
+  /** Saved and checked: the source answered. */
+  const connected = () => state() === "saved" && !error() && check()?.state !== "failed" && check() != null;
+
+  return { url, key, save, result, connected };
 }
