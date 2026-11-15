@@ -40,7 +40,10 @@ export const toTop = signal(0);
 
 /** The current destination chosen again: back to its root, at the top. */
 export function reselect(name: Destination) {
-  stack.set([{ name }]);
+  // The root's own route, not a new one: a native stack takes a new route for a new page and
+  // pushed a second Home over Home.
+  const root = stack()[0];
+  stack.set([root && root.name === name ? root : { name }]);
   toTop.set(toTop() + 1);
 }
 

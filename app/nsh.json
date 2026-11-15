@@ -12,6 +12,7 @@
     "web": "icon/icon@2x.png"
   },
   "rust": ".",
+  "appearance": "dark",
   "theme": {
     "cssVars": {
       "theme": {

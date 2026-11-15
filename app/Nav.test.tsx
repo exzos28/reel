@@ -60,3 +60,12 @@ test("Back from a root other than Home goes Home", () => {
   handleBack();
   expect(names()).toEqual(["home"]);
 });
+
+test("choosing the current destination at its root keeps its route: a native stack would push a new one", () => {
+  useTabStacks(true);
+  go("home");
+  const root = stack()[0];
+  go("home");
+  expect(stack()[0]).toBe(root);
+  expect(stack().length).toBe(1);
+});
