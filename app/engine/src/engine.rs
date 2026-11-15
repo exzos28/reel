@@ -578,7 +578,7 @@ enum Fetched {
 /// Opens a source's link ourselves, so a redirect to a magnet works (the
 /// torrent library's own HTTP fetch stops at it).
 async fn fetch_torrent(url: &str) -> anyhow::Result<Fetched> {
-    let client = reqwest::Client::builder()
+    let client = crate::http_client::client_builder()
         .redirect(reqwest::redirect::Policy::none())
         .timeout(std::time::Duration::from_secs(30))
         .build()?;

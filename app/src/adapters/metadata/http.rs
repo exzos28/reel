@@ -14,7 +14,7 @@ pub const TIMEOUT: Duration = Duration::from_secs(15);
 pub const CONNECT_TIMEOUT: Duration = Duration::from_secs(8);
 
 pub fn client() -> reqwest::Client {
-    reqwest::Client::builder()
+    crate::adapters::http_client::client_builder()
         .timeout(TIMEOUT)
         .connect_timeout(CONNECT_TIMEOUT)
         .user_agent(concat!("reel/", env!("CARGO_PKG_VERSION")))

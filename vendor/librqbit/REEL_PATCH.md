@@ -143,3 +143,10 @@ Tests: `piece_tracker::tests::test_peers_share_a_priority_piece_chunk_by_chunk`,
 `test_shared_piece_survives_its_peer`,
 `test_a_piece_becomes_shared_when_it_turns_priority`,
 `tests::e2e_stream_swarm::test_stream_swarm_first_bytes`.
+
+## Android: built-in root certificates (src/session.rs)
+
+On Android the session's HTTP client (trackers, `.torrent` links) checks certificates against
+Mozilla's roots built in (`webpki-root-certs`), via reqwest's `tls_certs_only`. reqwest's default
+verifier asks the platform there, which needs the app's Java side initialised; reel's app does not
+do that, so every HTTPS request failed. Other platforms are unchanged.

@@ -11,6 +11,7 @@
 //! come from the `PlaybackHost` it is built with.
 
 mod buffer;
+mod http_client;
 mod disk;
 mod engine;
 mod sources;

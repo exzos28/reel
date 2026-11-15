@@ -725,6 +725,14 @@ impl Session {
                     b
                 };
 
+                // reel: on Android, Mozilla's roots built in (the platform verifier needs the
+                // app's Java side initialised, which reel's app does not do). REEL_PATCH.md.
+                #[cfg(target_os = "android")]
+                let builder = builder.tls_certs_only(
+                    webpki_root_certs::TLS_SERVER_ROOT_CERTS
+                        .iter()
+                        .filter_map(|c| reqwest::Certificate::from_der(c).ok()),
+                );
                 builder
                     .user_agent(&client_name_and_version)
                     .build()

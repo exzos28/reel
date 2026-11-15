@@ -38,7 +38,8 @@ pub async fn get(src: &str, width: u32) -> Result<Vec<u8>, String> {
     if let Ok(bytes) = tokio::fs::read(&file).await {
         return Ok(bytes);
     }
-    let body = reqwest::get(u).await.map_err(|e| e.to_string())?.error_for_status().map_err(|e| e.to_string())?;
+    let client = crate::adapters::http_client::client_builder().build().map_err(|e| e.to_string())?;
+    let body = client.get(u).send().await.map_err(|e| e.to_string())?.error_for_status().map_err(|e| e.to_string())?;
     let original = body.bytes().await.map_err(|e| e.to_string())?;
     let bytes = tokio::task::spawn_blocking(move || shrink(&original, width)).await.map_err(|e| e.to_string())??;
     if let Some(dir) = file.parent() {

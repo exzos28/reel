@@ -93,7 +93,7 @@ fn runtime() -> &'static Runtime {
 fn client() -> &'static reqwest::Client {
     static C: OnceLock<reqwest::Client> = OnceLock::new();
     C.get_or_init(|| {
-        reqwest::Client::builder()
+        crate::http_client::client_builder()
             .timeout(Duration::from_secs(20))
             .user_agent(concat!("reel/", env!("CARGO_PKG_VERSION")))
             .build()

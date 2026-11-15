@@ -1974,6 +1974,7 @@ dependencies = [
  "urlencoding",
  "uuid",
  "walkdir",
+ "webpki-root-certs",
  "windows",
 ]
 
@@ -3394,6 +3395,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "webpki-root-certs",
 ]
 
 [[package]]
@@ -3420,6 +3422,7 @@ dependencies = [
  "reqwest",
  "serde_json",
  "tokio",
+ "webpki-root-certs",
 ]
 
 [[package]]

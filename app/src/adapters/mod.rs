@@ -2,6 +2,7 @@
 //! `Playback` on builds without the engine (the engine itself is reel-engine), and the mpv
 //! video view on macOS.
 
+pub mod http_client;
 pub mod metadata;
 #[cfg_attr(feature = "engine", allow(dead_code))]
 pub mod no_engine;

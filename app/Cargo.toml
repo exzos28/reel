@@ -49,3 +49,7 @@ objc2-quartz-core = { version = "0.3", features = ["CALayer", "CAOpenGLLayer", "
 objc2-open-gl = { version = "0.3", features = ["CGLTypes", "CGLCurrent"] }
 objc2-core-video = { version = "0.3", features = ["CVBase"] }
 objc2-core-foundation = { version = "0.3", features = ["CFDate"] }
+
+# Android: servers' certificates are checked against Mozilla's roots built in (src/http_client.rs).
+[target.'cfg(target_os = "android")'.dependencies]
+webpki-root-certs = "1"
