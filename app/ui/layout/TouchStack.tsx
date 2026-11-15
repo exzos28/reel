@@ -9,6 +9,7 @@ import { t } from "nsh/i18n";
 import { title as titleOf, titleText } from "../catalog";
 import { section, stack, type Destination, type Route } from "../nav";
 import { look } from "../platform/look";
+import { chrome } from "./chrome";
 import { colors } from "../theme";
 
 const stacks = new Map<Destination, NavStackState<Route>>();
@@ -28,7 +29,9 @@ function nameOf(r: Route): string {
  * a large title. */
 function Page(props: { route: Route; children: JSX.Element }) {
   const r = props.route;
-  const own = r.name !== "settings" && r.name !== "about";
+  // A phone's Settings and About take the system header; a tablet's keep reel's top row
+  // (Back, the tabs), which the system header would sit under.
+  const own = (r.name !== "settings" && r.name !== "about") || chrome !== "phone";
   return (
     <NavPage
       headerVisible={!own}

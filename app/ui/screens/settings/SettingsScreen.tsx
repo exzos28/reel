@@ -54,7 +54,7 @@ function AboutRow(props: { focused: () => boolean; viewRef: (r: ViewRef) => void
 
 /** The title where a destination's page starts (170 on a TV). */
 /** Settings is pushed under the system header on touch (`navRoom(true)`). */
-const pageStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: navRoom(true) + u(caps.touch ? 40 : 58), gap: u(32) });
+const pageStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: navRoom(true) + u(navRoom(true) ? 58 : 40), gap: u(32) });
 const SETTINGS_AT = NAV.findIndex((n) => n.id === "settings");
 
 /** Back from About finds the focus on its row. */
@@ -149,7 +149,8 @@ export function SettingsScreen() {
     <View style={{ flex: 1 }}>
     <Screen ctl={page} nav={!caps.touch}>
       <View style={pageStyle()}>
-        <If when={!caps.touch}>
+        {/* Its own title where no system header shows one (all but a phone). */}
+        <If when={navRoom(true) > 0}>
           <Text style={pageTitle()}>{t("settings.title")}</Text>
         </If>
         {/* Each section is a block the page brings to the focus line when its row has the focus. */}
