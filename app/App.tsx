@@ -23,6 +23,7 @@ import { caps } from "./ui/platform";
 import { PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
 import { TouchStack } from "./ui/layout/TouchStack";
 import { ExitDialog } from "./ui/layout/ExitDialog";
+import { keysInUse } from "./ui/focus/keys";
 import { Player } from "./ui/Player";
 import { status } from "./ui/playback";
 import { loadSettings } from "./ui/preferences";
@@ -87,8 +88,13 @@ function App() {
     // While a film plays under the UI (AVPlay on a TV), the app paints no background over it.
     <View
       style={{ flex: 1, backgroundColor: playing() && videoUnderUi() ? "transparent" : colors.ink() }}
-      // The mouse's back button (button 4).
-      onMouseUp={(e) => e.button === "back" && handleBack()}
+      // The mouse's back button (button 4). A click or a touch hides the focus ring
+      // until the keys drive again (focus/keys.ts).
+      onMouseUp={(e) => {
+        keysInUse.set(false);
+        if (e.button === "back") handleBack();
+      }}
+      onTouchStart={() => keysInUse.set(false)}
     >
       <If when={!playing()} else={<Player />}>
         <If when={caps.touch} else={<OneScreen />}>

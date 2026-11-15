@@ -4,6 +4,7 @@
 import { computed, token, windowSize, type TextStyle, type ViewStyle } from "nsh";
 import geist from "../fonts/Geist.ttf";
 import { chrome, sideInset } from "./layout/chrome";
+import { keysInUse } from "./focus/keys";
 import { look } from "./platform/look";
 
 export const font = geist;
@@ -98,7 +99,12 @@ export const type = {
  * width) and the card lift are not cut off by its edges. */
 export const ringRoom = () => u(8 + 5 + 4) + Math.max(2, u(3));
 
-export function focusRing(focused: boolean, lift: "card" | "row" | "button" = "button"): ViewStyle {
+/** Whether the focus shows: always on a TV (the remote is all there is), elsewhere only while
+ * the keys drive (not after a tap or a click, where a ring on what was pressed is noise). */
+const showFocus = () => chrome === "tv" || keysInUse();
+
+export function focusRing(shownFocus: boolean, lift: "card" | "row" | "button" = "button"): ViewStyle {
+  const focused = shownFocus && showFocus();
   const moved = lift === "card" ? `translateY(${-u(8)}px)` : lift === "row" ? "scale(1.01)" : "scale(1.03)";
   return {
     outlineStyle: "solid",
