@@ -9,7 +9,7 @@ import { pillStyle } from "../kit/Pill";
 import { rounded, row } from "../kit/shape";
 import { labelText } from "../kit/text";
 import type { Destination } from "../nav";
-import { colors, density, font, radius, safe, u } from "../theme";
+import { colors, density, font, radius, safe, ts, u } from "../theme";
 import { NAV } from "./navItems";
 
 /** Where the nav sits from the top and how tall its row is, TV pixels; a
@@ -28,7 +28,7 @@ const barStyle = (): ViewStyle => ({
   pointerEvents: "box-none",
 });
 const groupStyle = (): ViewStyle => ({ ...row(u(2), "stretch"), padding: u(5), ...rounded(radius() + u(5)), backgroundColor: colors.card() });
-const logoStyle = (): TextStyle => ({ fontFamily: font, fontSize: u(40), fontWeight: 700, letterSpacing: -u(0.5), color: colors.red() });
+const logoStyle = (): TextStyle => ({ fontFamily: font, fontSize: ts(40), fontWeight: 700, letterSpacing: -u(0.5), color: colors.red() });
 
 export function Logo() {
   return <Text style={logoStyle()}>{t("app.name")}</Text>;

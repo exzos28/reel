@@ -8,7 +8,7 @@ import { Image, reduceMotion, Text, View, type TextStyle, type ViewStyle } from 
 import { t } from "nsh/i18n";
 import { titleText, type Summary } from "./catalog";
 import { cover, rounded } from "./kit/shape";
-import { alpha, colors, density, font, safe, type, u } from "./theme";
+import { alpha, colors, density, font, safe, ts, type, u } from "./theme";
 
 /** One breath of the logotype and the buffering note, ms. */
 export const BREATH_MS = 1600;
@@ -52,7 +52,7 @@ const fillStyle = (percent: number): ViewStyle => ({
   height: "100%", width: `${percent}%`, backgroundColor: colors.snow(),
   transitionProperty: "all", transitionDuration: 400, transitionTimingFunction: "ease-out",
 });
-const metaStyle = (): TextStyle => ({ fontFamily: font, fontSize: u(22), color: colors.ash(), textAlign: "center", marginTop: u(16) });
+const metaStyle = (): TextStyle => ({ fontFamily: font, fontSize: ts(22), color: colors.ash(), textAlign: "center", marginTop: u(16) });
 
 /** The full-screen stage: still, logotype, the line, the bar. */
 export function PlayerStage(props: {

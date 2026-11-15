@@ -189,9 +189,28 @@ pub fn loaded() -> bool {
     with(|s| s.loaded)
 }
 
+/// Android: the process's temp dir (`std::env::temp_dir`, where the engine keeps its cache and
+/// the TV's card pictures go) is /data/local/tmp, which an app may not write, so the engine
+/// could not start. It goes into the app's own data dir, as the TV's host does with TMPDIR.
+#[cfg(target_os = "android")]
+fn android_temp_dir(data_dir: &Path) {
+    if std::env::var_os("TMPDIR").is_some() {
+        return;
+    }
+    let tmp = data_dir.join("tmp");
+    if std::fs::create_dir_all(&tmp).is_ok() {
+        // Set once, at the first load, before the engine or anything reads it.
+        unsafe { std::env::set_var("TMPDIR", &tmp) };
+    }
+}
+
 /// Reads the settings from `data_dir` (None: defaults, kept in memory),
 /// configures the engine from them and returns what the UI needs (`current`).
 pub fn load(data_dir: Option<&Path>) -> Value {
+    #[cfg(target_os = "android")]
+    if let Some(dir) = data_dir {
+        android_temp_dir(dir);
+    }
     let file = data_dir.map(|d| d.join("settings.json"));
     if file.is_none() {
         eprintln!("reel settings: no data directory, settings last until the app closes");

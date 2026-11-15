@@ -5,7 +5,7 @@ import { Image, Text, View, type JSX, type TextStyle, type ViewStyle } from "nsh
 import { aboutText, genresText, titleText, type Summary } from "../catalog";
 import { cover } from "../kit/shape";
 import { bodyText, metaText } from "../kit/text";
-import { alpha, colors, heroFade, safe, type, u } from "../theme";
+import { alpha, colors, heroFade, safe, ts, type, u } from "../theme";
 import { MetaLine } from "./HeroMeta";
 
 const backdropStyle = (height: number, left: number): ViewStyle => ({
@@ -83,7 +83,7 @@ export function Hero(props: {
       <View style={props.steadyAbout ? steadyBlockStyle(props.top, props.height) : textBlockStyle(props.top)}>
         <Text style={logotypeStyle(props.titleSize)}>{titleText(s())}</Text>
         <MetaLine item={s} />
-        <Text style={{ ...metaText(), fontSize: u(24) }}>{genresText(s())}</Text>
+        <Text style={{ ...metaText(), fontSize: ts(24) }}>{genresText(s())}</Text>
         <Text style={aboutStyle(!!props.steadyAbout)}>{aboutText(s())}</Text>
         {props.children}
       </View>

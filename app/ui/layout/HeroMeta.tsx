@@ -4,11 +4,11 @@ import { Text, View, type TextStyle } from "nsh";
 import { badgeText, lengthText, releaseLine, scoreSource, votesText, yearsText, type Score, type Summary } from "../catalog";
 import { Badge } from "../kit/Badge";
 import { row } from "../kit/shape";
-import { colors, type, u } from "../theme";
+import { colors, ts, type, u } from "../theme";
 
 const metaLabel = (color: string, fontWeight?: number): TextStyle => ({
   ...type.label(),
-  fontSize: u(26),
+  fontSize: ts(26),
   ...(fontWeight == null ? {} : { fontWeight }),
   color,
 });
@@ -55,7 +55,7 @@ export function ReleaseText(props: { item: () => Summary; withStart?: boolean; s
   const line = () => releaseLine(props.item().release!, props.withStart ?? true);
   return (
     <If when={props.item().release}>
-      <Text style={{ ...type.meta(), fontSize: u(props.size ?? 22), color: colors.ash() }}>
+      <Text style={{ ...type.meta(), fontSize: ts(props.size ?? 22), color: colors.ash() }}>
         <Text style={{ fontWeight: 500, color: colors.snow() }}>{line().name}</Text>
         {` · ${line().rest}`}
       </Text>

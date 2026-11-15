@@ -7,7 +7,11 @@ import { density } from "../../theme";
 
 /** The hero's height and its text's top, TV pixels. On a TV the first row (its cards
  * and their names) shows whole under it, inside the title-safe area. */
-export const HOME_HERO = density === "ten-foot" ? { height: 640, top: 180 } : { height: 780, top: 236 };
+export const HOME_HERO =
+  density === "ten-foot" ? { height: 640, top: 180 }
+  // A phone: the text starts under the head (the logo and Settings), not beside it.
+  : density === "compact" ? { height: 820, top: 330 }
+  : { height: 780, top: 236 };
 
 /** The hero for the focused card: Play and My list under its release. */
 export function HomeHero(props: { item: () => Summary; focusedAt: () => number | null; onPlay: () => void; onToggle: () => void }) {

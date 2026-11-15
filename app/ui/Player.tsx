@@ -19,7 +19,7 @@ import { rounded } from "./kit/shape";
 import plusIcon from "./icons/plus.svg";
 import { streamDetails } from "./preferences";
 import { cachedAhead, duration, firstFrame, readAt, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
-import { alpha, colors, focusRing, font, radius, safe, type, u } from "./theme";
+import { alpha, colors, focusRing, font, radius, safe, ts, type, u } from "./theme";
 import { chrome } from "./layout/chrome";
 import { caps } from "./platform";
 import { useFullscreen } from "./platform/window";
@@ -484,7 +484,7 @@ export function Player() {
           </If>
           {/* The title's first line centred on the ✕ (a TV's at the safe area's corner); more lines go below. */}
           <View style={{ gap: u(4), flexShrink: 1, marginTop: caps.touch ? (CLOSE - u(34) * 1.25) / 2 : 0 }}>
-            <Text style={{ fontFamily: font, fontSize: u(34), fontWeight: 600, color: colors.snow() }}>
+            <Text style={{ fontFamily: font, fontSize: ts(34), fontWeight: 600, color: colors.snow() }}>
               {what() ? titleText(what()!.title) : ""}
             </Text>
             <If when={subtitle() !== ""}>
@@ -513,10 +513,10 @@ export function Player() {
             <If when={streamDetails()}>
             <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", minHeight: u(32) }}>
               <If when={aheadText() !== ""}>
-                <Text style={{ fontFamily: font, fontSize: u(24), fontWeight: 600, color: colors.snow() }}>{aheadText()}</Text>
-                <Text style={{ fontFamily: font, fontSize: u(24), color: colors.ash() }}>{" · "}</Text>
+                <Text style={{ fontFamily: font, fontSize: ts(24), fontWeight: 600, color: colors.snow() }}>{aheadText()}</Text>
+                <Text style={{ fontFamily: font, fontSize: ts(24), color: colors.ash() }}>{" · "}</Text>
               </If>
-              <Text style={{ fontFamily: font, fontSize: u(24), color: colors.soft() }}>{streaming()}</Text>
+              <Text style={{ fontFamily: font, fontSize: ts(24), color: colors.soft() }}>{streaming()}</Text>
             </View>
             </If>
             <Scrubber
@@ -527,10 +527,10 @@ export function Player() {
               onSeek={(s) => { poke(); seekTo(s); }}
             />
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: u(16) }}>
-              <Text style={{ fontFamily: font, fontSize: u(24), fontWeight: 500, color: colors.snow() }}>
+              <Text style={{ fontFamily: font, fontSize: ts(24), fontWeight: 500, color: colors.snow() }}>
                 {Fmt.position(Math.floor(position()))}
               </Text>
-              <Text style={{ fontFamily: font, fontSize: u(24), fontWeight: 500, color: colors.ash() }}>
+              <Text style={{ fontFamily: font, fontSize: ts(24), fontWeight: 500, color: colors.ash() }}>
                 {duration() > 0 ? t("player.left", { time: Fmt.position(Math.ceil(Math.max(duration() - position(), 0))) }) : ""}
               </Text>
             </View>
@@ -674,7 +674,7 @@ function TracksPanel(props: {
   };
   const column = (col: number, heading: string, options: () => { main: string; sub?: string; selected: boolean }[]) => (
     <View style={{ flex: col === 2 ? 1.25 : 1, paddingHorizontal: u(18), borderLeftWidth: col > 0 ? 1 : 0, borderColor: colors.raise() }}>
-      <Text style={{ fontFamily: font, fontSize: u(21), fontWeight: 500, color: colors.ash(), marginLeft: u(16), marginBottom: u(10) }}>
+      <Text style={{ fontFamily: font, fontSize: ts(21), fontWeight: 500, color: colors.ash(), marginLeft: u(16), marginBottom: u(10) }}>
         {heading}
       </Text>
       <Each of={options()} key="index">
@@ -698,7 +698,7 @@ function TracksPanel(props: {
                 {o().main}
               </Text>
               <If when={o().sub}>
-                <Text style={{ fontFamily: font, fontSize: u(19), color: props.focused(col, i()) ? alpha(colors.ink(), 0.7) : colors.ash(), marginTop: u(2) }}>{o().sub}</Text>
+                <Text style={{ fontFamily: font, fontSize: ts(19), color: props.focused(col, i()) ? alpha(colors.ink(), 0.7) : colors.ash(), marginTop: u(2) }}>{o().sub}</Text>
               </If>
             </View>
             <If when={isSelected(col, i(), o().selected)}>
@@ -777,13 +777,13 @@ function UpNext(props: {
           </If>
         </View>
         <View style={{ flex: 1, gap: u(6) }}>
-          <Text style={{ fontFamily: font, fontSize: u(21), color: colors.ash() }}>
+          <Text style={{ fontFamily: font, fontSize: ts(21), color: colors.ash() }}>
             {t("player.next_episode", { code: episodeCode(e().season, e().number) })}
           </Text>
-          <Text style={{ numberOfLines: 2, fontFamily: font, fontSize: u(28), fontWeight: 600, color: colors.snow() }}>
+          <Text style={{ numberOfLines: 2, fontFamily: font, fontSize: ts(28), fontWeight: 600, color: colors.snow() }}>
             {e().title}
           </Text>
-          <Text style={{ fontFamily: font, fontSize: u(21), color: colors.ash() }}>{runtime(e().minutes)}</Text>
+          <Text style={{ fontFamily: font, fontSize: ts(21), color: colors.ash() }}>{runtime(e().minutes)}</Text>
         </View>
       </View>
       <View style={{ flexDirection: "row", gap: u(14), marginTop: u(22) }}>

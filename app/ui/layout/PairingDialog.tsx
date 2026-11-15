@@ -8,7 +8,7 @@ import { Button } from "../kit/Button";
 import { row } from "../kit/shape";
 import { cancelPairing, pairingCode } from "../hosted";
 import { onBack } from "../nav";
-import { alpha, colors, font, u } from "../theme";
+import { alpha, colors, font, ts, u } from "../theme";
 
 const cardStyle = (): ViewStyle => ({
   width: u(760),
@@ -19,11 +19,11 @@ const cardStyle = (): ViewStyle => ({
 });
 const backdropStyle = (): ViewStyle => ({ backgroundColor: alpha(colors.ink(), 0.72) });
 const dialogStyle: ViewStyle = { flex: 1, alignItems: "center", justifyContent: "center" };
-const titleStyle = (): TextStyle => ({ fontFamily: font, fontSize: u(44), fontWeight: 600, color: colors.snow() });
-const aboutStyle = (): TextStyle => ({ fontFamily: font, fontSize: u(26), lineHeight: u(36), color: colors.ash(), marginTop: u(14) });
+const titleStyle = (): TextStyle => ({ fontFamily: font, fontSize: ts(44), fontWeight: 600, color: colors.snow() });
+const aboutStyle = (): TextStyle => ({ fontFamily: font, fontSize: ts(26), lineHeight: ts(36), color: colors.ash(), marginTop: u(14) });
 const codeStyle = (): TextStyle => ({
   fontFamily: font,
-  fontSize: u(112),
+  fontSize: ts(112),
   fontWeight: 700,
   letterSpacing: u(18),
   fontVariant: ["tabular-nums"],

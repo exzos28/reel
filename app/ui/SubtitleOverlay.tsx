@@ -3,7 +3,7 @@
 // dark plate so they read over any picture; they move up while the player's
 // controls show so they never sit under them.
 import { Text, View, type TextStyle, type ViewStyle } from "nsh";
-import { alpha, colors, font, radius, safe, u } from "./theme";
+import { alpha, colors, font, radius, safe, ts, u } from "./theme";
 
 /** How far up the subtitles sit while the controls show (TV pixels above the safe area). */
 const ABOVE_CONTROLS = 300;
@@ -32,8 +32,8 @@ const plate = (): ViewStyle => ({
 
 const line = (): TextStyle => ({
   fontFamily: font,
-  fontSize: u(46),
-  lineHeight: u(58),
+  fontSize: ts(46),
+  lineHeight: ts(58),
   fontWeight: 500,
   textAlign: "center",
   color: colors.snow(),

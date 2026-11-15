@@ -1,5 +1,5 @@
 import { Text, View, type ViewStyle } from "nsh";
-import { colors, type, u } from "../theme";
+import { colors, ts, type, u } from "../theme";
 import { rounded, row } from "./shape";
 import { fontText, oneLine } from "./text";
 
@@ -37,7 +37,7 @@ export function RatingChip(props: { rating: () => string }) {
 /** Under a card: a red star, then "7.9 · 1963 · Movie". */
 export function CardMeta(props: { text: () => string; size?: number }) {
   return (
-    <Text style={{ ...oneLine, ...type.meta(), fontSize: u(props.size ?? 22), color: colors.ash() }}>
+    <Text style={{ ...oneLine, ...type.meta(), fontSize: ts(props.size ?? 22), color: colors.ash() }}>
       <Text style={{ color: colors.red() }}>★ </Text>
       {props.text()}
     </Text>

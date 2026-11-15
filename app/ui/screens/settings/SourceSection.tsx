@@ -1,6 +1,6 @@
 // The search source: the address of the user's Jackett (Torznab) and its key.
 import { Input } from "nsh/base";
-import { Image, Text, View, type TextStyle, type ViewStyle } from "nsh";
+import { Image, Text, View, type TextStyle, type ViewStyle, type InputStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { rounded, row } from "../../kit/shape";
 import { bodyText, labelText, metaText, sectionTitle } from "../../kit/text";
@@ -9,12 +9,13 @@ import { source } from "../../preferences";
 import { colors, type, u } from "../../theme";
 import { sourceForm } from "./sourceForm";
 
-const fieldStyle = (): TextStyle => ({
+const fieldStyle = (): InputStyle => ({
   height: u(64),
   paddingHorizontal: u(22),
   ...rounded(),
   backgroundColor: colors.card(),
   color: colors.snow(),
+  placeholderColor: colors.ash(),
   ...type.body(),
 });
 const saveStyle = (): ViewStyle => ({ height: u(60), paddingHorizontal: u(30), justifyContent: "center", ...rounded(), backgroundColor: colors.snow() });

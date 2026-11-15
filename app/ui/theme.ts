@@ -53,6 +53,10 @@ export const density: Density = chrome === "tv" ? "ten-foot" : chrome === "phone
 const FIXED = { regular: 0.66, compact: 0.45 } as const;
 const scale = computed(() => (density === "ten-foot" ? windowSize().width / 1920 : FIXED[density]));
 export const u = (px: number) => px * scale();
+/** Type sizes (font size, line height). The same as `u` but on a phone, where the layout's
+ * 0.45 made body text 12 pt and meta 10 pt: there text scales by 0.6 (body 15.6 pt). */
+const TEXT_COMPACT = 0.6;
+export const ts = (px: number) => (density === "compact" ? px * TEXT_COMPACT : u(px));
 
 /** Where content starts from the screen's edges: a TV picture's title-safe
  * 5%; elsewhere the system's safe area plus the family's margin (`chrome`). */
@@ -63,7 +67,7 @@ export const radius = () => (density === "ten-foot" ? u(10) : u(14));
 
 const text = (size: number, weight: number, extra: TextStyle = {}): TextStyle => ({
   fontFamily: font,
-  fontSize: u(size),
+  fontSize: ts(size),
   fontWeight: weight,
   ...extra,
 });
@@ -72,10 +76,10 @@ const text = (size: number, weight: number, extra: TextStyle = {}): TextStyle =>
 export const type = {
   /** The film's title as a thin, wide-tracked logotype. */
   logotype: (size: number): TextStyle =>
-    text(size, 200, { textTransform: "uppercase", letterSpacing: u(size) * 0.22, lineHeight: u(size) * 1.05 }),
+    text(size, 200, { textTransform: "uppercase", fontSize: u(size), letterSpacing: u(size) * 0.22, lineHeight: u(size) * 1.05 }),
   page: () => text(60, 600, { letterSpacing: -u(1) }),
   section: () => text(30, 600),
-  body: () => text(26, 400, { lineHeight: u(36) }),
+  body: () => text(26, 400, { lineHeight: ts(36) }),
   label: () => text(24, 500),
   meta: () => text(22, 400),
   small: () => text(20, 400),

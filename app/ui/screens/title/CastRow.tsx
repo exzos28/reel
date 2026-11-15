@@ -8,7 +8,7 @@ import { fontText, labelText, metaText } from "../../kit/text";
 import { SectionTitle } from "../../layout/Section";
 import { scroller, type Follow } from "../../layout/Scroller";
 import { Shelf } from "../../layout/Shelf";
-import { colors, focusRing, safe, u } from "../../theme";
+import { colors, focusRing, safe, ts, u } from "../../theme";
 
 const PHOTO = 150;
 
@@ -25,8 +25,8 @@ const discStyle = (focused: boolean): ViewStyle => ({
   ...focusRing(focused, "card"),
 });
 const photoStyle = { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" } as ViewStyle;
-const nameStyle = (): TextStyle => ({ ...labelText(), fontSize: u(22), numberOfLines: 2, textAlign: "center" });
-const partStyle = (): TextStyle => ({ ...metaText(), fontSize: u(20), numberOfLines: 2, textAlign: "center" });
+const nameStyle = (): TextStyle => ({ ...labelText(), fontSize: ts(22), numberOfLines: 2, textAlign: "center" });
+const partStyle = (): TextStyle => ({ ...metaText(), fontSize: ts(20), numberOfLines: 2, textAlign: "center" });
 
 function Person(props: { person: () => CastMember; focused: () => boolean; follow: Follow; onPress: () => void }) {
   const p = props.person;

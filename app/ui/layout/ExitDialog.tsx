@@ -7,7 +7,7 @@ import { Button } from "../kit/Button";
 import { row } from "../kit/shape";
 import { exitApp } from "../native";
 import { onBack } from "../nav";
-import { alpha, colors, font, u } from "../theme";
+import { alpha, colors, font, ts, u } from "../theme";
 
 /** The dialog is up. */
 export const exitAsked = signal(false);
@@ -21,8 +21,8 @@ const cardStyle = (): ViewStyle => ({
 });
 const backdropStyle = (): ViewStyle => ({ backgroundColor: alpha(colors.ink(), 0.72) });
 const dialogStyle: ViewStyle = { flex: 1, alignItems: "center", justifyContent: "center" };
-const titleStyle = (): TextStyle => ({ fontFamily: font, fontSize: u(44), fontWeight: 600, color: colors.snow() });
-const aboutStyle = (): TextStyle => ({ fontFamily: font, fontSize: u(26), lineHeight: u(36), color: colors.ash(), marginTop: u(14) });
+const titleStyle = (): TextStyle => ({ fontFamily: font, fontSize: ts(44), fontWeight: 600, color: colors.snow() });
+const aboutStyle = (): TextStyle => ({ fontFamily: font, fontSize: ts(26), lineHeight: ts(36), color: colors.ash(), marginTop: u(14) });
 
 function ExitCard() {
   /** 0: Stay, 1: Exit. */

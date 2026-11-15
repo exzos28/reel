@@ -5,7 +5,7 @@
 // Tablet: one top row on every page: the logo (Back in its place on a deeper
 // page), the floating tabs centred, Add to list on a title, Settings; solid
 // once content is under it.
-import { safeArea, Text, View, type TextStyle, type ViewStyle } from "nsh";
+import { safeArea, Scroll, Text, View, windowSize, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { title as titleOf, titleText, toggleList } from "../catalog";
 import backIcon from "../icons/back.svg";
@@ -68,16 +68,21 @@ const tabBarStyle = (): ViewStyle => ({
   bottom: 0,
   height: tabBarHeight(),
   paddingTop: android ? 12 : 6,
-  paddingHorizontal: 8,
-  flexDirection: "row",
-  justifyContent: "space-around",
-  alignItems: "flex-start",
   backgroundColor: colors.ink(),
   borderTopWidth: 1,
   borderTopColor: colors.card(),
   zIndex: 10,
 });
 const tabStyle: ViewStyle = { width: 70, alignItems: "center", gap: android ? 4 : 3 };
+/** The tabs in a row that scrolls sideways when they do not fit (six of 70 pt on a 412 pt
+ * phone); when they fit, they spread over the width as before. */
+const tabRowStyle = (): ViewStyle => ({
+  flexDirection: "row",
+  justifyContent: "space-around",
+  alignItems: "flex-start",
+  paddingHorizontal: 8,
+  minWidth: windowSize().width,
+});
 const indicatorStyle = (on: boolean): ViewStyle => ({
   width: android ? 64 : 52,
   height: android ? 32 : 30,
@@ -92,6 +97,8 @@ const tabText = (on: boolean): TextStyle => ({ fontFamily: font, fontSize: andro
 export function PhoneTabBar() {
   return (
     <View testID="tab-bar" style={tabBarStyle()}>
+      <Scroll horizontal scrollbar={false} bounces={false}>
+      <View style={tabRowStyle()}>
       <Each of={TABS} key={(n) => n.id}>
         {(n) => {
           const on = () => section() === n().id;
@@ -105,6 +112,8 @@ export function PhoneTabBar() {
           );
         }}
       </Each>
+      </View>
+      </Scroll>
     </View>
   );
 }

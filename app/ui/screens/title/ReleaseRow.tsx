@@ -7,7 +7,7 @@ import { rowStyle } from "../../kit/Row";
 import { row } from "../../kit/shape";
 import { SignalBars } from "../../kit/SignalBars";
 import { fontText, oneLine } from "../../kit/text";
-import { colors, density, u } from "../../theme";
+import { colors, density, ts, u } from "../../theme";
 import checkIcon from "../../icons/check.svg";
 
 /** Columns on a TV and a Mac; a phone keeps what decides the choice. */
@@ -21,7 +21,7 @@ const releaseRowStyle = (selected: boolean, focused: boolean): ViewStyle => ({
   paddingVertical: u(12),
 });
 const sourceStyle = (): TextStyle => ({ ...oneLine, flex: 1, minWidth: u(120), ...fontText(23, colors.snow(), 600) });
-const groupStyle = (): TextStyle => ({ fontWeight: 400, fontSize: u(22), color: colors.ash() });
+const groupStyle = (): TextStyle => ({ fontWeight: 400, fontSize: ts(22), color: colors.ash() });
 const cellText = (width: number): TextStyle => ({ width: u(width), ...fontText(23, colors.ash()) });
 const checkStyle = (): ViewStyle => ({ width: u(28), ...row(0), justifyContent: "flex-end" });
 
