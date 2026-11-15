@@ -4,7 +4,7 @@ import { t } from "nsh/i18n";
 import searchIcon from "../../icons/search.svg";
 import { Icon } from "../../kit/Icon";
 import { rounded, row } from "../../kit/shape";
-import { colors, cs, focusRing, type, u } from "../../theme";
+import { alpha, colors, cs, focusRing, type, u } from "../../theme";
 
 const boxStyle = (focused: boolean): ViewStyle => ({
   ...row(u(18)),
@@ -17,7 +17,7 @@ const boxStyle = (focused: boolean): ViewStyle => ({
   ...focusRing(focused, "row"),
 });
 // The placeholder in the theme's grey: Android drew it dark on the dark field.
-const inputStyle = (): InputStyle => ({ flex: 1, height: cs(72), color: colors.snow(), placeholderColor: colors.ash(), ...type.body() });
+const inputStyle = (): InputStyle => ({ flex: 1, height: cs(72), color: colors.snow(), placeholderColor: colors.ash(), caretColor: colors.snow(), selectionColor: alpha(colors.snow(), 0.3), ...type.body() });
 
 /** The query field: a magnifier and the text. `focused`: the remote's focus
  * is on it (the ring); typing needs the input's own focus (`onRef`'s

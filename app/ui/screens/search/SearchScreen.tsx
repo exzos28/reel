@@ -17,6 +17,7 @@ import { useRootBack } from "../../focus/rootBack";
 import { NAV } from "../../layout/navItems";
 import { showNav } from "../../layout/navState";
 import { PageFrame } from "../../layout/PageFrame";
+import { caps } from "../../platform";
 import { scroller } from "../../layout/Scroller";
 import { go, goFromNav, handleBack, onBack, openTitle } from "../../nav";
 import { density, safe, u } from "../../theme";
@@ -31,7 +32,8 @@ const topStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(
 /** The line under the field: what is going on, or nothing. */
 function statusText(a: SearchAnswer): string {
   const notes: string[] = [];
-  if (a.state === "recent" && !a.recent.length) notes.push(t("search.hint"));
+  // The field's placeholder says it where a finger or a pointer types; a TV's words say it once more.
+  if (a.state === "recent" && !a.recent.length && caps.remote) notes.push(t("search.hint"));
   if (a.state === "searching") notes.push(t("search.searching"));
   if (a.state === "done" && !a.sections.length) notes.push(t("search.none", { query: a.query }));
   if (a.state === "failed") notes.push(t("search.failed"));

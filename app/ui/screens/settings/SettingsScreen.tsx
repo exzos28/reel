@@ -6,6 +6,7 @@
 // fields take text (on a TV, easier from a phone: the section shows the address of the
 // TV's settings page, docs/hosted-settings.md).
 import { keymap, signal, Text, View, type ViewRef, type ViewStyle } from "nsh";
+import { formWidth } from "../../kit/form";
 import { Engine } from "../../native";
 import { t } from "nsh/i18n";
 import { byKeys } from "../../focus/keys";
@@ -31,7 +32,7 @@ const aboutRow = (focused: boolean): ViewStyle => ({
   ...rowStyle(false, focused),
   height: cs(68),
   paddingHorizontal: cs(28),
-  maxWidth: u(720),
+  maxWidth: formWidth(),
 });
 
 /** The row that opens About reel (its data sources and their notices). */

@@ -7,24 +7,16 @@ import { bodyText, labelText, metaText, sectionTitle } from "../../kit/text";
 import { hostedQr, hostedUrl } from "../../hosted";
 import { source } from "../../preferences";
 import { colors, cs, targetSlop, type, u } from "../../theme";
+import { fieldStyle, formWidth } from "../../kit/form";
 import { sourceForm } from "./sourceForm";
 
-const fieldStyle = (): InputStyle => ({
-  height: cs(64),
-  paddingHorizontal: cs(22),
-  ...rounded(),
-  backgroundColor: colors.card(),
-  color: colors.snow(),
-  placeholderColor: colors.ash(),
-  ...type.body(),
-});
 const saveStyle = (): ViewStyle => ({ height: cs(60), paddingHorizontal: cs(30), justifyContent: "center", ...rounded(), backgroundColor: colors.snow() });
 const resultStyle = (bad: boolean): TextStyle => ({ ...metaText(bad ? colors.red() : colors.ash()), flexShrink: 1 });
 
 export function SourceSection() {
   const form = sourceForm();
   return (
-    <View style={{ gap: u(14), maxWidth: u(980) }}>
+    <View style={{ gap: u(14), maxWidth: formWidth() }}>
       <Text style={sectionTitle()}>{t("settings.source.title")}</Text>
       <Text style={bodyText(colors.soft())}>{t("settings.source.about")}</Text>
       {/* Where the TV serves the settings page: typing an address with a remote is slow. */}

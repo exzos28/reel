@@ -1,6 +1,7 @@
 // A setting's row: what is in effect, with a chevron; OK or a click opens its
 // choices in a drawer (ChoicePanel).
 import { Text, View, type ViewStyle } from "nsh";
+import { formWidth } from "../../kit/form";
 import { Icon } from "../../kit/Icon";
 import { rowStyle } from "../../kit/Row";
 import { labelText } from "../../kit/text";
@@ -16,7 +17,7 @@ const pickerRowStyle = (focused: boolean): ViewStyle => ({
 
 export function PickerRow(props: { label: string; value: () => string; focused: () => boolean; onOpen: () => void }) {
   return (
-    <View style={{ maxWidth: u(720) }}>
+    <View style={{ maxWidth: formWidth() }}>
       <View
         role="button"
         accessibilityLabel={props.label}

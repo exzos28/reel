@@ -1,6 +1,7 @@
 // Playback: how much of a film is kept around where it plays, and the free space
 // for it. One row with the size in effect; the sizes open in a drawer.
 import { Text, View } from "nsh";
+import { formWidth } from "../../kit/form";
 import { t } from "nsh/i18n";
 import { Fmt } from "../../native";
 import { bodyText, metaText, sectionTitle } from "../../kit/text";
@@ -14,7 +15,7 @@ const sizeText = (mb: number) => Fmt.size(mb * MIB);
 
 export function BufferSection(props: { freeBytes: () => number | null; focused: () => boolean; onOpen: () => void }) {
   return [
-    <View style={{ gap: u(10), maxWidth: u(980) }}>
+    <View style={{ gap: u(10), maxWidth: formWidth() }}>
       <Text style={sectionTitle()}>{t("settings.buffer.title")}</Text>
       <Text style={bodyText(colors.soft())}>{t("settings.buffer.about")}</Text>
       <Text style={metaText()}>
