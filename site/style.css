@@ -103,7 +103,7 @@ section { padding: clamp(3.5rem, 8vw, 6.5rem) 0; }
 .shots { margin: 0; }
 /* Every device at once: the TV and the two monitors at the back, the laptop, the tablet and the
    phones in front. Sizes and places are shares of the group's width. */
-.family { position: relative; aspect-ratio: 16 / 9.4; }
+.family { position: relative; aspect-ratio: 16 / 9.4; max-width: 56rem; margin: 0 auto; }
 .family .shot { position: absolute; }
 .shot[data-s=windows] { left: 0; top: 7%; width: 33%; z-index: 1; }
 .shot[data-s=linux] { right: 0; top: 7%; width: 33%; z-index: 1; }

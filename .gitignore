@@ -1,7 +1,6 @@
 .claude/worktrees/
 .idea/
 .env
-dev/jackett/config/
 logs/
 
 # scripts/linux-docker.sh build output

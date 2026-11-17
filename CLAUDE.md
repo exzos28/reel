@@ -63,7 +63,7 @@ Samsung Tizen TV (first), macOS, Android / Android TV, iOS / iPadOS, Windows, Li
 - `nsh package . --target macos` (with `.env` loaded) for a demo build; `scripts/build.sh <target>`
   is what CI runs.
 - Network tests are `#[ignore]` and run explicitly with `cargo test -- --ignored <name>`.
-- Local search source for development: `docker compose -f dev/jackett/compose.yml up -d`.
+- Local search source for development: your own Torznab endpoint in `.env` (`.env.example`).
 
 ## Git
 
