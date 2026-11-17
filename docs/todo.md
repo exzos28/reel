@@ -54,12 +54,3 @@ on the same port, which is open without any check.
 The repository is private; the licence is PolyForm Noncommercial (`LICENSE`). To decide: whether
 and when to make the code public, under which terms, and what the site says about it (its
 "Open code, no accounts" section and the links to GitHub are hidden until then).
-
-## Move the site's downloads to GitHub Releases
-
-The site and its packages are on Fly.io for now (`scripts/site-deploy.sh`, `site/deploy/`): the
-packages are copied into the image at every deploy. To do: publish them as release assets
-(`release.yml` on a `v*` tag already builds them), point the site's download links at
-`releases/latest/download/<name>`, and leave only the static pages on the host. Needs the
-repository (or a public downloads repository) to be public, or the release assets are not
-reachable without a GitHub login.

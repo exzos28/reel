@@ -226,7 +226,7 @@ package() {
     for f in config.xml index.html shell.js shell-config.js icon.png ReelCore.dll libreel_tizen_core.so; do
         unzip -l "$out/$name" | grep -q "$f" || die "$f is missing from $name"
     done
-    python3 -I "$HERE/../../scripts/privacy-check.py" "$out/$name" || die "personal data in $name (above)"
+    python3 -I "$HERE/../../scripts/package-check.py" "$out/$name" || die "$name fails the package check (above)"
     (cd "$out" && shasum -a 256 "$name" > "SHA256SUMS-tizen.txt")
     ls -l "$out/$name"
 }

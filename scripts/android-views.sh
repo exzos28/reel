@@ -46,8 +46,8 @@ for dir in "$libs"/*/; do
 done
 
 # No metadata of this machine in the package (owners, file times): entries rewritten as they
-# are, compression kept (scripts/zip-clean.py); then aligned and signed.
-python3 -I "$(dirname "$0")/zip-clean.py" rewrite "$work/in.apk"
+# are, compression kept (scripts/pack.py); then aligned and signed.
+python3 -I "$(dirname "$0")/pack.py" rewrite "$work/in.apk"
 # Align (16 KiB pages for the native libraries) and sign again.
 "$bt/zipalign" -f -P 16 4 "$work/in.apk" "$work/aligned.apk"
 if [ -n "${REEL_ANDROID_KEYSTORE:-}" ]; then

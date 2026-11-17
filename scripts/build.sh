@@ -86,12 +86,15 @@ need nsh "run scripts/install-nsh.sh"
 
 # No personal data in a package: the compiler writes source paths into binaries (panic messages,
 # debug info), and they would name the builder's home directory. They are mapped to neutral
-# ones (the last match wins, so the broad $HOME goes first); privacy_check fails the build on
+# ones (the last match wins, so the broad $HOME goes first); package_check fails the build on
 # anything left. Cargo's build.rustflags, not RUSTFLAGS: that would override the per-target
 # flags nsh sets (Windows' static CRT, the web's getrandom backend), which take precedence here.
 cargo_home="${CARGO_HOME:-$HOME/.cargo}"
 export CARGO_BUILD_RUSTFLAGS="${CARGO_BUILD_RUSTFLAGS:-} --remap-path-prefix=$HOME=/home --remap-path-prefix=$cargo_home=/cargo --remap-path-prefix=${RUSTUP_HOME:-$HOME/.rustup}=/rustup --remap-path-prefix=$repo=/reel"
-privacy_check() { python3 -I "$repo/scripts/privacy-check.py" "$@" || die "personal data in the package (above)"; }
+# C and C++ built by crates (QuickJS, ring…) write their source paths too (assert messages).
+export CFLAGS="${CFLAGS:-} -ffile-prefix-map=$HOME=/home -ffile-prefix-map=$repo=/reel"
+export CXXFLAGS="${CXXFLAGS:-} -ffile-prefix-map=$HOME=/home -ffile-prefix-map=$repo=/reel"
+package_check() { python3 -I "$repo/scripts/package-check.py" "$@" || die "the package depends on the build machine (above)"; }
 
 case "$target" in
   check)
@@ -126,8 +129,8 @@ case "$target" in
     "$repo/scripts/libmpv.sh" bundle-macos "$bundle"
     arch="${REEL_MACOS_ARCH:-$(uname -m)}"
     # Zipped without this machine's metadata (owners, extended attributes, file times).
-    python3 -I "$repo/scripts/zip-clean.py" make "$bundle" "$out/reel-macos-$arch.zip"
-    privacy_check "$out/reel-macos-$arch.zip"
+    python3 -I "$repo/scripts/pack.py" zip "$bundle" "$out/reel-macos-$arch.zip"
+    package_check "$out/reel-macos-$arch.zip"
     ;;
 
   linux)
@@ -144,7 +147,7 @@ case "$target" in
     tar --owner=0 --group=0 --numeric-owner --sort=name --mtime="@$(git log -1 --format=%ct)" \
       -czf "$pkg/$(basename "$app_dir").tar.gz" -C "$(dirname "$app_dir")" "$(basename "$app_dir")"
     cp "$(one "$pkg/*.tar.gz")" "$out/reel-linux-$(uname -m).tar.gz"
-    privacy_check "$app_dir"
+    package_check "$app_dir"
     ;;
 
   windows)
@@ -163,12 +166,12 @@ case "$target" in
     rm -f "$pkg"/*.zip
     zip_out="$(cd "$pkg" && pwd)/$(basename "$app_dir").zip"
     # Without this machine's metadata (owners, file times).
-    python3 -I "$repo/scripts/zip-clean.py" make "$app_dir" "$zip_out"
+    python3 -I "$repo/scripts/pack.py" zip "$app_dir" "$zip_out"
     cp "$(one "$pkg/*.zip")" "$out/reel-windows-x86_64.zip"
     for setup in "$pkg"/*-setup.exe; do
       [ -e "$setup" ] && cp "$setup" "$out/reel-windows-x86_64-setup.exe"
     done
-    privacy_check "$out/reel-windows-x86_64.zip"
+    package_check "$out/reel-windows-x86_64.zip"
     ;;
 
   android)
@@ -192,7 +195,7 @@ case "$target" in
     # reel's own Java (native views: app/android), which nsh does not package.
     "$repo/scripts/android-views.sh" "$(one "$pkg/*.apk")"
     cp "$(one "$pkg/*.apk")" "$out/reel-android-$suffix.apk"
-    privacy_check "$out/reel-android-$suffix.apk"
+    package_check "$out/reel-android-$suffix.apk"
     ;;
 
   ios-simulator)

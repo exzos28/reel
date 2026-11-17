@@ -1,6 +1,6 @@
 # The site with its downloads (scripts/site-deploy.sh). Static: no state, no secrets.
 app = "reel-site"
-primary_region = "waw"
+primary_region = "fra"
 
 [build]
   dockerfile = "Dockerfile"

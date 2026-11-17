@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Fails when a package carries the builder's personal data.
+"""Checks a package before it is published: it must not depend on the machine it was built on.
 
-Usage: scripts/privacy-check.py <file or directory>...
+Usage: scripts/package-check.py [--allow <text>]... <file or directory>...
+
+--allow: text that may contain a word looked for (a public address such as the downloads
+repository's URL); it is taken out before looking.
 
 Looks through every file (and every file inside .zip, .apk, .tpk, .wgt and .ipa archives,
 nested ones included) for what identifies whoever built it, read from this machine at run time
@@ -92,13 +95,25 @@ def scan(name, data, found, words):
         except tarfile.TarError:
             pass
     low = data.lower()
+    for a in ALLOWED:
+        low = low.replace(a, b"")
     for w in words:
         n = low.count(w)
         if n:
             found.append((name, w.decode(), n))
 
 
-def main(paths):
+ALLOWED = []
+
+
+def main(argv):
+    paths = []
+    while argv:
+        a = argv.pop(0)
+        if a == "--allow" and argv:
+            ALLOWED.append(argv.pop(0).lower().encode())
+        else:
+            paths.append(a)
     if not paths:
         print(__doc__.strip(), file=sys.stderr)
         return 2
@@ -114,11 +129,11 @@ def main(paths):
     for name, what, n in found:
         # What was found is named by its kind, so the log does not repeat it.
         kind = what if what.startswith("meta:") else "home directory" if what.startswith("/") else "personal word"
-        print(f"privacy-check: {name}: {kind} ({len(what)} chars) x{n}", file=sys.stderr)
+        print(f"package-check: {name}: {kind} ({len(what)} chars) x{n}", file=sys.stderr)
     if found:
-        print(f"privacy-check: {len(found)} file(s) carry personal data", file=sys.stderr)
+        print(f"package-check: {len(found)} file(s) carry personal data", file=sys.stderr)
         return 1
-    print(f"privacy-check: clean ({len(words)} words checked)", file=sys.stderr)
+    print(f"package-check: clean ({len(words)} words checked)", file=sys.stderr)
     return 0
 
 

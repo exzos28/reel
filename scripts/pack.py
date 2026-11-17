@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Zip archives without the builder's metadata.
+"""Reproducible archives: the same files make the same archive, byte for byte, on any machine.
 
 Usage:
-  scripts/zip-clean.py make <dir> <out.zip>   zips <dir> (its name as the top folder)
-  scripts/zip-clean.py rewrite <archive>      rewrites a zip, .apk or .ipa in place
+  scripts/pack.py zip <dir> <out.zip>   zips <dir> (its name as the top folder)
+  scripts/pack.py rewrite <archive>     rewrites a zip, .apk or .ipa in place
 
-What is left out: owners (Unix UID/GID extra fields), extended attributes and resource forks
-(__MACOSX/, ._ files), the extra fields' own times, and the files' times: every entry gets the
-same time, SOURCE_DATE_EPOCH (else the last commit's, else 1980-01-01). What stays: names,
-contents, permissions and symlinks, and each entry's compression as it was (an APK keeps its
-native libraries and resources.arsc stored, as Android wants them; align and sign after this).
+Every entry gets the same time, SOURCE_DATE_EPOCH (else the last commit's, else 1980-01-01), and
+what depends on the machine is not written: owners (Unix UID/GID extra fields), extended
+attributes and resource forks (__MACOSX/, ._ files). Names, contents, permissions and symlinks
+stay, and each entry keeps its compression (an APK's native libraries and resources.arsc stay
+stored, as Android wants them; align and sign after this).
 """
 import os
 import stat
@@ -86,7 +86,7 @@ def rewrite(path):
 
 
 def main(argv):
-    if len(argv) == 3 and argv[0] == "make":
+    if len(argv) == 3 and argv[0] == "zip":
         make(argv[1], argv[2])
     elif len(argv) == 2 and argv[0] == "rewrite":
         rewrite(argv[1])
