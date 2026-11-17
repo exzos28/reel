@@ -125,7 +125,8 @@ case "$target" in
     # which plays no MKV ("This file's format does not play on this device").
     "$repo/scripts/libmpv.sh" bundle-macos "$bundle"
     arch="${REEL_MACOS_ARCH:-$(uname -m)}"
-    ditto -c -k --keepParent "$bundle" "$out/reel-macos-$arch.zip"
+    # Zipped without this machine's metadata (owners, extended attributes, file times).
+    python3 -I "$repo/scripts/zip-clean.py" make "$bundle" "$out/reel-macos-$arch.zip"
     privacy_check "$out/reel-macos-$arch.zip"
     ;;
 
@@ -139,7 +140,9 @@ case "$target" in
     app_dir="$(dirname "$(one "$pkg/*/*.desktop")")"
     cp "$("$repo/scripts/libmpv.sh" fetch linux)" "$app_dir/libmpv.so.2"
     rm -f "$pkg"/*.tar.gz
-    tar -czf "$pkg/$(basename "$app_dir").tar.gz" -C "$(dirname "$app_dir")" "$(basename "$app_dir")"
+    # Without this machine's metadata: root as the owner, the last commit's time on every file.
+    tar --owner=0 --group=0 --numeric-owner --sort=name --mtime="@$(git log -1 --format=%ct)" \
+      -czf "$pkg/$(basename "$app_dir").tar.gz" -C "$(dirname "$app_dir")" "$(basename "$app_dir")"
     cp "$(one "$pkg/*.tar.gz")" "$out/reel-linux-$(uname -m).tar.gz"
     privacy_check "$app_dir"
     ;;
@@ -159,7 +162,8 @@ case "$target" in
     cp "$("$repo/scripts/libmpv.sh" fetch windows)" "$app_dir/libmpv-2.dll"
     rm -f "$pkg"/*.zip
     zip_out="$(cd "$pkg" && pwd)/$(basename "$app_dir").zip"
-    (cd "$(dirname "$app_dir")" && zip -q -r -X "$zip_out" "$(basename "$app_dir")")
+    # Without this machine's metadata (owners, file times).
+    python3 -I "$repo/scripts/zip-clean.py" make "$app_dir" "$zip_out"
     cp "$(one "$pkg/*.zip")" "$out/reel-windows-x86_64.zip"
     for setup in "$pkg"/*-setup.exe; do
       [ -e "$setup" ] && cp "$setup" "$out/reel-windows-x86_64-setup.exe"

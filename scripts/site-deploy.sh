@@ -12,8 +12,9 @@
 #   reel-tv.wgt           hosts/tizen/out/reel-tv-v*.wgt
 #   reel-linux.tar.gz     app/.nsh/dist/linux/reel-linux-*.tar.gz, or dist-linux/
 #   reel-windows-setup.exe app/.nsh/dist/windows/*-setup.exe, or dist-windows/
-# A kind with no package is left out (its link answers 404) and named in the output. Every file
-# goes through scripts/privacy-check.py first. --dry-run builds the context and stops there.
+# A kind with no package, or whose package fails scripts/privacy-check.py (it would publish
+# personal data), is left out (its link answers 404) and named in the output. --dry-run builds
+# the context and stops there.
 set -euo pipefail
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
@@ -46,6 +47,11 @@ take() {
   local name="$1"; shift
   local f; f="$(newest "$@")"
   if [ -z "$f" ]; then missing+=("$name"); return; fi
+  if ! python3 -I "$repo/scripts/privacy-check.py" "$f" 2> "$ctx/check.log"; then
+    log "$name: ${f#"$repo"/} carries personal data; left out (rebuild it with scripts/build.sh)"
+    missing+=("$name")
+    return
+  fi
   log "$name <- ${f#"$repo"/}"
   cp "$f" "$ctx/www/downloads/$name"
 }
@@ -59,7 +65,7 @@ take reel-windows-setup.exe "$repo"/app/.nsh/dist/windows/*-setup.exe "$repo"/di
 python3 -I "$repo/scripts/privacy-check.py" "$ctx/www" || die "personal data in what would be published (above)"
 (cd "$ctx/www/downloads" && shasum -a 256 -- * > SHA256SUMS.txt 2> /dev/null) || true
 
-[ "${#missing[@]}" -eq 0 ] || log "no package for: ${missing[*]} (their links answer 404)"
+[ "${#missing[@]}" -eq 0 ] || log "not published: ${missing[*]} (their links answer 404)"
 du -sh "$ctx/www/downloads" >&2
 if [ "$dry" = 1 ]; then
   ls -la "$ctx/www/downloads" >&2
