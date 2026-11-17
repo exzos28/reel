@@ -72,5 +72,15 @@ if [ "$dry" = 1 ]; then
   exit 0
 fi
 command -v gh > /dev/null || die "gh not found"
-gh release create "v$version" "$stage"/* --repo "$releases" --title "reel $version" --notes "$notes" --latest
+# The release first, then its files one by one with a few tries each: a large upload can time
+# out (HTTP 408), and gh drops the whole release when one fails during create.
+gh release create "v$version" --repo "$releases" --title "reel $version" --notes "$notes" --latest
+for f in "$stage"/*; do
+  for try in 1 2 3; do
+    gh release upload "v$version" "$f" --repo "$releases" --clobber && break
+    [ "$try" = 3 ] && die "could not upload $(basename "$f")"
+    log "retrying $(basename "$f")"
+    sleep 5
+  done
+done
 log "published: https://github.com/$releases/releases/tag/v$version"
