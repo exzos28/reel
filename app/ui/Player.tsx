@@ -137,8 +137,13 @@ export function Player() {
   const row = signal<Row>("scrubber");
   const button = signal(PLAY_BUTTON);
   /** The buttons this device has: full screen only where the window can fill the screen. */
+  /** The episode playing, from its key (`…:s3e10`): a start from Continue watching names no season. */
+  const episodeOf = () => {
+    const m = /:s(\d+)e(\d+)$/.exec(what()?.id ?? "");
+    return m ? { season: Number(m[1]), episode: Number(m[2]) } : null;
+  };
   const buttons: ButtonId[] = BUTTONS.filter(
-    (b) => (b !== "fullscreen" || caps.fullscreen) && (b !== "episodes" || what()?.season != null),
+    (b) => (b !== "fullscreen" || caps.fullscreen) && (b !== "episodes" || episodeOf() != null),
   );
   /** The show's episodes in a panel (a series only). */
   const episodesOpen = signal(false);
@@ -519,11 +524,11 @@ export function Player() {
           {(w) => (
             <>
               {/* A tap beside the panel closes it, as the tracks panel's does. */}
-              <View role="button" accessibilityLabel={t("player.close_episodes")} onPress={() => episodesOpen.set(false)} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+              <View role="button" accessibilityLabel={t("player.close_episodes")} onPress={() => episodesOpen.set(false)} style={panelBackdrop} />
               <PlayerEpisodes
                 show={() => w().title}
-                season={() => w().season ?? 1}
-                episode={() => w().episode ?? 1}
+                season={() => episodeOf()?.season ?? w().season ?? 1}
+                episode={() => episodeOf()?.episode ?? w().episode ?? 1}
                 onPlay={(e) => {
                   episodesOpen.set(false);
                   play({ id: e.id, season: e.season, episode: e.number, title: w().title });
@@ -535,7 +540,7 @@ export function Player() {
         </If>
         <If when={panel()}>
           {/* A tap beside the panel closes it, as a sheet's does. */}
-          <View role="button" accessibilityLabel={t("player.close_tracks")} onPress={() => panel.set(false)} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+          <View role="button" accessibilityLabel={t("player.close_tracks")} onPress={() => panel.set(false)} style={panelBackdrop} />
           <TracksPanel
             releases={shortReleases}
             audio={() => menu().audio}
@@ -725,6 +730,9 @@ function RoundButton(props: {
 }
 
 /** Audio, Subtitles and Release in one dark panel. */
+/** Under an open panel, over the controls: a press beside the panel closes it. */
+const panelBackdrop: ViewStyle = { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 19 };
+
 /** ✕ in the tracks panel's corner (touch). */
 const panelCloseStyle = (): ViewStyle => ({
   position: "absolute", top: u(14), right: u(14), width: u(56), height: u(56), borderRadius: u(28),
@@ -786,7 +794,7 @@ function TracksPanel(props: {
   return (
     <View
       style={{
-        position: "absolute", top: u(150), right: safe().x, width: u(1020), maxWidth: "90%",
+        position: "absolute", zIndex: 20, top: u(150), right: safe().x, width: u(1020), maxWidth: "90%",
         flexDirection: "row", padding: u(26), borderRadius: radius() + u(26), borderCurve: "continuous", backgroundColor: colors.card(),
       }}
     >

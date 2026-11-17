@@ -29,6 +29,9 @@ const trackStyle = (): ViewStyle => ({ height: u(6), borderRadius: u(3), backgro
 
 export function PlayerVolume(props: { onUse: () => void }) {
   const width = signal(0);
+  /** A press on the bar starts a drag: the level follows the pointer until it is let go. */
+  const dragging = signal(false);
+  const follow = (x: number) => width() > 0 && set(x / width());
   const set = (v: number) => {
     volume.set(Math.min(1, Math.max(0, v)));
     if (volume() > 0) muted.set(false);
@@ -51,7 +54,11 @@ export function PlayerVolume(props: { onUse: () => void }) {
         accessibilityLabel={t("player.volume")}
         accessibilityValue={{ min: 0, max: 100, now: Math.round(playVolume() * 100) }}
         onLayout={(e) => width.set(e.bounds.size.width)}
-        onPress={(e) => width() > 0 && set(e.position.x / width())}
+        onPressDown={(e) => (dragging.set(true), follow(e.position.x))}
+        onMouseMove={(e) => dragging() && follow(e.position.x)}
+        onPressUp={() => dragging.set(false)}
+        onMouseUp={() => dragging.set(false)}
+        onPress={(e) => follow(e.position.x)}
         onWheel={(e) => set(volume() - Math.sign(e.delta.y || -e.delta.x) * WHEEL_STEP)}
         style={barStyle()}
       >

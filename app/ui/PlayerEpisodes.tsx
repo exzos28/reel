@@ -9,7 +9,8 @@ import { onBack } from "./nav";
 import { alpha, colors, focusRing, font, radius, safe, showFocus, ts, type, u } from "./theme";
 
 const panelStyle = (): ViewStyle => ({
-  position: "absolute", top: u(130), bottom: u(60), right: safe().x, width: u(780), maxWidth: "90%",
+  // Over the controls (the scrubber, the times, the volume), which come later in the player.
+  position: "absolute", zIndex: 20, top: u(130), bottom: u(60), right: safe().x, width: u(780), maxWidth: "90%",
   padding: u(26), gap: u(18), borderRadius: radius() + u(26), borderCurve: "continuous", backgroundColor: colors.card(),
 });
 const seasonStyle = (on: boolean, lit: boolean): ViewStyle => ({
