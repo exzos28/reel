@@ -16,7 +16,7 @@ export function SimilarShelf(props: { items: () => Summary[]; focusedAt: () => n
   const win = rowWindow({ line, focusedAt: props.focusedAt, step });
   return (
     <View style={{ gap: u(22) }}>
-      <SectionTitle text={() => t("about.similar")} inset />
+      <SectionTitle text={() => t("about.similar")} inset rail={line} />
       <Rail ctl={line} gap={24} top={0} bottom={24}>
         <RowGap window={win} step={step} gap={24} />
         <Each of={props.items().slice(win().from, win().to)} key={(s) => s.id}>

@@ -43,6 +43,14 @@ export interface ScrollCtl {
   content?: ViewRef;
   /** @internal The scroll view's `testID`: a TV's web build finds its element by it (platform/scroll.slide). */
   domId: string;
+  /** Moves the view by `delta` points, gliding, within its content: the wheel where reel
+   * scrolls it itself (Windows, Linux) and the arrows. Moves in a row add up. */
+  nudge(delta: number): void;
+  /** Moves the view by most of its length, `dir` 1 forward, -1 back (a row's arrows). */
+  page(dir: 1 | -1): void;
+  /** Whether it can move back (`atStart` false) or on (`atEnd` false), from the last measure. */
+  atStart: ReturnType<typeof signal<boolean>>;
+  atEnd: ReturnType<typeof signal<boolean>>;
 }
 
 let scrollers = 0;
@@ -54,6 +62,10 @@ let scrollers = 0;
 export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number) => number; memory?: string }): ScrollCtl {
   const horizontal = !!opts.horizontal;
   const remember = (offset: number) => {
+    // The row's arrows: back is off at the start; on is off only where a move found the end,
+    // until the view moves back from it.
+    if ((ctl.offset() ?? 0) > offset) ctl.atEnd.set(false);
+    ctl.atStart.set(offset <= 1);
     ctl.offset.set(offset);
     if (opts.memory) offsets.set(opts.memory, offset);
   };
@@ -103,9 +115,38 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     }
     go(target, !first);
   };
+  /** The view's and its content's lengths, measured now. */
+  const extent = async () => {
+    const scroll = ctl.scroll();
+    if (!scroll || !ctl.content) return null;
+    const [s, c] = await Promise.all([scroll.measure(), ctl.content.measure()]);
+    if (!s || !c) return null;
+    const length = horizontal ? "width" : "height";
+    return { viewport: s.bounds.size[length], content: c.bounds.size[length] };
+  };
+  /** Where a glide of `nudge` is heading (several wheel notches add up to it). */
+  let heading: number | null = null;
+  const nudge = async (delta: number) => {
+    const e = await extent();
+    if (!e) return;
+    const end = Math.max(0, e.content - e.viewport);
+    const from = heading ?? driver.at();
+    const target = Math.min(end, Math.max(0, from + delta));
+    heading = target;
+    ctl.atStart.set(target <= 1);
+    ctl.atEnd.set(target >= end - 1);
+    go(target, true);
+    setTimeout(() => heading === target && (heading = null), 400);
+  };
   const ctl: ScrollCtl = {
     horizontal,
     domId,
+    nudge,
+    page(dir) {
+      extent().then((e) => e && nudge(dir * e.viewport * 0.85));
+    },
+    atStart: signal(true),
+    atEnd: signal(false),
     offset: signal(0),
     remember(offset) {
       remember(offset);

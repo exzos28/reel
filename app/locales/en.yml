@@ -2,6 +2,8 @@ app:
   name: reel
 
 nav:
+  row_back: Back in this row
+  row_on: On in this row
   home: Home
   movies: Movies
   shows: Series

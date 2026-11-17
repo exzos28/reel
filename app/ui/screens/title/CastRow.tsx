@@ -56,7 +56,7 @@ export function CastRow(props: { cast: () => CastMember[]; focusedAt: () => numb
   const line = scroller({ horizontal: true, anchor: () => safe().x });
   return (
     <View style={{ gap: u(18) }}>
-      <SectionTitle text={() => t("about.cast")} inset />
+      <SectionTitle text={() => t("about.cast")} inset rail={line} />
       <Rail ctl={line} gap={20} top={0} bottom={8}>
         <Each of={props.cast()} key="index">
           {(p, i) => (

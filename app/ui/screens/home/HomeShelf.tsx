@@ -28,7 +28,7 @@ export function HomeShelf(props: {
   const win = rowWindow({ line, focusedAt: props.focusedAt, step });
   return (
     <View ref={props.blockRef} style={{ gap: u(22) }}>
-      <SectionTitle text={props.title ?? (() => t(`shelf.${props.shelf().id}`))} inset />
+      <SectionTitle text={props.title ?? (() => t(`shelf.${props.shelf().id}`))} inset rail={line} />
       <LazyBlock page={props.page} eager={props.eager} height={() => u(198 + 110)}>
       <Rail ctl={line} gap={24} top={0} bottom={24}>
         <RowGap window={win} step={step} gap={24} />

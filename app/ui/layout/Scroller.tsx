@@ -4,9 +4,17 @@
 import { Scroll, signal, View, type JSX, type ScrollEvent, type ScrollRef, type ViewRef, type ViewStyle } from "nsh";
 import { Scrollbar } from "nsh/base";
 import { alpha, colors, density, u } from "../theme";
+import { chrome } from "./chrome";
 import { stopAll, type ScrollCtl } from "./scrollCtl";
 
 export { scroller, type Follow, type Placement, type ScrollCtl } from "./scrollCtl";
+
+/** Windows and Linux: reel scrolls with the wheel itself, faster than the system's 48 px a notch
+ * and gliding (notches in a row add up, so it coasts); a Mac's trackpad and wheel keep the
+ * system's, which already coast. */
+const OWN_WHEEL = chrome === "windows" || chrome === "linux";
+/** Points a wheel notch moves (it reports lines: three a notch). */
+const POINTS_PER_LINE = 40;
 
 /** How long the bar stays after the last scroll or pointer move, ms. */
 const BAR_IDLE = 1000;
@@ -69,11 +77,25 @@ export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; onScroll?: 
     hide = setTimeout(() => shown.set(false), BAR_IDLE);
   };
   return (
-    <View style={props.style} onMouseMove={poke} onWheel={stopAll}>
+    <View
+      style={props.style}
+      onMouseMove={poke}
+      onWheel={(e) => {
+        stopAll();
+        if (!OWN_WHEEL) return; // a Mac turns Shift + wheel sideways on its own
+        const scale = e.deltaMode === "lines" ? POINTS_PER_LINE : 1;
+        // A row moves with a sideways wheel, or the wheel with Shift; a page with
+        // the wheel, not with Shift (that one is the row's under the pointer).
+        const delta = c.horizontal ? (e.delta.x || (e.modifiers.shift ? e.delta.y : 0)) : e.modifiers.shift ? 0 : e.delta.y;
+        if (delta !== 0) c.nudge(delta * scale);
+      }}
+    >
       <Scroll
         ref={(r: ScrollRef) => c.scroll.set(r)}
         testID={c.domId}
         horizontal={c.horizontal}
+        // Where reel moves it with the wheel itself, the system's wheel is off (it would move it too).
+        scrollable={!OWN_WHEEL}
         scrollbar={false}
         // No overscroll bounce anywhere: content stops at its edges.
         bounces={false}

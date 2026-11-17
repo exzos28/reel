@@ -181,6 +181,7 @@ export function BrowseScreen(props: { page: Page }) {
       <PageFrame ctl={page} kind="root" title={() => t(`browse.${props.page}.title`)} topRef={page.follow(() => zone() === "nav", "start")}>
         <BrowseHeader page={props.page} />
         <Trending
+          title={() => t(`browse.${props.page}.trending`)}
           items={() => data().trending}
           airs={props.page !== "movies"}
           focusedAt={() => (zone() === "trending" ? trend() : null)}
