@@ -15,6 +15,7 @@
 cd app
 set -a; . ../.env; set +a
 nsh run                       # on this machine; --target ios, android, macos, linux, windows
+../dev/run-mac.sh [--fresh]   # the Mac app as it ships (.env, libmpv); --fresh: as a new install
 nsh check                     # types of the Rust crate and the TSX
 nsh test                      # the core's and the UI's tests, headless
 cargo test --workspace        # the core's crates
