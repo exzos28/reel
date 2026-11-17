@@ -40,11 +40,11 @@ with a 120 ms ease, nothing else animates on its own.
 │  [still of the focused film, dimmed, right 60%]               │
 │  Metropolis                                                   │
 │  1927 · 2 h 33 min                     ← title block left     │
-│  Продолжить с 1:12:40          [ Смотреть ]                   │
+│  Resume from 1:12:40           [ Watch ]                      │
 │                                                               │
-│  Продолжить                                                   │
+│  Continue watching                                            │
 │  [▣] [▢] [▢] [▢] [▢] [▢]      ← focused poster lit by beam    │
-│  Качается                                                     │
+│  Loading                                                      │
 │  [▢ 34%] [▢ 81%]                                              │
 └──────────────────────────────────────────────────────────────┘
 ```

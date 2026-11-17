@@ -14,7 +14,7 @@ reel still ships no source. The partner is optional and named at build time
    - The settings page on a phone (opened from the TV's QR): "Rent a ready source in Telegram".
    - The reel app on a phone or a desktop: a button that opens the bot.
 2. **Payment.** The viewer presses Start in Telegram and pays the partner as usual.
-3. **The way back.** The bot sends an "Открыть" button: the template from the payload, with the
+3. **The way back.** The bot sends an "Open" button: the template from the payload, with the
    source filled in.
    - TV: the link opens the TV's settings page on the phone (`/s`, the same page), which offers
      the source to the TV. The TV asks "Use the source from your phone?" with the source's host.
