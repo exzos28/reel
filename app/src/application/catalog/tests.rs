@@ -833,13 +833,18 @@ fn a_new_source_drops_what_the_old_one_found() {
 fn a_phone_plays_the_best_picture_up_to_1080p_when_one_plays_now() {
     let r = |res: u64, gb: f64, peers: u64| serde_json::json!({ "info": { "resolution": res }, "size": gb * 1e9, "seeders": peers, "peers": peers, "seasonPack": false });
     let releases = vec![r(2160, 20.0, 161), r(1080, 8.0, 468)];
-    set_picture_cap(1080);
-    assert_eq!(chosen("film", &releases, 136, 1), Some(1), "a phone: 1080p");
-    set_picture_cap(0);
-    assert_eq!(chosen("film", &releases, 136, 1), Some(0), "a TV: the 4K, which plays now too");
+    assert_eq!(chosen_within(Some(1080), "film", &releases, 136, 1), Some(1), "a phone: 1080p");
+    assert_eq!(chosen_within(None, "film", &releases, 136, 1), Some(0), "a TV: the 4K, which plays now too");
     // Nothing under the cap plays now: the best that does.
-    set_picture_cap(1080);
     let only_4k = vec![r(2160, 20.0, 300), r(1080, 8.0, 3)];
-    assert_eq!(chosen("film", &only_4k, 136, 1), Some(0));
-    set_picture_cap(0);
+    assert_eq!(chosen_within(Some(1080), "film", &only_4k, 136, 1), Some(0));
+}
+
+#[test]
+fn an_episode_dated_after_today_is_upcoming() {
+    assert_eq!(civil(0), [1970, 1, 1]);
+    assert_eq!(civil(20_409), [2025, 11, 17]);
+    assert!(upcoming(Some([2026, 11, 20]), [2026, 11, 17]));
+    assert!(!upcoming(Some([2026, 11, 17]), [2026, 11, 17]), "today's has aired");
+    assert!(!upcoming(None, [2026, 11, 17]));
 }

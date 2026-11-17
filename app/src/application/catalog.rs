@@ -338,6 +338,31 @@ fn year(date: &Value) -> Option<u16> {
 }
 
 /// "2024-11-20" → [2024, 11, 20].
+/// Today's date, UTC, as `[year, month, day]` (a civil date from the Unix day count).
+fn today() -> [u32; 3] {
+    let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64);
+    civil(secs.div_euclid(86_400))
+}
+
+/// The civil date of a day count since 1970-01-01 (Howard Hinnant's algorithm).
+fn civil(days: i64) -> [u32; 3] {
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + i64::from(m <= 2);
+    [y as u32, m as u32, d as u32]
+}
+
+/// Whether an episode dated `date` has not aired yet (`today` passed in for tests).
+fn upcoming(date: Option<[u32; 3]>, today: [u32; 3]) -> bool {
+    date.is_some_and(|d| d > today)
+}
+
 fn ymd(date: &Value) -> Option<[u32; 3]> {
     let mut it = date.as_str()?.splitn(3, '-').map(|p| p.parse::<u32>().ok());
     Some([it.next()??, it.next()??, it.next()??])
@@ -672,6 +697,12 @@ pub fn set_picture_cap(lines: u32) {
 /// device's picture cap when one under it plays now), else the one most people share. An index
 /// into `releases`.
 fn chosen(key: &str, releases: &[Value], minutes: u32, episodes: u32) -> Option<usize> {
+    let cap = *PICTURE_CAP.lock().unwrap();
+    chosen_within(cap, key, releases, minutes, episodes)
+}
+
+/// `chosen` with the picture cap given (tests pass it rather than set the process-wide one).
+fn chosen_within(cap: Option<u32>, key: &str, releases: &[Value], minutes: u32, episodes: u32) -> Option<usize> {
     if releases.is_empty() {
         return None;
     }
@@ -683,7 +714,6 @@ fn chosen(key: &str, releases: &[Value], minutes: u32, episodes: u32) -> Option<
     // A season plays from a pack when there is one: it holds every episode.
     let packs = parse_season_key(key).is_some() && releases.iter().any(|r| r["seasonPack"] == true);
     let rs = releases.iter().enumerate().filter(|(_, r)| !packs || r["seasonPack"] == true);
-    let cap = *PICTURE_CAP.lock().unwrap();
     let within = |r: &Value| cap.is_none_or(|c| r["info"]["resolution"].as_u64().is_none_or(|h| h as u32 <= c));
     let now = rs.clone().filter(|(_, r)| plays_now(peers(r), mbit(r, minutes, episodes)));
     now.clone()
@@ -955,6 +985,9 @@ fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
         }),
         (None, _) => None,
     };
+    // An episode that has not aired is in no release yet: it shows its date, and does not play.
+    let airs = upcoming(ymd(&ep["airDate"]), today());
+    let in_release = if airs { None } else { in_release };
     let quality = pick.as_ref().filter(|_| in_release != Some("no")).map(quality);
     json!({
         "id": key,
@@ -975,7 +1008,9 @@ fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
         // "yes", "unknown" (its name does not say), "no" (pick another), "own"
         // (a release picked for it); null while its season is searched.
         "inRelease": in_release,
-        "playable": has_source(),
+        // Not aired yet: `date` is when it airs.
+        "upcoming": airs,
+        "playable": has_source() && !airs,
     })
 }
 
@@ -1193,6 +1228,10 @@ fn interleave(a: Vec<Value>, b: Vec<Value>) -> Vec<Value> {
 fn continuing() -> Vec<Value> {
     let mut out = Vec::new();
     for (_, e) in progress::recent().into_iter().take(20) {
+        // A start under a minute in (one recorded before the minute counted) is not continued.
+        if !e.watched && e.position < progress::MIN_POSITION {
+            continue;
+        }
         let Some(t) = meta(&Call::Title(e.title.clone())) else { continue };
         let info = Info { id: e.title.clone(), ..from_title(&t) };
         if !info.show && e.watched {

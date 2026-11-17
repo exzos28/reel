@@ -36,6 +36,11 @@ RUN set -eu; base=https://download.tizen.org/sdk/tizenstudio/official/binary; mk
     printf 'TIZEN_SDK_INSTALLED_PATH=%s\nTIZEN_SDK_DATA_PATH=%s\n' "$TIZEN_SDK" "$TIZEN_SDK-data" > "$TIZEN_SDK/sdk.info"; \
     mkdir -p "$TIZEN_SDK-data"; chmod +x "$TIZEN_SDK"/tools/tizen-core/tz "$TIZEN_SDK"/tools/tizen-core/tgn "$TIZEN_SDK"/tools/tizen-core/ninja "$TIZEN_SDK"/tools/tizen-core/web-privilege-checker; \
     "$TIZEN_SDK/tools/tizen-core/tz" --version
+# The nsh CLI builds its host runner with NSH's Linux platform crates (GTK, WebKit, GStreamer),
+# which GitHub's Ubuntu runner has preinstalled.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libgtk-4-dev libwebkitgtk-6.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+    && rm -rf /var/lib/apt/lists/*
 # NSH's web runtime compiles C for wasm32: a clang with that backend.
 ENV CC_wasm32_unknown_unknown=/usr/lib/llvm-18/bin/clang
 WORKDIR /src

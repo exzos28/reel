@@ -9,7 +9,7 @@
 
 #[cfg(target_os = "android")]
 mod android;
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(target_arch = "arm")))]
 mod linux;
 #[cfg(windows)]
 mod windows;
@@ -18,7 +18,7 @@ pub mod player;
 #[cfg(target_os = "macos")]
 mod view;
 
-#[cfg(any(target_os = "macos", target_os = "linux", windows))]
+#[cfg(any(target_os = "macos", all(target_os = "linux", not(target_arch = "arm")), windows))]
 use std::rc::Rc;
 
 /// Whether libmpv was found (and loaded).
@@ -33,8 +33,8 @@ pub fn register_windows(components: &nsh_platform_windows::Components) {
     components.register("reel/mpv", Rc::new(move |cx| Box::new(windows::MpvComponent::new(cx, lib))));
 }
 
-/// Registers `reel/mpv` when libmpv is there (Linux: a GLArea).
-#[cfg(target_os = "linux")]
+/// Registers `reel/mpv` when libmpv is there (Linux desktops: a GLArea).
+#[cfg(all(target_os = "linux", not(target_arch = "arm")))]
 pub fn register_linux(components: &nsh_platform_linux::Components) {
     let Some(lib) = ffi::lib() else { return };
     components.register("reel/mpv", Rc::new(move |cx| Box::new(linux::MpvComponent::new(cx, lib))));

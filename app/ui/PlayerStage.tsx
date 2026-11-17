@@ -1,6 +1,6 @@
 // The player's waiting states. From Play until the first frame plays (and
 // when the film cannot play) the stage fills the screen: the title's still,
-// darkened and blurred, its logotype in the middle breathing slowly, one
+// darkened (not blurred: the direction refuses blur), its logotype in the middle breathing slowly, one
 // calm line from the core and a thin bar of the film's start coming in; an
 // error takes the same place, still. Once the film plays, a stall only
 // shows a small breathing note over the picture (`BufferingNote`).
@@ -29,7 +29,8 @@ const paperStyle = (paper: string): ViewStyle => ({ ...cover(), backgroundColor:
 /** The veil over the still: dark everywhere, darkest at the bottom. */
 const veilStyle = (): ViewStyle => ({
   ...cover(),
-  backgroundColor: alpha(colors.ink(), 0.62),
+  // Darker than it was with the blur: the sharp still must not compete with the logotype.
+  backgroundColor: alpha(colors.ink(), 0.74),
   backgroundImage: `linear-gradient(0deg, ${colors.ink()} 0%, ${alpha(colors.ink(), 0)} 45%)`,
 });
 const centreStyle = (): ViewStyle => ({
@@ -70,7 +71,7 @@ export function PlayerStage(props: {
   return (
     <View testID="stage" style={{ ...cover(), backgroundColor: colors.ink() }}>
       <If when={s().still} else={<View style={paperStyle(s().paper)} />}>
-        <Image src={s().still!} blurRadius={u(18)} style={stillStyle} />
+        <Image src={s().still!} style={stillStyle} />
       </If>
       <View style={veilStyle()} />
       <View style={centreStyle()}>

@@ -101,6 +101,7 @@ export function HomeScreen() {
           focusedAt={() => (zone() === "hero" ? heroAt() : null)}
           onPlay={playFocused}
           onToggle={heroActions[1]}
+          onOpen={() => openTitle(hero().id)}
         />
       </View>
       <View style={{ gap: u(40), marginTop: u(40) }}>

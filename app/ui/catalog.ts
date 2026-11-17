@@ -167,6 +167,8 @@ export interface Episode {
    * not say), "no" (pick another), "own" (a release picked for it); null while
    * the season is searched. */
   inRelease: "yes" | "unknown" | "no" | "own" | null;
+  /** Not aired yet (`date` is when it airs): it does not play. */
+  upcoming?: boolean;
   playable: boolean;
 }
 
@@ -360,6 +362,10 @@ export function playLabel(s: Summary) {
 
 export const dateText = (date: [number, number, number] | null) =>
   date ? t("fmt.date", { month: t(`month.${date[1]}`), day: date[2], year: date[0] }) : "";
+
+/** "Nov 20": a date without its year (an episode that airs soon). */
+export const shortDate = (date: [number, number, number] | null) =>
+  date ? t("fmt.month_day", { month: t(`month.${date[1]}`), day: date[2] }) : "";
 
 /** The release line: its name (bold) and the rest. */
 export function releaseLine(r: ReleaseLine, withStart = true) {

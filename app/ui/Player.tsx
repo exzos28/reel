@@ -511,6 +511,7 @@ export function Player() {
             picked={picked}
             focused={(col, i) => panelCol() === col && panelRow() === i}
             onPick={(col, i) => { poke(); panelCol.set(col); panelRow.set(i); pick(col, i); }}
+            onClose={() => panel.set(false)}
           />
         </If>
 
@@ -667,6 +668,12 @@ function RoundButton(props: {
 }
 
 /** Audio, Subtitles and Release in one dark panel. */
+/** ✕ in the tracks panel's corner (touch). */
+const panelCloseStyle = (): ViewStyle => ({
+  position: "absolute", top: u(14), right: u(14), width: u(56), height: u(56), borderRadius: u(28),
+  alignItems: "center", justifyContent: "center", backgroundColor: colors.raise(),
+});
+
 function TracksPanel(props: {
   releases: () => Release[];
   audio: () => TrackOption[];
@@ -674,6 +681,7 @@ function TracksPanel(props: {
   picked: () => Record<number, number>;
   focused: (col: number, i: number) => boolean;
   onPick: (col: number, i: number) => void;
+  onClose: () => void;
 }) {
   /** The focus fill shows only while the keys drive (as the ring does everywhere); a tap only picks. */
   const lit = (col: number, i: number) => props.focused(col, i) && showFocus();
@@ -734,6 +742,15 @@ function TracksPanel(props: {
           selected: r.selected,
         })),
       )}
+      {/* Touch has no Back key on screen: ✕ closes the panel (a tap beside it does too). */}
+      <If when={caps.touch}>
+        <View role="button" accessibilityLabel={t("player.close_tracks")} hitSlop={targetSlop(u(56))} onPress={props.onClose}
+          style={panelCloseStyle()}>
+          <View style={{ transform: "rotate(45deg)" }}>
+            <Icon src={() => plusIcon} size={iconPt(15)} />
+          </View>
+        </View>
+      </If>
     </View>
   );
 }

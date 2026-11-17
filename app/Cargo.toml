@@ -52,9 +52,14 @@ objc2-open-gl = { version = "0.3", features = ["CGLTypes", "CGLCurrent"] }
 objc2-core-video = { version = "0.3", features = ["CVBase"] }
 objc2-core-foundation = { version = "0.3", features = ["CFDate"] }
 
-# Linux: the mpv video view (`src/adapters/mpv/linux.rs`), a GTK GLArea in NSH's GTK 4 platform.
+# Linux: libmpv loaded at run time.
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"
+
+# Linux desktops: the mpv video view (`src/adapters/mpv/linux.rs`), a GTK GLArea in NSH's GTK 4
+# platform. Not 32-bit ARM: that is the Samsung TV's core (hosts/tizen), which has no GTK and draws
+# no native views (the TV's AVPlay plays).
+[target.'cfg(all(target_os = "linux", not(target_arch = "arm")))'.dependencies]
 nsh-platform-linux = { version = "0.5.0", default-features = false }
 gtk4 = { version = "0.11", features = ["v4_14"] }
 

@@ -71,6 +71,8 @@ export function Hero(props: {
   /** As tall as its text (the backdrop still fades out under what follows),
    * so a title screen's next block starts right under the actions. */
   fit?: boolean;
+  /** The title, pressed (a tap or a click): opens the title's page. Keys open it from the card. */
+  onOpen?: () => void;
   /** Room under the actions before what follows, TV pixels (56 when not `fit`, else none). */
   room?: number;
   /** The about keeps the height of three lines and the text stands on the hero's bottom
@@ -84,7 +86,13 @@ export function Hero(props: {
       <Backdrop item={s} height={props.height} left={props.backdropLeft ?? 0} />
       {/* Not fit to its text: room under the actions before what follows. */}
       <View style={props.steadyAbout ? steadyBlockStyle(props.top, props.height) : textBlockStyle(props.top, u(props.room ?? (props.fit ? 0 : 56)))}>
-        <Text style={logotypeStyle(props.titleSize)}>{titleText(s())}</Text>
+        <If when={props.onOpen} else={<Text style={logotypeStyle(props.titleSize)}>{titleText(s())}</Text>}>
+          {(open) => (
+            <View role="link" accessibilityLabel={titleText(s())} onPress={open()} style={{ alignSelf: "flex-start" }}>
+              <Text style={logotypeStyle(props.titleSize)}>{titleText(s())}</Text>
+            </View>
+          )}
+        </If>
         <MetaLine item={s} />
         <Text style={{ ...metaText(), fontSize: ts(24) }}>{genresText(s())}</Text>
         <Text style={aboutStyle(!!props.steadyAbout)}>{aboutText(s())}</Text>

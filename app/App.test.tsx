@@ -34,7 +34,7 @@ test("pressing Play opens the player", async () => {
   // The engine as it is while it looks for the film's metadata.
   const app = await app_({ ...NATIVE, "Engine.status": '{"phase":"resolving","stage":"finding"}' });
   await app.press("Resume 41:12");
-  expect(app.texts()).toContain("Finding people sharing this film");
+  expect(app.texts()).toContain("Finding people sharing it");
   expect(app.shows("label:Back")).toBe(false); // on a TV, the remote's Back key
 });
 

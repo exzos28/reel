@@ -1,6 +1,6 @@
 import { Text, View, type TextStyle, type ViewRef, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
-import { dateText, runtime, type Episode } from "../../catalog";
+import { dateText, runtime, shortDate, type Episode } from "../../catalog";
 import { Icon } from "../../kit/Icon";
 import { rowStyle } from "../../kit/Row";
 import { row } from "../../kit/shape";
@@ -34,6 +34,7 @@ function metaOf(e: Episode) {
 /** Only what differs from the season's release (shown on the button above):
  * "Watched", that the release lacks it, or the quality of a release picked for it. */
 const statusOf = (e: Episode) => {
+  if (e.upcoming) return t("series.airs", { date: shortDate(e.date) });
   if (e.watched) return t("series.watched");
   if (e.inRelease === "no") return t("series.not_in_release");
   return e.inRelease === "own" && e.quality ? e.quality : "";

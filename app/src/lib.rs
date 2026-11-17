@@ -49,7 +49,9 @@ fn windows_components(components: &nsh_platform_windows::Components) {
     mpv::register_windows(components);
 }
 
-/// The mpv video view on Linux (a GTK GLArea), where libmpv is found.
+/// The mpv video view on Linux desktops (a GTK GLArea), where libmpv is found. Not on 32-bit ARM:
+/// the Samsung TV's core, which has no GTK.
+#[cfg(not(target_arch = "arm"))]
 #[native_components(linux)]
 fn linux_components(components: &nsh_platform_linux::Components) {
     mpv::register_linux(components);

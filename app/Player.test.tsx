@@ -54,7 +54,7 @@ test("while the engine looks for people, the stage shows the title and what it d
   const app = await waiting({ phase: "resolving", stage: "finding" });
   expect(app.shows("stage")).toBe(true);
   expect(app.texts()).toContain("DUNE"); // the logotype
-  expect(app.texts()).toContain("Finding people sharing this film");
+  expect(app.texts()).toContain("Finding people sharing it");
   noControls(app);
   await app.keyboard.press("enter"); // nothing to play or pause yet
   noControls(app);
@@ -67,7 +67,7 @@ test("connected, the stage counts the film's start in until the video loads", as
   expect(app.texts()).toContain("Found 12 people, connecting");
   noControls(app);
   const fetching = await waiting({ ...JSON.parse(status), stage: "fetching", start: 42 });
-  expect(fetching.texts()).toContain("Fetching the start of the film, 42%");
+  expect(fetching.texts()).toContain("Fetching the start, 42%");
   expect(fetching.texts()).toContain("streaming at 3.4 MB/s from 37 people");
   noControls(fetching);
   const starting = await waiting(JSON.parse(status));

@@ -85,8 +85,10 @@ export function TitleScreen(props: { id: string }) {
   const cast = () => data().cast;
   const similar = () => data().similar;
   /** An episode its season's release lacks opens the panel to pick one for it. */
-  const playEpisode = (e: Episode) =>
+  const playEpisode = (e: Episode) => {
+    if (e.upcoming) return; // not aired: nothing to play yet
     e.inRelease === "no" ? openPanel(e) : play({ id: e.id, season: e.season, episode: e.number, title: data() });
+  };
   const releasesTitle = () => {
     const e = panelEpisode();
     if (e) return t("releases.title_episode", { episode: episodeCode(e.season, e.number) });

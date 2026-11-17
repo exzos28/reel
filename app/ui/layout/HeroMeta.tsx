@@ -1,6 +1,7 @@
 // The lines under a hero's logotype: the scores with their sources, year,
 // length, the age rating and badges; the release Play uses.
 import { Text, View, type TextStyle } from "nsh";
+import { source } from "../preferences";
 import { badgeText, lengthText, releaseLine, scoreSource, votesText, yearsText, type Score, type Summary } from "../catalog";
 import { Badge } from "../kit/Badge";
 import { row } from "../kit/shape";
@@ -53,9 +54,12 @@ export function MetaLine(props: { item: () => Summary }) {
 /** The release Play uses: its name bold, then size, people sharing, start. */
 export function ReleaseText(props: { item: () => Summary; withStart?: boolean; size?: number }) {
   const line = () => releaseLine(props.item().release!, props.withStart ?? true);
+  const style = () => ({ ...type.meta(), fontSize: ts(props.size ?? 22), color: colors.ash() });
   return (
-    <If when={props.item().release}>
-      <Text style={{ ...type.meta(), fontSize: ts(props.size ?? 22), color: colors.ash() }}>
+    // With a source its line is kept while the release is still searched, so the buttons under it
+    // do not move when it comes in.
+    <If when={props.item().release} else={<If when={source().url !== ""}><Text style={style()}>{" "}</Text></If>}>
+      <Text style={style()}>
         <Text style={{ fontWeight: 500, color: colors.snow() }}>{line().name}</Text>
         {` · ${line().rest}`}
       </Text>

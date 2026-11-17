@@ -80,6 +80,7 @@ fmt:
   years: "%{from}–%{to}"
   day: "%{month} %{day}"
   date: "%{month} %{day}, %{year}"
+  month_day: "%{month} %{day}"
 
 month:
   "1": Jan
@@ -227,6 +228,7 @@ series:
   no_episodes: The episodes of this show are not listed yet.
   watched: Watched
   not_in_release: Not in this release
+  airs: "Airs %{date}"
 
 browse:
   movies:
@@ -297,12 +299,12 @@ player:
   exit_fullscreen: Exit full screen
   stage:
     searching: Looking for a release
-    finding: Finding people sharing this film
+    finding: Finding people sharing it
     connecting: Connecting to people sharing it
     found:
       one: Found 1 person, connecting
       other: "Found %{count} people, connecting"
-    fetching: "Fetching the start of the film, %{percent}%"
+    fetching: "Fetching the start, %{percent}%"
     starting: Starting
   buffering: Buffering
   ahead_seconds: "%{seconds} s ready ahead"
