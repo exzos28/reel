@@ -98,6 +98,20 @@ export function SetupScreen() {
     at.set(0);
   };
   const finish = () => finishSetup();
+  /** Finish pressed before the source was checked (typed, or filled in by a link): it checks it,
+   * and ends the setup once it answers. A source that fails stays on the step, saying why. */
+  const finishing = signal(false);
+  const finishWithSource = () => {
+    if (form.connected()) return finish();
+    finishing.set(true);
+    form.save();
+  };
+  effect(() => {
+    if (finishing() && form.connected()) finish();
+  });
+  effect(() => {
+    if (finishing() && form.result()?.bad) finishing.set(false);
+  });
   const choose = (i: number) => {
     const c = options()[i];
     if (!c) return;
@@ -115,7 +129,7 @@ export function SetupScreen() {
     if (step() < 2) return go(step() + 1);
     // The source: Check saves and checks it; Finish once it connected; Skip leaves it for later.
     if (i === n) form.save();
-    else if (i === n + 1) form.connected() && finish();
+    else if (i === n + 1) form.url().trim() && finishWithSource();
     else finish();
   };
   // A link that opened the app with a source (reel://s?…) goes to the source step, its fields filled.
@@ -178,7 +192,7 @@ export function SetupScreen() {
                   <SourceForm form={form} ownButton={false} />
                   <View style={actionsStyle()}>
                     <Button kind="secondary" label={() => t("setup.source.check")} focused={focused(0)} onPress={() => form.save()} />
-                    <Button kind="primary" label={() => t("setup.source.finish")} focused={focused(1)} disabled={() => !form.connected()} onPress={finish} />
+                    <Button kind="primary" label={() => t("setup.source.finish")} focused={focused(1)} disabled={() => !form.url().trim()} onPress={finishWithSource} />
                   </View>
                   <SourceByPhone />
                 </View>

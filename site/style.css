@@ -77,6 +77,13 @@ section { padding: clamp(3.5rem, 8vw, 6.5rem) 0; }
 .top-links a { display: block; padding: 0.4rem 0.75rem; border-radius: var(--radius); color: #C8C8C8; text-decoration: none; font-size: 0.9375rem; font-weight: 500; }
 .top-links a:hover { color: var(--snow); background: var(--card); }
 @media (max-width: 760px) { .top nav { display: none; } .top .btn { margin-left: auto; } }
+/* GitHub: beside the sections, and alone on a phone (the sections hide there). */
+.gh { display: inline-flex; align-items: center; gap: 0.45rem; margin-left: 1.5rem; color: var(--soft); text-decoration: none; font-weight: 500; }
+.gh:hover { color: var(--snow); }
+.gh svg { width: 1.25rem; height: 1.25rem; fill: currentColor; }
+@media (max-width: 760px) { .gh { margin-left: auto; } .gh span { display: none; } }
+.foot-links { margin-top: 0.5rem; color: var(--ash); font-size: 0.9375rem; }
+.foot-links a { color: var(--soft); }
 
 /* Buttons */
 .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 3rem; padding: 0 1.4rem; border-radius: var(--radius); font-weight: 600; text-decoration: none; white-space: nowrap; }

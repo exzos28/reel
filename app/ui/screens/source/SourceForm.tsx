@@ -24,6 +24,7 @@ export function SourceForm(props: { form: ReturnType<typeof sourceForm>; ownButt
     <View style={{ gap: u(14) }}>
       <Text style={metaText()}>{t("settings.source.url")}</Text>
       <Input
+        testID="source-url"
         value={form.url()}
         onChange={(e) => form.url.set(e.value)}
         onSubmit={form.save}

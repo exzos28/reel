@@ -92,7 +92,7 @@ const firstRun = (result: object) => ({
   }),
 });
 
-test("setup, source step: Check says why a source failed and Finish stays off; once it answers, Finish ends the setup", async () => {
+test("setup, source step: Check says why a source failed and Finish does not end the setup; once it answers, Finish does", async () => {
   let finished = 0;
   const failing = await openApp({ clock: {}, modules: { "app/native": { ...firstRun({ state: "failed", message: "can't reach it" }), "Settings.finishSetup": () => (finished++, null) } } });
   await failing.keyboard.press("down"); // past the language
@@ -101,9 +101,9 @@ test("setup, source step: Check says why a source failed and Finish stays off; o
   await failing.press("label:Check");
   await failing.wait(400);
   expect(failing.texts().some((x) => x.includes("can't reach it"))).toBe(true);
-  let refused = "";
-  await failing.press("label:Finish").catch((e: Error) => (refused = String(e.message ?? e)));
-  expect(refused.includes("disabled")).toBe(true);
+  // Finish checks it again: it still does not answer, so the setup stays.
+  await failing.press("label:Finish");
+  await failing.wait(400);
   expect(finished).toBe(0);
 
   const working = await openApp({ clock: {}, modules: { "app/native": { ...firstRun({ state: "done", caps: { movieImdb: true } }), "Settings.finishSetup": () => (finished++, null) } } });
@@ -112,5 +112,23 @@ test("setup, source step: Check says why a source failed and Finish stays off; o
   await working.wait(400);
   expect(working.texts()).toContain("Connected. It searches by IMDb id.");
   await working.press("label:Finish");
+  expect(finished).toBe(1);
+});
+
+test("setup, source step: Finish on a filled-in source checks it, and ends the setup only once it answers", async () => {
+  let finished = 0;
+  const failing = await openApp({ clock: {}, modules: { "app/native": { ...firstRun({ state: "failed", message: "can't reach it" }), "Settings.finishSetup": () => (finished++, null) } } });
+  for (const _ of [0, 1]) await failing.press("label:Next");
+  await failing.type("source-url", "https://source.example/api");
+  await failing.press("label:Finish");
+  await failing.wait(400);
+  expect(failing.texts().some((x) => x.includes("can't reach it"))).toBe(true);
+  expect(finished).toBe(0);
+
+  const working = await openApp({ clock: {}, modules: { "app/native": { ...firstRun({ state: "done", caps: { movieImdb: true } }), "Settings.finishSetup": () => (finished++, null) } } });
+  for (const _ of [0, 1]) await working.press("label:Next");
+  await working.type("source-url", "https://source.example/api");
+  await working.press("label:Finish"); // no Check first: Finish checks it
+  await working.wait(400);
   expect(finished).toBe(1);
 });
