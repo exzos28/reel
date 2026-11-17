@@ -429,8 +429,7 @@ setup:
     rent_title: Or rent a ready one
     check: Check
     finish: Finish
-    skip: Skip, add it later
-    note: Without a source reel can browse but not play.
+    skip: Skip
   phone:
     title: Or set it up on your phone
     text: "Scan the code with the phone's camera, or open %{url} in its browser. This screen follows along."

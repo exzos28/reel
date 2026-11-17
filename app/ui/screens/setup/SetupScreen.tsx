@@ -190,9 +190,9 @@ export function SetupScreen() {
                   </View>
                 </If>
               </View>
-              <View style={{ ...actionsStyle(), alignItems: "center" }}>
+              {/* Neither way now: Skip, centred under both. */}
+              <View style={{ ...actionsStyle(), alignSelf: "stretch", justifyContent: "center", marginTop: u(56) }}>
                 <Button kind="secondary" label={() => t("setup.source.skip")} focused={focused(2)} onPress={finish} />
-                <Text style={metaText()}>{t("setup.source.note")}</Text>
               </View>
             </If>
           </View>

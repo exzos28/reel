@@ -119,7 +119,7 @@ test("first run: the setup takes the screen, Next walks the steps, Skip ends it 
   expect(app.texts()).toContain("How much space can reel use while playing?");
   await app.press("label:Next");
   expect(app.texts()).toContain("Where should reel find films?");
-  await app.press("label:Skip, add it later");
+  await app.press("label:Skip");
   expect(finished).toBe(1);
   expect(app.shows("tab-bar")).toBe(true);
 });
