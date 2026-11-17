@@ -3,7 +3,7 @@
 // where the device serves its settings page (a TV), its QR code: doing it from a phone, which the
 // screen follows (a source saved there finishes the setup). Up/down move the focus, OK chooses
 // or goes on, Back goes to the previous step.
-import { effect, keymap, signal, Text, View, type ViewStyle } from "nsh";
+import { effect, keymap, signal, Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import checkIcon from "../../icons/check.svg";
 import { byKeys } from "../../focus/keys";
@@ -36,6 +36,7 @@ const stepStyle = (wide: boolean): ViewStyle => ({ flex: 1, maxWidth: wide ? for
  * a rented one. */
 const waysStyle = (): ViewStyle => ({ flexDirection: density === "compact" ? "column" : "row", alignItems: "flex-start", gap: u(64), marginTop: u(28) });
 const wayStyle = (): ViewStyle => ({ flex: density === "compact" ? undefined : 1, alignSelf: "stretch", gap: u(14) });
+const footnoteStyle = (): TextStyle => ({ ...metaText(), textAlign: "center", alignSelf: "center", maxWidth: u(1100), marginTop: u(28) });
 const wayRule = (): ViewStyle => (density === "compact" ? { height: 1, alignSelf: "stretch" } : { width: 1, alignSelf: "stretch" });
 const optionsStyle = (): ViewStyle => ({ gap: u(12), marginTop: u(30) });
 const optionStyle = (selected: boolean, focused: boolean): ViewStyle => ({
@@ -194,6 +195,8 @@ export function SetupScreen() {
               <View style={{ ...actionsStyle(), alignSelf: "stretch", justifyContent: "center", marginTop: u(56) }}>
                 <Button kind="secondary" label={() => t("setup.source.skip")} focused={focused(2)} onPress={finish} />
               </View>
+              {/* What a source is: reel itself does not search for video. */}
+              <Text style={footnoteStyle()}>{t("setup.source.footnote")}</Text>
             </If>
           </View>
           <If when={step() < 2}>
