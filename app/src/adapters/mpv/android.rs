@@ -19,8 +19,10 @@ use super::{ffi, player::Player};
 const PLATFORM: [(&str, &str); 5] = [
     ("gpu-context", "android"),
     ("opengl-es", "yes"),
-    // MediaCodec where the device has the codec, copied back so mpv's renderer draws it.
-    ("hwdec", "mediacodec-copy"),
+    // MediaCodec where the device has the codec: straight into mpv's renderer (an AImageReader
+    // gives the decoder its window; "mediacodec-copy" alone found none and fell back to the
+    // CPU), else copied back.
+    ("hwdec", "mediacodec,mediacodec-copy"),
     ("ao", "audiotrack,opensles"),
     ("force-window", "no"),
 ];

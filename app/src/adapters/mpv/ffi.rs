@@ -1,7 +1,7 @@
 //! libmpv's client and render API, loaded at run time (`dlopen`): the app
 //! builds and runs without it, and uses the native `<Video>` where it is not
 //! found. Where it is looked for: `REEL_LIBMPV` (a path), the app bundle's
-//! `Contents/Frameworks` (what `scripts/bundle-libmpv.sh` puts there), then
+//! `Contents/Frameworks` (what `scripts/libmpv.sh bundle-macos` puts there), then
 //! Homebrew's and /usr/local's lib directories.
 
 use std::{

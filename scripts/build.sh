@@ -114,7 +114,7 @@ case "$target" in
     bundle="$(one "$pkg/*.app")"
     # libmpv for the mpv video view: without it the app falls back to the system player,
     # which plays no MKV ("This file's format does not play on this device").
-    "$repo/scripts/libmpv-macos.sh" bundle "$bundle" || die "no libmpv: run scripts/libmpv-macos.sh build first"
+    "$repo/scripts/libmpv.sh" bundle-macos "$bundle"
     arch="${REEL_MACOS_ARCH:-$(uname -m)}"
     ditto -c -k --keepParent "$bundle" "$out/reel-macos-$arch.zip"
     ;;

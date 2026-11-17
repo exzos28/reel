@@ -2,7 +2,7 @@
 # reel's own native views on Android (app/android/java: the mpv video view and others), added to
 # an APK that `nsh package android` built: NSH packages its own Java only, so this compiles
 # reel's, adds it as the next classesN.dex, adds libmpv and what it needs for the APK's ABIs
-# (from scripts/libmpv-android.sh's cache, when there), aligns and signs the APK again with the
+# (scripts/libmpv.sh: the reel-libmpv release), aligns and signs the APK again with the
 # key scripts/build.sh signs with (REEL_ANDROID_KEYSTORE, else the debug key).
 #
 #   scripts/android-views.sh <app.apk>
@@ -34,7 +34,7 @@ cp "$apk" "$work/in.apk"
 (cd "$work" && zip -q in.apk "classes$n.dex")
 
 # libmpv and its libraries, stored uncompressed (the APK keeps native libraries in place).
-libs="${REEL_LIBMPV_ANDROID_CACHE:-$HOME/Library/Caches/reel/libmpv-android}/libs"
+libs="$("$repo/scripts/libmpv.sh" fetch android)"
 for dir in "$libs"/*/; do
   [ -d "$dir" ] || continue
   abi="$(basename "$dir")"
