@@ -1,8 +1,8 @@
 {
   "name": "reel",
   "id": "app.reel.concept",
-  "version": "0.1.0",
-  "build": 1,
+  "version": "0.1.2",
+  "build": 2,
   "icon": {
     "macos": "icon/icon-macos@2x.png",
     "ios": "icon/icon@2x.png",

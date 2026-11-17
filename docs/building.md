@@ -40,6 +40,8 @@ build/tizen-docker.sh package # out/tizen/reel-tv-v<version>.wgt (in Docker)
 Packages are reproducible archives without the build machine's paths or metadata;
 `build/package-check.py` fails a package that carries them.
 
+All of them, one after another: `build/build-all.sh` (or name the platforms).
+
 ## Release
 
 ```sh
