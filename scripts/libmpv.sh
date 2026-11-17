@@ -102,6 +102,9 @@ case "${1:-}" in
     dylib="$(macos)"
     mkdir -p "$app/Contents/Frameworks"
     cp "$dylib" "$app/Contents/Frameworks/libmpv.2.dylib"
+    # Its debug data names the paths it was built in (a home directory among them): the app
+    # does not need it.
+    strip -S -x "$app/Contents/Frameworks/libmpv.2.dylib" 2>/dev/null
     codesign --force --sign - "$app/Contents/Frameworks/libmpv.2.dylib"
     codesign --force --sign - --preserve-metadata=entitlements "$app"
     ;;

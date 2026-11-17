@@ -84,11 +84,15 @@ build_core() {
     rustup target list --installed | grep -qx "$TRIPLE" || die "rust-std for $TRIPLE missing: rustup target add $TRIPLE (run '$0 check')"
     local target="${CARGO_TARGET_DIR:-$HERE/target}"
     local so="$target/$TRIPLE/release/libreel_tizen_core.so"
+    # No personal data in the package: source paths the compiler writes into the .so name the
+    # builder's home; mapped to neutral ones (the last match wins, $HOME first).
+    local remap="--remap-path-prefix=$HOME=/home --remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo --remap-path-prefix=${RUSTUP_HOME:-$HOME/.rustup}=/rustup --remap-path-prefix=$(cd "$HERE/../.." && pwd)=/reel"
     if [ -n "${REEL_TIZEN_CC:-}" ]; then
         have "$REEL_TIZEN_CC" || die "REEL_TIZEN_CC=$REEL_TIZEN_CC not found"
         log "core: cargo build --target $TRIPLE with $REEL_TIZEN_CC"
         local var; var="$(echo "$TRIPLE" | tr '[:lower:]-' '[:upper:]_')"
         export "CARGO_TARGET_${var}_LINKER=$REEL_TIZEN_CC"
+        export "CARGO_TARGET_${var}_RUSTFLAGS=$remap"
         export "CC_${TRIPLE//-/_}=$REEL_TIZEN_CC"
         export "AR_${TRIPLE//-/_}=${REEL_TIZEN_CC%gcc}ar"
         (cd "$HERE" && cargo build --locked --release -p reel-tizen-core --lib --target "$TRIPLE")
@@ -104,7 +108,7 @@ build_core() {
         local stub="$target/zig-stubs"
         mkdir -p "$stub"
         [ -f "$stub/libatomic.so" ] || printf '' | zig cc -target arm-linux-gnueabi -shared -x c - -o "$stub/libatomic.so"
-        export "CARGO_TARGET_${var}_RUSTFLAGS=-L native=$stub -C link-arg=-Wl,--as-needed"
+        export "CARGO_TARGET_${var}_RUSTFLAGS=-L native=$stub -C link-arg=-Wl,--as-needed $remap"
         have cargo-zigbuild || die "cargo-zigbuild not found (run '$0 check')"
         log "core: cargo zigbuild --target $TRIPLE.$GLIBC"
         (cd "$HERE" && cargo zigbuild --release -p reel-tizen-core --lib --target "$TRIPLE.$GLIBC")
@@ -222,6 +226,7 @@ package() {
     for f in config.xml index.html shell.js shell-config.js icon.png ReelCore.dll libreel_tizen_core.so; do
         unzip -l "$out/$name" | grep -q "$f" || die "$f is missing from $name"
     done
+    python3 -I "$HERE/../../scripts/privacy-check.py" "$out/$name" || die "personal data in $name (above)"
     (cd "$out" && shasum -a 256 "$name" > "SHA256SUMS-tizen.txt")
     ls -l "$out/$name"
 }
