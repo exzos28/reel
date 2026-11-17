@@ -223,8 +223,10 @@ package() {
     [ -f "$work/hybrid.wgt" ] || die "tz pack produced no package"
     local name="reel-tv-v$ver.wgt"
     cp "$work/hybrid.wgt" "$out/$name"
+    # The listing first: `unzip | grep -q` fails under pipefail when grep stops reading early.
+    local listing; listing="$(unzip -l "$out/$name")"
     for f in config.xml index.html shell.js shell-config.js icon.png ReelCore.dll libreel_tizen_core.so; do
-        unzip -l "$out/$name" | grep -q "$f" || die "$f is missing from $name"
+        grep -q "$f" <<< "$listing" || die "$f is missing from $name"
     done
     python3 -I "$HERE/../../scripts/package-check.py" "$out/$name" || die "$name fails the package check (above)"
     (cd "$out" && shasum -a 256 "$name" > "SHA256SUMS-tizen.txt")
