@@ -5,7 +5,7 @@
 //! the others over HTTP from the core (`ui/native.ts`, docs/tizen.md).
 //! New native modules follow the same rule: `#[cfg(not(target_arch = "wasm32"))]`.
 
-// The layers (app/ARCHITECTURE.md): the application on the domain and the ports, the
+// The layers (docs/architecture.md): the application on the domain and the ports, the
 // adapters behind the ports, the interface (these NSH modules and what is served over
 // HTTP), and `wiring`, the one place that puts adapters behind the ports.
 #[cfg(not(target_arch = "wasm32"))]

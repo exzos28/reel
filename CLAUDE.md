@@ -7,15 +7,8 @@ Samsung Tizen TV (first), macOS, Android / Android TV, iOS / iPadOS, Windows, Li
 
 ## Layout
 
-- `app/`: the app, what runs on the devices: UI (`ui/`, TSX), core (`src/`, `domain/`, `engine/`),
-  Android's own Java views (`android/`), texts (`locales/`).
-- `platforms/tizen/`: the Samsung TV app around it (shell, .NET service, the core as a library).
-- `build/`: how it is built and shipped; nothing here runs on a device. `build/build.sh <target>`,
-  `build/tizen.sh`, the Docker images (`build/docker/`), packaging, the release and the site's deploy.
-- `dev/`: tools for development (checks, local TV installs, samples).
-- `site/`: the website. `design/`, `docs/`: design and documentation. `vendor/`: third-party code
-  with reel's patches (librqbit).
-- `out/` (git-ignored): every build's packages, `out/<target>/`.
+The app in `app/` and `platforms/tizen/`, its build and release in `build/`, development tools in
+`dev/`, packages in `out/` (ignored): `docs/structure.md`. Building: `docs/building.md`.
 
 ## Architecture rule: TS/TSX is UI only, everything else is Rust
 
@@ -71,7 +64,7 @@ Samsung Tizen TV (first), macOS, Android / Android TV, iOS / iPadOS, Windows, Li
 
 - `cargo test --workspace`, `cargo build --no-default-features`, `nsh check .`, `nsh test .` and
   `../dev/ui-rules.sh` must pass before every commit. The layers and crates (reel-domain, reel-engine, reel-app) are in
-  `app/ARCHITECTURE.md`.
+  `docs/architecture.md`.
 - `nsh package . --target macos` (with `.env` loaded) for a demo build; `build/build.sh <target>`
   is what CI runs.
 - Network tests are `#[ignore]` and run explicitly with `cargo test -- --ignored <name>`.

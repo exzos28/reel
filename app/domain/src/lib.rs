@@ -1,5 +1,5 @@
 //! reel's domain: the types and decisions every layer shares, with no I/O. See
-//! app/ARCHITECTURE.md.
+//! docs/architecture.md.
 //!
 //! `compat` keeps the device's player profile process-wide (the host sets it once at start);
 //! everything else here is plain data and functions on it.

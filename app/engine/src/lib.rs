@@ -1,4 +1,4 @@
-//! reel's local engine, the adapter behind `Playback` (app/ARCHITECTURE.md):
+//! reel's local engine, the adapter behind `Playback` (docs/architecture.md):
 //!
 //! - `engine`: the librqbit session and its stream server on 127.0.0.1, the jobs, warm-up,
 //!   prefetch, a torrent's file list, the timing log;

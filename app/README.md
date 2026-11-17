@@ -7,7 +7,7 @@ The app itself: a TSX app on [NSH](https://nsh.dev) whose directory is also a Ru
 - `src/`: the core's application layer and its NSH modules (`src/lib.rs`), which the UI calls
   through `app/native`.
 - `domain/`, `engine/`: the core's crates: pure logic, and the torrent engine with the search
-  source (see `ARCHITECTURE.md`).
+  source (see `docs/architecture.md`).
 - `android/`: reel's own Android views (the mpv player), Java.
 - `locales/`: the texts; `icon/`, `fonts/`: assets.
 - `*.test.tsx`, `testEngine.ts`: the UI's headless tests.

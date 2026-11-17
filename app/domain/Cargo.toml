@@ -5,7 +5,7 @@ version = "0.1.0"
 edition = "2024"
 license = "PolyForm-Noncommercial-1.0.0"
 publish = false
-description = "reel's domain types and ports, with no I/O (app/ARCHITECTURE.md)"
+description = "reel's domain types and ports, with no I/O (docs/architecture.md)"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

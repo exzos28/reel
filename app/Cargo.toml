@@ -11,7 +11,7 @@ members = ["domain", "engine"]
 [features]
 default = ["engine"]
 # The torrent engine inside the app (librqbit, the ring-buffer cache, the Torznab source).
-# Without it `Playback` answers that there is no engine on this device (app/ARCHITECTURE.md).
+# Without it `Playback` answers that there is no engine on this device (docs/architecture.md).
 engine = ["dep:reel-engine"]
 
 [dependencies]
@@ -25,7 +25,7 @@ serde = { version = "1", features = ["derive"] }
 # wasm32, where librqbit, tokio networking and sqlite do not build. On a TV the web UI reaches
 # these modules over HTTP instead (platforms/tizen, docs/tizen.md).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-# Domain types and ports (app/ARCHITECTURE.md).
+# Domain types and ports (docs/architecture.md).
 reel-domain = { path = "domain" }
 # The engine inside the app (feature `engine`): librqbit, the ring-buffer cache, the Torznab
 # source (app/engine). The vendored librqbit is patched in by .cargo/config.toml.
