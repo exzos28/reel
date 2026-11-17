@@ -71,7 +71,7 @@ are the tokens above.
 Built from the references the user picked (flystream.net, bingebox.st). **Supersedes Projector
 where they conflict** (hero, palette, poster shape, navigation); Projector's restraint rules still
 apply elsewhere. The user's references also override the "refused defaults" list in
-`.claude/skills/ui-design/SKILL.md` for: hero with gradient fade, floating pill nav, rounded
+the design rules (the generic defaults reel refuses) for: hero with gradient fade, floating pill nav, rounded
 posters with badges. Mockups: `design/concept/*.html`, renders in `design/concept/png/`
 (`design/concept/scripts/render.sh`), images in `design/concept/img/` (public domain, see
 `CREDITS.md`, fetched by `scripts/commons_fetch.py`).
@@ -135,7 +135,7 @@ Phone: title 68, section 19, body 15.
 Built from the user's reference movy.sx. **Supersedes Cinematic and Projector where they conflict**
 (palette, type, nav, hero, cards, focus colours); their reel-specific content rules (release line,
 releases sorted by start speed, buffer-aware scrubber, no downloads) still apply. Like Cinematic,
-the user's reference overrides the "refused defaults" in `.claude/skills/ui-design/SKILL.md` for:
+the user's reference overrides the "refused defaults" in the design rules (the generic defaults reel refuses) for:
 near-neutral black, a hero fading to black, a neo-grotesque UI face. The mockups in
 `design/concept/*.html` now show this direction; shared tokens live in `design/concept/minimal.css`.
 

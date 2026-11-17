@@ -72,7 +72,7 @@ that opens (one line on top of the choices).
 - "Stream details" is a switch row: on/off is the value.
 - The QR card as in setup, on TV, Mac and tablet.
 
-## Review against `.claude/skills/ui-design/SKILL.md`
+## Review against the design rules (the generic defaults reel refuses)
 
 - Not a generic onboarding carousel: no illustrations, no "Welcome to reel!" splash, no dots
   pager; the question is the title, and "Step 1 of 3" is a real sequence (numbers only there).

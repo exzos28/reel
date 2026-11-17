@@ -7,3 +7,9 @@ logs/
 # scripts/linux-docker.sh build output
 /dist-linux/
 /dist-windows/
+
+# Local only: the coding agent's instructions and skills, and internal research notes.
+/CLAUDE.md
+/.claude/
+/design/research-plugin-model.md
+/docs/research-indexers.md
