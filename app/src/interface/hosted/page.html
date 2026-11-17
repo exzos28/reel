@@ -59,7 +59,7 @@ button:disabled{opacity:.5}
 <div id="settings" hidden>
   <section>
     <h2>Search source</h2>
-    <p>The Torznab address of your own Jackett (or Prowlarr, JacRed…) and its API key.</p>
+    <p>A Torznab address and its API key.</p>
     <p id="rent" hidden><a class="button quiet" id="rentLink" rel="noreferrer">Rent a ready source in Telegram</a></p>
     <form id="sourceForm">
       <label for="url">Address</label>
@@ -243,7 +243,7 @@ button:disabled{opacity:.5}
   function showSource(src) {
     $('url').value = src.url;
     $('key').value = '';
-    $('key').placeholder = src.hasKey ? 'Key saved. Type a new one to replace it' : 'The key from your Jackett dashboard (if it has one)';
+    $('key').placeholder = src.hasKey ? 'Key saved. Type a new one to replace it' : 'Its API key (if it has one)';
     $('removeRow').hidden = !src.hasKey;
     $('removeKey').checked = false;
   }

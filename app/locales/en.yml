@@ -344,12 +344,12 @@ settings:
     about: Titles, descriptions and episode names; reel also searches releases by them.
   source:
     title: Search source
-    about: Where reel looks for releases of a film or an episode. Enter the Torznab address of your own Jackett (or Prowlarr, JacRed…) and its API key. reel comes with no source of its own.
+    about: Where reel looks for releases of a film or an episode. A Torznab address and its API key.
     phone: "Scan the code with your phone, or open %{url}"
     url: Address
     url_placeholder: "http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api"
     key: API key
-    key_placeholder: The key from your Jackett dashboard (if it has one)
+    key_placeholder: Its API key (if it has one)
     key_saved: Key saved. Type a new one to replace it
     save: Save and check
     remove: Remove source
@@ -374,11 +374,11 @@ settings:
   # answer (failed), from Settings (edit).
   source_drawer:
     missing_title: Add a search source
-    missing_about: reel plays from releases it finds on your own search source, and there is none yet. Enter the Torznab address of your Jackett (or Prowlarr, JacRed…) and its API key; Play works once it connects.
+    missing_about: reel plays from releases it finds on your own search source, and there is none yet. Enter a Torznab address and its API key; Play works once it connects.
     failed_title: Your search source did not answer
     failed_about: reel could not search it for releases. Check its address and API key, then Save and check; Play works once it connects.
     edit_title: Search source
-    edit_about: "Your Jackett, Prowlarr or JacRed: its Torznab address and API key."
+    edit_about: A Torznab address and its API key.
     link_title: Use this source?
     link_about: A link filled in this source. Save and check to use it, or Back to leave yours as it is.
   # The rows of Settings: a name and the value in effect.
@@ -421,7 +421,7 @@ setup:
     recommended: Recommended
   source:
     title: Where should reel find films?
-    help: "Your Jackett, Prowlarr or JacRed: its Torznab address and API key."
+    help: A Torznab address and its API key.
     check: Check
     finish: Finish
     skip: Skip, add it later
