@@ -99,7 +99,7 @@ package_check() { python3 -I "$repo/build/package-check.py" "$@" || die "the pac
 case "$target" in
   check)
     nsh check .
-    # Builds without the torrent engine must keep compiling (app/ARCHITECTURE.md).
+    # Builds without the torrent engine must keep compiling (docs/architecture.md).
     cargo build --locked --no-default-features -p reel-app
     ;;
 
