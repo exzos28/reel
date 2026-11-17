@@ -144,7 +144,7 @@ case "$target" in
     cp "$("$repo/scripts/libmpv.sh" fetch linux)" "$app_dir/libmpv.so.2"
     rm -f "$pkg"/*.tar.gz
     # Without this machine's metadata: root as the owner, the last commit's time on every file.
-    tar --owner=0 --group=0 --numeric-owner --sort=name --mtime="@$(git log -1 --format=%ct)" \
+    tar --owner=0 --group=0 --numeric-owner --sort=name --mtime="@${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct)}" \
       -czf "$pkg/$(basename "$app_dir").tar.gz" -C "$(dirname "$app_dir")" "$(basename "$app_dir")"
     cp "$(one "$pkg/*.tar.gz")" "$out/reel-linux-$(uname -m).tar.gz"
     package_check "$app_dir"

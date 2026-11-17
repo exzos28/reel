@@ -10,7 +10,8 @@
 #   reel-android.apk       app/.nsh/dist/android/reel-android-*.apk
 #   reel-tv.wgt            hosts/tizen/out/reel-tv-v*.wgt
 #   reel-linux.tar.gz      app/.nsh/dist/linux/reel-linux-*.tar.gz, or dist-linux/
-#   reel-windows-setup.exe app/.nsh/dist/windows/*-setup.exe, or dist-windows/
+#   reel-windows.zip       app/.nsh/dist/windows/reel-windows-*.zip, or dist-windows/
+#                          (scripts/linux-docker.sh windows)
 # Each goes through scripts/package-check.py; a kind with no package, or one that fails it, is
 # left out and named. Needs gh, signed in with access to the repository.
 set -euo pipefail
@@ -55,7 +56,7 @@ take reel-macos.zip "$repo"/app/.nsh/dist/macos/reel-macos-*.zip
 take reel-android.apk "$repo"/app/.nsh/dist/android/reel-android-*.apk
 take reel-tv.wgt "$repo"/hosts/tizen/out/reel-tv-v*.wgt
 take reel-linux.tar.gz "$repo"/app/.nsh/dist/linux/reel-linux-*.tar.gz "$repo"/dist-linux/reel-linux-*.tar.gz
-take reel-windows-setup.exe "$repo"/app/.nsh/dist/windows/*-setup.exe "$repo"/dist-windows/*-setup.exe
+take reel-windows.zip "$repo"/app/.nsh/dist/windows/reel-windows-*.zip "$repo"/dist-windows/reel-windows-*.zip
 
 ls "$stage"/* > /dev/null 2>&1 || die "no package to publish"
 (cd "$stage" && shasum -a 256 -- * > SHA256SUMS.txt)

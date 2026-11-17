@@ -24,7 +24,8 @@ docker_run() {
     -v reel-linux-src:/src \
     -v reel-linux-cargo:/usr/local/cargo/registry \
     -v reel-linux-home:/opt/home -e HOME=/opt/home \
-    -e REEL_TMDB_TOKEN -e REEL_TORZNAB_URL -e REEL_TORZNAB_KEY \
+    -e REEL_TMDB_TOKEN -e REEL_TORZNAB_URL -e REEL_TORZNAB_KEY -e REEL_PARTNER_BOT \
+    -e SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git -C "$here" log -1 --format=%ct)}" \
     "$@"
 }
 
