@@ -20,6 +20,8 @@ env:
   REEL_BUILD: ${{ github.run_number }}
   # Baked in by option_env!; empty (forks, no secret) means the app asks the user for a key.
   REEL_TMDB_TOKEN: ${{ secrets.REEL_TMDB_TOKEN }}
+  # The partner's bot (a repository variable, not a secret): "Rent a ready source".
+  REEL_PARTNER_BOT: ${{ vars.REEL_PARTNER_BOT }}
 
 jobs:
   macos:

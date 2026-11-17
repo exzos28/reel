@@ -116,6 +116,8 @@ jobs:
       - name: Build the package
         env:
           REEL_TMDB_TOKEN: ${{ secrets.REEL_TMDB_TOKEN }}
+          # The partner's bot (a repository variable, not a secret): "Rent a ready source".
+          REEL_PARTNER_BOT: ${{ vars.REEL_PARTNER_BOT }}
         run: |
           if [ "$SHELL_ONLY" = "true" ]; then
             build/tizen.sh package --shell-only out/tizen
