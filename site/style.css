@@ -92,26 +92,32 @@ section { padding: clamp(3.5rem, 8vw, 6.5rem) 0; }
 /* Hero */
 .hero { padding-top: clamp(2.5rem, 6vw, 5rem); }
 .hero-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 3rem; align-items: center; }
-@media (min-width: 1000px) { .hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); } }
+/* The devices take the whole width under the text: seven of them need the room. */
+.hero .shots { margin-top: 1rem; }
 .lead { margin-top: 1.25rem; font-size: 1.1875rem; color: var(--soft); max-width: 34rem; }
 .note { margin-top: 1rem; color: var(--ash); max-width: 34rem; }
 .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2rem; }
 
-/* Drawings of the home screen, one device at a time (shots.js). Inside a screen, sizes are in
+/* Drawings of the home screen on each device. Inside a screen, sizes are in
    pixels of a 1920-wide screen (--p); a phone's in pixels of a 393-wide one. */
 .shots { margin: 0; }
-.shot-stage { position: relative; aspect-ratio: 16 / 10.4; display: grid; place-items: center; }
-.shot { display: none; width: 100%; height: 100%; place-items: center; }
-:root:not([data-shot]) .shot[data-s=tv],
-[data-shot=tv] .shot[data-s=tv], [data-shot=mac] .shot[data-s=mac], [data-shot=windows] .shot[data-s=windows],
-[data-shot=linux] .shot[data-s=linux], [data-shot=ipad] .shot[data-s=ipad], [data-shot=iphone] .shot[data-s=iphone],
-[data-shot=android] .shot[data-s=android] { display: grid; }
+/* Every device at once: the TV and the two monitors at the back, the laptop, the tablet and the
+   phones in front. Sizes and places are shares of the group's width. */
+.family { position: relative; aspect-ratio: 16 / 9.4; }
+.family .shot { position: absolute; }
+.shot[data-s=windows] { left: 0; top: 7%; width: 33%; z-index: 1; }
+.shot[data-s=linux] { right: 0; top: 7%; width: 33%; z-index: 1; }
+.shot[data-s=tv] { left: 22%; top: 0; width: 56%; z-index: 2; }
+.shot[data-s=mac] { left: 2%; top: 47%; width: 40%; z-index: 3; }
+.shot[data-s=ipad] { left: 41%; top: 52%; width: 31%; z-index: 4; }
+.shot[data-s=iphone] { left: 73%; top: 44%; width: 11.5%; z-index: 5; }
+.shot[data-s=android] { left: 86.5%; top: 48%; width: 11.5%; z-index: 5; }
 .scr { position: relative; container-type: inline-size; width: 100%; height: 100%; overflow: hidden; background: var(--ink); }
 .shadowed { box-shadow: 0 0 0 1px #2E2E2E, 0 2rem 4rem rgba(0, 0, 0, 0.6); }
 
 /* TV */
 .shot[data-s=tv] { align-content: center; }
-.tv-screen { width: 100%; aspect-ratio: 16 / 9; border: 0.5rem solid #050505; border-radius: 0.75rem; overflow: hidden;
+.tv-screen { width: 100%; aspect-ratio: 16 / 9; border: 0.4rem solid #050505; border-radius: 0.6rem; overflow: hidden;
   box-shadow: 0 0 0 1px #2E2E2E, 0 2rem 4rem rgba(0, 0, 0, 0.6); }
 .tv-stand { display: block; width: 28%; height: 0.4rem; margin: 0.6rem auto 0; border-radius: 0.2rem; background: #1F1F1F; }
 
@@ -138,20 +144,20 @@ section { padding: clamp(3.5rem, 8vw, 6.5rem) 0; }
 .laptop-base::before { content: ""; display: block; width: 14%; height: 40%; margin: 0 auto; border-radius: 0 0 0.5rem 0.5rem; background: #0F0F0F; }
 
 /* Windows and Linux: a monitor */
-.monitor { width: 92%; }
+.monitor { width: 100%; }
 .monitor-screen { aspect-ratio: 16 / 9.4; padding: 1%; border-radius: 0.6rem; background: #0A0A0A; box-shadow: 0 0 0 1px #2E2E2E, 0 2rem 4rem rgba(0, 0, 0, 0.6); }
 .monitor-screen .scr { border-radius: 0.2rem; }
 .monitor-stand { width: 18%; height: 1.4rem; margin: 0 auto; background: linear-gradient(#1C1C1C, #121212); clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%); }
 
 /* iPad: a tablet, landscape */
-.tablet { width: 84%; aspect-ratio: 4.3 / 3; padding: 2.2%; border-radius: 1.6rem; background: #0A0A0A; box-shadow: 0 0 0 1px #2E2E2E, 0 2rem 4rem rgba(0, 0, 0, 0.6); }
+.tablet { width: 100%; aspect-ratio: 4.3 / 3; padding: 2.2%; border-radius: 1.6rem; background: #0A0A0A; box-shadow: 0 0 0 1px #2E2E2E, 0 2rem 4rem rgba(0, 0, 0, 0.6); }
 .tablet .scr { border-radius: 0.6rem; }
 
 /* Phones: portrait */
-.phone { height: 100%; aspect-ratio: 393 / 852; padding: 0.55rem; border-radius: 2.4rem; background: #0A0A0A; box-shadow: 0 0 0 1px #2E2E2E, 0 2rem 4rem rgba(0, 0, 0, 0.6); }
-.phone .scr { border-radius: 1.9rem; }
-.phone.android { border-radius: 1.8rem; }
-.phone.android .scr { border-radius: 1.35rem; }
+.phone { width: 100%; aspect-ratio: 393 / 852; padding: 4%; border-radius: 17% / 8%; background: #0A0A0A; box-shadow: 0 0 0 1px #2E2E2E, 0 2rem 4rem rgba(0, 0, 0, 0.6); }
+.phone .scr { border-radius: 14% / 6.6%; }
+.phone.android { border-radius: 12% / 5.6%; }
+.phone.android .scr { border-radius: 9% / 4.2%; }
 .island { position: absolute; z-index: 2; left: 50%; top: 2.6cqw; width: 31cqw; height: 9cqw; transform: translateX(-50%); border-radius: 99px; background: #000; }
 .punch { position: absolute; z-index: 2; left: 50%; top: 3.2cqw; width: 6.5cqw; height: 6.5cqw; transform: translateX(-50%); border-radius: 50%; background: #000; }
 .home-bar { position: absolute; z-index: 2; left: 50%; bottom: 2cqw; width: 34cqw; height: 1.3cqw; transform: translateX(-50%); border-radius: 99px; background: #E8E8E8; }
@@ -159,11 +165,6 @@ section { padding: clamp(3.5rem, 8vw, 6.5rem) 0; }
 /* A taller screen than a TV's shows the next shelf too. */
 .ui-shelf.second { top: calc(1050 * var(--p)); }
 
-.shot-tabs { margin-top: 1.25rem; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; }
-.shot-tabs button { height: 2.25rem; padding: 0 0.85rem; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--soft); font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
-.shot-tabs button:hover { color: var(--snow); border-color: var(--ash); }
-.shot-tabs button[aria-selected=true] { background: var(--snow); border-color: var(--snow); color: var(--ink); }
-.shot-tabs button:focus-visible { outline: 2px solid var(--snow); outline-offset: 2px; }
 .shots figcaption { margin-top: 0.9rem; text-align: center; color: var(--ash); font-size: 0.875rem; }
 
 /* The phone's home screen (sizes in pixels of a 393-wide screen). */
@@ -388,7 +389,3 @@ details p { padding: 0 0 1.25rem; color: var(--soft); max-width: 42rem; }
 .foot .wrap { display: grid; gap: 1.5rem; }
 .runner { display: block; width: 100%; height: 150px; }
 .tv-screen .ui-shelf.second, .win-body .ui-shelf.second { display: none; }
-/* On a narrow page a phone's drawing gets a taller stage, or it would be a stamp. */
-@media (max-width: 700px) {
-  [data-shot=iphone] .shot-stage, [data-shot=android] .shot-stage { aspect-ratio: 3 / 4; }
-}

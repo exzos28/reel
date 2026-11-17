@@ -20,13 +20,9 @@
     else if (/Windows/i.test(ua)) d = "windows";
     else if (/Linux|X11/i.test(ua)) d = "linux";
     document.documentElement.setAttribute("data-dev", d);
-    // The drawing of the home screen starts on the same device (shots.js).
-    var shot = { tizen: "tv", android: "android", mac: "mac", windows: "windows", linux: "linux" }[d];
-    if (d === "ios") shot = /iPad/i.test(ua) || /Macintosh/.test(ua) ? "ipad" : "iphone";
-    document.documentElement.setAttribute("data-shot", shot || "tv");
   })();
 </script>
-<link rel="stylesheet" href="style.css?v=20261117a">
+<link rel="stylesheet" href="style.css?v=20261117b">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -78,9 +74,9 @@
       </ul>
     </div>
 
-    <figure class="shots" aria-label="Drawings of reel's home screen on each device">
-      <div class="shot-stage" aria-hidden="true">
-        <div class="shot" data-s="tv" role="tabpanel" id="shot-tv" aria-label="reel's home screen on a TV">
+    <figure class="shots" aria-label="Drawings of reel's home screen on each device it runs on">
+      <div class="family" aria-hidden="true">
+        <div class="shot" data-s="tv">
         <div class="tv-screen"><div class="scr">
         <div class="ui">
         <div class="ui-backdrop"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
@@ -117,7 +113,7 @@
         </div></div>
         <div class="tv-stand"></div>
         </div>
-        <div class="shot" data-s="mac" role="tabpanel" id="shot-mac" aria-label="reel's home screen on a Mac">
+        <div class="shot" data-s="mac">
         <div class="laptop"><div class="laptop-screen"><span class="notch"></span><div class="scr win">
         <div class="win-bar"><span class="lights"><i></i><i></i><i></i></span></div>
         <div class="win-body">
@@ -155,7 +151,7 @@
         </div>
         </div></div></div><div class="laptop-base"></div></div>
         </div>
-        <div class="shot" data-s="windows" role="tabpanel" id="shot-windows" aria-label="reel's home screen on Windows">
+        <div class="shot" data-s="windows">
         <div class="monitor"><div class="monitor-screen"><div class="scr win">
         <div class="win-bar"><span class="wctl"><svg viewBox="0 0 30 20"><path d="M10 10h10"/></svg><svg viewBox="0 0 30 20"><rect x="10" y="5" width="10" height="10"/></svg><svg viewBox="0 0 30 20"><path d="m10 5 10 10m0-10L10 15"/></svg></span></div>
         <div class="win-body">
@@ -193,7 +189,7 @@
         </div>
         </div></div></div><div class="monitor-stand"></div></div>
         </div>
-        <div class="shot" data-s="linux" role="tabpanel" id="shot-linux" aria-label="reel's home screen on Linux">
+        <div class="shot" data-s="linux">
         <div class="monitor"><div class="monitor-screen"><div class="scr win">
         <div class="win-bar"><span class="gclose"><svg viewBox="0 0 20 20"><path d="m7 7 6 6m0-6-6 6"/></svg></span></div>
         <div class="win-body">
@@ -231,7 +227,7 @@
         </div>
         </div></div></div><div class="monitor-stand"></div></div>
         </div>
-        <div class="shot" data-s="ipad" role="tabpanel" id="shot-ipad" aria-label="reel's home screen on an iPad">
+        <div class="shot" data-s="ipad">
         <div class="tablet"><div class="scr">
         <div class="ui">
         <div class="ui-backdrop"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
@@ -267,7 +263,7 @@
         </div>
         </div></div>
         </div>
-        <div class="shot" data-s="iphone" role="tabpanel" id="shot-iphone" aria-label="reel's home screen on an iPhone">
+        <div class="shot" data-s="iphone">
         <div class="phone iphone"><div class="scr">
         <div class="ui ph">
         <div class="ph-status"><b>9:41</b><span class="ph-icons"><i></i><i></i><i></i></span></div>
@@ -299,7 +295,7 @@
         </div>
         <span class="island"></span><span class="home-bar"></span></div></div>
         </div>
-        <div class="shot" data-s="android" role="tabpanel" id="shot-android" aria-label="reel's home screen on an Android phone">
+        <div class="shot" data-s="android">
         <div class="phone android"><div class="scr">
         <div class="ui ph">
         <div class="ph-status"><b>9:41</b><span class="ph-icons"><i></i><i></i><i></i></span></div>
@@ -332,16 +328,7 @@
         <span class="punch"></span><span class="home-bar"></span></div></div>
         </div>
       </div>
-      <div class="shot-tabs" role="tablist" aria-label="Device">
-        <button type="button" role="tab" data-s="tv" aria-controls="shot-tv">TV</button>
-        <button type="button" role="tab" data-s="mac" aria-controls="shot-mac">Mac</button>
-        <button type="button" role="tab" data-s="windows" aria-controls="shot-windows">Windows</button>
-        <button type="button" role="tab" data-s="linux" aria-controls="shot-linux">Linux</button>
-        <button type="button" role="tab" data-s="ipad" aria-controls="shot-ipad">iPad</button>
-        <button type="button" role="tab" data-s="iphone" aria-controls="shot-iphone">iPhone</button>
-        <button type="button" role="tab" data-s="android" aria-controls="shot-android">Android</button>
-      </div>
-      <figcaption>The home screen, drawn for this page. The titles are public-domain films.</figcaption>
+      <figcaption>reel on a TV, a Mac, Windows and Linux, an iPad, an iPhone and Android. Drawn for this page; the titles are public-domain films.</figcaption>
     </figure>
   </div>
 </section>
@@ -457,7 +444,6 @@
   </div>
 </footer>
 <script src="install.js?v=20261117" defer></script>
-<script src="shots.js?v=20261117" defer></script>
 <script src="runner.js?v=20261115c" defer></script>
 </body>
 </html>
