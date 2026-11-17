@@ -346,10 +346,11 @@ settings:
     title: Search source
     about: Where reel looks for releases of a film or an episode. A Torznab address and its API key.
     phone: "Scan the code with your phone, or open %{url}"
-    url: Address
+    # The address is what a source needs; a key only some have (a rented one is all in its address).
+    url: Torznab address (required)
     url_placeholder: "http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api"
-    key: API key
-    key_placeholder: Its API key (if it has one)
+    key: API key (optional)
+    key_placeholder: Only if your source has one
     key_saved: Key saved. Type a new one to replace it
     save: Save and check
     remove: Remove source

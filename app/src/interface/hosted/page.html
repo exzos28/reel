@@ -62,9 +62,9 @@ button:disabled{opacity:.5}
     <p>A Torznab address and its API key.</p>
     <p id="rent" hidden><a class="button quiet" id="rentLink" rel="noreferrer">Rent a ready source in Telegram</a></p>
     <form id="sourceForm">
-      <label for="url">Address</label>
+      <label for="url">Torznab address (required)</label>
       <input id="url" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api">
-      <label for="key">API key</label>
+      <label for="key">API key (optional)</label>
       <input id="key" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
       <div class="check" id="removeRow" hidden><input type="checkbox" id="removeKey"><label for="removeKey" style="margin:0;font-size:15px;color:inherit">Remove the saved key</label></div>
       <div class="row"><button type="submit" id="save">Save and check</button></div>
@@ -243,7 +243,7 @@ button:disabled{opacity:.5}
   function showSource(src) {
     $('url').value = src.url;
     $('key').value = '';
-    $('key').placeholder = src.hasKey ? 'Key saved. Type a new one to replace it' : 'Its API key (if it has one)';
+    $('key').placeholder = src.hasKey ? 'Key saved. Type a new one to replace it' : 'Only if your source has one';
     $('removeRow').hidden = !src.hasKey;
     $('removeKey').checked = false;
   }

@@ -55,8 +55,9 @@ export function SourceForm(props: { form: ReturnType<typeof sourceForm>; ownButt
               <Text style={labelText(colors.snow())}>{t("settings.source.remove")}</Text>
             </View>
           </If>
-          <If when={form.result()}>{(r) => <Text style={resultStyle(r().bad)}>{r().text}</Text>}</If>
         </View>
+        {/* Under the buttons, the form's full width: beside them it was squeezed into a column. */}
+        <If when={form.result()}>{(r) => <Text style={resultStyle(r().bad)}>{r().text}</Text>}</If>
       </If>
     </View>
   );
