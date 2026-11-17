@@ -1,0 +1,38 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>reel · phone · settings</title>
+<link rel="stylesheet" href="minimal.css"><link rel="stylesheet" href="setup.css">
+<style>
+  body { width: 393px; height: 852px; position: relative; }
+  .status-bar { height: 54px; }
+  .head { height: 52px; display: flex; align-items: center; padding: 0 16px; }
+  .back { width: 40px; height: 40px; border-radius: 50%; background: var(--card); display: grid; place-items: center; }
+  .back svg { width: 20px; height: 20px; }
+  .main { padding: 10px 20px 0; }
+  h1 { font-size: 30px; font-weight: 600; letter-spacing: -.01em; }
+  .rows { margin-top: 22px; background: var(--card); border-radius: 10px; overflow: hidden; }
+  .row { height: 54px; padding: 0 16px; font-size: 16px; border-bottom: 1px solid var(--raise); }
+  .row:last-child { border-bottom: 0; }
+  .row .right { display: flex; align-items: center; gap: 10px; }
+  .row .value { font-size: 15px; }
+  .chev { font-size: 22px; line-height: 1; }
+  .switch { width: 46px; height: 28px; padding: 3px; }
+  .switch b { width: 22px; height: 22px; }
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 84px; border-top: 1px solid var(--card); display: flex; justify-content: space-around; padding-top: 10px; color: var(--ash); font-size: 11px; }
+  .tabbar span { text-align: center; }
+</style></head><body>
+  <div class="status-bar"></div>
+  <div class="head"><div class="back"><svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div></div>
+  <div class="main">
+    <h1>Settings</h1>
+    <div class="rows">
+      <div class="row">Language <span class="right"><span class="value">Русский</span><span class="chev">›</span></span></div>
+      <div class="row">Playback buffer <span class="right"><span class="value">512 MB</span><span class="chev">›</span></span></div>
+      <div class="row">Search source <span class="right"><span class="value">Connected</span><span class="chev">›</span></span></div>
+      <div class="row">Stream details <span class="right"><span class="switch off"><b></b></span></span></div>
+    </div>
+    <div class="rows">
+      <div class="row">About reel <span class="right"><span class="chev">›</span></span></div>
+    </div>
+  </div>
+  <div class="tabbar"><span>Home</span><span>Movies</span><span>Series</span><span>Search</span><span>More</span></div>
+</body></html>

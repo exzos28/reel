@@ -230,6 +230,11 @@ impl Settings {
         loaded.to_string()
     }
 
+    /// The first-run setup is done (it does not show again).
+    pub fn finish_setup() {
+        settings::finish_setup();
+    }
+
     /// Saves the playback buffer size (one of the choices); the size in effect.
     pub fn set_buffer_mb(mb: u32) -> u32 {
         settings::set_buffer_mb(mb)

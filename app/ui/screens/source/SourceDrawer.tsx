@@ -12,7 +12,7 @@ import { SourceByPhone, SourceForm } from "./SourceForm";
 import { sourceForm } from "./sourceState";
 
 /** Why it is open: there is no source, or the one set did not answer. */
-type Why = "missing" | "failed";
+type Why = "missing" | "failed" | "edit";
 const shown = signal(false);
 const why = signal<Why>("missing");
 export const openSourceDrawer = (reason: Why = "missing") => {
@@ -30,7 +30,7 @@ function Body() {
   });
   return (
     <View style={{ gap: u(24) }}>
-      <Text style={bodyText(colors.soft())}>{t(why() === "failed" ? "settings.source_drawer.failed_about" : "settings.source_drawer.about")}</Text>
+      <Text style={bodyText(colors.soft())}>{t(`settings.source_drawer.${why()}_about`)}</Text>
       <SourceByPhone />
       <SourceForm form={form} />
     </View>
@@ -48,7 +48,7 @@ export function SourceDrawer() {
     openSourceDrawer();
   });
   return (
-    <Drawer id="source" open={shown} onClose={() => shown.set(false)} title={() => t(why() === "failed" ? "settings.source_drawer.failed_title" : "settings.source_drawer.title")} tvWidth={900}>
+    <Drawer id="source" open={shown} onClose={() => shown.set(false)} title={() => t(`settings.source_drawer.${why()}_title`)} tvWidth={900}>
       {() => (
         <If when={shown()}>
           <Body />

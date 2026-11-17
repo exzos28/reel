@@ -100,3 +100,26 @@ test("phone, with a source: Home's Play waits for the source's answer, then open
   await app.press("label:Resume 41:12");
   expect(app.shows("source-panel")).toBe(true);
 });
+
+test("first run: the setup takes the screen, Next walks the steps, Skip ends it and asks the core", async () => {
+  let finished = 0;
+  const settings = {
+    language: "en", contentLanguage: "en-US", setupDone: false, bufferMB: 256, streamDetails: false,
+    contentLanguages: [{ tag: "en-US", name: "English" }, { tag: "pl-PL", name: "Polski" }],
+    source: { url: "", hasKey: false },
+    bufferChoices: [{ mb: 256, default: true }, { mb: 512, default: false }],
+  };
+  const app = await openApp({
+    platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 },
+    modules: { "app/native": { ...NATIVE, "Settings.load": JSON.stringify(settings), "Settings.finishSetup": () => (finished++, null) } },
+  });
+  expect(app.texts()).toContain("Which language should titles be in?");
+  expect(app.shows("tab-bar")).toBe(false);
+  await app.press("label:Next");
+  expect(app.texts()).toContain("How much space can reel use while playing?");
+  await app.press("label:Next");
+  expect(app.texts()).toContain("Where should reel find films?");
+  await app.press("label:Skip, add it later");
+  expect(finished).toBe(1);
+  expect(app.shows("tab-bar")).toBe(true);
+});

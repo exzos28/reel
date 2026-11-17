@@ -1,0 +1,42 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>reel · TV · setup, language</title>
+<link rel="stylesheet" href="minimal.css"><link rel="stylesheet" href="setup.css">
+<style>
+  body { width: 1920px; height: 1080px; position: relative; }
+  .logo { position: absolute; left: 96px; top: 58px; font-size: 40px; }
+  .main { position: absolute; left: 96px; top: 190px; width: 900px; }
+  .step { font-size: 24px; margin-bottom: 18px; }
+  h1 { font-size: 60px; font-weight: 600; letter-spacing: -.01em; line-height: 1.1; }
+  .help { font-size: 26px; color: var(--ash); margin-top: 16px; }
+  .rows { gap: 12px; margin-top: 46px; width: 760px; }
+  .row { height: 72px; padding: 0 30px; border-radius: 10px; font-size: 26px; }
+  .row svg { width: 26px; height: 26px; }
+  .next { margin-top: 44px; height: 64px; padding: 0 44px; border-radius: 10px; font-size: 26px; }
+  .qrcard { position: absolute; right: 96px; top: 190px; width: 560px; padding: 44px; border-radius: 10px; gap: 28px; }
+  .qrcard .qr { width: 300px; height: 300px; padding: 18px; border-radius: 10px; }
+  .qrcard h2 { font-size: 30px; font-weight: 600; }
+  .qrcard p { font-size: 24px; color: var(--ash); line-height: 1.45; }
+  .qrcard p b { color: var(--snow); font-weight: 500; }
+</style></head><body>
+  <div class="logo">reel</div>
+  <div class="main">
+    <div class="step">Step 1 of 3</div>
+    <h1>Which language should titles be in?</h1>
+    <div class="help">reel also searches releases by this title.</div>
+    <div class="rows">
+      <div class="row selected focused">English <svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></div>
+      <div class="row">Русский</div>
+      <div class="row">Українська</div>
+      <div class="row">Deutsch</div>
+      <div class="row">Español</div>
+      <div class="row">More languages <span class="chev">›</span></div>
+    </div>
+    <div class="btn primary next">Next</div>
+  </div>
+  <div class="qrcard">
+    <div class="qr"></div>
+    <h2>Or set it up on your phone</h2>
+    <p>Scan the code with the phone's camera, or open <b>192.168.50.132:47392</b> in its browser. This screen follows along.</p>
+  </div>
+  <script src="qr.js"></script>
+</body></html>

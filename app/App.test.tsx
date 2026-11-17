@@ -55,7 +55,7 @@ test("Settings: from the nav, the buffer row opens the sizes in a drawer; pick o
   for (let i = 0; i < 6; i++) await app.keyboard.press("right"); // Movies, Series, Cartoons, Anime, Search, Settings
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Playback buffer");
-  expect(app.texts()).toContain("10 GB free on this device");
+  expect(app.texts()).toContain("256 MB · 10 GB free"); // the row: the size in effect and the free space
   await app.keyboard.press("down"); // from the language row to the buffer row
   await app.keyboard.press("enter"); // its sizes in a drawer
   expect(app.shows("id:choice-panel")).toBe(true);

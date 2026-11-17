@@ -31,6 +31,8 @@ export interface SettingsJson {
   contentLanguage?: string;
   contentLanguages?: ContentLanguage[];
   source?: SourceInfo;
+  /** The first-run setup was gone through (the core says when). */
+  setupDone?: boolean;
 }
 
 export const contentLanguage = signal("en-US");
@@ -41,6 +43,14 @@ export const bufferMB = signal(0);
 export const streamDetails = signal(false);
 export const source = signal<SourceInfo>({ url: "", hasKey: false });
 export const bufferChoices = signal<BufferChoice[]>([]);
+/** Whether the first-run setup was gone through; null until the settings are loaded. */
+export const setupDone = signal<boolean | null>(null);
+
+/** The first-run setup is done: the app opens as usual from now on. */
+export async function finishSetup() {
+  setupDone.set(true);
+  await Settings.finishSetup();
+}
 
 /** Loads the settings from the core and applies the language. */
 export async function loadSettings() {
@@ -56,6 +66,7 @@ export function applySettings(s: SettingsJson) {
   if (s.contentLanguage) contentLanguage.set(s.contentLanguage);
   if (s.contentLanguages) contentLanguages.set(s.contentLanguages);
   if (s.source) source.set(s.source);
+  if (s.setupDone !== undefined) setupDone.set(s.setupDone);
   setLocale(s.language);
 }
 

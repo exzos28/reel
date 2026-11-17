@@ -1,0 +1,41 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>reel · TV · settings</title>
+<link rel="stylesheet" href="minimal.css"><link rel="stylesheet" href="setup.css">
+<style>
+  body { width: 1920px; height: 1080px; position: relative; }
+  .logo { position: absolute; left: 96px; top: 58px; font-size: 40px; }
+  .main { position: absolute; left: 96px; top: 170px; width: 1000px; }
+  h1 { font-size: 60px; font-weight: 600; letter-spacing: -.01em; }
+  .rows { gap: 12px; margin-top: 50px; }
+  .row { height: 84px; padding: 0 30px; border-radius: 10px; font-size: 28px; }
+  .row .right { display: flex; align-items: center; gap: 22px; }
+  .row .value { font-size: 26px; }
+  .chev { font-size: 34px; line-height: 1; }
+  .switch { width: 64px; height: 36px; padding: 4px; }
+  .switch b { width: 28px; height: 28px; }
+  .group { height: 30px; }
+  .qrcard { position: absolute; right: 96px; top: 300px; width: 520px; padding: 40px; border-radius: 10px; gap: 24px; }
+  .qrcard .qr { width: 240px; height: 240px; padding: 14px; border-radius: 10px; }
+  .qrcard h2 { font-size: 28px; font-weight: 600; }
+  .qrcard p { font-size: 24px; color: var(--ash); line-height: 1.45; }
+  .qrcard p b { color: var(--snow); font-weight: 500; }
+</style></head><body>
+  <div class="logo">reel</div>
+  <div class="main">
+    <h1>Settings</h1>
+    <div class="rows">
+      <div class="row focused">Language <span class="right"><span class="value">Русский</span><span class="chev">›</span></span></div>
+      <div class="row">Playback buffer <span class="right"><span class="value">512 MB · 41 GB free</span><span class="chev">›</span></span></div>
+      <div class="row">Search source <span class="right"><span class="value">Connected</span><span class="chev">›</span></span></div>
+      <div class="row">Stream details <span class="right"><span class="switch off"><b></b></span></span></div>
+      <div class="group"></div>
+      <div class="row">About reel <span class="right"><span class="chev">›</span></span></div>
+    </div>
+  </div>
+  <div class="qrcard">
+    <div class="qr"></div>
+    <h2>Change these on your phone</h2>
+    <p>Scan the code, or open <b>192.168.50.132:47392</b>.</p>
+  </div>
+  <script src="qr.js"></script>
+</body></html>

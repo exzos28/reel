@@ -8,10 +8,11 @@ const SOURCE = {
   "Sources.result": JSON.stringify({ state: "done", caps: { movieImdb: false, tvImdb: false, tvSeasonEp: true } }),
 };
 
-test("Settings: saving a search source checks it and says how it searches", async () => {
+test("Settings: the source row opens its drawer; saving checks it and says how it searches", async () => {
   const app = await openApp({ clock: {}, modules: { "app/native": SOURCE } });
   await app.press("label:Settings");
-  expect(app.texts()).toContain("Search source");
+  await app.press("label:Search source");
+  expect(app.shows("source-panel")).toBe(true);
   await app.press("Save and check");
   await app.wait(400);
   expect(app.texts()).toContain("Connected. It searches by title.");
@@ -22,6 +23,7 @@ test("Settings: a bad address is refused with the core's message", async () => {
     modules: { "app/native": { ...SOURCE, "Settings.setSource": JSON.stringify({ ok: false, message: "not an address" }) } },
   });
   await app.press("label:Settings");
+  await app.press("label:Search source");
   await app.press("Save and check");
   expect(app.texts()).toContain("not an address");
 });

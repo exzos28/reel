@@ -70,7 +70,7 @@ test("OK on Cancel dismisses the code", async () => {
 test("Settings shows a QR code and the address to set the source from a phone", async () => {
   const app = await openApp({ modules: { "app/native": core().native } });
   await app.press("label:Settings");
-  expect(app.texts()).toContain(`Scan the code with your phone, or open ${URL}`);
+  expect(app.texts()).toContain(`Scan the code, or open ${URL}.`);
   expect(app.shows("hosted-qr")).toBe(true);
 });
 
@@ -109,5 +109,5 @@ test("what a phone changed shows on the TV's Settings without a restart", async 
   changed = true;
   c.show(null); // the core's revision goes up: the app reads the settings again
   await app.waitUntil(() => app.texts().includes("Polski"));
-  expect(app.texts()).toContain("512 MB");
+  expect(app.texts()).toContain("512 MB · 10 GB free");
 });

@@ -24,7 +24,7 @@ const notePlace = (): ViewStyle => ({ minHeight: cs(60), marginTop: u(16), justi
 /** No release because of the search source: none set (the drawer adds one) or it did not answer (Settings checks it). */
 const sourceAction = (title: Title) =>
   title.releasesState === "no_source"
-    ? { label: t("settings.source_drawer.title"), onPress: openSourceDrawer }
+    ? { label: t("settings.source_drawer.missing_title"), onPress: openSourceDrawer }
     : title.releasesState === "failed"
       ? { label: t("releases.open_settings"), onPress: openSettings }
       : null;

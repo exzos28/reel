@@ -1,0 +1,33 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>reel · phone · setup, search source</title>
+<link rel="stylesheet" href="minimal.css"><link rel="stylesheet" href="setup.css">
+<style>
+  body { width: 393px; height: 852px; position: relative; }
+  .status-bar { height: 54px; }
+  .main { padding: 22px 20px 0; }
+  .step { font-size: 13px; margin-bottom: 10px; }
+  h1 { font-size: 28px; font-weight: 600; letter-spacing: -.01em; line-height: 1.15; }
+  .help { font-size: 15px; color: var(--ash); margin-top: 10px; line-height: 1.4; }
+  .label { font-size: 13px; margin: 26px 0 8px; }
+  .field { height: 48px; padding: 0 14px; border-radius: 8px; font-size: 15px; overflow: hidden; white-space: nowrap; }
+  .note { font-size: 13px; color: var(--ash); margin-top: 18px; }
+  .bottom { position: absolute; left: 20px; right: 20px; bottom: 34px; display: flex; flex-direction: column; gap: 12px; }
+  .bottom .btn { height: 50px; border-radius: 8px; font-size: 16px; }
+  .bottom .text { text-align: center; color: var(--ash); font-size: 15px; height: 44px; display: grid; place-items: center; }
+</style></head><body>
+  <div class="status-bar"></div>
+  <div class="main">
+    <div class="step">Step 3 of 3</div>
+    <h1>Where should reel find films?</h1>
+    <div class="help">Your Jackett, Prowlarr or JacRed: its Torznab address and API key.</div>
+    <div class="label">Address</div>
+    <div class="field">http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab</div>
+    <div class="label">API key</div>
+    <div class="field empty">The key from your Jackett dashboard</div>
+    <div class="note">Without a source reel can browse but not play.</div>
+  </div>
+  <div class="bottom">
+    <div class="btn primary">Check and finish</div>
+    <div class="text">Skip, add it later</div>
+  </div>
+</body></html>

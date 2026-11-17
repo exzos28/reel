@@ -1,0 +1,44 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>reel · TV · setup, search source</title>
+<link rel="stylesheet" href="minimal.css"><link rel="stylesheet" href="setup.css">
+<style>
+  body { width: 1920px; height: 1080px; position: relative; }
+  .logo { position: absolute; left: 96px; top: 58px; font-size: 40px; }
+  .main { position: absolute; left: 96px; top: 190px; width: 900px; }
+  .step { font-size: 24px; margin-bottom: 18px; }
+  h1 { font-size: 60px; font-weight: 600; letter-spacing: -.01em; line-height: 1.1; }
+  .help { font-size: 26px; color: var(--ash); margin-top: 16px; line-height: 1.4; }
+  .label { font-size: 22px; margin: 40px 0 12px; }
+  .label + .field { }
+  .field { height: 72px; padding: 0 26px; border-radius: 10px; font-size: 26px; width: 860px; }
+  .actions { display: flex; gap: 20px; align-items: center; margin-top: 40px; }
+  .actions .btn { height: 64px; padding: 0 36px; border-radius: 10px; font-size: 26px; }
+  .status { font-size: 24px; color: var(--ash); margin-top: 24px; }
+  .qrcard { position: absolute; right: 96px; top: 190px; width: 560px; padding: 44px; border-radius: 10px; gap: 28px; }
+  .qrcard .qr { width: 300px; height: 300px; padding: 18px; border-radius: 10px; }
+  .qrcard h2 { font-size: 30px; font-weight: 600; }
+  .qrcard p { font-size: 24px; color: var(--ash); line-height: 1.45; }
+  .qrcard p b { color: var(--snow); font-weight: 500; }
+</style></head><body>
+  <div class="logo">reel</div>
+  <div class="main">
+    <div class="step">Step 3 of 3</div>
+    <h1>Where should reel find films?</h1>
+    <div class="help">Your Jackett, Prowlarr or JacRed: its Torznab address and API key.</div>
+    <div class="label">Address</div>
+    <div class="field focused">http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab</div>
+    <div class="label">API key</div>
+    <div class="field empty">The key from your Jackett dashboard</div>
+    <div class="actions">
+      <div class="btn primary">Check and finish</div>
+      <div class="btn secondary">Skip, add it later</div>
+    </div>
+    <div class="status">Without a source reel can browse but not play.</div>
+  </div>
+  <div class="qrcard">
+    <div class="qr"></div>
+    <h2>Easier on your phone</h2>
+    <p>Typing an address with a remote is slow. Scan the code, or open <b>192.168.50.132:47392</b>, and paste it there. This screen finishes by itself.</p>
+  </div>
+  <script src="qr.js"></script>
+</body></html>

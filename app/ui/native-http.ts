@@ -170,6 +170,7 @@ export const Settings: SettingsModule = {
   setSource: s("Settings", "setSource"),
   setContentLanguage: s("Settings", "setContentLanguage"),
   setLanguage: s("Settings", "setLanguage"),
+  finishSetup: s("Settings", "finishSetup"),
   current: s("Settings", "current"),
   revision: s("Settings", "revision"),
   changed: a("Settings", "changed"),

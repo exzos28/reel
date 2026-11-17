@@ -55,6 +55,9 @@ struct Saved {
     stream_details: bool,
     /// The build's default source (`DEFAULT_SOURCE`) was put in once; clearing it later keeps it out.
     default_source_used: bool,
+    /// The first-run setup (language, buffer, source) was gone through. None in a file written
+    /// before the setup existed: `load` takes such a file for set up.
+    setup_done: Option<bool>,
 }
 
 /// A search source compiled into a developer's own build (scripts/tizen-local.sh, from
@@ -87,6 +90,7 @@ impl Default for Saved {
             source_key: String::new(),
             stream_details: false,
             default_source_used: false,
+            setup_done: None,
         }
     }
 }
@@ -215,8 +219,12 @@ pub fn load(data_dir: Option<&Path>) -> Value {
     if file.is_none() {
         tracing::warn!("reel settings: no data directory, settings last until the app closes");
     }
+    let existed = file.as_deref().is_some_and(Path::exists);
     let before = file.as_deref().map(read).unwrap_or_default();
-    let saved = with_default_source(before.clone(), DEFAULT_SOURCE);
+    let mut saved = with_default_source(before.clone(), DEFAULT_SOURCE);
+    // Settings from before the setup existed: that viewer has set reel up already. Without a
+    // data dir nothing would remember the setup either: it would show on every start, so none.
+    saved.setup_done = Some(saved.setup_done.unwrap_or(existed || file.is_none()));
     if let (Some(f), true) = (&file, saved.default_source_used != before.default_source_used) {
         write(f, &saved);
     }
@@ -232,7 +240,7 @@ pub fn load(data_dir: Option<&Path>) -> Value {
 
 /// The settings as the UI shows them, from memory:
 /// `{"language","contentLanguage","contentLanguages":[{"tag","name"}],"bufferMB",
-/// "streamDetails","source":{"url","hasKey"},"bufferChoices":[{"mb","default"}]}`.
+/// "streamDetails","setupDone","source":{"url","hasKey"},"bufferChoices":[{"mb","default"}]}`.
 pub fn current() -> Value {
     let saved = with(|s| s.saved.clone());
     json!({
@@ -244,6 +252,7 @@ pub fn current() -> Value {
             .collect::<Vec<_>>(),
         "bufferMB": saved.buffer_mb,
         "streamDetails": saved.stream_details,
+        "setupDone": saved.setup_done.unwrap_or(false),
         "source": source_json(&saved),
         "bufferChoices": buffer_choices()
             .into_iter()
@@ -275,6 +284,15 @@ pub fn set_buffer_mb(mb: u32) -> u32 {
     playback().set_buffer_mb(mb as u64);
     bump();
     mb
+}
+
+/// The first-run setup is done: it does not show again.
+pub fn finish_setup() {
+    with(|s| {
+        s.saved.setup_done = Some(true);
+        save(s);
+    });
+    bump();
 }
 
 /// Saves whether the player shows the stream's details; the value in effect.
@@ -387,6 +405,25 @@ pub fn set_language(tag: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn setup_shows_once_on_a_new_install_and_never_to_who_had_settings() {
+        let _guard = crate::application::catalog::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = std::env::temp_dir().join(format!("reel-setup-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        // A new install: setup shows, and still after a setting is saved before it is done.
+        assert_eq!(load(Some(&dir))["setupDone"], false);
+        set_buffer_mb(512);
+        assert_eq!(load(Some(&dir))["setupDone"], false);
+        finish_setup();
+        assert_eq!(load(Some(&dir))["setupDone"], true);
+        // Without a data dir (nothing remembers it): no setup.
+        assert_eq!(load(None)["setupDone"], true);
+        // Settings written before the setup existed (no setupDone in the file): set up already.
+        std::fs::write(dir.join("settings.json"), r#"{"bufferMb":512,"language":"en"}"#).unwrap();
+        assert_eq!(load(Some(&dir))["setupDone"], true);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn saves_and_loads_from_the_data_dir() {

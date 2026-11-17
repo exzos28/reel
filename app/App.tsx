@@ -28,7 +28,8 @@ import { ExitDialog } from "./ui/layout/ExitDialog";
 import { keysInUse } from "./ui/focus/keys";
 import { Player } from "./ui/Player";
 import { playerUp, status } from "./ui/playback";
-import { loadSettings } from "./ui/preferences";
+import { loadSettings, setupDone } from "./ui/preferences";
+import { SetupScreen } from "./ui/screens/setup/SetupScreen";
 import { watchSettings } from "./ui/hosted";
 import { PairingDialog } from "./ui/layout/PairingDialog";
 import { colors } from "./ui/theme";
@@ -98,7 +99,11 @@ function App() {
       }}
       onTouchStart={() => keysInUse.set(false)}
     >
-      <If when={!playing()} else={<Player />}>
+      {/* The first run: the setup takes the screen until it is done (the core says when). */}
+      <If when={setupDone() === false}>
+        <SetupScreen />
+      </If>
+      <If when={setupDone() !== false && !playing()} else={<If when={setupDone() !== false}><Player /></If>}>
         <If when={caps.touch} else={<OneScreen />}>
           {/* Right of the phone's rail when it is held sideways. */}
           <View style={{ flex: 1, marginLeft: railWidth() }}>

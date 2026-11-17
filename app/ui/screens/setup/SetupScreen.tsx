@@ -1,0 +1,190 @@
+// The first-run setup (design/setup-and-settings.md): the language of titles, the playback
+// buffer, the search source, one step at a time, each with an answer OK accepts. Beside the steps,
+// where the device serves its settings page (a TV), its QR code: doing it from a phone, which the
+// screen follows (a source saved there finishes the setup). Up/down move the focus, OK chooses
+// or goes on, Back goes to the previous step.
+import { effect, keymap, signal, Text, View, type ViewStyle } from "nsh";
+import { t } from "nsh/i18n";
+import checkIcon from "../../icons/check.svg";
+import { byKeys } from "../../focus/keys";
+import { Button } from "../../kit/Button";
+import { Icon } from "../../kit/Icon";
+import { rowStyle } from "../../kit/Row";
+import { row } from "../../kit/shape";
+import { bodyText, labelText, metaText, pageTitle } from "../../kit/text";
+import { ChoicePanel, type Choice } from "../../layout/ChoicePanel";
+import { Logo } from "../../layout/NavBar";
+import { PageFrame } from "../../layout/PageFrame";
+import { scroller } from "../../layout/Scroller";
+import { onBack } from "../../nav";
+import { bufferChoices, chooseBuffer, chooseContentLanguage, contentLanguages, finishSetup, source } from "../../preferences";
+import { colors, cs, safe, u } from "../../theme";
+import { bufferChoiceList, languageChoices } from "../settings/choices";
+import { formWidth } from "../../kit/form";
+import { PhoneCard } from "../source/PhoneCard";
+import { SourceForm } from "../source/SourceForm";
+import { sourceForm } from "../source/sourceState";
+
+/** How many languages the step lists before "More languages". */
+const SHOWN_LANGUAGES = 5;
+
+const layoutStyle = (): ViewStyle => ({ ...row(u(96), "flex-start"), paddingHorizontal: safe().x, paddingTop: u(40) });
+const stepStyle = (): ViewStyle => ({ flex: 1, maxWidth: formWidth(), gap: u(16) });
+const optionsStyle = (): ViewStyle => ({ gap: u(12), marginTop: u(30) });
+const optionStyle = (selected: boolean, focused: boolean): ViewStyle => ({
+  ...rowStyle(selected, focused),
+  justifyContent: "space-between",
+  height: cs(72),
+  paddingHorizontal: cs(28),
+});
+const actionsStyle = (): ViewStyle => ({ ...row(u(20)), marginTop: u(36), flexWrap: "wrap" });
+
+/** A choice as a row: its text, a check when it is the one in effect. */
+function Option(props: { choice: () => Choice; focused: () => boolean; onPress: () => void }) {
+  const c = props.choice;
+  return (
+    <View
+      role="button"
+      accessibilityLabel={c().text}
+      accessibilityState={{ selected: c().selected }}
+      onPress={props.onPress}
+      hoverStyle={{ backgroundColor: colors.raise() }}
+      style={optionStyle(c().selected, props.focused())}
+    >
+      <Text style={labelText(c().selected ? colors.snow() : colors.soft())}>{c().text}</Text>
+      <If when={c().selected}>
+        <Icon src={() => checkIcon} size={22} />
+      </If>
+    </View>
+  );
+}
+
+export function SetupScreen() {
+  const step = signal(0);
+  /** The focused item of the step: its options, then its actions. */
+  const at = signal(0);
+  const allLanguages = signal(false);
+  const form = sourceForm();
+  const page = scroller({ anchor: (viewport) => viewport / 3 });
+
+  /** The languages the step lists: the first few, and the one in effect if it is not among them. */
+  const shownLanguages = (): Choice[] => {
+    const all = languageChoices();
+    const first = all.slice(0, SHOWN_LANGUAGES);
+    const current = all.find((c) => c.selected);
+    return current && !first.includes(current) ? [...first.slice(0, SHOWN_LANGUAGES - 1), current] : first;
+  };
+  /** The step's options: languages and "More languages", the buffer sizes, none for the source. */
+  const options = (): Choice[] =>
+    step() === 0
+      ? [...shownLanguages(), { key: "more", text: `${t("setup.language.more")}  ›`, selected: false }]
+      : step() === 1
+        ? bufferChoiceList()
+        : [];
+  /** The step's actions: Next, or the source's two. */
+  const actions = () => (step() === 2 ? 2 : 1);
+  const count = () => options().length + actions();
+
+  const go = (next: number) => {
+    step.set(next);
+    at.set(0);
+  };
+  const finish = () => finishSetup();
+  const choose = (i: number) => {
+    const c = options()[i];
+    if (!c) return;
+    if (step() === 0) {
+      if (c.key === "more") return allLanguages.set(true);
+      chooseContentLanguage(c.key);
+    } else if (step() === 1) {
+      const b = bufferChoices().find((x) => String(x.mb) === c.key);
+      if (b) chooseBuffer(b.mb);
+    }
+  };
+  const act = (i: number) => {
+    const n = options().length;
+    if (i < n) return choose(i);
+    if (step() < 2) return go(step() + 1);
+    // The source: check it (it finishes once connected), or leave it for later.
+    if (i === n) form.save();
+    else finish();
+  };
+  // A source that connected (here, or saved from a phone on the settings page) ends the setup.
+  const startUrl = source().url;
+  effect(() => {
+    if (step() !== 2) return;
+    if (form.connected() || (source().url && source().url !== startUrl)) finish();
+  });
+
+  keymap.bind(
+    byKeys({
+      up: () => !allLanguages() && at.set(Math.max(at() - 1, 0)),
+      down: () => !allLanguages() && at.set(Math.min(at() + 1, count() - 1)),
+    }),
+    { repeat: true },
+  );
+  keymap.bind({ enter: () => !allLanguages() && act(at()) });
+  // Back: the languages' drawer first, then the previous step.
+  onBack(() => {
+    if (allLanguages()) return allLanguages.set(false), true;
+    if (step() > 0) return go(step() - 1), true;
+    return true;
+  });
+
+  const focused = (i: number) => () => !allLanguages() && at() === i;
+  const titleKey = () => ["language", "buffer", "source"][step()];
+
+  return (
+    <View style={{ flex: 1 }}>
+      <PageFrame ctl={page} kind="bare">
+        <View style={layoutStyle()}>
+          <View style={stepStyle()}>
+            <Logo />
+            <Text style={{ ...metaText(), marginTop: u(60) }}>{t("setup.step", { n: step() + 1 })}</Text>
+            <Text style={pageTitle()}>{t(`setup.${titleKey()}.title`)}</Text>
+            <Text style={bodyText(colors.ash())}>{t(`setup.${titleKey()}.help`)}</Text>
+            <If when={step() < 2}>
+              <View style={optionsStyle()}>
+                <Each of={options()} key={(c) => c.key}>
+                  {(c, i) => <Option choice={c} focused={focused(i())} onPress={() => (at.set(i()), choose(i()))} />}
+                </Each>
+              </View>
+              <View style={actionsStyle()}>
+                <Button kind="primary" label={() => t("setup.next")} focused={focused(options().length)} onPress={() => go(step() + 1)} />
+              </View>
+            </If>
+            <If when={step() === 2}>
+              {/* The fields take text where a keyboard is at hand; a TV's remote goes to the actions
+                  (its address is typed on the phone, beside). */}
+              <View style={{ marginTop: u(20) }}>
+                <SourceForm form={form} />
+              </View>
+              <View style={actionsStyle()}>
+                <Button kind="primary" label={() => t("setup.source.finish")} focused={focused(0)} onPress={() => form.save()} />
+                <Button kind="secondary" label={() => t("setup.source.skip")} focused={focused(1)} onPress={finish} />
+              </View>
+              <Text style={{ ...metaText(), marginTop: u(16) }}>{t("setup.source.note")}</Text>
+            </If>
+          </View>
+          <PhoneCard
+            title={() => t(step() === 2 ? "setup.phone.source_title" : "setup.phone.title")}
+            text={(url) => t(step() === 2 ? "setup.phone.source_text" : "setup.phone.text", { url })}
+          />
+        </View>
+      </PageFrame>
+      <If when={allLanguages()}>
+        <ChoicePanel
+          title={() => t("settings.language.title")}
+          choices={languageChoices}
+          focusedAt={() => Math.max(0, languageChoices().findIndex((c) => c.selected))}
+          onPick={(i) => {
+            const l = contentLanguages()[i];
+            if (l) chooseContentLanguage(l.tag);
+            allLanguages.set(false);
+          }}
+          onClose={() => allLanguages.set(false)}
+        />
+      </If>
+    </View>
+  );
+}

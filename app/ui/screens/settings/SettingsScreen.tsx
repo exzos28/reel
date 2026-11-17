@@ -1,12 +1,10 @@
-// Settings, a nav destination: Language (of titles and descriptions),
-// Playback (buffer size), Search source (the user's Jackett) and About reel.
-// Up/down move the focus through the languages, the buffer sizes and on to
-// About (Up from the first language: the nav); OK chooses (or opens About).
-// Back takes the focus to the nav, then Home. A click chooses too; the source
-// fields take text (on a TV, easier from a phone: the section shows the address of the
-// TV's settings page, docs/hosted-settings.md).
-import { keymap, signal, Text, View, type ViewRef, type ViewStyle } from "nsh";
-import { formWidth } from "../../kit/form";
+// Settings, a nav destination: one list of rows, each a setting's name and the value in effect
+// (design/setup-and-settings.md): Language, Playback buffer, Search source, Stream details,
+// About reel. Up/down move the focus (Up from the first: the nav); OK opens a row's choices (a
+// drawer with one line on what the setting does), the source drawer, flips the switch or opens
+// About. Back takes the focus to the nav, then Home. Beside the list, where the device serves its
+// settings page (a TV), its QR code: changing them from a phone.
+import { keymap, signal, View, type ViewStyle } from "nsh";
 import { Engine } from "../../native";
 import { t } from "nsh/i18n";
 import { byKeys } from "../../focus/keys";
@@ -15,44 +13,22 @@ import { useRootBack } from "../../focus/rootBack";
 import { caps } from "../../platform";
 import { NAV } from "../../layout/navItems";
 import { showNav } from "../../layout/navState";
-import { rowStyle } from "../../kit/Row";
-import { labelText } from "../../kit/text";
 import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { go, goFromNav, onBack, openAbout } from "../../nav";
-import { bufferChoices, chooseBuffer, chooseContentLanguage, contentLanguage, contentLanguages, toggleStreamDetails } from "../../preferences";
-import { colors, cs, safe, u } from "../../theme";
-import { BufferSection, bufferChoiceList } from "./BufferSection";
-import { DetailsSection } from "./DetailsSection";
-import { languageChoices, LanguageSection } from "./LanguageSection";
+import { bufferChoices, bufferMB, chooseBuffer, chooseContentLanguage, contentLanguages, source, streamDetails, toggleStreamDetails } from "../../preferences";
+import { row } from "../../kit/shape";
+import { Fmt } from "../../native";
+import { safe, u } from "../../theme";
+import { bufferChoiceList, languageChoices, languageName, sizeText } from "./choices";
+import { SettingRow } from "./SettingRow";
+import { PhoneCard } from "../source/PhoneCard";
+import { openSourceDrawer } from "../source/SourceDrawer";
 import { ChoicePanel } from "../../layout/ChoicePanel";
-import { SourceSection } from "./SourceSection";
 
-const aboutRow = (focused: boolean): ViewStyle => ({
-  ...rowStyle(false, focused),
-  height: cs(68),
-  paddingHorizontal: cs(28),
-  maxWidth: formWidth(),
-});
-
-/** The row that opens About reel (its data sources and their notices). */
-function AboutRow(props: { focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
-  return (
-    <View
-      ref={props.viewRef}
-      role="button"
-      onPress={props.onPress}
-      hoverStyle={{ backgroundColor: colors.raise() }}
-      style={aboutRow(props.focused())}
-    >
-      <Text style={labelText()}>{t("settings.about.open")}</Text>
-    </View>
-  );
-}
-
-/** The title where a destination's page starts (170 on a TV). */
-/** The sections under the page's title (the frame's). */
-const pageStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(32), gap: u(32) });
+/** The rows under the page's title (the frame's), the phone card beside them. */
+const pageStyle = (): ViewStyle => ({ ...row(u(96), "flex-start"), paddingHorizontal: safe().x, paddingTop: u(40) });
+const rowsStyle = (): ViewStyle => ({ flex: 1, gap: u(12) });
 const SETTINGS_AT = NAV.findIndex((n) => n.id === "settings");
 
 /** Back from About finds the focus on its row. */
@@ -69,11 +45,12 @@ function readFreeSpace() {
 
 export function SettingsScreen() {
   const freeBytes = readFreeSpace();
-  /** The focus goes through the language row, the buffer row, stream details, then About. */
+  /** The focus goes through the rows: language, buffer, source, stream details, About. */
   const LANGUAGE_AT = 0;
   const BUFFER_AT = 1;
-  const detailsAt = () => 2;
-  const aboutAt = () => 3;
+  const SOURCE_AT = 2;
+  const detailsAt = () => 3;
+  const aboutAt = () => 4;
   const focus = signal(backFromAbout ? aboutAt() : 0);
   /** The drawer of choices open (the language's or the buffer's), its focus on `pickAt`. */
   const picker = signal<"language" | "buffer" | null>(null);
@@ -133,6 +110,7 @@ export function SettingsScreen() {
       const f = focus();
       if (f === aboutAt()) about();
       else if (f === detailsAt()) toggleStreamDetails();
+      else if (f === SOURCE_AT) openSourceDrawer("edit");
       else if (f === LANGUAGE_AT) open("language");
       else if (f === BUFFER_AT) open("buffer");
     },
@@ -147,23 +125,51 @@ export function SettingsScreen() {
     <View style={{ flex: 1 }}>
     <PageFrame ctl={page} kind={caps.touch ? "deep" : "root"} title={() => t("settings.title")}>
       <View style={pageStyle()}>
-        {/* Each section is a block the page brings to the focus line when its row has the focus. */}
-        <View ref={page.follow(() => at() === LANGUAGE_AT)}>
-          <LanguageSection focused={() => at() === LANGUAGE_AT && !picker()} onOpen={() => open("language")} />
+        <View style={rowsStyle()}>
+          <SettingRow
+            label={t("settings.language.title")}
+            value={languageName}
+            focused={() => at() === LANGUAGE_AT && !picker()}
+            viewRef={page.follow(() => at() === LANGUAGE_AT)}
+            onPress={() => open("language")}
+          />
+          <SettingRow
+            label={t("settings.buffer.title")}
+            value={() => (freeBytes() == null ? sizeText(bufferMB()) : t("settings.rows.buffer_value", { size: sizeText(bufferMB()), free: Fmt.size(freeBytes()!) }))}
+            focused={() => at() === BUFFER_AT && !picker()}
+            viewRef={page.follow(() => at() === BUFFER_AT)}
+            onPress={() => open("buffer")}
+          />
+          <SettingRow
+            label={t("settings.source.title")}
+            value={() => t(source().url ? "settings.rows.connected" : "settings.rows.not_set")}
+            focused={() => at() === SOURCE_AT}
+            viewRef={page.follow(() => at() === SOURCE_AT)}
+            onPress={() => {
+              focus.set(SOURCE_AT);
+              openSourceDrawer("edit");
+            }}
+          />
+          <SettingRow
+            label={t("settings.details.title")}
+            on={streamDetails}
+            focused={() => at() === detailsAt()}
+            viewRef={page.follow(() => at() === detailsAt())}
+            onPress={() => {
+              focus.set(detailsAt());
+              toggleStreamDetails();
+            }}
+          />
+          <View style={{ height: u(24) }} />
+          <SettingRow label={t("settings.about.title")} focused={() => at() === aboutAt()} viewRef={page.follow(() => at() === aboutAt(), "nearest")} onPress={about} />
         </View>
-        <View ref={page.follow(() => at() === BUFFER_AT)}>
-          <BufferSection freeBytes={freeBytes} focused={() => at() === BUFFER_AT && !picker()} onOpen={() => open("buffer")} />
-        </View>
-        <View ref={page.follow(() => at() === detailsAt())}>
-          <DetailsSection focused={() => at() === detailsAt()} onFocus={() => focus.set(detailsAt())} />
-        </View>
-        <SourceSection />
-        <AboutRow focused={() => at() === aboutAt()} viewRef={page.follow(() => at() === aboutAt(), "nearest")} onPress={about} />
+        <PhoneCard title={() => t("settings.phone.title")} text={(url) => t("settings.phone.text", { url })} />
       </View>
     </PageFrame>
       <If when={picker()}>
         <ChoicePanel
           title={() => t(picker() === "buffer" ? "settings.buffer.title" : "settings.language.title")}
+          note={() => t(picker() === "buffer" ? "settings.buffer.about" : "settings.language.about")}
           choices={choices}
           focusedAt={pickAt}
           onPick={pick}

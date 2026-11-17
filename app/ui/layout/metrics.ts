@@ -9,7 +9,8 @@ import { frame } from "./chrome";
 
 /** A root page (a destination: the nav over it), a title (its hero runs under what is
  * over it) or a deep page (Settings on touch, About: Back over it). */
-export type PageKind = "root" | "title" | "deep";
+/** "bare": a page of its own with nothing over it but the system's bars (the first-run setup). */
+export type PageKind = "root" | "title" | "deep" | "bare";
 export type NavPlace = typeof frame.nav;
 
 /** A TV's nav in the page: its top and its row, TV pixels. */
@@ -55,6 +56,8 @@ export interface Metrics {
 export function computeMetrics(i: MetricsInput): Metrics {
   const px = (n: number) => n * i.unit;
   const head = (): number => {
+    // Nothing of reel's over it: the window bar on a desktop, the status bar on touch.
+    if (i.kind === "bare") return i.nav === "window-bar" ? BAR_HEIGHT : i.nav === "page" ? 0 : i.safeTop;
     switch (i.nav) {
       // A TV's nav is on its root pages only; elsewhere Back is the remote's.
       case "page":
@@ -71,7 +74,7 @@ export function computeMetrics(i: MetricsInput): Metrics {
   return {
     headBottom,
     titleTop: headBottom + px(TITLE_GAP),
-    bottomRoom: px(54) + i.safeBottom + (i.nav === "tab-bar" && !i.rail ? i.tabRow : 0),
+    bottomRoom: px(54) + i.safeBottom + (i.nav === "tab-bar" && !i.rail && i.kind !== "bare" ? i.tabRow : 0),
   };
 }
 

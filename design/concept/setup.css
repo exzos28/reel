@@ -1,0 +1,20 @@
+/* Setup and Settings mockups (design/setup-and-settings.md), over minimal.css. */
+.logo { color: var(--red); font-weight: 700; letter-spacing: -.01em; }
+.step { color: var(--ash); }
+.rows { display: flex; flex-direction: column; }
+.row { display: flex; align-items: center; justify-content: space-between; background: var(--card); }
+.row .value { color: var(--ash); }
+.row .chev { color: var(--ash); }
+.row.selected { background: var(--raise); }
+.field { display: flex; align-items: center; background: var(--card); color: var(--snow); }
+.field.empty { color: var(--ash); }
+.label { color: var(--ash); }
+.ok { color: var(--snow); }
+.qrcard { background: var(--card); display: flex; flex-direction: column; }
+.qrcard .qr { background: var(--snow); display: grid; }
+.qrcard .qr i { display: block; }
+.qrcard .qr i.on { background: var(--ink); }
+.switch { border-radius: 999px; background: var(--snow); display: flex; justify-content: flex-end; }
+.switch b { display: block; border-radius: 50%; background: var(--ink); }
+.switch.off { background: var(--raise); justify-content: flex-start; }
+.switch.off b { background: var(--ash); }

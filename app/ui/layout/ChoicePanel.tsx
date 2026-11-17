@@ -48,11 +48,13 @@ export function ChoicePanel(props: {
   focusedAt: () => number;
   onPick: (i: number) => void;
   onClose: () => void;
+  /** One line over the choices: what the setting does. */
+  note?: () => string;
   /** Test ids (`<id>-panel`, …); "choice" by default. */
   id?: string;
 }) {
   return (
-    <Drawer id={props.id ?? "choice"} open={() => true} onClose={props.onClose} title={props.title}>
+    <Drawer id={props.id ?? "choice"} open={() => true} onClose={props.onClose} title={props.title} note={props.note}>
       {(list) => (
         <Each of={props.choices()} key={(c) => c.key}>
           {(c, i) => (
