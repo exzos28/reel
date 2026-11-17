@@ -2,7 +2,7 @@
 // "Platform families"): where the nav sits, where Back is, how panels open.
 // The family comes from the platform layer (ui/platform); this file turns it
 // into layout decisions, so components ask `frame` instead of the family.
-import { safeArea } from "nsh";
+import { safeArea, windowSize } from "nsh";
 import { family, type Family } from "../platform";
 
 export type Chrome = Family;
@@ -32,8 +32,16 @@ const MARGIN = { mac: 64, windows: 64, linux: 64, tablet: 32, phone: 20 } as con
 
 /** The horizontal inset of content, points, off a TV: the system's safe area
  * (a landscape phone's notch side) plus the family's margin. */
+/** The widest a desktop page's content gets, points: on a wide window it stays in the middle
+ * (rows of posters, the hero's text, grids), the room beside it left empty. */
+export const DESKTOP_CONTENT_MAX = 1680;
+
 export function sideInset(): number {
   if (chrome === "tv") throw new Error("a TV's inset is theme.safe()");
   const a = safeArea();
-  return Math.max(a.left, a.right) + MARGIN[chrome];
+  const base = Math.max(a.left, a.right) + MARGIN[chrome];
+  if (chrome === "mac" || chrome === "windows" || chrome === "linux") {
+    return Math.max(base, (windowSize().width - DESKTOP_CONTENT_MAX) / 2);
+  }
+  return base;
 }
