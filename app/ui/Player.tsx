@@ -408,12 +408,11 @@ export function Player() {
         if (!card()) poke();
       }}
       onMouseUp={volumeDragEnd}
-      onPress={(e) => {
+      onPress={() => {
         if (card()) return;
         poke();
-        // A double click on the picture: full screen and back, as in other players.
-        if (caps.fullscreen && e && isDoubleClick(e)) setFullscreen(!fullscreen());
       }}
+
       // Touch: a swipe down closes the player, as a full-screen cover does.
       onPanEnd={(e) => caps.touch && !e.cancelled && (e.translation.y > 120 || e.velocity.y > 800) && stop()}
       focusable={false}
@@ -457,6 +456,20 @@ export function Player() {
           onEnd={() => { paused.set(true); poke(); }}
           onError={(e) => error.set(e.message)}
           style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        />
+      </If>
+
+      {/* The picture's own layer, under the controls: a double click on it is full screen and
+          back, as in other players (on the controls it is not). Told by the presses going down
+          (each one comes, with its count), not by onPress (a quick second click may bring none). */}
+      <If when={caps.fullscreen}>
+        <View
+          testID="picture"
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+          onPress={() => !card() && poke()}
+          onPressDown={(e) => {
+            if (!card() && e && isDoubleClick(e)) setFullscreen(!fullscreen());
+          }}
         />
       </If>
 
