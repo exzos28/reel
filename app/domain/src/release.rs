@@ -126,6 +126,18 @@ pub fn quality_score(info: &ReleaseInfo) -> u32 {
     resolution_score(info) + source_score(info)
 }
 
+/// How well a release is shared, in the steps the signal bars show (1 to 4: under 10, 10–29,
+/// 30–199, 200 and more people). What starts a film fastest: a stronger step wins over a better
+/// picture, as Play and the list of releases rank them.
+pub fn swarm_tier(peers: u64) -> u8 {
+    match peers {
+        200.. => 4,
+        30..200 => 3,
+        10..30 => 2,
+        _ => 1,
+    }
+}
+
 /// The picture size alone: what ranks releases first (people sharing come next, then the source).
 pub fn resolution_score(info: &ReleaseInfo) -> u32 {
     match info.resolution {

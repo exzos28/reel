@@ -178,6 +178,7 @@ export const Settings: SettingsModule = {
 
 export const Sources: SourcesModule = {
   search: s("Sources", "search"),
+  setPictureCap: s("Sources", "setPictureCap"),
   // The core on the TV already runs with the "tizen" profile (set by the service at start).
   setProfile: s("Sources", "setProfile"),
   check: s("Sources", "check"),

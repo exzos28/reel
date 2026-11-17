@@ -30,6 +30,7 @@ import { Player } from "./ui/Player";
 import { playerUp, status } from "./ui/playback";
 import { loadSettings, setupDone } from "./ui/preferences";
 import { SetupScreen } from "./ui/screens/setup/SetupScreen";
+import { Sources } from "./ui/native";
 import { watchSettings } from "./ui/hosted";
 import { PairingDialog } from "./ui/layout/PairingDialog";
 import { colors } from "./ui/theme";
@@ -39,6 +40,8 @@ setColorScheme("dark");
 // Keys the platform sends that the keymap does not know (a Samsung TV remote's Back).
 mapPlatformKeys();
 startDiagnostics();
+// A phone or a tablet shows no more than 1080p: Play picks no 4K by itself there (the core decides).
+Sources.setPictureCap(caps.touch ? 1080 : 0);
 // A phone and a tablet keep a stack per tab (design/navigation.md, "History model").
 useTabStacks(caps.touch);
 // Then follows the core's settings (changed on a phone too) and the pairing code it shows.

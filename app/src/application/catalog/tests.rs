@@ -828,3 +828,18 @@ fn a_new_source_drops_what_the_old_one_found() {
     assert!(search_of("tmdb:movie:603").is_none(), "searched again on the new source");
     assert!(revision() > rev, "the screens read again");
 }
+
+#[test]
+fn a_phone_plays_the_best_picture_up_to_1080p_when_one_plays_now() {
+    let r = |res: u64, gb: f64, peers: u64| serde_json::json!({ "info": { "resolution": res }, "size": gb * 1e9, "seeders": peers, "peers": peers, "seasonPack": false });
+    let releases = vec![r(2160, 20.0, 161), r(1080, 8.0, 468)];
+    set_picture_cap(1080);
+    assert_eq!(chosen("film", &releases, 136, 1), Some(1), "a phone: 1080p");
+    set_picture_cap(0);
+    assert_eq!(chosen("film", &releases, 136, 1), Some(0), "a TV: the 4K, which plays now too");
+    // Nothing under the cap plays now: the best that does.
+    set_picture_cap(1080);
+    let only_4k = vec![r(2160, 20.0, 300), r(1080, 8.0, 3)];
+    assert_eq!(chosen("film", &only_4k, 136, 1), Some(0));
+    set_picture_cap(0);
+}

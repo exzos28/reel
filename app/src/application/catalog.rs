@@ -659,8 +659,18 @@ fn plays_now(peers: u64, mbit: u64) -> bool {
     peers >= 50 && mbit <= PLAYS_NOW_MBIT
 }
 
-/// The release Play uses: the user's choice, else the best quality that
-/// plays now, else the one most people share. An index into `releases`.
+/// The tallest picture Play picks by itself (None: any). A phone or a tablet shows no more than
+/// 1080p's worth: a 4K release only costs it time and space (the viewer can still choose one).
+static PICTURE_CAP: Mutex<Option<u32>> = Mutex::new(None);
+
+/// Sets `PICTURE_CAP` (0: none).
+pub fn set_picture_cap(lines: u32) {
+    *PICTURE_CAP.lock().unwrap() = (lines > 0).then_some(lines);
+}
+
+/// The release Play uses: the user's choice, else the best quality that plays now (within the
+/// device's picture cap when one under it plays now), else the one most people share. An index
+/// into `releases`.
 fn chosen(key: &str, releases: &[Value], minutes: u32, episodes: u32) -> Option<usize> {
     if releases.is_empty() {
         return None;
@@ -673,21 +683,20 @@ fn chosen(key: &str, releases: &[Value], minutes: u32, episodes: u32) -> Option<
     // A season plays from a pack when there is one: it holds every episode.
     let packs = parse_season_key(key).is_some() && releases.iter().any(|r| r["seasonPack"] == true);
     let rs = releases.iter().enumerate().filter(|(_, r)| !packs || r["seasonPack"] == true);
-    rs.clone()
-        .filter(|(_, r)| plays_now(peers(r), mbit(r, minutes, episodes)))
+    let cap = *PICTURE_CAP.lock().unwrap();
+    let within = |r: &Value| cap.is_none_or(|c| r["info"]["resolution"].as_u64().is_none_or(|h| h as u32 <= c));
+    let now = rs.clone().filter(|(_, r)| plays_now(peers(r), mbit(r, minutes, episodes)));
+    now.clone()
+        .filter(|(_, r)| within(r))
         .max_by_key(|(i, r)| (quality_rank(r), peers(r), std::cmp::Reverse(*i)))
+        .or_else(|| now.max_by_key(|(i, r)| (quality_rank(r), peers(r), std::cmp::Reverse(*i))))
         .or_else(|| rs.max_by_key(|(i, r)| (peers(r), std::cmp::Reverse(*i))))
         .map(|(i, _)| i)
 }
 
 /// Four signal bars for the people sharing.
 fn bars(peers: u64) -> u8 {
-    match peers {
-        200.. => 4,
-        30..200 => 3,
-        10..30 => 2,
-        _ => 1,
-    }
+    reel_domain::release::swarm_tier(peers)
 }
 
 /// How long one of `key` runs and how many episodes a pack of its season holds.
