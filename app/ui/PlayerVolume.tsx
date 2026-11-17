@@ -23,9 +23,12 @@ export const toggleMute = () => muted.set(!muted());
 /** A drag on the bar: where the bar starts in the window and its width, while the button is
  * down. The player follows the pointer over all of it, so the drag need not stay on the bar. */
 const drag = { left: 0, width: 0, on: false };
-/** The pointer moved over the player (page x): the level follows a drag. */
-export function volumeDragMove(pageX: number) {
-  if (drag.on && drag.width > 0) setLevel((pageX - drag.left) / drag.width);
+/** The pointer moved over the player (page x; `held`: a button is down): the level follows a
+ * drag. A move with no button down ends it (released outside the window). */
+export function volumeDragMove(pageX: number, held: boolean) {
+  if (!drag.on) return;
+  if (!held) return volumeDragEnd();
+  if (drag.width > 0) setLevel((pageX - drag.left) / drag.width);
 }
 /** The button went up anywhere: the drag ends. */
 export function volumeDragEnd() {
@@ -73,7 +76,8 @@ export function PlayerVolume(props: { onUse: () => void }) {
           Object.assign(drag, { left: e.pagePosition.x - e.position.x, width: width(), on: true });
           follow(e.position.x);
         }}
-        onPressUp={volumeDragEnd}
+        // Not onPressUp: a press "ends" there as soon as the pointer leaves the bar; the drag goes
+        // on until the button goes up over the player (its onMouseUp).
         onPress={(e) => follow(e.position.x)}
         onWheel={(e) => set(volume() - Math.sign(e.delta.y || -e.delta.x) * WHEEL_STEP)}
         style={barStyle()}

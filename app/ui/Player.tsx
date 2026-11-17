@@ -404,7 +404,7 @@ export function Player() {
       testID="player"
       style={{ flex: 1, backgroundColor: screenBackground() }}
       onMouseMove={(e) => {
-        volumeDragMove(e.pagePosition.x);
+        volumeDragMove(e.pagePosition.x, e.pressedButton != null);
         if (!card()) poke();
       }}
       onMouseUp={volumeDragEnd}
