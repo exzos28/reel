@@ -167,7 +167,7 @@ test("with a partner, the TV shows its bot's QR beside the source's fields", asy
   const c = core();
   const native = {
     ...c.native,
-    "Hosted.partner": JSON.stringify({ bot: "reel_partner_bot", tv: { url: "https://t.me/reel_partner_bot?start=x", qr: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" }, app: "https://t.me/reel_partner_bot?start=y" }),
+    "Hosted.partner": JSON.stringify({ bot: "reel_partner_bot", tv: { url: "https://t.me/reel_partner_bot?start=x", qr: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" }, app: { url: "https://t.me/reel_partner_bot?start=y", qr: null } }),
   };
   const app = await openApp({ modules: { "app/native": native } });
   await app.press("label:Settings");

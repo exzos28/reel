@@ -74,13 +74,15 @@ pub fn address() -> Value {
     json!({ "url": origin().map(|o| format!("{o}/settings")) })
 }
 
-/// The partner's bot (named at build time) and the links to it: `tv` brings the source back to
-/// this device's page (with its QR code; null where the page is not served), `app` to the reel
-/// app on the phone it opens on. `{"bot":null}` without a bot.
+/// The partner's bot (named at build time) and the links to it, each with its QR code: `tv`
+/// brings the source back to this device's page (null where the page is not served), `app` to
+/// the reel app on the device that opens the link. `{"bot":null}` without a bot.
 pub fn partner() -> Value {
     let Some(bot) = offer::bot() else { return json!({ "bot": null, "tv": null, "app": null }) };
-    let tv = origin().and_then(|o| offer::bot_link(bot, &offer::template(&o))).map(|url| json!({ "qr": qr_svg(&url), "url": url }));
-    json!({ "bot": bot, "tv": tv, "app": offer::bot_link(bot, &offer::template("reel:/")) })
+    let with_qr = |url: String| json!({ "qr": qr_svg(&url), "url": url });
+    let tv = origin().and_then(|o| offer::bot_link(bot, &offer::template(&o))).map(with_qr);
+    let app = offer::bot_link(bot, &offer::template("reel:/")).map(with_qr);
+    json!({ "bot": bot, "tv": tv, "app": app })
 }
 
 /// The source in a link that opened the app (`reel://s?t=&u=`): `{"url","key"}`, or

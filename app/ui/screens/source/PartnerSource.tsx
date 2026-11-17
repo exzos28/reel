@@ -1,24 +1,44 @@
 // A ready source from the partner (design/partner-source.md), in a build that names one: its
 // Telegram bot rents a source and sends it back. Where this device serves its settings page (a
 // TV), the bot's QR code: the phone scans it, pays there, and the source comes back here for a
-// yes on the screen. Elsewhere (a phone, a desktop), a button that opens the bot; it sends a
-// link that fills the source's fields in this app. Nothing in a build without a partner.
-import { Image, openUrl, Text, View, type ViewStyle } from "nsh";
+// yes on the screen. Elsewhere, a button that opens the bot (its link fills the source's fields
+// in this app), and beside it on a bigger screen the same link's QR code, for Telegram on a
+// phone. Nothing in a build without a partner.
+import { Image, openUrl, Text, View, type JSX, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { Button } from "../../kit/Button";
 import { rounded, row } from "../../kit/shape";
 import { bodyText, labelText } from "../../kit/text";
 import { partner } from "../../hosted";
-import { colors, cs, u } from "../../theme";
+import { colors, cs, density, u } from "../../theme";
 
 const qrRow = (): ViewStyle => ({ ...row(u(28)), alignItems: "center" });
 const qrStyle = () => ({ width: cs(200), height: cs(200), ...rounded() });
 
+/** A QR code and what it is for. */
+function Qr(props: { src: string; title: string; text: string; children?: JSX.Element }) {
+  return (
+    <View testID="partner-qr" style={qrRow()}>
+      <Image src={props.src} style={qrStyle()} />
+      <View style={{ flexShrink: 1, gap: u(8) }}>
+        <Text style={labelText(colors.snow())}>{props.title}</Text>
+        <Text style={bodyText(colors.ash())}>{props.text}</Text>
+        {props.children}
+      </View>
+    </View>
+  );
+}
+
 export function PartnerSource(props: { focused?: () => boolean }) {
   const open = () => {
-    const link = partner()?.app;
+    const link = partner()?.app?.url;
     if (link) openUrl(link).catch((e) => console.warn(`reel: the partner's bot did not open: ${e}`));
   };
+  const button = () => (
+    <View style={row(u(16))}>
+      <Button kind="secondary" label={() => t("settings.source.partner_app")} focused={props.focused ?? (() => false)} onPress={open} />
+    </View>
+  );
   return (
     <If when={partner()}>
       {(p) => (
@@ -26,24 +46,27 @@ export function PartnerSource(props: { focused?: () => boolean }) {
           when={p().tv?.qr}
           else={
             <If when={p().app}>
-              <View style={{ gap: u(10) }}>
-                <View style={row(u(16))}>
-                  <Button kind="secondary" label={() => t("settings.source.partner_app")} focused={props.focused ?? (() => false)} onPress={open} />
-                </View>
-                <Text style={bodyText(colors.ash())}>{t("settings.source.partner_app_note", { bot: p().bot })}</Text>
-              </View>
+              {(app) => (
+                <If
+                  when={density === "compact" ? null : app().qr}
+                  else={
+                    <View style={{ gap: u(10) }}>
+                      {button()}
+                      <Text style={bodyText(colors.ash())}>{t("settings.source.partner_app_note", { bot: p().bot })}</Text>
+                    </View>
+                  }
+                >
+                  {(qr) => (
+                    <Qr src={qr()} title={t("settings.source.partner_tv_title")} text={t("settings.source.partner_app_note", { bot: p().bot })}>
+                      {button()}
+                    </Qr>
+                  )}
+                </If>
+              )}
             </If>
           }
         >
-          {(qr) => (
-            <View testID="partner-qr" style={qrRow()}>
-              <Image src={qr()} style={qrStyle()} />
-              <View style={{ flexShrink: 1, gap: u(8) }}>
-                <Text style={labelText(colors.snow())}>{t("settings.source.partner_tv_title")}</Text>
-                <Text style={bodyText(colors.ash())}>{t("settings.source.partner_tv_text", { bot: p().bot })}</Text>
-              </View>
-            </View>
-          )}
+          {(qr) => <Qr src={qr()} title={t("settings.source.partner_tv_title")} text={t("settings.source.partner_tv_text", { bot: p().bot })} />}
         </If>
       )}
     </If>

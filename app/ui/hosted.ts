@@ -24,7 +24,7 @@ export const offeredHost = signal<string | null>(null);
 export interface Partner {
   bot: string;
   tv: { url: string; qr: string | null } | null;
-  app: string | null;
+  app: { url: string; qr: string | null } | null;
 }
 export const partner = signal<Partner | null>(null);
 

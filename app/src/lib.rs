@@ -320,7 +320,7 @@ impl Hosted {
         hosted::link().to_string()
     }
 
-    /// The partner's bot and the links to it: `{"bot","tv":{"url","qr"}|null,"app"}`, or
+    /// The partner's bot and the links to it: `{"bot","tv":{"url","qr"}|null,"app":{"url","qr"}}`, or
     /// `{"bot":null}` in a build without one.
     pub fn partner() -> String {
         hosted::partner().to_string()
