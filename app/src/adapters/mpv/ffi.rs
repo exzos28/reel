@@ -20,6 +20,7 @@ pub const FORMAT_DOUBLE: c_int = 5;
 
 pub const EVENT_NONE: c_int = 0;
 pub const EVENT_SHUTDOWN: c_int = 1;
+pub const EVENT_LOG_MESSAGE: c_int = 2;
 pub const EVENT_END_FILE: c_int = 7;
 pub const EVENT_FILE_LOADED: c_int = 8;
 pub const EVENT_PROPERTY_CHANGE: c_int = 22;
@@ -46,6 +47,15 @@ pub struct EventProperty {
     pub name: *const c_char,
     pub format: c_int,
     pub data: *mut c_void,
+}
+
+/// mpv's own log line (`mpv_request_log_messages`).
+#[repr(C)]
+pub struct EventLogMessage {
+    pub prefix: *const c_char,
+    pub level: *const c_char,
+    pub text: *const c_char,
+    pub log_level: c_int,
 }
 
 #[repr(C)]
@@ -87,6 +97,7 @@ pub struct Lib {
     pub get_property_string: unsafe extern "C" fn(Handle, *const c_char) -> *mut c_char,
     pub command: unsafe extern "C" fn(Handle, *mut *const c_char) -> c_int,
     pub observe_property: unsafe extern "C" fn(Handle, u64, *const c_char, c_int) -> c_int,
+    pub request_log_messages: unsafe extern "C" fn(Handle, *const c_char) -> c_int,
     pub wait_event: unsafe extern "C" fn(Handle, c_double) -> *mut Event,
     pub wakeup: unsafe extern "C" fn(Handle),
     pub free: unsafe extern "C" fn(*mut c_void),
@@ -170,6 +181,7 @@ unsafe fn load(path: &std::path::Path) -> Result<Lib, String> {
         get_property_string: sym!("mpv_get_property_string"),
         command: sym!("mpv_command"),
         observe_property: sym!("mpv_observe_property"),
+        request_log_messages: sym!("mpv_request_log_messages"),
         wait_event: sym!("mpv_wait_event"),
         wakeup: sym!("mpv_wakeup"),
         free: sym!("mpv_free"),

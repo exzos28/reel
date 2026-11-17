@@ -50,6 +50,8 @@ export interface Timeline {
 
 export const playing = signal<Playing | null>(null);
 export const status = signal<Status>({ phase: "idle" });
+/** The player has the screen (a film is opening or playing). */
+export const playerUp = () => status().phase !== "idle";
 /** An episode the player found missing from its season's release (its key):
  * back on the show, the release panel opens for it. */
 export const pickReleaseFor = signal<string | null>(null);

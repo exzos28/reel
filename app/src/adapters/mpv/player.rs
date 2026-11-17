@@ -98,6 +98,8 @@ impl Player {
             unsafe { (lib.terminate_destroy)(handle) };
             return Err(format!("mpv_initialize: {}", ffi::error_text(lib, r)));
         }
+        // mpv's own warnings and errors in reel's log (logcat on Android, through tracing).
+        unsafe { (lib.request_log_messages)(handle, cstr(LOG_LEVEL).as_ptr()) };
         for (i, (name, format)) in OBSERVED.iter().enumerate() {
             unsafe { (lib.observe_property)(handle, i as u64 + 1, cstr(name).as_ptr(), *format) };
         }
@@ -209,6 +211,12 @@ fn track_value(value: Option<&Value>) -> String {
     }
 }
 
+/// The least of mpv's messages that reach reel's log ("warn"; `REEL_MPV_LOG` for more, e.g. "v").
+const LOG_LEVEL: &str = match option_env!("REEL_MPV_LOG") {
+    Some(level) => level,
+    None => "warn",
+};
+
 /// `reel_domain::play::PLAYER_CACHE` as mpv's option value.
 const PLAYER_CACHE_OPTION: &str = "64MiB";
 const _: () = assert!(reel_domain::play::PLAYER_CACHE == 64 * 1024 * 1024, "keep PLAYER_CACHE_OPTION in step");
@@ -243,6 +251,11 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
         match event.event_id {
             ffi::EVENT_NONE => {}
             ffi::EVENT_SHUTDOWN => return,
+            ffi::EVENT_LOG_MESSAGE if !event.data.is_null() => {
+                let m = unsafe { &*(event.data as *const ffi::EventLogMessage) };
+                let text = |p: *const c_char| if p.is_null() { String::new() } else { unsafe { CStr::from_ptr(p) }.to_string_lossy().trim_end().to_owned() };
+                tracing::warn!("mpv [{}] {}: {}", text(m.prefix), text(m.level), text(m.text));
+            }
             ffi::EVENT_FILE_LOADED => {
                 duration = get_f64(lib, raw, "duration").unwrap_or(duration);
                 emit("load", json!({ "duration": duration }));

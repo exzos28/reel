@@ -16,6 +16,8 @@ public final class Install {
 
   /** The activity NSH runs in (found by `install`). */
   private static volatile Activity activity;
+  /** While the player is full screen: hides the bars again when something shows them. */
+  private static android.view.ViewTreeObserver.OnGlobalLayoutListener keeper;
 
   /** The player's full screen: the status and navigation bars hide (a swipe from the edge shows
    * them for a moment), or come back. */
@@ -27,9 +29,23 @@ public final class Install {
       if (android.os.Build.VERSION.SDK_INT >= 30) {
         android.view.WindowInsetsController c = window.getInsetsController();
         if (c == null) return;
+        android.view.View decor = window.getDecorView();
+        if (keeper != null) {
+          decor.getViewTreeObserver().removeOnGlobalLayoutListener(keeper);
+          keeper = null;
+        }
         if (on) {
           c.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
           c.hide(android.view.WindowInsets.Type.systemBars());
+          // NSH applies its status bar again when the window's insets change (as hiding the
+          // bars does) and showed it: hide it again whenever it comes back unasked.
+          keeper = () -> {
+            android.view.WindowInsets insets = decor.getRootWindowInsets();
+            if (insets != null && insets.isVisible(android.view.WindowInsets.Type.statusBars())) {
+              c.hide(android.view.WindowInsets.Type.systemBars());
+            }
+          };
+          decor.getViewTreeObserver().addOnGlobalLayoutListener(keeper);
         } else {
           c.show(android.view.WindowInsets.Type.systemBars());
         }

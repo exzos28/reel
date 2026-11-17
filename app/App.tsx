@@ -27,7 +27,7 @@ import { TouchStack } from "./ui/layout/TouchStack";
 import { ExitDialog } from "./ui/layout/ExitDialog";
 import { keysInUse } from "./ui/focus/keys";
 import { Player } from "./ui/Player";
-import { status } from "./ui/playback";
+import { playerUp, status } from "./ui/playback";
 import { loadSettings } from "./ui/preferences";
 import { watchSettings } from "./ui/hosted";
 import { PairingDialog } from "./ui/layout/PairingDialog";
@@ -84,7 +84,7 @@ function App() {
   keymap.bind({ escape: handleBack });
   // The platform's own: a desktop's shortcuts and menu, Android's system back.
   bindPlatformInput({ back: handleBack, systemBack, go });
-  const playing = () => status().phase !== "idle";
+  const playing = playerUp;
 
   return (
     // While a film plays under the UI (AVPlay on a TV), the app paints no background over it.
