@@ -58,6 +58,11 @@ libc = "0.2"
 nsh-platform-linux = { version = "0.5.0", default-features = false }
 gtk4 = { version = "0.11", features = ["v4_14"] }
 
+# Windows: the mpv video view (`src/adapters/mpv/windows.rs`), drawn with Direct2D from mpv's Direct3D 11 frames.
+[target.'cfg(windows)'.dependencies]
+nsh-platform-windows = { version = "0.5.0", default-features = false }
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_LibraryLoader", "Win32_Graphics_Direct2D", "Win32_Graphics_Direct2D_Common", "Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D11", "Win32_Graphics_Dxgi", "Win32_Graphics_Dxgi_Common"] }
+
 # Android: servers' certificates are checked against Mozilla's roots built in (src/http_client.rs).
 [target.'cfg(target_os = "android")'.dependencies]
 # reel's own native views (src/adapters/android_views.rs): JNI's C interface, as NSH uses.

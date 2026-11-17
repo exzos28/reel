@@ -5,6 +5,7 @@
 #
 #   scripts/libmpv.sh fetch android        # prints the directory with <abi>/*.so
 #   scripts/libmpv.sh fetch macos          # prints the path of libmpv.2.dylib
+#   scripts/libmpv.sh fetch windows        # prints the path of libmpv-2.dll (x86_64)
 #   scripts/libmpv.sh fetch linux          # prints the path of libmpv.so.2 for this machine's arch
 #                                          # (REEL_LIBMPV_LINUX: a local one instead, for a build
 #                                          # not released yet)
@@ -12,12 +13,13 @@
 set -euo pipefail
 
 REPO="exzos28/reel-libmpv"
-TAG="mpv0.42-ffmpeg9.0.2-3"
-SHA_ANDROID_ARM64="0b1b152692cd95f04319df61f7373ed872728fb422abb093f96c586456105578"
-SHA_ANDROID_ARMV7="3dbb452564b8db40a9cf0e7cc0de75c1439a53775e450c58bea7574dd33152f0"
+TAG="mpv0.42-ffmpeg9.0.2-4"
+SHA_ANDROID_ARM64="79cae9a5725b75b0cad809b657fa504cb72f6057c16a4e2e5f0b45c2964a7158"
+SHA_ANDROID_ARMV7="710a3d5954113d17efdda178dc35b38c741c8cda16ac9cde48ecde1664826df4"
 SHA_MACOS="734062af58e5545e731bb3c2d9af54b64bd12ccf9f484aa41b277c34669c5c94"
-SHA_LINUX_X86_64="4e082e49d3a5eaa2a425ddcce59ccd6a3045ad811c6672dc5acd4146ea2358b3"
-SHA_LINUX_AARCH64="da81036c566acd10f610e26370b2d1106ebd1d4cb3a46592dd5aa3adc4b78228"
+SHA_LINUX_X86_64="28ee336bdd40805fdbfe00f6e588410a0f532f9f5643d50c8bd91d817d145988"
+SHA_WINDOWS_X86_64="81c991359f08c9cabf1a256d3f47ca6ed92c5b30037420c474e76fa5ed2f6363"
+SHA_LINUX_AARCH64="dbe51a1b0a59a5de1b8916d236c617f0184bc9e827627aa56dca2fe2cc006044"
 CACHE="${REEL_LIBMPV_CACHE:-$HOME/Library/Caches/reel/libmpv/$TAG}"
 
 # Downloads a release file once and checks it.
@@ -72,13 +74,27 @@ linux() {
   echo "$so"
 }
 
+windows() {
+  if [ -n "${REEL_LIBMPV_WINDOWS:-}" ]; then
+    echo "$REEL_LIBMPV_WINDOWS"
+    return
+  fi
+  local dll="$CACHE/windows-x86_64/libmpv-2.dll"
+  if [ ! -f "$dll" ]; then
+    local archive; archive="$(get libmpv-windows-x86_64.zip "$SHA_WINDOWS_X86_64")"
+    mkdir -p "$CACHE/windows-x86_64" && unzip -q -o "$archive" -d "$CACHE/windows-x86_64"
+  fi
+  echo "$dll"
+}
+
 case "${1:-}" in
   fetch)
     case "${2:-}" in
       android) android ;;
       macos) macos ;;
       linux) linux ;;
-      *) echo "usage: $0 fetch android|macos|linux" >&2; exit 2 ;;
+      windows) windows ;;
+      *) echo "usage: $0 fetch android|macos|linux|windows" >&2; exit 2 ;;
     esac
     ;;
   bundle-macos)

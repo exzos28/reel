@@ -4,6 +4,10 @@
 //! `Contents/Frameworks` (what `scripts/libmpv.sh bundle-macos` puts there), then
 //! Homebrew's and /usr/local's lib directories.
 
+// libmpv's C API as reel uses it: each platform's view uses its own part (OpenGL on macOS and
+// Linux, Direct3D 11 on Windows), so some of it is unused on any one platform.
+#![allow(dead_code)]
+
 use std::{
     ffi::{CStr, CString, c_char, c_double, c_int, c_void},
     path::PathBuf,
@@ -33,6 +37,8 @@ pub const RENDER_PARAM_API_TYPE: c_int = 1;
 pub const RENDER_PARAM_OPENGL_INIT_PARAMS: c_int = 2;
 pub const RENDER_PARAM_OPENGL_FBO: c_int = 3;
 pub const RENDER_PARAM_FLIP_Y: c_int = 4;
+pub const RENDER_PARAM_D3D11_INIT_PARAMS: c_int = 21;
+pub const RENDER_PARAM_D3D11_FBO: c_int = 22;
 
 #[repr(C)]
 pub struct Event {
@@ -76,6 +82,18 @@ pub struct OpenGlInitParams {
     pub get_proc_address_ctx: *mut c_void,
 }
 
+/// `mpv_d3d11_init_params`: the ID3D11Device mpv renders with (Windows).
+#[repr(C)]
+pub struct D3d11InitParams {
+    pub device: *mut c_void,
+}
+
+/// `mpv_d3d11_fbo`: the ID3D11Texture2D mpv renders into (Windows).
+#[repr(C)]
+pub struct D3d11Fbo {
+    pub tex: *mut c_void,
+}
+
 #[repr(C)]
 pub struct OpenGlFbo {
     pub fbo: c_int,
@@ -91,7 +109,6 @@ pub struct Lib {
     pub initialize: unsafe extern "C" fn(Handle) -> c_int,
     pub terminate_destroy: unsafe extern "C" fn(Handle),
     pub set_option_string: unsafe extern "C" fn(Handle, *const c_char, *const c_char) -> c_int,
-    #[cfg_attr(not(target_os = "android"), allow(dead_code))]
     pub set_option: unsafe extern "C" fn(Handle, *const c_char, c_int, *mut c_void) -> c_int,
     pub set_property_string: unsafe extern "C" fn(Handle, *const c_char, *const c_char) -> c_int,
     pub get_property_string: unsafe extern "C" fn(Handle, *const c_char) -> *mut c_char,
@@ -120,6 +137,14 @@ fn candidates() -> Vec<PathBuf> {
     // Android: in the APK's native libraries (scripts/android-views.sh), found by name.
     if cfg!(target_os = "android") {
         out.push("libmpv.so".into());
+        return out;
+    }
+    // Windows: beside the app's .exe (scripts/build.sh windows puts it there).
+    if cfg!(windows) {
+        if let Some(dir) = std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf())) {
+            out.push(dir.join("libmpv-2.dll"));
+        }
+        out.push("libmpv-2.dll".into());
         return out;
     }
     // Linux: beside the app (scripts/build.sh linux puts it there), else the system's.
@@ -163,16 +188,43 @@ pub fn lib() -> Option<&'static Lib> {
     .as_ref()
 }
 
-unsafe fn load(path: &std::path::Path) -> Result<Lib, String> {
+/// A loaded library: dlopen's handle, or Windows' module.
+#[cfg(not(windows))]
+unsafe fn open(path: &std::path::Path) -> Result<*mut c_void, String> {
     let c = CString::new(path.as_os_str().as_encoded_bytes()).map_err(|e| e.to_string())?;
     let handle = unsafe { libc::dlopen(c.as_ptr(), libc::RTLD_NOW | libc::RTLD_LOCAL) };
     if handle.is_null() {
         let err = unsafe { libc::dlerror() };
         return Err(if err.is_null() { "dlopen failed".into() } else { unsafe { CStr::from_ptr(err) }.to_string_lossy().into_owned() });
     }
+    Ok(handle)
+}
+
+#[cfg(not(windows))]
+unsafe fn symbol(handle: *mut c_void, name: &CStr) -> *mut c_void {
+    unsafe { libc::dlsym(handle, name.as_ptr()) }
+}
+
+#[cfg(windows)]
+unsafe fn open(path: &std::path::Path) -> Result<*mut c_void, String> {
+    use std::os::windows::ffi::OsStrExt;
+    let wide: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+    let module = unsafe { windows::Win32::System::LibraryLoader::LoadLibraryW(windows::core::PCWSTR(wide.as_ptr())) }.map_err(|e| e.to_string())?;
+    Ok(module.0)
+}
+
+#[cfg(windows)]
+unsafe fn symbol(handle: *mut c_void, name: &CStr) -> *mut c_void {
+    let module = windows::Win32::Foundation::HMODULE(handle);
+    unsafe { windows::Win32::System::LibraryLoader::GetProcAddress(module, windows::core::PCSTR(name.as_ptr().cast())) }
+        .map_or(std::ptr::null_mut(), |f| f as *mut c_void)
+}
+
+unsafe fn load(path: &std::path::Path) -> Result<Lib, String> {
+    let handle = unsafe { open(path)? };
     macro_rules! sym {
         ($name:literal) => {{
-            let p = unsafe { libc::dlsym(handle, concat!($name, "\0").as_ptr().cast()) };
+            let p = unsafe { symbol(handle, CStr::from_bytes_with_nul(concat!($name, "\0").as_bytes()).unwrap()) };
             if p.is_null() {
                 return Err(format!("{} is missing", $name));
             }

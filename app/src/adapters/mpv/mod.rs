@@ -2,7 +2,8 @@
 //! (MKV, DTS, TrueHD…) and reports and switches the audio and subtitle tracks. The native
 //! component `reel/mpv` (`ui/VideoSurface.tsx` uses it where `VideoEngine.kind()` says
 //! "mpv"): on macOS an NSView drawn through mpv's render API (`view`), on Linux a GTK GLArea
-//! drawn the same way (`linux`), on Android a TextureView (`app/android`, Java) driving the
+//! drawn the same way (`linux`), on Windows a Direct2D drawing of mpv's Direct3D 11 frames
+//! (`windows`), on Android a TextureView (`app/android`, Java) driving the
 //! same player (`android`). Without libmpv the
 //! app keeps NSH's `<Video>`.
 
@@ -10,17 +11,26 @@
 mod android;
 #[cfg(target_os = "linux")]
 mod linux;
+#[cfg(windows)]
+mod windows;
 pub mod ffi;
 pub mod player;
 #[cfg(target_os = "macos")]
 mod view;
 
-#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[cfg(any(target_os = "macos", target_os = "linux", windows))]
 use std::rc::Rc;
 
 /// Whether libmpv was found (and loaded).
 pub fn available() -> bool {
     ffi::lib().is_some()
+}
+
+/// Registers `reel/mpv` when libmpv is there (Windows: drawn with Direct2D in the view).
+#[cfg(windows)]
+pub fn register_windows(components: &nsh_platform_windows::Components) {
+    let Some(lib) = ffi::lib() else { return };
+    components.register("reel/mpv", Rc::new(move |cx| Box::new(windows::MpvComponent::new(cx, lib))));
 }
 
 /// Registers `reel/mpv` when libmpv is there (Linux: a GLArea).

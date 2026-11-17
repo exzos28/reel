@@ -18,7 +18,6 @@ use std::{
     collections::BTreeMap,
     fs::{File, OpenOptions},
     io,
-    os::unix::fs::FileExt,
     path::{Path, PathBuf},
     sync::{
         Arc, Mutex, Weak,
@@ -592,7 +591,7 @@ impl TorrentStorage for RingStorage {
         for (piece, in_piece, at, n) in ring.split(file_id, offset, buf.len())? {
             anyhow::ensure!(ring.policy.lock().unwrap().has(piece), "piece {piece} is not in the cache");
             File::open(ring.path(piece))
-                .and_then(|f| f.read_exact_at(&mut buf[at..at + n], in_piece))
+                .and_then(|f| read_exact_at(&f, &mut buf[at..at + n], in_piece))
                 .with_context(|| format!("reading piece {piece}"))?;
         }
         Ok(())
@@ -607,7 +606,7 @@ impl TorrentStorage for RingStorage {
                 .create(true)
                 .truncate(false)
                 .open(ring.path(piece))
-                .and_then(|f| f.write_all_at(&buf[at..at + n], in_piece))
+                .and_then(|f| write_all_at(&f, &buf[at..at + n], in_piece))
                 .with_context(|| format!("writing piece {piece}"))?;
         }
         Ok(())
@@ -644,6 +643,43 @@ impl TorrentStorage for RingStorage {
         self.0.policy.lock().unwrap().completed(piece.get());
         Ok(())
     }
+}
+
+/// `buf.len()` bytes of `f` from `offset` (Unix's `read_exact_at`; Windows reads with
+/// `seek_read`, which may return fewer bytes).
+#[cfg(unix)]
+fn read_exact_at(f: &File, buf: &mut [u8], offset: u64) -> io::Result<()> {
+    std::os::unix::fs::FileExt::read_exact_at(f, buf, offset)
+}
+
+#[cfg(windows)]
+fn read_exact_at(f: &File, buf: &mut [u8], offset: u64) -> io::Result<()> {
+    let mut done = 0;
+    while done < buf.len() {
+        match std::os::windows::fs::FileExt::seek_read(f, &mut buf[done..], offset + done as u64)? {
+            0 => return Err(io::ErrorKind::UnexpectedEof.into()),
+            n => done += n,
+        }
+    }
+    Ok(())
+}
+
+/// All of `buf` into `f` at `offset` (Unix's `write_all_at`; Windows writes with `seek_write`).
+#[cfg(unix)]
+fn write_all_at(f: &File, buf: &[u8], offset: u64) -> io::Result<()> {
+    std::os::unix::fs::FileExt::write_all_at(f, buf, offset)
+}
+
+#[cfg(windows)]
+fn write_all_at(f: &File, buf: &[u8], offset: u64) -> io::Result<()> {
+    let mut done = 0;
+    while done < buf.len() {
+        match std::os::windows::fs::FileExt::seek_write(f, &buf[done..], offset + done as u64)? {
+            0 => return Err(io::ErrorKind::WriteZero.into()),
+            n => done += n,
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

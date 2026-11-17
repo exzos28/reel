@@ -134,10 +134,21 @@ case "$target" in
     ;;
 
   windows)
-    case "$(uname -s)" in MINGW* | MSYS* | CYGWIN*) ;; *) die "windows packages are built on Windows" ;; esac
+    # On Windows, or cross-compiled with cargo-xwin (scripts/linux-docker.sh windows).
+    case "$(uname -s)" in
+      MINGW* | MSYS* | CYGWIN*) ;;
+      *) command -v cargo-xwin >/dev/null || die "windows packages are built on Windows, or with cargo-xwin" ;;
+    esac
     tmdb_note
     fresh_out
     package windows
+    # libmpv for the mpv video view, beside reel.exe (where the app looks first); the archive
+    # is made again with it.
+    app_dir="$(dirname "$(one "$pkg/*/*.exe")")"
+    cp "$("$repo/scripts/libmpv.sh" fetch windows)" "$app_dir/libmpv-2.dll"
+    rm -f "$pkg"/*.zip
+    zip_out="$(cd "$pkg" && pwd)/$(basename "$app_dir").zip"
+    (cd "$(dirname "$app_dir")" && zip -q -r -X "$zip_out" "$(basename "$app_dir")")
     cp "$(one "$pkg/*.zip")" "$out/reel-windows-x86_64.zip"
     for setup in "$pkg"/*-setup.exe; do
       [ -e "$setup" ] && cp "$setup" "$out/reel-windows-x86_64-setup.exe"

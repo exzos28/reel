@@ -1,11 +1,13 @@
-//! Disk space where the engine keeps its cache. `statvfs` is the same call on
-//! macOS, iOS, Android and Tizen (Linux), so no per-platform code is needed.
+//! Disk space where the engine keeps its cache: `statvfs` on macOS, iOS, Android, Linux and Tizen;
+//! `GetDiskFreeSpaceExW` on Windows.
 
-use std::{ffi::CString, os::unix::ffi::OsStrExt, path::Path};
+use std::path::Path;
 
 /// Bytes free for this app on the filesystem that holds `path` (what an
 /// unprivileged process may still write: `f_bavail`, not `f_bfree`).
+#[cfg(unix)]
 pub fn free_bytes(path: &Path) -> std::io::Result<u64> {
+    use std::{ffi::CString, os::unix::ffi::OsStrExt};
     let c = CString::new(path.as_os_str().as_bytes())
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
     let mut st: libc::statvfs = unsafe { std::mem::zeroed() };
@@ -15,6 +17,20 @@ pub fn free_bytes(path: &Path) -> std::io::Result<u64> {
     }
     #[allow(clippy::unnecessary_cast)] // the field types differ between platforms
     Ok(st.f_bavail as u64 * st.f_frsize as u64)
+}
+
+/// Bytes free for this user on the volume that holds `path` (its quota counted).
+#[cfg(windows)]
+pub fn free_bytes(path: &Path) -> std::io::Result<u64> {
+    use std::os::windows::ffi::OsStrExt;
+    let wide: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+    let mut free = 0u64;
+    // SAFETY: `wide` is a NUL-terminated path; `free` is writable.
+    unsafe {
+        windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW(windows::core::PCWSTR(wide.as_ptr()), Some(&mut free), None, None)
+    }
+    .map_err(|e| std::io::Error::from_raw_os_error(e.code().0))?;
+    Ok(free)
 }
 
 #[cfg(test)]

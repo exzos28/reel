@@ -6,3 +6,4 @@ logs/
 
 # scripts/linux-docker.sh build output
 /dist-linux/
+/dist-windows/

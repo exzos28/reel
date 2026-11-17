@@ -7,6 +7,8 @@
 #                                             REEL_LIBMPV_LINUX: a local libmpv.so.2 to bundle
 #   scripts/linux-docker.sh run [out-dir] [seconds] [shot.png]
 #                                             runs it on a virtual display, screenshots it
+#   scripts/linux-docker.sh windows [out-dir] the Windows app, cross-compiled (scripts/build.sh windows)
+#   scripts/linux-docker.sh windows-check     type-checks the core for Windows (cargo xwin check)
 #   scripts/linux-docker.sh clean             removes the image and its volumes
 #
 # The sources are copied into a volume (not built in app/.nsh, which the Mac's builds use);
@@ -14,7 +16,7 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")/.." && pwd)"
 image=reel-linux-build
-volumes=(reel-linux-src reel-linux-cargo reel-linux-home)
+volumes=(reel-linux-src reel-linux-cargo reel-linux-home reel-linux-xwin)
 
 docker_run() {
   docker run --rm \
@@ -60,6 +62,30 @@ case "${1:-}" in
       import -window root /out/$(basename "$shot")
       tail -20 /out/run.log"
     echo "$out/$(basename "$shot")"
+    ;;
+  windows)
+    out="${2:-$here/dist-windows}"
+    mkdir -p "$out" && out="$(cd "$out" && pwd)"
+    [ -f "$here/.env" ] && { set -a; . "$here/.env"; set +a; }
+    docker build -q -t "$image" "$here/dev/linux" >/dev/null
+    local_dll=()
+    if [ -n "${REEL_LIBMPV_WINDOWS:-}" ]; then
+      local_dll=(-v "$REEL_LIBMPV_WINDOWS:/libmpv/libmpv-2.dll:ro" -e REEL_LIBMPV_WINDOWS=/libmpv/libmpv-2.dll)
+    fi
+    docker_run -v reel-linux-xwin:/opt/home/.cache -v "$out:/out" ${local_dll[@]+"${local_dll[@]}"} "$image" bash -euo pipefail -c '
+      rsync -a --delete --exclude .git --exclude "app/.nsh" --exclude "app/target" --exclude "hosts/*/target" \
+        --exclude "dist-*" --exclude node_modules /reel/ /src/
+      export PATH="$(scripts/install-nsh.sh):$PATH"
+      scripts/build.sh windows
+      cp app/.nsh/dist/windows/*.zip /out/
+      ls -la /out'
+    ;;
+  windows-check)
+    docker build -q -t "$image" "$here/dev/linux" >/dev/null
+    docker_run -v reel-linux-xwin:/opt/home/.cache "$image" bash -euo pipefail -c '
+      rsync -a --delete --exclude .git --exclude "app/.nsh" --exclude "app/target" --exclude "hosts/*/target" \
+        --exclude "dist-*" --exclude node_modules /reel/ /src/
+      cd app && cargo xwin check --features engine --target x86_64-pc-windows-msvc'
     ;;
   clean)
     docker image rm -f "$image" 2>/dev/null || true
