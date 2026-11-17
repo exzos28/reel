@@ -36,6 +36,9 @@ export interface VideoSurfaceProps {
   /** mpv's subtitle track id, "no" for none; null leaves it to the player. */
   subtitleTrack?: number | "no" | null;
   progressUpdateInterval?: number;
+  /** The share of the view's height the player's controls cover now: subtitles the player draws
+   * itself (mpv's, embedded in the film) rise above them. */
+  subtitleLift?: number;
   style?: ViewStyle;
   surfaceRef?: (r: SurfaceRef) => void;
   onLoad?: (e: { duration: number }) => void;
@@ -54,6 +57,7 @@ interface MpvProps {
   audioTrack: number | null;
   subtitleTrack: number | string | null;
   progressUpdateInterval: number;
+  subtitleLift: number;
 }
 
 interface MpvEvents {
@@ -67,7 +71,7 @@ interface MpvEvents {
 }
 
 const MpvView = nativeComponent<MpvProps, MpvEvents>("reel/mpv", {
-  props: ["src", "paused", "volume", "audioTrack", "subtitleTrack", "progressUpdateInterval"],
+  props: ["src", "paused", "volume", "audioTrack", "subtitleTrack", "progressUpdateInterval", "subtitleLift"],
   events: ["load", "progress", "buffer", "end", "error", "tracks"],
 });
 
@@ -79,6 +83,7 @@ export function VideoSurface(props: VideoSurfaceProps) {
         src={props.src}
         paused={props.paused}
         volume={props.volume ?? 1}
+        subtitleLift={props.subtitleLift ?? 0}
         audioTrack={props.audioTrack ?? null}
         subtitleTrack={props.subtitleTrack ?? null}
         progressUpdateInterval={props.progressUpdateInterval ?? 250}

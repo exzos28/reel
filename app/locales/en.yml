@@ -297,7 +297,13 @@ player:
   back: Back
   close: Close
   close_tracks: Close audio and subtitles
+  episodes: Episodes
+  close_episodes: Close the episodes
+  now_playing: Playing now
   fullscreen: Full screen
+  mute: Mute
+  unmute: Unmute
+  volume: Volume
   exit_fullscreen: Exit full screen
   stage:
     searching: Looking for a release

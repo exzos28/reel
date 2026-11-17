@@ -181,6 +181,13 @@ impl Player {
                 let v = value.and_then(Value::as_f64).unwrap_or(1.0).clamp(0.0, 1.0);
                 self.set("volume", &format!("{}", v * 100.0));
             }
+            // The subtitles mpv draws itself (embedded in the film) rise over the player's controls
+            // while they show: the share of the view's height they cover (0: none, mpv's own margin).
+            "subtitleLift" => {
+                let lift = value.and_then(Value::as_f64).unwrap_or(0.0).clamp(0.0, 0.8);
+                // mpv's margins are in pixels of a 720-high view, whatever its size; 22 is its default.
+                self.set("sub-margin-y", &format!("{}", (22.0 + lift * 720.0).round()));
+            }
             "rate" => self.set("speed", &format!("{}", value.and_then(Value::as_f64).unwrap_or(1.0))),
             "progressUpdateInterval" => {
                 let ms = value.and_then(Value::as_f64).unwrap_or(250.0).max(16.0);

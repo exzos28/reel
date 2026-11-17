@@ -9,7 +9,7 @@
 // buttons on the buttons row), Up/Down switch rows, Escape closes the
 // panel, then hides the overlay, then leaves. Near the end of an episode
 // the Up next card (tv-player-end.html) takes the remote instead.
-import { cleanup, computed, effect, Image, keymap, safeArea, signal, Text, View, type ImageAsset, type ViewStyle } from "nsh";
+import { cleanup, computed, effect, Image, keymap, safeArea, signal, Text, View, windowSize, type ImageAsset, type ViewStyle } from "nsh";
 import { BufferingNote, PlayerStage, type StageLine } from "./PlayerStage";
 import { t } from "nsh/i18n";
 import { Catalog, Fmt } from "./native";
@@ -22,6 +22,7 @@ import { cachedAhead, duration, firstFrame, readAt, playing as what, play, posit
 import { alpha, colors, focusRing, font, iconPt, radius, safe, showFocus, targetSlop, ts, type, u } from "./theme";
 import { chrome } from "./layout/chrome";
 import { caps } from "./platform";
+import { playVolume, PlayerVolume, toggleMute, volumeShown } from "./PlayerVolume";
 import { useFullscreen } from "./platform/window";
 import { BarBack, barBackBox } from "./layout/WindowBar";
 import { onBack } from "./nav";
@@ -35,6 +36,8 @@ import forwardIcon from "./icons/forward.svg";
 import tracksIcon from "./icons/tracks.svg";
 import fullscreenIcon from "./icons/fullscreen.svg";
 import fullscreenExitIcon from "./icons/fullscreen-exit.svg";
+import episodesIcon from "./icons/episodes.svg";
+import { PlayerEpisodes } from "./PlayerEpisodes";
 import checkIcon from "./icons/check.svg";
 
 /** How long the overlay stays without input. */
@@ -89,7 +92,7 @@ const topRowStyle = (full: boolean): ViewStyle => ({
   gap: u(24),
 });
 
-const BUTTONS = ["back", "play", "forward", "tracks", "fullscreen"] as const;
+const BUTTONS = ["back", "play", "forward", "tracks", "episodes", "fullscreen"] as const;
 type ButtonId = (typeof BUTTONS)[number];
 const PLAY_BUTTON = 1;
 
@@ -134,7 +137,11 @@ export function Player() {
   const row = signal<Row>("scrubber");
   const button = signal(PLAY_BUTTON);
   /** The buttons this device has: full screen only where the window can fill the screen. */
-  const buttons: ButtonId[] = caps.fullscreen ? [...BUTTONS] : BUTTONS.filter((b) => b !== "fullscreen");
+  const buttons: ButtonId[] = BUTTONS.filter(
+    (b) => (b !== "fullscreen" || caps.fullscreen) && (b !== "episodes" || what()?.season != null),
+  );
+  /** The show's episodes in a panel (a series only). */
+  const episodesOpen = signal(false);
   /** The window fills the screen (desktops). Left as it was found when the player closes. */
   const { on: fullscreen, set: setFullscreen } = useFullscreen();
 
@@ -191,7 +198,7 @@ export function Player() {
 
   // The overlay hides on its own only while the film plays (not paused,
   // not buffering as `onBuffer` says) and the panel is closed.
-  const mayHide = () => started() && !paused() && !buffering() && !error() && !panel();
+  const mayHide = () => started() && !paused() && !buffering() && !error() && !panel() && !episodesOpen();
   let hideTimer: ReturnType<typeof setTimeout> | undefined;
   const scheduleHide = () => {
     clearTimeout(hideTimer);
@@ -229,7 +236,8 @@ export function Player() {
   };
   const run = (id: ButtonId) => {
     if (id === "play") togglePause();
-    else if (id === "tracks") (panel() ? panel.set(false) : openPanel());
+    else if (id === "tracks") (episodesOpen.set(false), panel() ? panel.set(false) : openPanel());
+    else if (id === "episodes") (panel.set(false), episodesOpen.set(!episodesOpen()));
     else if (id === "fullscreen") setFullscreen(!fullscreen());
     else seekBy(id === "back" ? -SEEK_S : SEEK_S);
   };
@@ -270,6 +278,7 @@ export function Player() {
   );
   // F: full screen, as in other players.
   if (caps.fullscreen) keymap.bind({ f: () => setFullscreen(!fullscreen()) });
+  if (volumeShown) keymap.bind({ m: () => (toggleMute(), poke()) });
   keymap.bind({
     up: key((shown) => (panel() ? movePanel(0, -1) : shown && row.set("scrubber"))),
     down: key((shown) => (panel() ? movePanel(0, 1) : shown && row.set("buttons"))),
@@ -277,7 +286,7 @@ export function Player() {
     enter: key(
       (shown) => {
         if (panel()) pick(panelCol(), panelRow());
-        else if (shown && row() === "buttons") run(BUTTONS[button()]);
+        else if (shown && row() === "buttons") run(buttons[button()]);
         else togglePause();
       },
       () => (cardButton() === 0 ? playNext() : dismissed.set(true)),
@@ -378,10 +387,12 @@ export function Player() {
     : id === "back" ? t("player.back_10")
     : id === "forward" ? t("player.forward_10")
     : id === "fullscreen" ? (fullscreen() ? t("player.exit_fullscreen") : t("player.fullscreen"))
+    : id === "episodes" ? t("player.episodes")
     : t("player.tracks");
   const icon = (id: ButtonId): ImageAsset =>
     id === "play" ? (paused() ? playIcon : pauseIcon) : id === "back" ? rewindIcon : id === "forward" ? forwardIcon
-    : id === "fullscreen" ? (fullscreen() ? fullscreenExitIcon : fullscreenIcon) : tracksIcon;
+    : id === "fullscreen" ? (fullscreen() ? fullscreenExitIcon : fullscreenIcon)
+    : id === "episodes" ? episodesIcon : tracksIcon;
 
   return (
     <View
@@ -391,8 +402,8 @@ export function Player() {
       onPress={(e) => {
         if (card()) return;
         poke();
-        // A double click on the picture: full screen, as in other players.
-        if (e?.clickCount === 2) setFullscreen(!fullscreen());
+        // A double click on the picture: full screen and back, as in other players.
+        if (caps.fullscreen && e && isDoubleClick(e)) setFullscreen(!fullscreen());
       }}
       // Touch: a swipe down closes the player, as a full-screen cover does.
       onPanEnd={(e) => caps.touch && !e.cancelled && (e.translation.y > 120 || e.velocity.y > 800) && stop()}
@@ -403,6 +414,9 @@ export function Player() {
           surfaceRef={(r) => (surface = r)}
           src={url()}
           paused={paused()}
+          volume={playVolume()}
+          // The film's own subtitles (mpv draws them) rise above the controls while they show.
+          subtitleLift={overlay() && !card() ? controlsHeight() / Math.max(1, windowSize().height) : 0}
           audioTrack={menu().apply.audio}
           subtitleTrack={menu().apply.subtitle}
           onTracks={(json) => embedded.set(json)}
@@ -501,6 +515,24 @@ export function Player() {
           </View>
         </View>
 
+        <If when={episodesOpen() ? what() : null}>
+          {(w) => (
+            <>
+              {/* A tap beside the panel closes it, as the tracks panel's does. */}
+              <View role="button" accessibilityLabel={t("player.close_episodes")} onPress={() => episodesOpen.set(false)} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+              <PlayerEpisodes
+                show={() => w().title}
+                season={() => w().season ?? 1}
+                episode={() => w().episode ?? 1}
+                onPlay={(e) => {
+                  episodesOpen.set(false);
+                  play({ id: e.id, season: e.season, episode: e.number, title: w().title });
+                }}
+                onClose={() => episodesOpen.set(false)}
+              />
+            </>
+          )}
+        </If>
         <If when={panel()}>
           {/* A tap beside the panel closes it, as a sheet's does. */}
           <View role="button" accessibilityLabel={t("player.close_tracks")} onPress={() => panel.set(false)} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
@@ -543,6 +575,12 @@ export function Player() {
               </Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: u(14), marginTop: u(26) }}>
+              {/* On the right: the volume (computers). */}
+              <If when={volumeShown}>
+                <View style={{ position: "absolute", right: 0 }}>
+                  <PlayerVolume onUse={poke} />
+                </View>
+              </If>
               <Each of={buttons} key="index">
                 {(id, i) => (
                   <View style={{ marginLeft: id() === "tracks" ? u(22) : 0 }}>
@@ -550,7 +588,7 @@ export function Player() {
                       icon={() => icon(id())}
                       label={() => label(id())}
                       focused={() => row() === "buttons" && button() === i() && !panel()}
-                      selected={() => id() === "tracks" && panel()}
+                      selected={() => (id() === "tracks" && panel()) || (id() === "episodes" && episodesOpen())}
                       onPress={() => { poke(); button.set(i()); run(id()); }}
                     />
                   </View>
@@ -574,6 +612,25 @@ export function Player() {
       </If>
     </View>
   );
+}
+
+/** Two presses this close in time (ms) and place (points) are a double click. */
+const DOUBLE_MS = 400;
+const DOUBLE_SLOP = 8;
+let lastPress: { at: number; x: number; y: number } | null = null;
+
+/** A double click: the platform's count where it reports one (macOS), else two presses close in
+ * time and place (Windows reports every click as the first). */
+function isDoubleClick(e: { clickCount?: number; pagePosition: { x: number; y: number } }): boolean {
+  const now = Date.now();
+  const prev = lastPress;
+  lastPress = { at: now, x: e.pagePosition.x, y: e.pagePosition.y };
+  if ((e.clickCount ?? 1) >= 2) return (lastPress = null), true;
+  if (prev && now - prev.at <= DOUBLE_MS && Math.abs(prev.x - e.pagePosition.x) <= DOUBLE_SLOP && Math.abs(prev.y - e.pagePosition.y) <= DOUBLE_SLOP) {
+    lastPress = null;
+    return true;
+  }
+  return false;
 }
 
 /** Watched (snow), ready (snow 45%) and not loaded yet (snow 16%) along the
