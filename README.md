@@ -11,17 +11,17 @@
 
 <p align="center">
   <a href="https://reel-site.fly.dev"><b>Website</b></a> ·
-  <a href="https://github.com/exzos28/reel-releases/releases/latest"><b>Download</b></a>
+  <a href="https://github.com/exzos28/reel/releases/latest"><b>Download</b></a>
 </p>
 
 <p align="center">
   <img src="design/readme/devices@2x.png" width="683" alt="reel on a TV, a Mac, Windows, Linux, an iPad, an iPhone and Android">
 </p>
 
-- **Nothing to download first.** It fetches the start of a film and plays.
+- **Streams torrents.** No waiting for a download: it fetches the start of a film and plays.
+- **Up to 4K and HDR.** Every container, codec, audio and subtitle track.
+- **No ads, no accounts.** Nothing tracks you; settings and progress stay on your device.
 - **Your source.** It searches the Torznab source you enter. reel ships none.
-- **Any format.** Every container, codec, audio and subtitle track.
-- **No accounts.** Settings and progress stay on your device.
 
 Samsung TV · Android and Android TV · macOS · Windows · Linux
 

@@ -42,7 +42,7 @@ Packages are reproducible archives without the build machine's paths or metadata
 ## Release
 
 ```sh
-build/publish-release.sh <version>   # the packages in out/ as a release of reel-releases
+build/publish-release.sh <version>   # the packages in out/ as a GitHub release of this repository
 build/site-deploy.sh                 # the website on Fly.io
 ```
 

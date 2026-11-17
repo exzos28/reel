@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publishes the packages as a release of the public downloads repository (exzos28/reel-releases),
+# Publishes the packages as a release of this repository (exzos28/reel),
 # where the site's download links point (releases/latest/download/<name>). The code stays here.
 #
 # Usage: build/publish-release.sh <version> [--dry-run]     e.g. 0.1.0
@@ -17,7 +17,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
-releases="${REEL_RELEASES_REPO:-exzos28/reel-releases}"
+releases="${REEL_RELEASES_REPO:-exzos28/reel}"
 version="${1:?usage: $0 <version> [--dry-run]}"
 version="${version#v}"
 dry=0

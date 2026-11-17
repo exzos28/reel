@@ -19,7 +19,7 @@ cp "$repo/site/deploy/Dockerfile" "$repo/site/deploy/nginx.conf" "$ctx/"
 # The site itself (not its README, not the deploy files).
 rsync -a --exclude deploy --exclude README.md "$repo/site/" "$ctx/www/"
 # The links to the downloads repository name its (public) account.
-python3 -I "$repo/build/package-check.py" --allow "github.com/${REEL_RELEASES_REPO:-exzos28/reel-releases}" "$ctx/www" || die "the site fails the package check (above)"
+python3 -I "$repo/build/package-check.py" --allow "github.com/${REEL_RELEASES_REPO:-exzos28/reel}" "$ctx/www" || die "the site fails the package check (above)"
 du -sh "$ctx/www" >&2
 if [ "$dry" = 1 ]; then
   log "dry run: not deployed"
