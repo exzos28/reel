@@ -1,22 +1,33 @@
 //! reel's own video view, backed by libmpv: plays every container and codec FFmpeg does
 //! (MKV, DTS, TrueHD…) and reports and switches the audio and subtitle tracks. The native
 //! component `reel/mpv` (`ui/VideoSurface.tsx` uses it where `VideoEngine.kind()` says
-//! "mpv"): on macOS an NSView drawn through mpv's render API (`view`), on Android a
-//! SurfaceView (`app/android`, Java) driving the same player (`android`). Without libmpv the
+//! "mpv"): on macOS an NSView drawn through mpv's render API (`view`), on Linux a GTK GLArea
+//! drawn the same way (`linux`), on Android a TextureView (`app/android`, Java) driving the
+//! same player (`android`). Without libmpv the
 //! app keeps NSH's `<Video>`.
 
 #[cfg(target_os = "android")]
 mod android;
+#[cfg(target_os = "linux")]
+mod linux;
 pub mod ffi;
 pub mod player;
 #[cfg(target_os = "macos")]
 mod view;
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 use std::rc::Rc;
 
 /// Whether libmpv was found (and loaded).
 pub fn available() -> bool {
     ffi::lib().is_some()
+}
+
+/// Registers `reel/mpv` when libmpv is there (Linux: a GLArea).
+#[cfg(target_os = "linux")]
+pub fn register_linux(components: &nsh_platform_linux::Components) {
+    let Some(lib) = ffi::lib() else { return };
+    components.register("reel/mpv", Rc::new(move |cx| Box::new(linux::MpvComponent::new(cx, lib))));
 }
 
 /// Registers `reel/mpv` when libmpv is there.

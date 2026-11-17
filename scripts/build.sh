@@ -124,6 +124,12 @@ case "$target" in
     tmdb_note
     fresh_out
     package linux
+    # libmpv for the mpv video view, beside the runner (where the app looks first); the
+    # archive is made again with it.
+    app_dir="$(dirname "$(one "$pkg/*/*.desktop")")"
+    cp "$("$repo/scripts/libmpv.sh" fetch linux)" "$app_dir/libmpv.so.2"
+    rm -f "$pkg"/*.tar.gz
+    tar -czf "$pkg/$(basename "$app_dir").tar.gz" -C "$(dirname "$app_dir")" "$(basename "$app_dir")"
     cp "$(one "$pkg/*.tar.gz")" "$out/reel-linux-$(uname -m).tar.gz"
     ;;
 

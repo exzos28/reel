@@ -52,6 +52,12 @@ objc2-open-gl = { version = "0.3", features = ["CGLTypes", "CGLCurrent"] }
 objc2-core-video = { version = "0.3", features = ["CVBase"] }
 objc2-core-foundation = { version = "0.3", features = ["CFDate"] }
 
+# Linux: the mpv video view (`src/adapters/mpv/linux.rs`), a GTK GLArea in NSH's GTK 4 platform.
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
+nsh-platform-linux = { version = "0.5.0", default-features = false }
+gtk4 = { version = "0.11", features = ["v4_14"] }
+
 # Android: servers' certificates are checked against Mozilla's roots built in (src/http_client.rs).
 [target.'cfg(target_os = "android")'.dependencies]
 # reel's own native views (src/adapters/android_views.rs): JNI's C interface, as NSH uses.
