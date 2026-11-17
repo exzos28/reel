@@ -20,9 +20,10 @@ app="$repo/app/.nsh/out/reel.app"
 pkill -f "reel.app/Contents/MacOS/reel" 2> /dev/null && sleep 1 || true
 if [ "${1:-}" = "--fresh" ]; then
   trash="$HOME/.Trash/reel-$(date +%Y%m%d-%H%M%S)"
-  for d in "$HOME/Library/Application Support/app.reel.concept" "$HOME/Library/Caches/app.reel.concept"; do
-    [ -d "$d" ] && mkdir -p "$trash" && mv "$d" "$trash/"
-  done
+  # Both are named after the app's id: each goes in under its own name.
+  mkdir -p "$trash"
+  [ -d "$HOME/Library/Application Support/app.reel.concept" ] && mv "$HOME/Library/Application Support/app.reel.concept" "$trash/data"
+  [ -d "$HOME/Library/Caches/app.reel.concept" ] && mv "$HOME/Library/Caches/app.reel.concept" "$trash/caches"
   echo "its data is in $trash"
 fi
 open "$app"
