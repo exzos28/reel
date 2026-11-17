@@ -25,7 +25,7 @@ use nsh_core::prelude::*;
 
 #[cfg(not(target_arch = "wasm32"))]
 use application::{catalog, progress, settings, tracks};
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "android"))]
 use adapters::mpv;
 #[cfg(not(target_arch = "wasm32"))]
 use wiring::{metadata, playback};
@@ -165,7 +165,22 @@ impl VideoEngine {
             reel_domain::compat::set_profile(reel_domain::compat::Profile::Mpv);
             return "mpv".into();
         }
+        // Android: reel's views registered (the APK has reel's Java) and libmpv in the APK.
+        #[cfg(target_os = "android")]
+        if crate::adapters::android_views::installed() && mpv::available() {
+            reel_domain::compat::set_profile(reel_domain::compat::Profile::Mpv);
+            return "mpv".into();
+        }
         "native".into()
+    }
+
+    /// The player's full screen (Android: the system bars hide while it plays; elsewhere
+    /// nothing: the desktops have their own full screen, a TV is always full).
+    pub fn fullscreen(on: bool) {
+        #[cfg(target_os = "android")]
+        crate::adapters::android_views::fullscreen(on);
+        #[cfg(not(target_os = "android"))]
+        let _ = on;
     }
 
     /// Whether reel's own native views are registered on this device (Android: the Java ones

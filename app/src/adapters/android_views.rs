@@ -62,7 +62,40 @@ unsafe fn check(env: *mut JNIEnv, what: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// The player's full screen on or off (`Install.fullscreen`); nothing when the views are not
+/// installed.
+pub fn fullscreen(on: bool) {
+    if !installed() {
+        return;
+    }
+    let r = unsafe {
+        with_install(|env, class| {
+            let f = &**env;
+            let id = method(env, class, c"fullscreen", c"(Z)V", true)?;
+            let args = [jvalue { z: on }];
+            (f.v1_6.CallStaticVoidMethodA)(env, class, id, args.as_ptr());
+            check(env, "Install.fullscreen")
+        })
+    };
+    if let Err(e) = r {
+        tracing::warn!("reel views: {e}");
+    }
+}
+
 unsafe fn install() -> Result<bool, String> {
+    unsafe {
+        with_install(|env, class| {
+            let run = method(env, class, c"install", c"()Z", true)?;
+            let ok: jboolean = ((**env).v1_6.CallStaticBooleanMethodA)(env, class, run, ptr::null());
+            check(env, "Install.install")?;
+            Ok(ok)
+        })
+    }
+}
+
+/// Runs `f` with this thread's JNI environment and the `Install` class (from the app's class
+/// loader), attaching the thread for the call when it is not.
+unsafe fn with_install<T>(f: impl FnOnce(*mut JNIEnv, jobject) -> Result<T, String>) -> Result<T, String> {
     let vm = unsafe { vm()? };
     let invoke = unsafe { &**vm };
     let mut env: *mut c_void = ptr::null_mut();
@@ -71,7 +104,7 @@ unsafe fn install() -> Result<bool, String> {
         return Err("could not attach the thread".into());
     }
     let env = env as *mut JNIEnv;
-    let result = unsafe { call_install(env) };
+    let result = unsafe { install_class(env) }.and_then(|class| f(env, class));
     if attached_here {
         unsafe { (invoke.v1_4.DetachCurrentThread)(vm) };
     }
@@ -89,7 +122,7 @@ unsafe fn method(env: *mut JNIEnv, class: jobject, name: &CStr, sig: &CStr, is_s
     if id.is_null() { Err(format!("no method {name:?}")) } else { Ok(id) }
 }
 
-unsafe fn call_install(env: *mut JNIEnv) -> Result<bool, String> {
+unsafe fn install_class(env: *mut JNIEnv) -> Result<jobject, String> {
     let f = unsafe { &**env };
     // The app (ActivityThread.currentApplication()), then its class loader.
     let thread = unsafe { (f.v1_6.FindClass)(env, c"android/app/ActivityThread".as_ptr()) };
@@ -110,8 +143,5 @@ unsafe fn call_install(env: *mut JNIEnv) -> Result<bool, String> {
     let args = [jvalue { l: name }];
     let install = unsafe { (f.v1_6.CallObjectMethodA)(env, loader, load, args.as_ptr()) };
     unsafe { check(env, "loading app.reel.views.Install (is the APK built with scripts/android-views.sh?)")? };
-    let run = unsafe { method(env, install, c"install", c"()Z", true)? };
-    let ok: jboolean = unsafe { (f.v1_6.CallStaticBooleanMethodA)(env, install, run, ptr::null()) };
-    unsafe { check(env, "Install.install")? };
-    Ok(ok)
+    Ok(install)
 }

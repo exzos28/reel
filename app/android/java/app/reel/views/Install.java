@@ -14,6 +14,35 @@ import java.util.concurrent.TimeUnit;
 public final class Install {
   private Install() {}
 
+  /** The activity NSH runs in (found by `install`). */
+  private static volatile Activity activity;
+
+  /** The player's full screen: the status and navigation bars hide (a swipe from the edge shows
+   * them for a moment), or come back. */
+  public static void fullscreen(final boolean on) {
+    final Activity a = activity;
+    if (a == null) return;
+    a.runOnUiThread(() -> {
+      android.view.Window window = a.getWindow();
+      if (android.os.Build.VERSION.SDK_INT >= 30) {
+        android.view.WindowInsetsController c = window.getInsetsController();
+        if (c == null) return;
+        if (on) {
+          c.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+          c.hide(android.view.WindowInsets.Type.systemBars());
+        } else {
+          c.show(android.view.WindowInsets.Type.systemBars());
+        }
+      } else {
+        int flags = on
+            ? android.view.View.SYSTEM_UI_FLAG_FULLSCREEN | android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            : android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+        window.getDecorView().setSystemUiVisibility(flags);
+      }
+    });
+  }
+
   /** Registers reel's components; false (and the reason in the log) when there is no NshView. */
   public static boolean install() {
     try {
@@ -31,8 +60,15 @@ public final class Install {
     }
   }
 
-  /** reel's components (none yet: the mpv video view comes next). */
-  private static void register(NshView view) {}
+  /** reel's components: the mpv video view where libmpv is in the APK. */
+  private static void register(NshView view) {
+    try {
+      System.loadLibrary("mpv");
+      view.registerComponent("reel/mpv", MpvView::new);
+    } catch (UnsatisfiedLinkError e) {
+      android.util.Log.w("reel", "no libmpv: the platform's player plays", e);
+    }
+  }
 
   /** The NshView of the app's activity (NSH's AppActivity keeps it in `view`). */
   private static NshView nshView() throws Exception {
@@ -43,13 +79,16 @@ public final class Install {
     for (Object record : ((Map<?, ?>) activities.get(thread)).values()) {
       Field field = record.getClass().getDeclaredField("activity");
       field.setAccessible(true);
-      Activity activity = (Activity) field.get(record);
-      for (Class<?> c = activity.getClass(); c != null; c = c.getSuperclass()) {
+      Activity found = (Activity) field.get(record);
+      for (Class<?> c = found.getClass(); c != null; c = c.getSuperclass()) {
         for (Field f : c.getDeclaredFields()) {
           if (NshView.class.isAssignableFrom(f.getType())) {
             f.setAccessible(true);
-            Object v = f.get(activity);
-            if (v != null) return (NshView) v;
+            Object v = f.get(found);
+            if (v != null) {
+              activity = found;
+              return (NshView) v;
+            }
           }
         }
       }

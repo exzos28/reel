@@ -8,5 +8,5 @@ pub mod http_client;
 pub mod metadata;
 #[cfg_attr(feature = "engine", allow(dead_code))]
 pub mod no_engine;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "android"))]
 pub mod mpv;

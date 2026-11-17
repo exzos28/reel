@@ -1,11 +1,15 @@
-//! reel's own video view on macOS, backed by libmpv: plays every container
-//! and codec FFmpeg does (MKV, DTS, TrueHD…) and reports and switches the
-//! audio and subtitle tracks. Registered as the native component
-//! `reel/mpv` (`ui/VideoSurface.tsx` uses it where `VideoEngine.kind()` says
-//! "mpv"); without libmpv the app keeps NSH's `<Video>`.
+//! reel's own video view, backed by libmpv: plays every container and codec FFmpeg does
+//! (MKV, DTS, TrueHD…) and reports and switches the audio and subtitle tracks. The native
+//! component `reel/mpv` (`ui/VideoSurface.tsx` uses it where `VideoEngine.kind()` says
+//! "mpv"): on macOS an NSView drawn through mpv's render API (`view`), on Android a
+//! SurfaceView (`app/android`, Java) driving the same player (`android`). Without libmpv the
+//! app keeps NSH's `<Video>`.
 
+#[cfg(target_os = "android")]
+mod android;
 pub mod ffi;
 pub mod player;
+#[cfg(target_os = "macos")]
 mod view;
 
 use std::rc::Rc;
@@ -16,6 +20,7 @@ pub fn available() -> bool {
 }
 
 /// Registers `reel/mpv` when libmpv is there.
+#[cfg(target_os = "macos")]
 pub fn register(components: &nsh_platform_macos::Components) {
     let Some(lib) = ffi::lib() else { return };
     components.register("reel/mpv", Rc::new(move |cx| Box::new(view::MpvComponent::new(cx, lib))));
@@ -43,7 +48,7 @@ mod tests {
         let sample = std::env::var("REEL_MPV_SAMPLE").expect("REEL_MPV_SAMPLE");
         let events: Arc<Mutex<Vec<(String, Value)>>> = Default::default();
         let sink = events.clone();
-        let mut p = Player::new(lib, "null", Arc::new(move |name, data| sink.lock().unwrap().push((name.into(), data)))).unwrap();
+        let mut p = Player::new(lib, "null", &[], Arc::new(move |name, data| sink.lock().unwrap().push((name.into(), data)))).unwrap();
         p.set_prop("volume", Some(&json!(0.0)));
         p.set_prop("progressUpdateInterval", Some(&json!(100)));
         p.set_prop("src", Some(&json!(sample)));

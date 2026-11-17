@@ -60,7 +60,9 @@ const OBSERVED: [(&str, c_int); 8] = [
 impl Player {
     /// A player drawing with `vo` ("libmpv": through a render context the
     /// view makes; "null" in tests).
-    pub fn new(lib: &'static Lib, vo: &str, emit: Emit) -> Result<Player, String> {
+    /// `platform`: options of the platform, over the common ones (Android's GPU context,
+    /// decoder and audio output).
+    pub fn new(lib: &'static Lib, vo: &str, platform: &[(&str, &str)], emit: Emit) -> Result<Player, String> {
         let handle = unsafe { (lib.create)() };
         if handle.is_null() {
             return Err("mpv_create failed".into());
@@ -85,7 +87,7 @@ impl Player {
             // The engine keeps this much behind where the player reads (reel_domain::play::PLAYER_CACHE).
             ("demuxer-max-bytes", PLAYER_CACHE_OPTION),
         ];
-        for (name, value) in options {
+        for (name, value) in options.into_iter().chain(platform.iter().copied()) {
             let r = unsafe { (lib.set_option_string)(handle, cstr(name).as_ptr(), cstr(value).as_ptr()) };
             if r < 0 {
                 tracing::warn!("reel mpv: option {name}={value}: {}", ffi::error_text(lib, r));
@@ -112,6 +114,22 @@ impl Player {
 
     pub fn raw(&self) -> Raw {
         self.raw
+    }
+
+    #[cfg_attr(not(target_os = "android"), allow(dead_code))]
+    /// The window mpv draws into (`wid`; Android: a global reference to a Surface, 0: none).
+    pub fn set_window(&self, wid: i64) {
+        let mut wid = wid;
+        let r = unsafe { (self.lib.set_option)(self.raw.0, cstr("wid").as_ptr(), ffi::FORMAT_INT64, (&mut wid as *mut i64).cast()) };
+        if r < 0 {
+            tracing::warn!("reel mpv: wid: {}", ffi::error_text(self.lib, r));
+        }
+    }
+
+    #[cfg_attr(not(target_os = "android"), allow(dead_code))]
+    /// A property by name (for the platform's view: `vo`, the surface size).
+    pub fn set_property(&self, name: &str, value: &str) {
+        self.set(name, value);
     }
 
     fn set(&self, name: &str, value: &str) {

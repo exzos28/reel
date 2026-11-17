@@ -278,7 +278,7 @@ impl MpvComponent {
     pub fn new(cx: ComponentContext, lib: &'static Lib) -> MpvComponent {
         let mtm = MainThreadMarker::new().expect("components are made on the main thread");
         let emit_cx = cx.clone();
-        let player = Player::new(lib, "libmpv", Arc::new(move |name, data| emit_cx.emit(name, data)));
+        let player = Player::new(lib, "libmpv", &[], Arc::new(move |name, data| emit_cx.emit(name, data)));
         let player = match player {
             Ok(p) => Some(p),
             Err(e) => {

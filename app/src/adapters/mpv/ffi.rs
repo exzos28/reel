@@ -81,6 +81,8 @@ pub struct Lib {
     pub initialize: unsafe extern "C" fn(Handle) -> c_int,
     pub terminate_destroy: unsafe extern "C" fn(Handle),
     pub set_option_string: unsafe extern "C" fn(Handle, *const c_char, *const c_char) -> c_int,
+    #[cfg_attr(not(target_os = "android"), allow(dead_code))]
+    pub set_option: unsafe extern "C" fn(Handle, *const c_char, c_int, *mut c_void) -> c_int,
     pub set_property_string: unsafe extern "C" fn(Handle, *const c_char, *const c_char) -> c_int,
     pub get_property_string: unsafe extern "C" fn(Handle, *const c_char) -> *mut c_char,
     pub command: unsafe extern "C" fn(Handle, *mut *const c_char) -> c_int,
@@ -104,6 +106,11 @@ unsafe impl Sync for Lib {}
 
 fn candidates() -> Vec<PathBuf> {
     let mut out = Vec::new();
+    // Android: in the APK's native libraries (scripts/android-views.sh), found by name.
+    if cfg!(target_os = "android") {
+        out.push("libmpv.so".into());
+        return out;
+    }
     if let Some(p) = std::env::var_os("REEL_LIBMPV") {
         out.push(PathBuf::from(p));
     }
@@ -121,7 +128,7 @@ pub fn lib() -> Option<&'static Lib> {
     static LIB: OnceLock<Option<Lib>> = OnceLock::new();
     LIB.get_or_init(|| {
         for path in candidates() {
-            if !path.exists() {
+            if path.is_absolute() && !path.exists() {
                 continue;
             }
             match unsafe { load(&path) } {
@@ -158,6 +165,7 @@ unsafe fn load(path: &std::path::Path) -> Result<Lib, String> {
         initialize: sym!("mpv_initialize"),
         terminate_destroy: sym!("mpv_terminate_destroy"),
         set_option_string: sym!("mpv_set_option_string"),
+        set_option: sym!("mpv_set_option"),
         set_property_string: sym!("mpv_set_property_string"),
         get_property_string: sym!("mpv_get_property_string"),
         command: sym!("mpv_command"),
