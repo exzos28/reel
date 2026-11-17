@@ -321,7 +321,7 @@ player:
   ready_ahead_short: Less than a minute ready ahead
   streaming: "streaming at %{speed}"
   streaming_from: "streaming at %{speed} from %{count} people"
-  left: "%{time} left"
+  left: "−%{time}"
   play: Play
   pause: Pause
   back_10: Back 10 seconds

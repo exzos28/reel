@@ -10,7 +10,7 @@ import { alpha, colors, focusRing, font, radius, safe, showFocus, ts, type, u } 
 
 const panelStyle = (): ViewStyle => ({
   // Over the controls (the scrubber, the times, the volume), which come later in the player.
-  position: "absolute", zIndex: 20, top: u(130), bottom: u(60), right: safe().x, width: u(780), maxWidth: "90%",
+  position: "absolute", zIndex: 20, top: u(130), right: safe().x, width: u(780), maxWidth: "90%",
   padding: u(26), gap: u(18), borderRadius: radius() + u(26), borderCurve: "continuous", backgroundColor: colors.card(),
 });
 const seasonStyle = (on: boolean, lit: boolean): ViewStyle => ({
@@ -26,6 +26,8 @@ const nameStyle = (lit: boolean): TextStyle => ({ ...type.label(), color: lit ? 
 const metaStyle = (lit: boolean): TextStyle => ({ fontFamily: font, fontSize: ts(20), color: lit ? alpha(colors.ink(), 0.7) : colors.ash(), marginTop: u(4) });
 
 export function PlayerEpisodes(props: {
+  /** Where it ends from the player's bottom: above the controls (it never covers the scrubber). */
+  bottom: () => number;
   /** The show (what the player plays belongs to). */
   show: () => Summary;
   /** The episode playing. */
@@ -64,7 +66,7 @@ export function PlayerEpisodes(props: {
   onBack(() => (props.onClose(), true));
   const lit = (i: number) => showFocus() && at() === i;
   return (
-    <View testID="episodes-panel" style={panelStyle()}>
+    <View testID="episodes-panel" style={{ ...panelStyle(), bottom: props.bottom() }}>
       <Text style={{ ...type.label(), color: colors.ash() }}>{t("player.episodes")}</Text>
       <If when={seasons().length > 1}>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: u(10) }}>

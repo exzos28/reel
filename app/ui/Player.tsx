@@ -9,7 +9,7 @@
 // buttons on the buttons row), Up/Down switch rows, Escape closes the
 // panel, then hides the overlay, then leaves. Near the end of an episode
 // the Up next card (tv-player-end.html) takes the remote instead.
-import { cleanup, computed, effect, Image, keymap, safeArea, signal, Text, View, windowSize, type ImageAsset, type ViewStyle } from "nsh";
+import { cleanup, computed, effect, Image, keymap, safeArea, Scroll, signal, Text, View, windowSize, type ImageAsset, type ViewStyle } from "nsh";
 import { BufferingNote, PlayerStage, type StageLine } from "./PlayerStage";
 import { t } from "nsh/i18n";
 import { Catalog, Fmt } from "./native";
@@ -526,6 +526,7 @@ export function Player() {
               {/* A tap beside the panel closes it, as the tracks panel's does. */}
               <View role="button" accessibilityLabel={t("player.close_episodes")} onPress={() => episodesOpen.set(false)} style={panelBackdrop} />
               <PlayerEpisodes
+                bottom={() => controlsHeight() + safe().y + u(24)}
                 show={() => w().title}
                 season={() => episodeOf()?.season ?? w().season ?? 1}
                 episode={() => episodeOf()?.episode ?? w().episode ?? 1}
@@ -542,6 +543,7 @@ export function Player() {
           {/* A tap beside the panel closes it, as a sheet's does. */}
           <View role="button" accessibilityLabel={t("player.close_tracks")} onPress={() => panel.set(false)} style={panelBackdrop} />
           <TracksPanel
+            bottom={() => controlsHeight() + safe().y + u(24)}
             releases={shortReleases}
             audio={() => menu().audio}
             subtitles={() => menu().subtitles}
@@ -747,6 +749,8 @@ function TracksPanel(props: {
   focused: (col: number, i: number) => boolean;
   onPick: (col: number, i: number) => void;
   onClose: () => void;
+  /** Where it ends from the player's bottom: above the controls. */
+  bottom: () => number;
 }) {
   /** The focus fill shows only while the keys drive (as the ring does everywhere); a tap only picks. */
   const lit = (col: number, i: number) => props.focused(col, i) && showFocus();
@@ -759,6 +763,8 @@ function TracksPanel(props: {
       <Text style={{ fontFamily: font, fontSize: ts(21), fontWeight: 500, color: colors.ash(), marginLeft: u(16), marginBottom: u(10) }}>
         {heading}
       </Text>
+      {/* A long list scrolls inside the panel. */}
+      <Scroll style={{ flex: 1 }} scrollbar={false}>
       <Each of={options()} key="index">
         {(o, i) => (
           <View
@@ -789,12 +795,14 @@ function TracksPanel(props: {
           </View>
         )}
       </Each>
+      </Scroll>
     </View>
   );
   return (
     <View
       style={{
-        position: "absolute", zIndex: 20, top: u(150), right: safe().x, width: u(1020), maxWidth: "90%",
+        // It ends above the controls (their height, `bottom`): it never covers the scrubber.
+        position: "absolute", zIndex: 20, top: u(150), bottom: props.bottom(), right: safe().x, width: u(1020), maxWidth: "90%",
         flexDirection: "row", padding: u(26), borderRadius: radius() + u(26), borderCurve: "continuous", backgroundColor: colors.card(),
       }}
     >

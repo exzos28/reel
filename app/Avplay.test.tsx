@@ -90,7 +90,7 @@ test("the player opens the core's stream in AVPlay and waits on the stage until 
   expect(app.shows("stage")).toBe(false);
   expect(app.shows("scrubber")).toBe(true);
   expect(app.texts()).toContain("0:01");
-  expect(app.texts()).toContain("9:59 left");
+  expect(app.texts()).toContain("−9:59");
 });
 
 test("AVPlay's tracks go to the core, and the audio picked in the panel to AVPlay", async () => {
