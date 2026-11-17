@@ -4,7 +4,7 @@ import { cleanup, Image, reduceMotion, signal, View, type ViewStyle } from "nsh"
 import bodyIcon from "../icons/dino-body.svg";
 import legsA from "../icons/dino-legs-a.svg";
 import legsB from "../icons/dino-legs-b.svg";
-import { alpha, colors, u } from "../theme";
+import { u } from "../theme";
 
 /** One step, ms (the website's dinosaur steps every 90 ms at full speed; on the spot, calmer). */
 const STEP_MS = 140;
@@ -26,8 +26,6 @@ export function DinoLoader(props: { size?: number; label?: string }) {
         <Image src={bodyIcon} style={layer} />
         <Image src={step() % 2 === 0 ? legsA : legsB} style={layer} />
       </View>
-      {/* The ground it runs on. */}
-      <View style={{ width: u(size * 1.4), height: Math.max(1, u(2)), backgroundColor: alpha(colors.snow(), 0.18), marginTop: u(2) }} />
     </View>
   );
 }
