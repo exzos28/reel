@@ -8,7 +8,7 @@
 # under the names the site links to:
 #   reel-macos.zip         out/macos/reel-macos-*.zip
 #   reel-android.apk       out/android/reel-android-*.apk
-#   reel-tv.wgt            out/tizen/reel-tv-v*.wgt
+#   reel-samsung-tv.wgt            out/tizen/reel-tv-v*.wgt
 #   reel-linux.tar.gz      out/linux/reel-linux-*.tar.gz
 #   reel-windows.zip       out/windows/reel-windows-*.zip
 #                          (build/linux-docker.sh windows)
@@ -54,7 +54,7 @@ take() {
 
 take reel-macos.zip "$repo"/out/macos/reel-macos-*.zip
 take reel-android.apk "$repo"/out/android/reel-android-*.apk
-take reel-tv.wgt "$repo"/out/tizen/reel-tv-v*.wgt
+take reel-samsung-tv.wgt "$repo"/out/tizen/reel-tv-v*.wgt
 take reel-linux.tar.gz "$repo"/out/linux/reel-linux-*.tar.gz
 take reel-windows.zip "$repo"/out/windows/reel-windows-*.zip
 

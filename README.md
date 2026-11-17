@@ -19,11 +19,17 @@
 </p>
 
 - **Streams torrents.** No waiting for a download: it fetches the start of a film and plays.
-- **Up to 4K and HDR.** Every container, codec, audio and subtitle track.
-- **No ads, no accounts.** Nothing tracks you; settings and progress stay on your device.
-- **Your source.** It searches the Torznab source you enter. reel ships none.
+- **Up to 4K and HDR.**
+- **No ads.**
+- **Your source.** It searches the Torznab source you enter.
 
-Samsung TV · Android and Android TV · macOS · Windows · Linux
+<table align="center"><tr>
+<td align="center"><img src="design/readme/platforms/samsung-tv.svg" width="36" alt=""><br>Samsung TV</td>
+<td align="center"><img src="design/readme/platforms/android.svg" width="36" alt=""><br>Android, Android TV</td>
+<td align="center"><img src="design/readme/platforms/apple.svg" width="36" alt=""><br>macOS</td>
+<td align="center"><img src="design/readme/platforms/windows.svg" width="36" alt=""><br>Windows</td>
+<td align="center"><img src="design/readme/platforms/linux.svg" width="36" alt=""><br>Linux</td>
+</tr></table>
 
 [How it works](docs/how-it-works.md) · [Building](docs/building.md) ·
 [Repository layout](docs/structure.md) · [Architecture](docs/architecture.md)
