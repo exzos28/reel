@@ -51,7 +51,7 @@ Samsung Tizen TV (first), macOS, Android / Android TV, iOS / iPadOS, Windows, Li
 
 ## Secrets
 
-- Never commit keys or tokens. Local ones live in `.env` at the repo root (git-ignored):
+- Never commit keys or tokens. Local ones live in `.env` at the repo root (git-ignored; `.env.example` says what each is):
   `REEL_TMDB_TOKEN`, `REEL_TORZNAB_URL`, `REEL_TORZNAB_KEY`. Load with `set -a; . ../.env; set +a`
   from `app/`. Never print them.
 
