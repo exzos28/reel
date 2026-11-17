@@ -1245,7 +1245,7 @@ fn continuing() -> Vec<Value> {
     let mut out = Vec::new();
     for (_, e) in progress::recent().into_iter().take(20) {
         // A start under a minute in (one recorded before the minute counted) is not continued.
-        if !e.watched && e.position < progress::MIN_POSITION {
+        if !e.watched && e.position < progress::CONTINUE_FROM {
             continue;
         }
         let Some(t) = meta(&Call::Title(e.title.clone())) else { continue };

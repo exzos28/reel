@@ -14,9 +14,11 @@ use serde::{Deserialize, Serialize};
 
 /// Watched to here (of the duration), the film or episode counts as seen.
 pub const WATCHED_AT: f64 = 0.9;
-/// Less than this into something new is not worth remembering, seconds: a start the viewer
-/// cancelled in its first minute is not "Continue watching".
-pub const MIN_POSITION: f64 = 60.0;
+/// Less than this into something new is not worth remembering, seconds (Resume picks it up).
+const MIN_POSITION: f64 = 10.0;
+/// Less than this in, a title is not "Continue watching" on the home screen: a start the viewer
+/// cancelled in its first minute is no shelf of its own (its Resume still works).
+pub const CONTINUE_FROM: f64 = 60.0;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
