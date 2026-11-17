@@ -90,7 +90,7 @@ export function SetupScreen() {
         ? bufferChoiceList()
         : [];
   /** The step's actions: Next, or the source's three (Check, Finish, Skip). */
-  const actions = () => (step() === 2 ? 3 : 1);
+  const actions = () => (step() === 2 ? 2 : 1);
   const count = () => options().length + actions();
 
   const go = (next: number) => {
@@ -98,20 +98,9 @@ export function SetupScreen() {
     at.set(0);
   };
   const finish = () => finishSetup();
-  /** Finish pressed before the source was checked (typed, or filled in by a link): it checks it,
-   * and ends the setup once it answers. A source that fails stays on the step, saying why. */
-  const finishing = signal(false);
-  const finishWithSource = () => {
-    if (form.connected()) return finish();
-    finishing.set(true);
-    form.save();
-  };
-  effect(() => {
-    if (finishing() && form.connected()) finish();
-  });
-  effect(() => {
-    if (finishing() && form.result()?.bad) finishing.set(false);
-  });
+  /** The source's one button: Check until the source answered, then Finish (an edit of the
+   * fields makes it Check again). */
+  const sourceAction = () => (form.connected() ? finish() : form.save());
   const choose = (i: number) => {
     const c = options()[i];
     if (!c) return;
@@ -127,9 +116,8 @@ export function SetupScreen() {
     const n = options().length;
     if (i < n) return choose(i);
     if (step() < 2) return go(step() + 1);
-    // The source: Check saves and checks it; Finish once it connected; Skip leaves it for later.
-    if (i === n) form.save();
-    else if (i === n + 1) form.url().trim() && finishWithSource();
+    // The source: Check (then Finish once it answered); Skip leaves it for later.
+    if (i === n) sourceAction();
     else finish();
   };
   // A link that opened the app with a source (reel://s?…) goes to the source step, its fields filled.
@@ -191,8 +179,13 @@ export function SetupScreen() {
                   <Text style={sectionTitle()}>{t("setup.source.own_title")}</Text>
                   <SourceForm form={form} ownButton={false} />
                   <View style={actionsStyle()}>
-                    <Button kind="secondary" label={() => t("setup.source.check")} focused={focused(0)} onPress={() => form.save()} />
-                    <Button kind="primary" label={() => t("setup.source.finish")} focused={focused(1)} disabled={() => !form.url().trim()} onPress={finishWithSource} />
+                    <Button
+                      kind="primary"
+                      label={() => t(form.connected() ? "setup.source.finish" : "setup.source.check")}
+                      focused={focused(0)}
+                      disabled={() => !form.url().trim()}
+                      onPress={sourceAction}
+                    />
                   </View>
                   <SourceByPhone />
                 </View>
@@ -207,7 +200,7 @@ export function SetupScreen() {
               </View>
               {/* Neither way now: Skip, centred under both. */}
               <View style={{ ...actionsStyle(), alignSelf: "stretch", justifyContent: "center", marginTop: u(56) }}>
-                <Button kind="secondary" label={() => t("setup.source.skip")} focused={focused(2)} onPress={finish} />
+                <Button kind="secondary" label={() => t("setup.source.skip")} focused={focused(1)} onPress={finish} />
               </View>
               {/* What a source is: reel itself does not search for video. */}
               <Text style={footnoteStyle()}>{t("setup.source.footnote")}</Text>

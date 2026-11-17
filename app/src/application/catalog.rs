@@ -128,9 +128,23 @@ pub async fn changed(after: u64) -> u64 {
     waiting.await.unwrap_or_else(|_| revision())
 }
 
+/// Goes up when the searches are dropped (another source, another language): a search started
+/// before answers into nothing, rather than over the new one's (a source that died mid-search
+/// left its failure on the title after a working one was set).
+static SEARCH_GEN: AtomicU64 = AtomicU64::new(0);
+
+/// Records `search` for `key` if no source or language change came since it started (`started_in`).
+fn record_search(key: &str, started_in: u64, search: Search) {
+    let mut searches = SEARCHES.lock().unwrap();
+    if SEARCH_GEN.load(Ordering::Relaxed) == started_in {
+        searches.insert(key.to_owned(), search);
+    }
+}
+
 /// The search source changed: what the old one found (or failed to find) is dropped, so the
 /// screens search the new one at once.
 pub fn source_changed() {
+    SEARCH_GEN.fetch_add(1, Ordering::Relaxed);
     SEARCHES.lock().unwrap().clear();
     CHOSEN.lock().unwrap().clear();
     bump();
@@ -139,6 +153,7 @@ pub fn source_changed() {
 /// The content language changed: everything asked so far was in the old one.
 pub fn language_changed() {
     SLOTS.0.lock().unwrap().clear();
+    SEARCH_GEN.fetch_add(1, Ordering::Relaxed);
     SEARCHES.lock().unwrap().clear();
     bump();
 }
@@ -578,8 +593,9 @@ fn ensure_search(key: &str, info: &Info) {
 
 #[cfg(not(test))]
 fn start_search(key: String, request: Value) {
+    let started_in = SEARCH_GEN.load(Ordering::Relaxed);
     let finish = move |search: Search| {
-        SEARCHES.lock().unwrap().insert(key.clone(), search);
+        record_search(&key, started_in, search);
         bump();
     };
     let Some(source) = settings::source() else { return };

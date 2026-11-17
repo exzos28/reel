@@ -50,6 +50,17 @@ export function sourceForm() {
     state.set("saved");
   };
 
+  /** The fields typed in: what was checked no longer stands (Check again). */
+  const edit = (u: string, k: string) => {
+    url.set(u);
+    key.set(k);
+    if (state() === "saved" || check() || error()) {
+      state.set("idle");
+      check.set(null);
+      error.set(null);
+    }
+  };
+
   /** Removes the source: no address, no key. */
   const remove = async () => {
     url.set("");
@@ -82,5 +93,5 @@ export function sourceForm() {
   /** Saved and checked: the source answered. */
   const connected = () => state() === "saved" && !error() && check()?.state !== "failed" && check() != null;
 
-  return { url, key, save, remove, recheck, result, connected };
+  return { url, key, edit, save, remove, recheck, result, connected };
 }

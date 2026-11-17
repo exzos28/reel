@@ -92,43 +92,29 @@ const firstRun = (result: object) => ({
   }),
 });
 
-test("setup, source step: Check says why a source failed and Finish does not end the setup; once it answers, Finish does", async () => {
+test("setup, source step: one button, Check until the source answers, then Finish; an edit makes it Check again", async () => {
   let finished = 0;
   const failing = await openApp({ clock: {}, modules: { "app/native": { ...firstRun({ state: "failed", message: "can't reach it" }), "Settings.finishSetup": () => (finished++, null) } } });
-  await failing.keyboard.press("down"); // past the language
   for (const _ of [0, 1]) await failing.press("label:Next");
   expect(failing.texts()).toContain("Where should reel find films?");
+  await failing.type("source-url", "https://source.example/api");
   await failing.press("label:Check");
   await failing.wait(400);
   expect(failing.texts().some((x) => x.includes("can't reach it"))).toBe(true);
-  // Finish checks it again: it still does not answer, so the setup stays.
-  await failing.press("label:Finish");
-  await failing.wait(400);
-  expect(finished).toBe(0);
-
-  const working = await openApp({ clock: {}, modules: { "app/native": { ...firstRun({ state: "done", caps: { movieImdb: true } }), "Settings.finishSetup": () => (finished++, null) } } });
-  for (const _ of [0, 1]) await working.press("label:Next");
-  await working.press("label:Check");
-  await working.wait(400);
-  expect(working.texts()).toContain("Connected. It searches by IMDb id.");
-  await working.press("label:Finish");
-  expect(finished).toBe(1);
-});
-
-test("setup, source step: Finish on a filled-in source checks it, and ends the setup only once it answers", async () => {
-  let finished = 0;
-  const failing = await openApp({ clock: {}, modules: { "app/native": { ...firstRun({ state: "failed", message: "can't reach it" }), "Settings.finishSetup": () => (finished++, null) } } });
-  for (const _ of [0, 1]) await failing.press("label:Next");
-  await failing.type("source-url", "https://source.example/api");
-  await failing.press("label:Finish");
-  await failing.wait(400);
-  expect(failing.texts().some((x) => x.includes("can't reach it"))).toBe(true);
+  expect(failing.texts()).not.toContain("Finish"); // it did not answer: still Check
   expect(finished).toBe(0);
 
   const working = await openApp({ clock: {}, modules: { "app/native": { ...firstRun({ state: "done", caps: { movieImdb: true } }), "Settings.finishSetup": () => (finished++, null) } } });
   for (const _ of [0, 1]) await working.press("label:Next");
   await working.type("source-url", "https://source.example/api");
-  await working.press("label:Finish"); // no Check first: Finish checks it
+  await working.press("label:Check");
   await working.wait(400);
+  expect(working.texts()).toContain("Connected. It searches by IMDb id.");
+  expect(working.texts()).toContain("Finish");
+  await working.type("source-url", "/other"); // an edit: Check again
+  expect(working.texts()).toContain("Check");
+  await working.press("label:Check");
+  await working.wait(400);
+  await working.press("label:Finish");
   expect(finished).toBe(1);
 });

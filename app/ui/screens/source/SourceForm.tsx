@@ -26,7 +26,7 @@ export function SourceForm(props: { form: ReturnType<typeof sourceForm>; ownButt
       <Input
         testID="source-url"
         value={form.url()}
-        onChange={(e) => form.url.set(e.value)}
+        onChange={(e) => form.edit(e.value, form.key())}
         onSubmit={form.save}
         placeholder={t("settings.source.url_placeholder")}
         keyboardType="url"
@@ -37,7 +37,7 @@ export function SourceForm(props: { form: ReturnType<typeof sourceForm>; ownButt
       <Text style={metaText()}>{t("settings.source.key")}</Text>
       <Input
         value={form.key()}
-        onChange={(e) => form.key.set(e.value)}
+        onChange={(e) => form.edit(form.url(), e.value)}
         onSubmit={form.save}
         masked
         placeholder={source().hasKey ? t("settings.source.key_saved") : t("settings.source.key_placeholder")}

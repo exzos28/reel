@@ -848,3 +848,14 @@ fn an_episode_dated_after_today_is_upcoming() {
     assert!(!upcoming(Some([2026, 11, 17]), [2026, 11, 17]), "today's has aired");
     assert!(!upcoming(None, [2026, 11, 17]));
 }
+
+#[test]
+fn a_search_from_before_the_source_changed_does_not_land() {
+    let _g = fresh(true, true);
+    let before = SEARCH_GEN.load(Ordering::Relaxed);
+    source_changed();
+    record_search("film", before, Search { releases: None, failed: Some("the old source died".into()) });
+    assert!(SEARCHES.lock().unwrap().get("film").is_none(), "the old source's failure is dropped");
+    record_search("film", SEARCH_GEN.load(Ordering::Relaxed), Search { releases: Some(vec![]), failed: None });
+    assert!(SEARCHES.lock().unwrap().get("film").is_some(), "the new one's lands");
+}
