@@ -81,8 +81,8 @@ export function SetupScreen() {
       : step() === 1
         ? bufferChoiceList()
         : [];
-  /** The step's actions: Next, or the source's two. */
-  const actions = () => (step() === 2 ? 2 : 1);
+  /** The step's actions: Next, or the source's three (Check, Finish, Skip). */
+  const actions = () => (step() === 2 ? 3 : 1);
   const count = () => options().length + actions();
 
   const go = (next: number) => {
@@ -105,15 +105,18 @@ export function SetupScreen() {
     const n = options().length;
     if (i < n) return choose(i);
     if (step() < 2) return go(step() + 1);
-    // The source: check it (it finishes once connected), or leave it for later.
+    // The source: Check saves and checks it; Finish once it connected; Skip leaves it for later.
     if (i === n) form.save();
+    else if (i === n + 1) form.connected() && finish();
     else finish();
   };
-  // A source that connected (here, or saved from a phone on the settings page) ends the setup.
-  const startUrl = source().url;
+  // A source saved from a phone (the settings page) is checked here too: Finish once it answers.
+  let seenUrl = source().url;
   effect(() => {
-    if (step() !== 2) return;
-    if (form.connected() || (source().url && source().url !== startUrl)) finish();
+    const url = source().url;
+    if (url === seenUrl) return;
+    seenUrl = url;
+    if (step() === 2) form.recheck();
   });
 
   keymap.bind(
@@ -157,11 +160,12 @@ export function SetupScreen() {
               {/* The fields take text where a keyboard is at hand; a TV's remote goes to the actions
                   (its address is typed on the phone, beside). */}
               <View style={{ marginTop: u(20) }}>
-                <SourceForm form={form} />
+                <SourceForm form={form} ownButton={false} />
               </View>
               <View style={actionsStyle()}>
-                <Button kind="primary" label={() => t("setup.source.finish")} focused={focused(0)} onPress={() => form.save()} />
-                <Button kind="secondary" label={() => t("setup.source.skip")} focused={focused(1)} onPress={finish} />
+                <Button kind="secondary" label={() => t("setup.source.check")} focused={focused(0)} onPress={() => form.save()} />
+                <Button kind="primary" label={() => t("setup.source.finish")} focused={focused(1)} disabled={() => !form.connected()} onPress={finish} />
+                <Button kind="secondary" label={() => t("setup.source.skip")} focused={focused(2)} onPress={finish} />
               </View>
               <Text style={{ ...metaText(), marginTop: u(16) }}>{t("setup.source.note")}</Text>
             </If>

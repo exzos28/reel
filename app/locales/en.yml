@@ -347,12 +347,19 @@ settings:
     key_placeholder: The key from your Jackett dashboard (if it has one)
     key_saved: Key saved. Type a new one to replace it
     save: Save and check
+    remove: Remove source
     saving: Saving…
     checking: Checking the source…
     removed: Search source removed.
     ok_imdb: Connected. It searches by IMDb id.
     ok_text: Connected. It searches by title.
     failed: "Could not reach the source: %{message}"
+    # Why a source did not answer (the core's reason), with what to do.
+    reason:
+      unreachable: "Can't reach %{host}. Check the address, and that the source is on."
+      key: "%{host} refused the API key. Check the key."
+      not_torznab: "%{host} answered, but not as a Torznab source. Check the address: it usually ends in /torznab/api."
+      error: "%{host} said: %{message}"
   # The drawer with the search source's fields: on Play with none (missing), when it did not
   # answer (failed), from Settings (edit).
   source_drawer:
@@ -403,7 +410,8 @@ setup:
   source:
     title: Where should reel find films?
     help: "Your Jackett, Prowlarr or JacRed: its Torznab address and API key."
-    finish: Check and finish
+    check: Check
+    finish: Finish
     skip: Skip, add it later
     note: Without a source reel can browse but not play.
   phone:

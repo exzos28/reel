@@ -36,6 +36,23 @@ export function sourceForm() {
     state.set("saved");
   };
 
+  /** Removes the source: no address, no key. */
+  const remove = async () => {
+    url.set("");
+    key.set("");
+    await save();
+  };
+
+  /** Checks the source saved (from a phone, say) without saving it again. */
+  const recheck = async () => {
+    error.set(null);
+    check.set(null);
+    if (!source().url) return state.set("idle");
+    state.set("checking");
+    check.set(await checkSource());
+    state.set("saved");
+  };
+
   /** The line beside Save; `bad` when it is an error. */
   const result = () => {
     const c = check();
@@ -43,12 +60,13 @@ export function sourceForm() {
     if (state() === "saving") return { text: t("settings.source.saving"), bad: false };
     if (state() === "checking") return { text: t("settings.source.checking"), bad: false };
     if (!c) return state() === "saved" && !source().url ? { text: t("settings.source.removed"), bad: false } : null;
-    if (c.state === "failed") return { text: t("settings.source.failed", { message: c.message }), bad: true };
+    // Why, in a sentence the viewer can act on (the core says which); the source's own words otherwise.
+    if (c.state === "failed") return { text: t(`settings.source.reason.${c.reason ?? "error"}`, { host: c.host || source().url, message: c.message }), bad: true };
     return { text: c.movieImdb ? t("settings.source.ok_imdb") : t("settings.source.ok_text"), bad: false };
   };
 
   /** Saved and checked: the source answered. */
   const connected = () => state() === "saved" && !error() && check()?.state !== "failed" && check() != null;
 
-  return { url, key, save, result, connected };
+  return { url, key, save, remove, recheck, result, connected };
 }

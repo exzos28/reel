@@ -12,10 +12,13 @@ import { colors, cs, targetSlop, u } from "../../theme";
 import { sourceForm } from "./sourceState";
 
 const saveStyle = (): ViewStyle => ({ height: cs(60), paddingHorizontal: cs(30), justifyContent: "center", ...rounded(), backgroundColor: colors.snow() });
-const resultStyle = (bad: boolean): TextStyle => ({ ...metaText(bad ? colors.red() : colors.ash()), flexShrink: 1 });
+const removeStyle = (): ViewStyle => ({ height: cs(60), paddingHorizontal: cs(30), justifyContent: "center", ...rounded(), backgroundColor: colors.raise() });
+/** What went wrong reads in white (red is the logo's and the star's), the rest in grey. */
+const resultStyle = (bad: boolean): TextStyle => ({ ...metaText(bad ? colors.snow() : colors.ash()), flexShrink: 1 });
 
-/** `form`: its state (`sourceForm()`), so the place showing it can follow it (the drawer closes once connected). */
-export function SourceForm(props: { form: ReturnType<typeof sourceForm> }) {
+/** `form`: its state (`sourceForm()`), so the place showing it can follow it (the drawer closes
+ * once connected). `ownButton`: false where the place has its own actions (the setup's Check). */
+export function SourceForm(props: { form: ReturnType<typeof sourceForm>; ownButton?: boolean }) {
   const form = props.form;
   return (
     <View style={{ gap: u(14) }}>
@@ -41,12 +44,20 @@ export function SourceForm(props: { form: ReturnType<typeof sourceForm> }) {
         autoCorrect={false}
         style={fieldStyle()}
       />
-      <View style={{ ...row(u(20)), marginTop: u(6) }}>
-        <View role="button" accessibilityLabel={t("settings.source.save")} hitSlop={targetSlop(cs(60))} onPress={form.save} hoverStyle={{ backgroundColor: colors.dim() }} style={saveStyle()}>
-          <Text style={labelText(colors.ink())}>{t("settings.source.save")}</Text>
+      <If when={props.ownButton ?? true} else={<If when={form.result()}>{(r) => <Text style={resultStyle(r().bad)}>{r().text}</Text>}</If>}>
+        <View style={{ ...row(u(20)), marginTop: u(6) }}>
+          <View role="button" accessibilityLabel={t("settings.source.save")} hitSlop={targetSlop(cs(60))} onPress={form.save} hoverStyle={{ backgroundColor: colors.dim() }} style={saveStyle()}>
+            <Text style={labelText(colors.ink())}>{t("settings.source.save")}</Text>
+          </View>
+          {/* A source set can be taken away (Save with an empty address did nothing visible). */}
+          <If when={source().url}>
+            <View role="button" accessibilityLabel={t("settings.source.remove")} hitSlop={targetSlop(cs(60))} onPress={form.remove} hoverStyle={{ backgroundColor: colors.raise() }} style={removeStyle()}>
+              <Text style={labelText(colors.snow())}>{t("settings.source.remove")}</Text>
+            </View>
+          </If>
+          <If when={form.result()}>{(r) => <Text style={resultStyle(r().bad)}>{r().text}</Text>}</If>
         </View>
-        <If when={form.result()}>{(r) => <Text style={resultStyle(r().bad)}>{r().text}</Text>}</If>
-      </View>
+      </If>
     </View>
   );
 }

@@ -70,7 +70,36 @@ impl Queries for Request {
 enum State {
     Pending,
     Done(Value),
-    Failed(String),
+    /// What went wrong: the message (redacted), why in one word, the source's host.
+    Failed { message: String, reason: &'static str, host: String },
+}
+
+/// Why a source did not answer, for a sentence the viewer can act on: "unreachable" (no
+/// connection: the address or the network), "key" (the source refused the key), "not_torznab"
+/// (something answered, not a Torznab endpoint), else "error" (the source's own message).
+fn reason(e: &anyhow::Error) -> &'static str {
+    if let Some(r) = e.downcast_ref::<reqwest::Error>() {
+        if r.is_connect() || r.is_timeout() || r.is_request() {
+            return "unreachable";
+        }
+    }
+    let text = format!("{e:#}").to_lowercase();
+    if text.contains("http 401") || text.contains("http 403") || text.contains("api key") || text.contains("apikey") {
+        "key"
+    } else if text.contains("http 404") || text.contains("not torznab") || text.contains("parsing") || text.contains("xml") {
+        "not_torznab"
+    } else {
+        "error"
+    }
+}
+
+/// The source's host ("192.168.1.10:9117"), for the sentence; the address itself when it has none.
+fn host(url: &str) -> String {
+    reqwest::Url::parse(url).ok().and_then(|u| u.host_str().map(|h| u.port().map_or(h.to_owned(), |p| format!("{h}:{p}")))).unwrap_or_else(|| url.to_owned())
+}
+
+fn failed(e: &anyhow::Error, source: &Source) -> State {
+    State::Failed { message: reel_domain::redact::redact(&format!("{e:#}")), reason: reason(e), host: host(&source.url) }
 }
 
 static NEXT: AtomicU32 = AtomicU32::new(1);
@@ -137,7 +166,7 @@ pub fn start_check(source: Source) -> u32 {
         CAPS.lock().unwrap().get_or_insert_with(HashMap::new).remove(&source.url);
         let state = match caps(&source).await {
             Ok(c) => State::Done(json!({ "caps": { "movieImdb": c.movie_imdb, "tvImdb": c.tv_imdb, "tvSeasonEp": c.tv_season_ep } })),
-            Err(e) => State::Failed(reel_domain::redact::redact(&format!("{e:#}"))),
+            Err(e) => failed(&e, &source),
         };
         set(job, state);
     });
@@ -151,24 +180,25 @@ pub fn start_search(source: Source, request: Request) -> u32 {
     runtime().spawn(async move {
         let state = match search(&source, &request).await {
             Ok((releases, hidden)) => State::Done(json!({ "releases": releases, "hidden": hidden })),
-            Err(e) => State::Failed(reel_domain::redact::redact(&format!("{e:#}"))),
+            Err(e) => failed(&e, &source),
         };
         set(job, state);
     });
     job
 }
 
-/// `{"state":"pending"}`, `{"state":"done", …}` or `{"state":"failed","message"}`.
+/// `{"state":"pending"}`, `{"state":"done", …}` or `{"state":"failed","message","reason","host"}`
+/// (`reason`: "unreachable", "key", "not_torznab" or "error").
 pub fn result(job: u32) -> Value {
     match JOBS.lock().unwrap().as_ref().and_then(|m| m.get(&job)) {
-        None => json!({ "state": "failed", "message": format!("no search {job}") }),
+        None => json!({ "state": "failed", "message": format!("no search {job}"), "reason": "error", "host": "" }),
         Some(State::Pending) => json!({ "state": "pending" }),
         Some(State::Done(v)) => {
             let mut v = v.clone();
             v["state"] = "done".into();
             v
         }
-        Some(State::Failed(m)) => json!({ "state": "failed", "message": m }),
+        Some(State::Failed { message, reason, host }) => json!({ "state": "failed", "message": message, "reason": reason, "host": host }),
     }
 }
 
@@ -344,6 +374,17 @@ fn rank(items: &[Item], query: &Query) -> (Vec<Value>, Vec<Value>) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_failure_says_why_in_one_word_and_names_the_host() {
+        use super::{host, reason};
+        assert_eq!(reason(&anyhow::anyhow!("the source answered HTTP 401 Unauthorized")), "key");
+        assert_eq!(reason(&anyhow::anyhow!("the source answered with an error: Invalid API Key")), "key");
+        assert_eq!(reason(&anyhow::anyhow!("the source answered HTTP 404 Not Found")), "not_torznab");
+        assert_eq!(reason(&anyhow::anyhow!("indexer is down for maintenance")), "error");
+        assert_eq!(host("http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api"), "192.168.1.10:9117");
+        assert_eq!(host("https://jackett.example.org/api"), "jackett.example.org");
+    }
+
     use super::*;
 
     #[test]

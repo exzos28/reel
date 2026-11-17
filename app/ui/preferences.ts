@@ -89,18 +89,18 @@ export async function saveSource(url: string, key: string): Promise<string | nul
 
 export type CheckResult =
   | { state: "ok"; movieImdb: boolean; tvImdb: boolean; tvSeasonEp: boolean }
-  | { state: "failed"; message: string };
+  | { state: "failed"; message: string; reason?: "unreachable" | "key" | "not_torznab" | "error"; host?: string };
 
 /** Asks the core to check the saved source (`t=caps`) and waits for the answer. */
 export async function checkSource(): Promise<CheckResult> {
   const job = await Sources.check();
-  if (!job) return { state: "failed", message: "" };
+  if (!job) return { state: "failed", message: "", reason: "error", host: "" };
   for (;;) {
     await new Promise((r) => setTimeout(r, 300));
     const r = JSON.parse(await Sources.result(job));
     if (r.state === "pending") continue;
     if (r.state === "done") return { state: "ok", ...r.caps };
-    return { state: "failed", message: r.message ?? "" };
+    return { state: "failed", message: r.message ?? "", reason: r.reason ?? "error", host: r.host ?? "" };
   }
 }
 

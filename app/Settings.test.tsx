@@ -80,3 +80,37 @@ test("Settings: Back closes the language panel before it leaves", async () => {
   expect(app.shows("choice-panel")).toBe(false);
   expect(app.texts()).toContain("Language");
 });
+
+/** The core of a first run: setup not done, nothing chosen yet. */
+const firstRun = (result: object) => ({
+  ...SOURCE,
+  "Sources.result": JSON.stringify(result),
+  "Settings.load": JSON.stringify({
+    language: "en", contentLanguage: "en-US", setupDone: false, bufferMB: 256, streamDetails: false,
+    contentLanguages: [{ tag: "en-US", name: "English" }], source: { url: "", hasKey: false },
+    bufferChoices: [{ mb: 256, default: true }],
+  }),
+});
+
+test("setup, source step: Check says why a source failed and Finish stays off; once it answers, Finish ends the setup", async () => {
+  let finished = 0;
+  const failing = await openApp({ clock: {}, modules: { "app/native": { ...firstRun({ state: "failed", message: "can't reach it" }), "Settings.finishSetup": () => (finished++, null) } } });
+  await failing.keyboard.press("down"); // past the language
+  for (const _ of [0, 1]) await failing.press("label:Next");
+  expect(failing.texts()).toContain("Where should reel find films?");
+  await failing.press("label:Check");
+  await failing.wait(400);
+  expect(failing.texts().some((x) => x.includes("can't reach it"))).toBe(true);
+  let refused = "";
+  await failing.press("label:Finish").catch((e: Error) => (refused = String(e.message ?? e)));
+  expect(refused.includes("disabled")).toBe(true);
+  expect(finished).toBe(0);
+
+  const working = await openApp({ clock: {}, modules: { "app/native": { ...firstRun({ state: "done", caps: { movieImdb: true } }), "Settings.finishSetup": () => (finished++, null) } } });
+  for (const _ of [0, 1]) await working.press("label:Next");
+  await working.press("label:Check");
+  await working.wait(400);
+  expect(working.texts()).toContain("Connected. It searches by IMDb id.");
+  await working.press("label:Finish");
+  expect(finished).toBe(1);
+});
