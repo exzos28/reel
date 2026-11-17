@@ -44,7 +44,7 @@ function forwardConsole() {
   g.addEventListener?.("unhandledrejection", (e) => note("unhandled", [e.reason]));
 }
 
-/** Diagnostics for a local TV build made with `scripts/tizen-local.sh --perf` (the shell adds
+/** Diagnostics for a local TV build made with `dev/tizen-local.sh --perf` (the shell adds
  * `reelPerf=1` to the page's address): into the log (forwardConsole), per second of
  * activity, the frames the page drew and its long pauses; per key, how long it took to the
  * next paint and how much of that was the app's handler; and the browser's long tasks. */

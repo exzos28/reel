@@ -15,7 +15,7 @@ reel-domain = { path = "../domain" }
 serde_json = "1"
 # rustls (ring) instead of OpenSSL: the TV has no OpenSSL to link against. The vendored,
 # patched copy (vendor/librqbit/REEL_PATCH.md) comes in through app/.cargo/config.toml and
-# hosts/tizen/.cargo/config.toml.
+# platforms/tizen/.cargo/config.toml.
 librqbit = { version = "9.1.0", default-features = false, features = ["http-api", "http-api-client", "rust-tls", "tracing-subscriber-utils"] }
 anyhow = "1"
 librqbit-dualstack-sockets = "0.7"

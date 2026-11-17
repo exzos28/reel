@@ -60,7 +60,7 @@ struct Saved {
     setup_done: Option<bool>,
 }
 
-/// A search source compiled into a developer's own build (scripts/tizen-local.sh, from
+/// A search source compiled into a developer's own build (dev/tizen-local.sh, from
 /// their .env): put in on the first start that has none. Release builds have none.
 const DEFAULT_SOURCE: Option<(&str, &str)> = match (option_env!("REEL_DEFAULT_SOURCE_URL"), option_env!("REEL_DEFAULT_SOURCE_KEY")) {
     (Some(url), Some(key)) => Some((url, key)),

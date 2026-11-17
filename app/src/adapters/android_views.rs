@@ -1,5 +1,5 @@
 //! reel's own native views on Android (`app/android/java`, added to the APK by
-//! `scripts/android-views.sh`): NSH registers native components only from Java
+//! `build/android-views.sh`): NSH registers native components only from Java
 //! (`NshView.registerComponent`), and an app `nsh package` builds has no Java of its own to
 //! call it, so this calls `app.reel.views.Install.install()` once, through JNI: the JVM the
 //! app runs in, the app's class loader (where reel's classes are), the call.
@@ -142,6 +142,6 @@ unsafe fn install_class(env: *mut JNIEnv) -> Result<jobject, String> {
     let name = unsafe { (f.v1_6.NewStringUTF)(env, c"app.reel.views.Install".as_ptr() as *const c_char) };
     let args = [jvalue { l: name }];
     let install = unsafe { (f.v1_6.CallObjectMethodA)(env, loader, load, args.as_ptr()) };
-    unsafe { check(env, "loading app.reel.views.Install (is the APK built with scripts/android-views.sh?)")? };
+    unsafe { check(env, "loading app.reel.views.Install (is the APK built with build/android-views.sh?)")? };
     Ok(install)
 }

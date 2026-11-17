@@ -1,8 +1,8 @@
 // app/native over HTTP: the modules of the Rust crate as the web build on a Samsung TV sees
-// them, served by the core (hosts/tizen/core) on 127.0.0.1. Only `ui/native.ts` imports this.
+// them, served by the core (platforms/tizen/core) on 127.0.0.1. Only `ui/native.ts` imports this.
 //
 // The core serves the web build itself (http://127.0.0.1:47391/ui/), so the calls are
-// same-origin. The TV shell (hosts/tizen/ui/shell.js) opens it as
+// same-origin. The TV shell (platforms/tizen/ui/shell.js) opens it as
 // /ui/index.html?reelToken=<token>; NSH runs the app in a same-origin frame below that page,
 // so the token is looked for up the frame chain.
 //

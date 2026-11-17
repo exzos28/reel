@@ -62,7 +62,7 @@ impl From<ViewTracks> for Embedded {
 }
 
 /// One entry of AVPlay's `getTotalTrackInfo()` as the TV shell passes it on
-/// (hosts/tizen/ui/shell.js): `extra` is AVPlay's `extra_info`, itself JSON.
+/// (platforms/tizen/ui/shell.js): `extra` is AVPlay's `extra_info`, itself JSON.
 #[derive(Debug, Clone, Deserialize)]
 pub struct AvplayTrack {
     pub index: i64,

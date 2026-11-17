@@ -36,7 +36,7 @@ custom domain.
 
 - The GitHub links (`https://github.com/exzos28/reel`) are placeholders while the repository is
   private; each one has a comment next to it in `index.html`.
-- Update the platform statuses when builds change, from `scripts/build.sh`, `docs/ci.md` and
+- Update the platform statuses when builds change, from `build/build.sh`, `docs/ci.md` and
   `.github/workflows/`. Packages are described as coming to GitHub Releases; once the first
   release is published, link to it.
 

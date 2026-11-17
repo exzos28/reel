@@ -1,16 +1,16 @@
 # reel on Samsung TVs (Tizen)
 
 First target: Samsung S90D (2024, Tizen 9). Installed through Apps2Samsung, which re-signs packages for the user's TV.
-The host lives in `hosts/tizen/`.
+The host lives in `platforms/tizen/`.
 
 ## Shape
 
 ```
 one hybrid .wgt (package ReelTizen1)
-├── TV app (web, ReelTizen1.ui)        hosts/tizen/ui
+├── TV app (web, ReelTizen1.ui)        platforms/tizen/ui
 │     shell.js: starts the service, waits for the core, then loads the UI in an iframe
 │     from http://127.0.0.1:47391/ui/, plays video with AVPlay
-└── core service (.NET, ReelTizen1.Core) hosts/tizen/service
+└── core service (.NET, ReelTizen1.Core) platforms/tizen/service
       ReelCore.dll loads lib/libreel_tizen_core.so (Rust: app/ crate + JSON RPC server)
       127.0.0.1:47391   /health, /rpc (token), /ui/* (the NSH web build)
       127.0.0.1:<random> librqbit's stream server (/torrents/{id}/stream/{file})
@@ -61,21 +61,21 @@ GET /health  X-Reel-Token: <token>   → {"ok":true,"info":{"core","dataDir","ca
 GET /ui/…    the web build (no token), precompressed .br/.gz served as is
 ```
 
-- **Names and arguments.** Method names are the camelCase ones NSH generates in `.nsh/types/app/native.d.ts`, and arguments are positional. `hosts/tizen/core/src/table.rs` maps them to `reel_app::Engine::open` and so on. Its test `matches_the_declarations` fails when the table and the declarations drift apart; any app/ change to a `#[module]` needs a line there.
+- **Names and arguments.** Method names are the camelCase ones NSH generates in `.nsh/types/app/native.d.ts`, and arguments are positional. `platforms/tizen/core/src/table.rs` maps them to `reel_app::Engine::open` and so on. Its test `matches_the_declarations` fails when the table and the declarations drift apart; any app/ change to a `#[module]` needs a line there.
 - **Threads.** Sync methods run on blocking threads, because the engine calls `block_on` on its own runtime. `async` methods (`Meta.*`) run on the server's runtime.
 - **Token.** The shell generates a token on every launch and passes it to the service in the AppControl. A service that is already running gets the new token. Other apps and web pages on the TV can reach 127.0.0.1 as well, but without the token they get 401. The UI receives the token in its URL (`/ui/index.html?reelToken=…`).
 - **Data dir.** `Settings.load(dataDir)` and `Meta.init(dataDir)` accept only the core's own data dir (`info.dataDir`) or `""`. Any other path is a path on a different machine, so the call fails with 400 instead of the core silently swapping in its own dir.
 - **Player profile.** The service starts the core with profile `tizen` (`TIZEN_PROFILE`, applied through `Sources::set_profile` before the server starts). That means no DTS, no TrueHD, no Dolby-Vision-only releases; MKV and MP4 are fine. `info.profile` shows the active profile. The UI must not call `Sources.setProfile` on the TV. The desktop binary takes `--profile tizen` to filter releases the same way.
 - **Cache.** The engine puts its cache under `temp_dir()`. On the TV that may be a small RAM disk, so the core sets `TMPDIR` to the app's `cache/` before the engine starts. Item 7 of [app/ on the web](#app-on-the-web) would replace this with a parameter.
-- **Desktop.** `cargo run -p reel-tizen-core --bin reel-core -- --ui-dir out/web --profile tizen` serves the same API and UI on a Mac (from `hosts/tizen`), for testing in a browser.
+- **Desktop.** `cargo run -p reel-tizen-core --bin reel-core -- --ui-dir out/web --profile tizen` serves the same API and UI on a Mac (from `platforms/tizen`), for testing in a browser.
 
 ## app/ on the web
 
 NSH's web target compiles app/'s crate to wasm32. The TV's UI is that web build, served by the core, and it takes the core's modules over HTTP.
 
 1. **Cargo.toml.** Only `nsh-core`, `serde` and `serde_json` are shared. Everything else sits under `[target.'cfg(not(target_arch = "wasm32"))'.dependencies]`, the workspace's own crates too: `reel-domain` (app/domain) and `reel-engine` (app/engine, behind the default feature `engine`; app/ARCHITECTURE.md). librqbit uses `rust-tls` (ring for SHA-1, rustls for HTTPS) instead of OpenSSL, so neither the core nor any other Linux or Android build needs OpenSSL for it.
-2. **src/lib.rs.** Every `mod` (the layers `application`, `adapters`, `interface` and `wiring`) and the native modules (`Engine`, `Catalog`, `Settings`, `Sources`, `Meta`, `VideoEngine`) are `#[cfg(not(target_arch = "wasm32"))]`. On wasm32 only `Fmt`, which is pure, is registered. `VideoEngine` is native because its answer depends on the core's profile (`"avplay"` on the TV). New native modules follow the same rule, and need a line in `hosts/tizen/core/src/table.rs` (its test `matches_the_declarations`) and in `ui/native-http.ts` (typed with the generated interfaces, so `nsh check` fails when one is missing).
-3. **The C compiler for wasm32.** The web runtime depends on `zstd-sys`, which compiles C. Apple's clang has no wasm32 backend, so `hosts/tizen/build.sh` sets `CC_wasm32_unknown_unknown` and `AR_wasm32_unknown_unknown` to Homebrew LLVM's clang and llvm-ar. CI uses Ubuntu's `clang-18` and `llvm-18`. By hand:
+2. **src/lib.rs.** Every `mod` (the layers `application`, `adapters`, `interface` and `wiring`) and the native modules (`Engine`, `Catalog`, `Settings`, `Sources`, `Meta`, `VideoEngine`) are `#[cfg(not(target_arch = "wasm32"))]`. On wasm32 only `Fmt`, which is pure, is registered. `VideoEngine` is native because its answer depends on the core's profile (`"avplay"` on the TV). New native modules follow the same rule, and need a line in `platforms/tizen/core/src/table.rs` (its test `matches_the_declarations`) and in `ui/native-http.ts` (typed with the generated interfaces, so `nsh check` fails when one is missing).
+3. **The C compiler for wasm32.** The web runtime depends on `zstd-sys`, which compiles C. Apple's clang has no wasm32 backend, so `build/tizen.sh` sets `CC_wasm32_unknown_unknown` and `AR_wasm32_unknown_unknown` to Homebrew LLVM's clang and llvm-ar. CI uses Ubuntu's `clang-18` and `llvm-18`. By hand:
    ```sh
    cd app && CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm/bin/llvm-ar nsh package . --target web
    ```
@@ -88,7 +88,7 @@ NSH's web target compiles app/'s crate to wasm32. The TV's UI is that web build,
 6. **Startup.** When `ui/native.ts` loads on the web, it reads `GET /health` synchronously, with the token from `?reelToken=` found up the frame chain. That way the modules work before the first call, and a missing token or a core that is down fails at startup with a clear message. `Settings.load` gets `dataDir()` from `ui/native.ts`: the core's `info.dataDir` on the web, `process.dataDir` elsewhere. The UI never calls `Sources.setProfile`; the core already runs with the `tizen` profile.
 7. *(Optional, cleaner)* Add `engine::set_cache_dir(path)` (or a `Settings` method) so the host passes the cache dir explicitly instead of the core setting `TMPDIR`.
 
-To try the web build on a Mac against the desktop core (from `hosts/tizen`, after the web build above):
+To try the web build on a Mac against the desktop core (from `platforms/tizen`, after the web build above):
 ```sh
 cargo run -p reel-tizen-core --bin reel-core -- --port 47491 --token <16+ chars> --ui-dir ../../app/.nsh/out/reel --profile tizen
 # open http://127.0.0.1:47491/ui/index.html?reelToken=<token>
@@ -112,7 +112,7 @@ How the pieces fit:
 - AVPlay exists only in the shell's top-level document (`<object type="application/avplayer">`) and draws on the video plane under the whole web layer.
 - The UI (served from 127.0.0.1) is cross-origin to the shell, so it drives AVPlay with `window.top.postMessage({reel:"avplay", op:"open"|"play"|"pause"|"seek"|"track"|"stop", …})`.
 - The shell checks the sender's origin and replies to the sender with `{reel:"avplay-event", type:"loaded"|"time"|"buffering"|"seeked"|"ended"|"error"|"event", …}`.
-- The client lives in `app/ui/avplay.ts` (`hosts/tizen/bridge/avplay.ts` was its first sketch).
+- The client lives in `app/ui/avplay.ts` (`platforms/tizen/bridge/avplay.ts` was its first sketch).
 - Leaving the app goes the same way: after "Exit reel?" the UI posts `{reel:"exit"}` and the shell calls `tizen.application.getCurrentApplication().exit()`.
 
 Integration in app/:
@@ -125,10 +125,10 @@ Integration in app/:
 ## Build
 
 ```sh
-hosts/tizen/build.sh check                      # toolchain report
-hosts/tizen/build.sh core                       # out/libreel_tizen_core.so (armv7, softfp-compatible)
-hosts/tizen/build.sh package --shell-only       # out/reel-tv-v<version>.wgt with the diagnostics screen
-hosts/tizen/build.sh package                    # with the NSH web build
+build/tizen.sh check                      # toolchain report
+build/tizen.sh core                       # out/libreel_tizen_core.so (armv7, softfp-compatible)
+build/tizen.sh package --shell-only       # out/reel-tv-v<version>.wgt with the diagnostics screen
+build/tizen.sh package                    # with the NSH web build
 ```
 
 What `package` does:
@@ -151,23 +151,23 @@ Missing on this Mac (sizes measured from the download servers):
 
 ### CI
 
-- A push runs `hosts/tizen/build.sh package` (with the web build); run the workflow by hand with `shell_only` for the diagnostics screen.
+- A push runs `build/tizen.sh package` (with the web build); run the workflow by hand with `shell_only` for the diagnostics screen.
 - The web build needs the `wasm32-unknown-unknown` Rust target, nsh (`.github/actions/setup-nsh`) and a clang with wasm32 (`clang-18`, `llvm-18` from apt).
 - Linux runner setup can copy ambilight's `tv-package.yml`:
   - `actions/setup-dotnet` 8.0.x;
   - Samsung's `workload-install.sh -d $DOTNET_ROOT`;
   - the `tizen-core_10.0.18_ubuntu-64.zip`, `web-privilege-checker_0.0.2_ubuntu-64.zip` and `certificate-generator_0.1.4_ubuntu-64.zip` packages with their SHA256s, and `sdk.info`;
   - `rustup target add armv7-unknown-linux-gnueabi`;
-  - either zig + cargo-zigbuild, or `REEL_TIZEN_CC=arm-linux-gnueabi-gcc` from `scripts/setup-armv7-deps.sh`.
+  - either zig + cargo-zigbuild, or `REEL_TIZEN_CC=arm-linux-gnueabi-gcc` from `build/setup-armv7-deps.sh`.
 - With Debian's gcc, the `.so` links against that distribution's glibc version. The `core` step prints the newest `GLIBC_x.y` the library needs; it must not be newer than the TV's. zig with a pinned 2.28 avoids the question.
-- The current `scripts/build.sh armv7` builds `libreel_app.so` from app/ directly. That library has no C API, so the service can't use it. The `.so` for the TV is `hosts/tizen/build.sh core` (`libreel_tizen_core.so`, exports `reel_core_start`, `reel_core_set_token`, `reel_core_last_error`).
+- The current `build/build.sh armv7` builds `libreel_app.so` from app/ directly. That library has no C API, so the service can't use it. The `.so` for the TV is `build/tizen.sh core` (`libreel_tizen_core.so`, exports `reel_core_start`, `reel_core_set_token`, `reel_core_last_error`).
 - Release asset: `reel-tv-v<version>.wgt` (a hybrid package; Apps2Samsung installs `.wgt` and `.tpk` from GitHub Releases).
 
 ## Install on the TV (Apps2Samsung)
 
 1. **Developer Mode on the TV.** Open **Apps**, press **1 2 3 4 5** on the remote, switch *Developer mode* on, and enter the IP of the machine running Apps2Samsung as *Host PC IP*. Restart the TV by holding the power button for about 5 s.
 2. **Pick the TV.** Open Apps2Samsung on that machine (same network as the TV) and pick the TV.
-3. **Install.** Install `reel-tv-v<version>.wgt`: either from a GitHub Release of this repo (*Add source* → the repo or a direct link to the asset), or from the local file `hosts/tizen/out/reel-tv-v<version>.wgt`. The first install asks you to sign in to Samsung once, to create a certificate for the TV. Apps2Samsung re-signs the package and should pick Public signing, because the package declares no Partner privilege and no `on-boot`.
+3. **Install.** Install `reel-tv-v<version>.wgt`: either from a GitHub Release of this repo (*Add source* → the repo or a direct link to the asset), or from the local file `out/tizen/reel-tv-v<version>.wgt`. The first install asks you to sign in to Samsung once, to create a certificate for the TV. Apps2Samsung re-signs the package and should pick Public signing, because the package declares no Partner privilege and no `on-boot`.
    - If an earlier build signed with another certificate is installed, delete it on the TV first.
 4. **Check.** Open **reel**. The shell starts the core service and, after `/health` answers, shows the UI. A `--shell-only` build shows the diagnostics screen instead; press OK on *Play Sintel*, and the film should play through AVPlay within about 30 s.
 5. **If something fails.** On the rooted TV (`sdb shell`), the service writes to `/opt/usr/home/owner/apps_rw/ReelTizen1/data/`:

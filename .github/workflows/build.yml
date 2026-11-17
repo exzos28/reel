@@ -1,5 +1,5 @@
 # Platform builds. Called by ci.yml (every push and PR) and release.yml (v* tags); every job
-# runs scripts/build.sh <target>, which a developer runs the same way locally.
+# runs build/build.sh <target>, which a developer runs the same way locally.
 name: build
 
 on:
@@ -36,12 +36,12 @@ jobs:
       - uses: ./.github/actions/setup-nsh
         with:
           rust-cache-key: macos
-      - run: scripts/build.sh macos
+      - run: build/build.sh macos
       # Optional: Developer ID signing and notarization, only when the secrets exist.
       - if: env.APPLE_CERT_P12_BASE64 != '' && env.MACOS_SIGN_IDENTITY != ''
         run: |
-          scripts/apple-signing.sh keychain
-          scripts/apple-signing.sh macos
+          build/apple-signing.sh keychain
+          build/apple-signing.sh macos
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: reel-macos
@@ -52,11 +52,11 @@ jobs:
     runs-on: ubuntu-24.04 # GTK 4.14
     steps:
       - uses: actions/checkout@v7.0.1
-      - run: scripts/setup-linux-deps.sh
+      - run: build/setup-linux-deps.sh
       - uses: ./.github/actions/setup-nsh
         with:
           rust-cache-key: linux
-      - run: scripts/build.sh linux
+      - run: build/build.sh linux
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: reel-linux
@@ -73,7 +73,7 @@ jobs:
       - uses: ./.github/actions/setup-nsh
         with:
           rust-cache-key: windows
-      - run: scripts/build.sh windows
+      - run: build/build.sh windows
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: reel-windows
@@ -97,7 +97,7 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v4.0.4
-      - run: scripts/setup-android-sdk.sh
+      - run: build/setup-android-sdk.sh
       - uses: ./.github/actions/setup-nsh
         with:
           rust-cache-key: android
@@ -106,7 +106,7 @@ jobs:
         run: |
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
           echo "REEL_ANDROID_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
-      - run: scripts/build.sh android
+      - run: build/build.sh android
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: reel-android
@@ -121,11 +121,11 @@ jobs:
         with:
           rust-cache-key: ios-simulator
       # One universal .app (UIDeviceFamily 1 and 2, checked by the script).
-      - run: scripts/build.sh ios-simulator
+      - run: build/build.sh ios-simulator
       - name: Launch on an iPhone simulator
-        run: scripts/ios-sim-smoke.sh iPhone
+        run: dev/ios-sim-smoke.sh iPhone
       - name: Launch on an iPad simulator
-        run: scripts/ios-sim-smoke.sh iPad
+        run: dev/ios-sim-smoke.sh iPad
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: reel-ios-simulator
@@ -160,10 +160,10 @@ jobs:
           rust-cache-key: ios-device
       - if: steps.secrets.outputs.present == 'true'
         run: |
-          scripts/apple-signing.sh keychain
-          REEL_IOS_PROFILE="$(scripts/apple-signing.sh profile)"
+          build/apple-signing.sh keychain
+          REEL_IOS_PROFILE="$(build/apple-signing.sh profile)"
           export REEL_IOS_PROFILE
-          scripts/build.sh ios
+          build/build.sh ios
       - if: steps.secrets.outputs.present == 'true'
         uses: actions/upload-artifact@v7.0.2
         with:
@@ -182,7 +182,7 @@ jobs:
       - uses: ./.github/actions/setup-nsh
         with:
           rust-cache-key: web
-      - run: scripts/build.sh web
+      - run: build/build.sh web
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: reel-web
@@ -200,17 +200,17 @@ jobs:
       - name: Install git and zstd (checkout, caches)
         run: apt-get update && apt-get install -y --no-install-recommends git zstd ca-certificates
       - uses: actions/checkout@v7.0.1
-      - run: scripts/setup-armv7-deps.sh
+      - run: build/setup-armv7-deps.sh
       - uses: Swatinem/rust-cache@v2.9.3
         with:
           workspaces: app -> target
           key: armv7
-      - run: scripts/build.sh armv7
+      - run: build/build.sh armv7
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: reel-tizen-core-armv7
           path: app/.nsh/dist/armv7/reel-*
           if-no-files-found: error
-      - name: "TODO: package the Tizen .tpk with Tizen Studio CLI (needs hosts/tizen)"
-        if: hashFiles('hosts/tizen/**') != ''
-        run: scripts/build.sh tpk
+      - name: "TODO: package the Tizen .tpk with Tizen Studio CLI (needs platforms/tizen)"
+        if: hashFiles('platforms/tizen/**') != ''
+        run: build/build.sh tpk

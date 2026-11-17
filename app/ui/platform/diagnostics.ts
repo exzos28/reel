@@ -1,6 +1,6 @@
 // Diagnostics: what the platform gives to see the app's logs and its performance.
 // - tizen (a TV's web build): the console forwarded to the core's log, and with
-//   `reelPerf=1` in the page's address (`scripts/tizen-local.sh --perf`) the perf probe;
+//   `reelPerf=1` in the page's address (`dev/tizen-local.sh --perf`) the perf probe;
 // - none elsewhere: the system's own console and NSH's performance monitor (⌘⇧F).
 import { runtime } from "./runtime";
 import { tizenDiagnostics } from "./diagnostics.tizen";

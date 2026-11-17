@@ -3,9 +3,8 @@
 .env
 logs/
 
-# scripts/linux-docker.sh build output
-/dist-linux/
-/dist-windows/
+# Every build's packages (build/: out/linux, out/windows, out/tizen…).
+/out/
 
 # Local only: the coding agent's skills and internal research notes.
 /.claude/

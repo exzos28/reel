@@ -1,14 +1,14 @@
 # CI
 
 GitHub Actions run the same scripts a developer runs locally. Workflows only set up machines
-and call `scripts/`.
+and call `build/`.
 
 ```sh
-scripts/install-nsh.sh          # nsh at the version app/Cargo.lock pins nsh-core to (0.5.0)
-scripts/build.sh check          # cargo check + TypeScript
-scripts/build.sh test           # cargo test + *.test.tsx headless (JUnit in app/.nsh/dist/test/)
-scripts/build.sh macos          # or linux, windows, android, ios-simulator, ios, web, armv7
-scripts/ios-sim-smoke.sh iPad   # install + launch the simulator build on an iPad (or iPhone)
+build/install-nsh.sh          # nsh at the version app/Cargo.lock pins nsh-core to (0.5.0)
+build/build.sh check          # cargo check + TypeScript
+build/build.sh test           # cargo test + *.test.tsx headless (JUnit in app/.nsh/dist/test/)
+build/build.sh macos          # or linux, windows, android, ios-simulator, ios, web, armv7
+dev/ios-sim-smoke.sh iPad   # install + launch the simulator build on an iPad (or iPhone)
 ```
 
 Packages land in `app/.nsh/dist/<target>/reel-*` (git-ignored); nsh's raw output is in `pkg/` next to them.
@@ -44,7 +44,7 @@ All secrets are optional. A build without them still works.
 
 ## iPhone and iPad
 
-NSH's iOS packages are universal (`UIDeviceFamily` 1 and 2). `scripts/build.sh ios-simulator` fails if
+NSH's iOS packages are universal (`UIDeviceFamily` 1 and 2). `build/build.sh ios-simulator` fails if
 that changes. In TSX, `platform.idiom` is `"pad"` on iPad and `"phone"` on iPhone. In Rust it is
 `idiom()`. Use it to pick a density for iPad.
 
@@ -62,6 +62,6 @@ that changes. In TSX, `platform.idiom` is `"pad"` on iPad and `"phone"` on iPhon
   bridge to the `.so`.
 - **Tizen core (armv7).** It builds with `cargo rustc --crate-type cdylib`, so `app/Cargo.toml` needs
   no `[lib] crate-type`. It links against Debian bookworm's armel glibc, not the Tizen rootstrap, so it
-  is only a toolchain smoke test and the job is `continue-on-error`. `.tpk` packaging (`scripts/build.sh
-  tpk`, Tizen Studio CLI) is a TODO until `hosts/tizen` exists.
+  is only a toolchain smoke test and the job is `continue-on-error`. `.tpk` packaging (`build/build.sh
+  tpk`, Tizen Studio CLI) is a TODO until `platforms/tizen` exists.
 - **macOS** builds for the runner's architecture (arm64). Set `REEL_MACOS_ARCH=universal` for both.

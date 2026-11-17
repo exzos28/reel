@@ -1,7 +1,7 @@
 //! libmpv's client and render API, loaded at run time (`dlopen`): the app
 //! builds and runs without it, and uses the native `<Video>` where it is not
 //! found. Where it is looked for: `REEL_LIBMPV` (a path), the app bundle's
-//! `Contents/Frameworks` (what `scripts/libmpv.sh bundle-macos` puts there), then
+//! `Contents/Frameworks` (what `build/libmpv.sh bundle-macos` puts there), then
 //! Homebrew's and /usr/local's lib directories.
 
 // libmpv's C API as reel uses it: each platform's view uses its own part (OpenGL on macOS and
@@ -134,12 +134,12 @@ unsafe impl Sync for Lib {}
 
 fn candidates() -> Vec<PathBuf> {
     let mut out = Vec::new();
-    // Android: in the APK's native libraries (scripts/android-views.sh), found by name.
+    // Android: in the APK's native libraries (build/android-views.sh), found by name.
     if cfg!(target_os = "android") {
         out.push("libmpv.so".into());
         return out;
     }
-    // Windows: beside the app's .exe (scripts/build.sh windows puts it there).
+    // Windows: beside the app's .exe (build/build.sh windows puts it there).
     if cfg!(windows) {
         if let Some(dir) = std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf())) {
             out.push(dir.join("libmpv-2.dll"));
@@ -147,7 +147,7 @@ fn candidates() -> Vec<PathBuf> {
         out.push("libmpv-2.dll".into());
         return out;
     }
-    // Linux: beside the app (scripts/build.sh linux puts it there), else the system's.
+    // Linux: beside the app (build/build.sh linux puts it there), else the system's.
     if cfg!(target_os = "linux") {
         if let Some(dir) = std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf())) {
             out.push(dir.join("libmpv.so.2"));

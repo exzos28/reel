@@ -1,0 +1,6 @@
+/target/
+/service/bin/
+/service/obj/
+/service/lib/
+/ui/web/
+/ui/shell-config.js

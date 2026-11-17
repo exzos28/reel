@@ -5,6 +5,18 @@ Samsung Tizen TV (first), macOS, Android / Android TV, iOS / iPadOS, Windows, Li
 (nsh.dev, TSX on QuickJS with native views); core in Rust (`app/src`, `app/domain`,
 `app/engine`).
 
+## Layout
+
+- `app/`: the app, what runs on the devices: UI (`ui/`, TSX), core (`src/`, `domain/`, `engine/`),
+  Android's own Java views (`android/`), texts (`locales/`).
+- `platforms/tizen/`: the Samsung TV app around it (shell, .NET service, the core as a library).
+- `build/`: how it is built and shipped; nothing here runs on a device. `build/build.sh <target>`,
+  `build/tizen.sh`, the Docker images (`build/docker/`), packaging, the release and the site's deploy.
+- `dev/`: tools for development (checks, local TV installs, samples).
+- `site/`: the website. `design/`, `docs/`: design and documentation. `vendor/`: third-party code
+  with reel's patches (librqbit).
+- `out/` (git-ignored): every build's packages, `out/<target>/`.
+
 ## Architecture rule: TS/TSX is UI only, everything else is Rust
 
 - TS/TSX renders screens, handles focus, keys and pointer, animations, and words text with `t()`.
@@ -47,7 +59,7 @@ Samsung Tizen TV (first), macOS, Android / Android TV, iOS / iPadOS, Windows, Li
   what is over and under a page (nav, heads, Back, the status bar's scrim), the page's title and
   the room under it, from `layout/metrics.ts`. Sideways rows are `Rail`; touch targets reach
   44 / 48 pt through `theme.targetSlop`. A screen never reads `safeArea`, `ringRoom`, the family
-  or positions overlays: `scripts/ui-rules.sh` checks it.
+  or positions overlays: `dev/ui-rules.sh` checks it.
 
 ## Secrets
 
@@ -58,9 +70,9 @@ Samsung Tizen TV (first), macOS, Android / Android TV, iOS / iPadOS, Windows, Li
 ## Build and test (from `app/`)
 
 - `cargo test --workspace`, `cargo build --no-default-features`, `nsh check .`, `nsh test .` and
-  `../scripts/ui-rules.sh` must pass before every commit. The layers and crates (reel-domain, reel-engine, reel-app) are in
+  `../dev/ui-rules.sh` must pass before every commit. The layers and crates (reel-domain, reel-engine, reel-app) are in
   `app/ARCHITECTURE.md`.
-- `nsh package . --target macos` (with `.env` loaded) for a demo build; `scripts/build.sh <target>`
+- `nsh package . --target macos` (with `.env` loaded) for a demo build; `build/build.sh <target>`
   is what CI runs.
 - Network tests are `#[ignore]` and run explicitly with `cargo test -- --ignored <name>`.
 - Local search source for development: your own Torznab endpoint in `.env` (`.env.example`).

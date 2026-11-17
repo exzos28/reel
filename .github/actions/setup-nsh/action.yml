@@ -1,6 +1,6 @@
 name: Set up nsh and Rust
 description: >
-  Installs the nsh CLI at the version app/Cargo.lock pins (scripts/install-nsh.sh), caching the
+  Installs the nsh CLI at the version app/Cargo.lock pins (build/install-nsh.sh), caching the
   distribution with its downloaded runtimes and nsh's cache (TypeScript), and caches Cargo.
 inputs:
   rust-cache-key:
@@ -13,7 +13,7 @@ runs:
       id: nsh
       shell: bash
       run: |
-        echo "version=$(scripts/install-nsh.sh --version)" >> "$GITHUB_OUTPUT"
+        echo "version=$(build/install-nsh.sh --version)" >> "$GITHUB_OUTPUT"
         case "$RUNNER_OS" in
           Windows) echo "dirs<<EOF"; echo "~/AppData/Local/nsh"; echo "EOF" ;;
           macOS)   echo "dirs<<EOF"; echo "~/.nsh"; echo "~/Library/Caches/nsh"; echo "EOF" ;;
@@ -28,7 +28,7 @@ runs:
 
     - name: Install nsh
       shell: bash
-      run: scripts/install-nsh.sh
+      run: build/install-nsh.sh
 
     - name: Update Rust
       shell: bash

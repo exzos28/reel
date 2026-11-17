@@ -12,7 +12,7 @@ Why:
 - Builds for iOS and the stores can ship without torrent code: the engine is the user's own server, like their Torznab source.
 - A weak TV does not download itself.
 
-Already there: on Tizen the core runs as a separate HTTP server (`hosts/tizen/core`).
+Already there: on Tizen the core runs as a separate HTTP server (`platforms/tizen/core`).
 
 Missing for it to run as a server:
 - listen on the LAN when the user turns it on;

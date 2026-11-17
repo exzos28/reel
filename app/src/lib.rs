@@ -17,7 +17,7 @@ mod interface;
 #[cfg(not(target_arch = "wasm32"))]
 mod wiring;
 
-// Paths the Tizen host uses (hosts/tizen/core).
+// Paths the Tizen host uses (platforms/tizen/core).
 #[cfg(not(target_arch = "wasm32"))]
 pub use interface::{hosted, thumbs};
 
@@ -198,7 +198,7 @@ impl VideoEngine {
     }
 
     /// Whether reel's own native views are registered on this device (Android: the Java ones
-    /// `scripts/android-views.sh` adds to the APK; registered on the first call).
+    /// `build/android-views.sh` adds to the APK; registered on the first call).
     pub fn views() -> bool {
         #[cfg(target_os = "android")]
         return crate::adapters::android_views::installed();

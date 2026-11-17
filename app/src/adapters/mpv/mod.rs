@@ -61,7 +61,7 @@ mod tests {
     /// Plays a real file headless (no picture: `vo=null`) and checks the
     /// events and the track switching. Needs libmpv and a file with tracks:
     /// `REEL_LIBMPV=…/libmpv.2.dylib REEL_MPV_SAMPLE=…/sample.mkv cargo test -- --ignored mpv_plays`
-    /// (`scripts/mpv-sample.sh` makes the sample with ffmpeg).
+    /// (`dev/mpv-sample.sh` makes the sample with ffmpeg).
     #[test]
     #[ignore]
     fn mpv_plays_a_file_and_switches_tracks() {

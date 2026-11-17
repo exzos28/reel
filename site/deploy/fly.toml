@@ -1,4 +1,4 @@
-# The site with its downloads (scripts/site-deploy.sh). Static: no state, no secrets.
+# The site with its downloads (build/site-deploy.sh). Static: no state, no secrets.
 app = "reel-site"
 primary_region = "fra"
 

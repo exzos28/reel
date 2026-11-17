@@ -1,5 +1,5 @@
 // The line to a Samsung TV's AVPlay (docs/tizen.md, "Player"). AVPlay lives
-// in the TV shell's top-level document (hosts/tizen/ui/shell.js), which is
+// in the TV shell's top-level document (platforms/tizen/ui/shell.js), which is
 // cross-origin to the web build, so the page posts `{reel:"avplay", op, …}`
 // to `window.top` and the shell answers this frame with
 // `{reel:"avplay-event", type, …}`. Where the page has no frame above it,
@@ -77,7 +77,7 @@ function frameLink(w: FrameLike): AvplayLink {
   };
 }
 
-/** Asks the TV shell to leave the app (hosts/tizen/ui/shell.js); false where
+/** Asks the TV shell to leave the app (platforms/tizen/ui/shell.js); false where
  * the page has no shell above it. */
 export function postExitToShell(): boolean {
   const w = frame();

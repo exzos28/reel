@@ -8,7 +8,7 @@ source, the content language and the playback buffer there.
 ## 1. Where it is served
 
 - **The LAN listener on 0.0.0.0:47392**, the one that already serves `GET /logs`
-  (`hosts/tizen/core/src/logs.rs`). One port for everything the LAN may reach, no new
+  (`platforms/tizen/core/src/logs.rs`). One port for everything the LAN may reach, no new
   listener. It is up before the core, and the settings API answers `503 not_ready` until the UI
   has called `Settings.load` (before that a write would land in memory and be lost on load).
 - **The RPC stays on 127.0.0.1:47391** with its token. Nothing from it is on the LAN: the

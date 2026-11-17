@@ -25,9 +25,9 @@ jobs:
         with:
           rust-cache-key: checks
       # cargo check --all-targets of app/, the TypeScript check, app/ without the engine.
-      - run: scripts/build.sh check
+      - run: build/build.sh check
       # cargo test of the domain and engine crates and app/, then the *.test.tsx files headless.
-      - run: scripts/build.sh test
+      - run: build/build.sh test
       - if: always()
         uses: actions/upload-artifact@v7.0.2
         with:
