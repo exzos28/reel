@@ -92,8 +92,7 @@ section { padding: clamp(3.5rem, 8vw, 6.5rem) 0; }
 /* Hero */
 .hero { padding-top: clamp(2.5rem, 6vw, 5rem); }
 .hero-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 3rem; align-items: center; }
-/* The devices take the whole width under the text: seven of them need the room. */
-.hero .shots { margin-top: 1rem; }
+@media (min-width: 1000px) { .hero-grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr); } }
 .lead { margin-top: 1.25rem; font-size: 1.1875rem; color: var(--soft); max-width: 34rem; }
 .note { margin-top: 1rem; color: var(--ash); max-width: 34rem; }
 .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2rem; }
@@ -103,7 +102,7 @@ section { padding: clamp(3.5rem, 8vw, 6.5rem) 0; }
 .shots { margin: 0; }
 /* Every device at once: the TV and the two monitors at the back, the laptop, the tablet and the
    phones in front. Sizes and places are shares of the group's width. */
-.family { position: relative; aspect-ratio: 16 / 9.4; max-width: 56rem; margin: 0 auto; }
+.family { position: relative; aspect-ratio: 16 / 9.4; }
 .family .shot { position: absolute; }
 .shot[data-s=windows] { left: 0; top: 7%; width: 33%; z-index: 1; }
 .shot[data-s=linux] { right: 0; top: 7%; width: 33%; z-index: 1; }
