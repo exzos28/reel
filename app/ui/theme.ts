@@ -107,7 +107,7 @@ export const ringRoom = () => u(8 + 5 + 4) + Math.max(2, u(3));
 
 /** Whether the focus shows: always on a TV (the remote is all there is), elsewhere only while
  * the keys drive (not after a tap or a click, where a ring on what was pressed is noise). */
-const showFocus = () => chrome === "tv" || keysInUse();
+export const showFocus = () => chrome === "tv" || keysInUse();
 
 export function focusRing(shownFocus: boolean, lift: "card" | "row" | "button" = "button"): ViewStyle {
   const focused = shownFocus && showFocus();

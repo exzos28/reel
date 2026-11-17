@@ -19,7 +19,7 @@ import { rounded } from "./kit/shape";
 import plusIcon from "./icons/plus.svg";
 import { streamDetails } from "./preferences";
 import { cachedAhead, duration, firstFrame, readAt, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
-import { alpha, colors, focusRing, font, iconPt, radius, safe, targetSlop, ts, type, u } from "./theme";
+import { alpha, colors, focusRing, font, iconPt, radius, safe, showFocus, targetSlop, ts, type, u } from "./theme";
 import { chrome } from "./layout/chrome";
 import { caps } from "./platform";
 import { useFullscreen } from "./platform/window";
@@ -38,7 +38,7 @@ import fullscreenExitIcon from "./icons/fullscreen-exit.svg";
 import checkIcon from "./icons/check.svg";
 
 /** How long the overlay stays without input. */
-export const OVERLAY_MS = 3000;
+export const OVERLAY_MS = 5000;
 /** How long the Up next card counts down before the next episode plays. */
 export const UP_NEXT_MS = 6000;
 const SEEK_S = 10;
@@ -145,9 +145,14 @@ export function Player() {
   const tracks = computed<Tracks>(() => JSON.parse(Catalog.tracks(what()?.id ?? "")));
   /** The release picked in the panel (shown; switching releases is the catalog's). */
   const picked = signal<Record<number, number>>({});
+  /** The bottom controls' height: the subtitles sit above it while they show. */
+  const controlsHeight = signal(0);
   // Audio and Subtitles: what the core says the video and the release have.
   const { embedded, menu, cue, choose } = playerTracks();
-  const columns = computed(() => [menu().audio.length, menu().subtitles.length, tracks().releases.length]);
+  /** The panel's releases: the short list, as the film's page has it (one of each quality, and
+   * the one playing), so a quality shows once. */
+  const shortReleases = computed(() => tracks().releases.filter((r) => r.top || r.selected));
+  const columns = computed(() => [menu().audio.length, menu().subtitles.length, shortReleases().length]);
   const pick = (col: number, row: number) => {
     const option = col === 0 ? menu().audio[row] : col === 1 ? menu().subtitles[row] : undefined;
     if (col === 2) picked.set({ ...picked(), [col]: row });
@@ -432,7 +437,7 @@ export function Player() {
         />
       </If>
 
-      <SubtitleOverlay text={cue} lifted={() => overlay() && !card()} />
+      <SubtitleOverlay text={cue} lift={() => (overlay() && !card() ? controlsHeight() : 0)} />
 
       <If when={started() && !failed() && buffering()}>
         <BufferingNote text={bufferingText} />
@@ -497,8 +502,10 @@ export function Player() {
         </View>
 
         <If when={panel()}>
+          {/* A tap beside the panel closes it, as a sheet's does. */}
+          <View role="button" accessibilityLabel={t("player.close_tracks")} onPress={() => panel.set(false)} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
           <TracksPanel
-            tracks={tracks}
+            releases={shortReleases}
             audio={() => menu().audio}
             subtitles={() => menu().subtitles}
             picked={picked}
@@ -509,7 +516,7 @@ export function Player() {
 
         {/* Bottom: engine line, scrubber, times, buttons. */}
         <If when={ready()}>
-          <View style={{ position: "absolute", left: safe().x, right: safe().x, bottom: safe().y }}>
+          <View onLayout={(e) => controlsHeight.set(e.bounds.size.height)} style={{ position: "absolute", left: safe().x, right: safe().x, bottom: safe().y }}>
             <If when={streamDetails()}>
             <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", minHeight: u(32) }}>
               <If when={aheadText() !== ""}>
@@ -661,13 +668,15 @@ function RoundButton(props: {
 
 /** Audio, Subtitles and Release in one dark panel. */
 function TracksPanel(props: {
-  tracks: () => Tracks;
+  releases: () => Release[];
   audio: () => TrackOption[];
   subtitles: () => TrackOption[];
   picked: () => Record<number, number>;
   focused: (col: number, i: number) => boolean;
   onPick: (col: number, i: number) => void;
 }) {
+  /** The focus fill shows only while the keys drive (as the ring does everywhere); a tap only picks. */
+  const lit = (col: number, i: number) => props.focused(col, i) && showFocus();
   const isSelected = (col: number, i: number, fromCore: boolean) => {
     const p = col === 2 ? props.picked()[col] : undefined;
     return p != null ? p === i : fromCore;
@@ -690,19 +699,19 @@ function TracksPanel(props: {
               minHeight: u(o().sub ? 74 : 60), paddingHorizontal: u(16), borderRadius: radius(), borderCurve: "continuous",
               // Rows in a panel sit close together, so focus is a fill, not the ring
               // (Direction 3: focused = snow fill with ink text; selected = card fill + check).
-              backgroundColor: props.focused(col, i()) ? colors.snow() : isSelected(col, i(), o().selected) ? colors.card() : "transparent",
+              backgroundColor: lit(col, i()) ? colors.snow() : isSelected(col, i(), o().selected) ? colors.card() : "transparent",
             }}
           >
             <View style={{ flexShrink: 1 }}>
-              <Text style={{ ...type.label(), color: props.focused(col, i()) ? colors.ink() : isSelected(col, i(), o().selected) ? colors.snow() : colors.soft() }}>
+              <Text style={{ ...type.label(), color: lit(col, i()) ? colors.ink() : isSelected(col, i(), o().selected) ? colors.snow() : colors.soft() }}>
                 {o().main}
               </Text>
               <If when={o().sub}>
-                <Text style={{ fontFamily: font, fontSize: ts(19), color: props.focused(col, i()) ? alpha(colors.ink(), 0.7) : colors.ash(), marginTop: u(2) }}>{o().sub}</Text>
+                <Text style={{ fontFamily: font, fontSize: ts(19), color: lit(col, i()) ? alpha(colors.ink(), 0.7) : colors.ash(), marginTop: u(2) }}>{o().sub}</Text>
               </If>
             </View>
             <If when={isSelected(col, i(), o().selected)}>
-              <Icon src={() => checkIcon} size={24} color={() => (props.focused(col, i()) ? colors.ink() : colors.snow())} />
+              <Icon src={() => checkIcon} size={24} color={() => (lit(col, i()) ? colors.ink() : colors.snow())} />
             </If>
           </View>
         )}
@@ -713,13 +722,13 @@ function TracksPanel(props: {
     <View
       style={{
         position: "absolute", top: u(150), right: safe().x, width: u(1020), maxWidth: "90%",
-        flexDirection: "row", padding: u(26), borderRadius: radius() + u(26), borderCurve: "continuous", backgroundColor: alpha(colors.card(), 0.94),
+        flexDirection: "row", padding: u(26), borderRadius: radius() + u(26), borderCurve: "continuous", backgroundColor: colors.card(),
       }}
     >
       {column(0, t("player.audio"), () => props.audio().map((a, i) => ({ main: trackName(a, i + 1), sub: trackNote(a), selected: a.selected })))}
       {column(1, t("player.subtitles"), () => props.subtitles().map((s, i) => ({ main: trackName(s, i), sub: trackNote(s), selected: s.selected })))}
       {column(2, t("player.release"), () =>
-        props.tracks().releases.map((r) => ({
+        props.releases().map((r) => ({
           main: `${r.quality} ${r.source}`,
           sub: `${r.size} · ${t("release.sharing_short", { count: r.peers })}`,
           selected: r.selected,

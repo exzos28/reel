@@ -124,7 +124,7 @@ test("a stall shows the buffering note until AVPlay has enough again", async () 
 
 test("at the end the film stands paused with the controls up", async () => {
   const { app, event } = await playing();
-  await app.wait(3100);
+  await app.wait(5100);
   expect(app.shows("scrubber")).toBe(false);
   await event({ type: "ended" });
   expect(app.shows("scrubber")).toBe(true);

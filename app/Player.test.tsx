@@ -107,17 +107,17 @@ test("the player shows the stream and its controls", async () => {
 
 test("the overlay hides after a few quiet seconds and comes back on any key", async () => {
   const app = await playing();
-  await app.wait(3100);
+  await app.wait(5100);
   expect(app.texts()).not.toContain("streaming at 3.4 MB/s from 37 people");
   await app.keyboard.press("down");
   expect(app.texts()).toContain("streaming at 3.4 MB/s from 37 people");
-  await app.wait(3100);
+  await app.wait(5100);
   expect(app.texts()).not.toContain("streaming at 3.4 MB/s from 37 people");
 });
 
 test("a press anywhere brings the overlay back", async () => {
   const app = await playing();
-  await app.wait(3100);
+  await app.wait(5100);
   await app.press("player");
   expect(app.texts()).toContain("streaming at 3.4 MB/s from 37 people");
 });
@@ -130,7 +130,7 @@ test("paused, the overlay stays", async () => {
   expect(app.texts()).toContain("streaming at 3.4 MB/s from 37 people");
   await app.keyboard.press("enter");
   expect(app.shows("label:Pause")).toBe(true);
-  await app.wait(3100);
+  await app.wait(5100);
   expect(app.texts()).not.toContain("streaming at 3.4 MB/s from 37 people");
 });
 
@@ -201,7 +201,7 @@ test("escape hides the overlay first, then leaves the player", async () => {
 test("hidden, the remote is back on the scrubber", async () => {
   const app = await playing();
   await app.keyboard.press("down");
-  await app.wait(3100);
+  await app.wait(5100);
   await app.keyboard.press("right");
   expect(app.texts()).toContain("0:10");
 });

@@ -288,6 +288,7 @@ compat:
 player:
   back: Back
   close: Close
+  close_tracks: Close audio and subtitles
   fullscreen: Full screen
   exit_fullscreen: Exit full screen
   stage:
