@@ -48,9 +48,3 @@ screen is built and tested (`app/src/interface/hosted/pairing.rs`, docs/hosted-s
 (`PAIRING_REQUIRED` in `app/src/interface/hosted/mod.rs`). To decide: turn pairing back on (or a one-time
 key in the QR code, so scanning still pairs without typing), plain HTTP on the LAN, and `/logs`
 on the same port, which is open without any check.
-
-## Decide how open the code is
-
-The repository is private; the licence is PolyForm Noncommercial (`LICENSE`). To decide: whether
-and when to make the code public, under which terms, and what the site says about it (its
-"Open code, no accounts" section and the links to GitHub are hidden until then).
