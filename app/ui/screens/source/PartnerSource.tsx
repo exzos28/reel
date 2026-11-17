@@ -16,12 +16,14 @@ const qrRow = (): ViewStyle => ({ ...row(u(28)), alignItems: "center" });
 const qrStyle = () => ({ width: cs(200), height: cs(200), ...rounded() });
 
 /** A QR code and what it is for. */
-function Qr(props: { src: string; title: string; text: string; children?: JSX.Element }) {
+function Qr(props: { src: string; title: string | null; text: string; children?: JSX.Element }) {
   return (
     <View testID="partner-qr" style={qrRow()}>
       <Image src={props.src} style={qrStyle()} />
       <View style={{ flexShrink: 1, gap: u(8) }}>
-        <Text style={labelText(colors.snow())}>{props.title}</Text>
+        <If when={props.title}>
+          <Text style={labelText(colors.snow())}>{props.title}</Text>
+        </If>
         <Text style={bodyText(colors.ash())}>{props.text}</Text>
         {props.children}
       </View>
@@ -29,7 +31,9 @@ function Qr(props: { src: string; title: string; text: string; children?: JSX.El
   );
 }
 
-export function PartnerSource(props: { focused?: () => boolean }) {
+/** `titled`: false where the place gives it its own heading (the setup's "Or rent a ready one"). */
+export function PartnerSource(props: { focused?: () => boolean; titled?: boolean }) {
+  const title = () => ((props.titled ?? true) ? t("settings.source.partner_tv_title") : null);
   const open = () => {
     const link = partner()?.app?.url;
     if (link) openUrl(link).catch((e) => console.warn(`reel: the partner's bot did not open: ${e}`));
@@ -57,7 +61,7 @@ export function PartnerSource(props: { focused?: () => boolean }) {
                   }
                 >
                   {(qr) => (
-                    <Qr src={qr()} title={t("settings.source.partner_tv_title")} text={t("settings.source.partner_app_note", { bot: p().bot })}>
+                    <Qr src={qr()} title={title()} text={t("settings.source.partner_app_note", { bot: p().bot })}>
                       {button()}
                     </Qr>
                   )}
@@ -66,7 +70,7 @@ export function PartnerSource(props: { focused?: () => boolean }) {
             </If>
           }
         >
-          {(qr) => <Qr src={qr()} title={t("settings.source.partner_tv_title")} text={t("settings.source.partner_tv_text", { bot: p().bot })} />}
+          {(qr) => <Qr src={qr()} title={title()} text={t("settings.source.partner_tv_text", { bot: p().bot })} />}
         </If>
       )}
     </If>

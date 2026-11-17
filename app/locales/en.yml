@@ -424,7 +424,9 @@ setup:
     recommended: Recommended
   source:
     title: Where should reel find films?
-    help: A Torznab address and its API key.
+    help: Enter your own, or rent one ready.
+    own_title: Your own source
+    rent_title: Or rent a ready one
     check: Check
     finish: Finish
     skip: Skip, add it later

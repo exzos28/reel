@@ -18,6 +18,7 @@ import { frameSolid as barSolid } from "./frameState";
 import { BAR_HEIGHT } from "./metrics";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
+import { setupDone } from "../preferences";
 
 /** The bar's height, points (`metrics`); the system's window controls are centred in it. */
 export { BAR_HEIGHT };
@@ -180,7 +181,11 @@ export function WindowBar() {
   };
   /** A Mac keeps Back's slot on a root, disabled; elsewhere it is only on deeper pages. */
   const showBack = () => chrome === "mac" || canGoBack();
+  /** The first-run setup has the window to itself: no Back, logo, tabs or buttons to leave it by
+   * (the setup shows its own logo). */
+  const inSetup = () => setupDone() === false;
   return (
+    <If when={!inSetup()} else={<View desktop={{ windowDrag: true }} style={barStyle(false)} />}>
     <View style={barStyle(barSolid())}>
       <View desktop={{ windowDrag: true }} style={{ width: backLeft(), alignSelf: "stretch" }} />
       <If when={showBack()}>
@@ -208,5 +213,6 @@ export function WindowBar() {
       </View>
       <View desktop={{ windowDrag: true }} style={{ width: titleBar().right + (chrome === "mac" ? 16 : 10), alignSelf: "stretch" }} />
     </View>
+    </If>
   );
 }

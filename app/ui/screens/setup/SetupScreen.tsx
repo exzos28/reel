@@ -11,18 +11,19 @@ import { Button } from "../../kit/Button";
 import { Icon } from "../../kit/Icon";
 import { rowStyle } from "../../kit/Row";
 import { row } from "../../kit/shape";
-import { bodyText, labelText, metaText, pageTitle } from "../../kit/text";
+import { bodyText, labelText, metaText, pageTitle, sectionTitle } from "../../kit/text";
 import { ChoicePanel, type Choice } from "../../layout/ChoicePanel";
 import { Logo } from "../../layout/NavBar";
 import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { onBack } from "../../nav";
 import { bufferChoices, chooseBuffer, chooseContentLanguage, contentLanguages, finishSetup, source } from "../../preferences";
-import { colors, cs, safe, u } from "../../theme";
+import { colors, cs, density, safe, u } from "../../theme";
 import { bufferChoiceList, languageChoices } from "../settings/choices";
 import { formWidth } from "../../kit/form";
 import { PhoneCard } from "../source/PhoneCard";
-import { SourceForm } from "../source/SourceForm";
+import { partner } from "../../hosted";
+import { SourceByPhone, SourceForm } from "../source/SourceForm";
 import { linkedSource, sourceForm } from "../source/sourceState";
 import { PartnerSource } from "../source/PartnerSource";
 
@@ -30,7 +31,12 @@ import { PartnerSource } from "../source/PartnerSource";
 const SHOWN_LANGUAGES = 5;
 
 const layoutStyle = (): ViewStyle => ({ ...row(u(96), "flex-start"), paddingHorizontal: safe().x, paddingTop: u(40) });
-const stepStyle = (): ViewStyle => ({ flex: 1, maxWidth: formWidth(), gap: u(16) });
+const stepStyle = (wide: boolean): ViewStyle => ({ flex: 1, maxWidth: wide ? formWidth() * 2 + u(120) : formWidth(), gap: u(16) });
+/** The source step's two ways side by side (one above the other on a phone): your own source, or
+ * a rented one. */
+const waysStyle = (): ViewStyle => ({ flexDirection: density === "compact" ? "column" : "row", alignItems: "flex-start", gap: u(64), marginTop: u(28) });
+const wayStyle = (): ViewStyle => ({ flex: density === "compact" ? undefined : 1, alignSelf: "stretch", gap: u(14) });
+const wayRule = (): ViewStyle => (density === "compact" ? { height: 1, alignSelf: "stretch" } : { width: 1, alignSelf: "stretch" });
 const optionsStyle = (): ViewStyle => ({ gap: u(12), marginTop: u(30) });
 const optionStyle = (selected: boolean, focused: boolean): ViewStyle => ({
   ...rowStyle(selected, focused),
@@ -146,7 +152,7 @@ export function SetupScreen() {
     <View style={{ flex: 1 }}>
       <PageFrame ctl={page} kind="bare">
         <View style={layoutStyle()}>
-          <View style={stepStyle()}>
+          <View style={stepStyle(step() === 2)}>
             <Logo />
             <Text style={{ ...metaText(), marginTop: u(60) }}>{t("setup.step", { n: step() + 1 })}</Text>
             <Text style={pageTitle()}>{t(`setup.${titleKey()}.title`)}</Text>
@@ -164,24 +170,38 @@ export function SetupScreen() {
             <If when={step() === 2}>
               {/* The fields take text where a keyboard is at hand; a TV's remote goes to the actions
                   (its address is typed on the phone, beside). */}
-              <View style={{ marginTop: u(20) }}>
-                <SourceForm form={form} ownButton={false} />
+              <View style={waysStyle()}>
+                {/* Your own: the fields, Check and Finish (and, on a TV, typing it on a phone). */}
+                <View style={wayStyle()}>
+                  <Text style={sectionTitle()}>{t("setup.source.own_title")}</Text>
+                  <SourceForm form={form} ownButton={false} />
+                  <View style={actionsStyle()}>
+                    <Button kind="secondary" label={() => t("setup.source.check")} focused={focused(0)} onPress={() => form.save()} />
+                    <Button kind="primary" label={() => t("setup.source.finish")} focused={focused(1)} disabled={() => !form.connected()} onPress={finish} />
+                  </View>
+                  <SourceByPhone />
+                </View>
+                {/* Or a rented one, from the partner's bot (a build without one shows only yours). */}
+                <If when={partner()}>
+                  <View style={{ ...wayRule(), backgroundColor: colors.raise() }} />
+                  <View style={wayStyle()}>
+                    <Text style={sectionTitle()}>{t("setup.source.rent_title")}</Text>
+                    <PartnerSource titled={false} />
+                  </View>
+                </If>
               </View>
-              <View style={actionsStyle()}>
-                <Button kind="secondary" label={() => t("setup.source.check")} focused={focused(0)} onPress={() => form.save()} />
-                <Button kind="primary" label={() => t("setup.source.finish")} focused={focused(1)} disabled={() => !form.connected()} onPress={finish} />
+              <View style={{ ...actionsStyle(), alignItems: "center" }}>
                 <Button kind="secondary" label={() => t("setup.source.skip")} focused={focused(2)} onPress={finish} />
-              </View>
-              <Text style={{ ...metaText(), marginTop: u(16) }}>{t("setup.source.note")}</Text>
-              <View style={{ marginTop: u(28) }}>
-                <PartnerSource />
+                <Text style={metaText()}>{t("setup.source.note")}</Text>
               </View>
             </If>
           </View>
+          <If when={step() < 2}>
           <PhoneCard
             title={() => t(step() === 2 ? "setup.phone.source_title" : "setup.phone.title")}
             text={(url) => t(step() === 2 ? "setup.phone.source_text" : "setup.phone.text", { url })}
           />
+          </If>
         </View>
       </PageFrame>
       <If when={allLanguages()}>

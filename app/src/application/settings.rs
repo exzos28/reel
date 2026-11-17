@@ -20,7 +20,24 @@ use reel_domain::{redact::redact_keys, search::Source};
 
 /// Choices for the playback buffer, MiB.
 pub const BUFFER_CHOICES: [u32; 5] = [128, 256, 512, 1024, 2048];
+/// The buffer when the free space cannot be read.
 pub const DEFAULT_BUFFER_MB: u32 = 256;
+/// The share of the free space the recommended buffer may take: a TV with about 1.5 GB to spare
+/// gets 256 MB, a computer with tens of gigabytes the largest choice.
+const RECOMMENDED_SHARE: f64 = 0.2;
+
+/// The buffer recommended for `free` bytes of free space: the largest choice within
+/// `RECOMMENDED_SHARE` of it, at least the smallest; `DEFAULT_BUFFER_MB` when it is unknown.
+fn recommended_mb(free: Option<u64>) -> u32 {
+    let Some(free) = free else { return DEFAULT_BUFFER_MB };
+    let room = free as f64 * RECOMMENDED_SHARE / (1024.0 * 1024.0);
+    BUFFER_CHOICES.iter().copied().filter(|c| f64::from(*c) <= room).max().unwrap_or(BUFFER_CHOICES[0])
+}
+
+/// The buffer recommended for this device's free space (where the engine keeps its cache).
+pub fn recommended_buffer() -> u32 {
+    recommended_mb(playback().check_space()["free"].as_u64())
+}
 pub const DEFAULT_LANGUAGE: &str = "en";
 pub const DEFAULT_CONTENT_LANGUAGE: &str = "en-US";
 
@@ -225,6 +242,10 @@ pub fn load(data_dir: Option<&Path>) -> Value {
     // Settings from before the setup existed: that viewer has set reel up already. Without a
     // data dir nothing would remember the setup either: it would show on every start, so none.
     saved.setup_done = Some(saved.setup_done.unwrap_or(existed || file.is_none()));
+    // A new install starts with the buffer its free space recommends.
+    if !existed {
+        saved.buffer_mb = recommended_buffer();
+    }
     if let (Some(f), true) = (&file, saved.default_source_used != before.default_source_used) {
         write(f, &saved);
     }
@@ -243,6 +264,8 @@ pub fn load(data_dir: Option<&Path>) -> Value {
 /// "streamDetails","setupDone","source":{"url","hasKey"},"bufferChoices":[{"mb","default"}]}`.
 pub fn current() -> Value {
     let saved = with(|s| s.saved.clone());
+    let recommended = recommended_buffer();
+    let choices: Vec<Value> = buffer_choices().into_iter().map(|c| json!({ "mb": c, "default": c == recommended })).collect();
     json!({
         "language": saved.language,
         "contentLanguage": saved.content_language,
@@ -254,10 +277,7 @@ pub fn current() -> Value {
         "streamDetails": saved.stream_details,
         "setupDone": saved.setup_done.unwrap_or(false),
         "source": source_json(&saved),
-        "bufferChoices": buffer_choices()
-            .into_iter()
-            .map(|c| json!({ "mb": c, "default": c == DEFAULT_BUFFER_MB }))
-            .collect::<Vec<_>>(),
+        "bufferChoices": choices,
     })
 }
 
@@ -403,6 +423,21 @@ pub fn set_language(tag: &str) {
 }
 
 #[cfg(test)]
+mod recommended_tests {
+    use super::recommended_mb;
+    const GB: u64 = 1024 * 1024 * 1024;
+
+    #[test]
+    fn the_recommended_buffer_follows_the_free_space() {
+        assert_eq!(recommended_mb(None), 256, "unknown: the default");
+        assert_eq!(recommended_mb(Some(GB / 2)), 128, "little room: the smallest");
+        assert_eq!(recommended_mb(Some(GB + GB / 2)), 256, "a TV's 1.5 GB");
+        assert_eq!(recommended_mb(Some(6 * GB)), 1024);
+        assert_eq!(recommended_mb(Some(100 * GB)), 2048, "a computer: the largest");
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -432,7 +467,9 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
 
         let first = load(Some(&dir));
-        assert_eq!(first["bufferMB"], DEFAULT_BUFFER_MB);
+        // A new install: the buffer its free space recommends (the one the choices mark).
+        assert_eq!(first["bufferMB"], recommended_buffer());
+        assert!(first["bufferChoices"].as_array().unwrap().iter().any(|c| c["default"] == true && c["mb"] == first["bufferMB"]));
         assert_eq!(first["language"], "en");
         assert_eq!(first["bufferChoices"].as_array().unwrap().len(), BUFFER_CHOICES.len());
 
