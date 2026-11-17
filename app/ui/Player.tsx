@@ -22,7 +22,7 @@ import { cachedAhead, duration, firstFrame, readAt, playing as what, play, posit
 import { alpha, colors, focusRing, font, iconPt, radius, safe, showFocus, targetSlop, ts, type, u } from "./theme";
 import { chrome } from "./layout/chrome";
 import { caps } from "./platform";
-import { playVolume, PlayerVolume, toggleMute, volumeShown } from "./PlayerVolume";
+import { playVolume, PlayerVolume, toggleMute, volumeDragEnd, volumeDragMove, volumeShown } from "./PlayerVolume";
 import { useFullscreen } from "./platform/window";
 import { BarBack, barBackBox } from "./layout/WindowBar";
 import { onBack } from "./nav";
@@ -403,7 +403,11 @@ export function Player() {
     <View
       testID="player"
       style={{ flex: 1, backgroundColor: screenBackground() }}
-      onMouseMove={() => { if (!card()) poke(); }}
+      onMouseMove={(e) => {
+        volumeDragMove(e.pagePosition.x);
+        if (!card()) poke();
+      }}
+      onMouseUp={volumeDragEnd}
       onPress={(e) => {
         if (card()) return;
         poke();
