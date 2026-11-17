@@ -8,11 +8,13 @@ import { Drawer } from "../../layout/Drawer";
 import { onBack } from "../../nav";
 import { status, stop } from "../../playback";
 import { colors, u } from "../../theme";
+import { PartnerSource } from "./PartnerSource";
 import { SourceByPhone, SourceForm } from "./SourceForm";
 import { sourceForm } from "./sourceState";
 
-/** Why it is open: there is no source, or the one set did not answer. */
-type Why = "missing" | "failed" | "edit";
+/** Why it is open: there is no source, the one set did not answer, Settings, or a link
+ * (`reel://s?…`) filled it. */
+type Why = "missing" | "failed" | "edit" | "link";
 const shown = signal(false);
 const why = signal<Why>("missing");
 export const openSourceDrawer = (reason: Why = "missing") => {
@@ -32,6 +34,9 @@ function Body() {
     <View style={{ gap: u(24) }}>
       <Text style={bodyText(colors.soft())}>{t(`settings.source_drawer.${why()}_about`)}</Text>
       <SourceByPhone />
+      <If when={why() !== "link"}>
+        <PartnerSource />
+      </If>
       <SourceForm form={form} />
     </View>
   );

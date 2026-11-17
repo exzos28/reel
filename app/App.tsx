@@ -9,7 +9,7 @@
 // on a desktop, one window bar over every page (layout/WindowBar.tsx); on
 // touch, each tab's native stack with the phone's tab bar or the tablet's top
 // row (layout/TouchStack.tsx, layout/TouchNav.tsx).
-import { fpsEnabled, keymap, mount, setColorScheme, setFpsEnabled, View } from "nsh";
+import { fpsEnabled, keymap, mount, setColorScheme, setFpsEnabled, UrlScheme, View } from "nsh";
 import { setupWindow, WindowFrame } from "./ui/platform/window";
 import { appDrawn, bindPlatformInput, mapPlatformKeys } from "./ui/platform/remote";
 import { startDiagnostics } from "./ui/platform/diagnostics";
@@ -30,9 +30,12 @@ import { Player } from "./ui/Player";
 import { playerUp, status } from "./ui/playback";
 import { loadSettings, setupDone } from "./ui/preferences";
 import { SetupScreen } from "./ui/screens/setup/SetupScreen";
-import { Sources } from "./ui/native";
+import { Hosted, Sources } from "./ui/native";
+import { linkedSource } from "./ui/screens/source/sourceState";
+import { openSourceDrawer } from "./ui/screens/source/SourceDrawer";
 import { watchSettings } from "./ui/hosted";
 import { PairingDialog } from "./ui/layout/PairingDialog";
+import { OfferDialog } from "./ui/layout/OfferDialog";
 import { colors } from "./ui/theme";
 import { videoUnderUi } from "./ui/VideoSurface";
 
@@ -44,6 +47,21 @@ startDiagnostics();
 Sources.setPictureCap(caps.touch ? 1080 : 0);
 // A phone and a tablet keep a stack per tab (design/navigation.md, "History model").
 useTabStacks(caps.touch);
+// A link that opens the app (reel://s?t=<key>&u=<address>, from a partner's bot): its source
+// fills the source's fields (the setup's step, else the drawer); nothing is saved until the
+// viewer saves it. Any other link is dropped (anyone can make one).
+UrlScheme.on("open", async ({ url }) => {
+  let s: { url: string | null; key?: string } | null = null;
+  try {
+    // Awaited: the tests' stand-ins answer with a promise.
+    s = JSON.parse(await Hosted.linkSource(url));
+  } catch (e) {
+    console.warn("reel: a link the core could not read", e);
+  }
+  if (!s?.url) return;
+  linkedSource.set({ url: s.url, key: s.key ?? "" });
+  if (setupDone() !== false) openSourceDrawer("link");
+});
 // Then follows the core's settings (changed on a phone too) and the pairing code it shows.
 loadSettings()
   .catch((e) => console.warn("could not load settings", e))
@@ -127,6 +145,8 @@ function App() {
       <SourceDrawer />
       {/* A phone pairing for the settings page: its code, over any screen. */}
       <PairingDialog />
+      {/* A source a phone offers from a partner's link: a yes here saves it, over any screen. */}
+      <OfferDialog />
     </View>
   );
 }

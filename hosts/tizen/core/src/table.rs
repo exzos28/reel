@@ -134,11 +134,31 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Hosted", "link", |a| {
         no_args(&a)?;
         ret(Hosted::link())
+    })
+    .sync("Hosted", "partner", |a| {
+        no_args(&a)?;
+        ret(Hosted::partner())
+    })
+    .sync("Hosted", "offered", |a| {
+        no_args(&a)?;
+        ret(Hosted::offered())
+    })
+    .sync("Hosted", "answerOffer", |a| {
+        let (accept,): (bool,) = args(a)?;
+        ret(Hosted::answer_offer(accept))
+    })
+    .sync("Hosted", "linkSource", |a| {
+        let (link,): (String,) = args(a)?;
+        ret(Hosted::link_source(link))
     });
 
     r.sync("Sources", "search", |a| {
         let (request,): (String,) = args(a)?;
         ret(Sources::search(request))
+    })
+    .sync("Sources", "setPictureCap", |a| {
+        let (lines,): (u32,) = args(a)?;
+        ret(Sources::set_picture_cap(lines))
     })
     .sync("Sources", "setProfile", |a| {
         let (name,): (String,) = args(a)?;

@@ -23,7 +23,8 @@ import { bufferChoiceList, languageChoices } from "../settings/choices";
 import { formWidth } from "../../kit/form";
 import { PhoneCard } from "../source/PhoneCard";
 import { SourceForm } from "../source/SourceForm";
-import { sourceForm } from "../source/sourceState";
+import { linkedSource, sourceForm } from "../source/sourceState";
+import { PartnerSource } from "../source/PartnerSource";
 
 /** How many languages the step lists before "More languages". */
 const SHOWN_LANGUAGES = 5;
@@ -110,6 +111,10 @@ export function SetupScreen() {
     else if (i === n + 1) form.connected() && finish();
     else finish();
   };
+  // A link that opened the app with a source (reel://s?…) goes to the source step, its fields filled.
+  effect(() => {
+    if (linkedSource() && step() !== 2) go(2);
+  });
   // A source saved from a phone (the settings page) is checked here too: Finish once it answers.
   let seenUrl = source().url;
   effect(() => {
@@ -168,6 +173,9 @@ export function SetupScreen() {
                 <Button kind="secondary" label={() => t("setup.source.skip")} focused={focused(2)} onPress={finish} />
               </View>
               <Text style={{ ...metaText(), marginTop: u(16) }}>{t("setup.source.note")}</Text>
+              <View style={{ marginTop: u(28) }}>
+                <PartnerSource />
+              </View>
             </If>
           </View>
           <PhoneCard

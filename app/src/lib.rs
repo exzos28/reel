@@ -319,6 +319,29 @@ impl Hosted {
     pub fn link() -> String {
         hosted::link().to_string()
     }
+
+    /// The partner's bot and the links to it: `{"bot","tv":{"url","qr"}|null,"app"}`, or
+    /// `{"bot":null}` in a build without one.
+    pub fn partner() -> String {
+        hosted::partner().to_string()
+    }
+
+    /// The source in a link that opened the app (`reel://s?t=<key>&u=<address>`, from a partner's
+    /// bot): `{"url","key"}`, or `{"url":null}` for any other link. Nothing is saved.
+    pub fn link_source(link: String) -> String {
+        hosted::link_source(&link).to_string()
+    }
+
+    /// The source a phone offers (from a partner's link), waiting for a yes on the screen:
+    /// `{"host":"jackett.example.com"}` or `{"host":null}`.
+    pub fn offered() -> String {
+        hosted::offered().to_string()
+    }
+
+    /// The viewer's answer to the offered source; a yes saves and checks it.
+    pub fn answer_offer(accept: bool) {
+        hosted::answer_offer(accept);
+    }
 }
 
 /// The catalog the UI shows: TMDB and AniList titles through `Meta`,

@@ -25,6 +25,10 @@ hosted:
   pair_title: Pair your phone
   pair_about: Type this code on reel's settings page on your phone or computer.
   cancel: Cancel
+  offer_title: Use the source from your phone?
+  offer_about: reel will search releases there. You can change it in Settings.
+  offer_use: Use
+  offer_not_now: Not now
 
 shelf:
   continue: Continue watching
@@ -349,6 +353,11 @@ settings:
     key_saved: Key saved. Type a new one to replace it
     save: Save and check
     remove: Remove source
+    # The partner's ready source (design/partner-source.md).
+    partner_tv_title: Rent a ready source
+    partner_tv_text: "Scan with your phone and pay in Telegram (@%{bot}). The source comes back here: confirm it on this screen."
+    partner_app: Rent a ready source in Telegram
+    partner_app_note: "@%{bot} sends a link back: open it, and the source fills in here."
     saving: Saving…
     checking: Checking the source…
     removed: Search source removed.
@@ -370,6 +379,8 @@ settings:
     failed_about: reel could not search it for releases. Check its address and API key, then Save and check; Play works once it connects.
     edit_title: Search source
     edit_about: "Your Jackett, Prowlarr or JacRed: its Torznab address and API key."
+    link_title: Use this source?
+    link_about: A link filled in this source. Save and check to use it, or Back to leave yours as it is.
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: Connected

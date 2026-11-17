@@ -349,7 +349,7 @@ pub fn set_source_with(url: &str, key: Option<&str>) -> Result<Value, String> {
 }
 
 /// An address the source may have: empty (none), or http(s).
-fn check_url(url: &str) -> Result<(), String> {
+pub fn check_url(url: &str) -> Result<(), String> {
     if !url.is_empty() {
         let parsed = reqwest::Url::parse(url).map_err(|e| format!("not an address: {e}"))?;
         if !matches!(parsed.scheme(), "http" | "https") {

@@ -222,3 +222,35 @@ fn the_page_is_self_contained() {
     }
     assert!(PAGE.len() < 24 * 1024, "small: {} bytes", PAGE.len());
 }
+
+#[test]
+fn a_source_offered_from_a_link_is_saved_only_after_a_yes_on_the_screen() {
+    let (_g, dir) = setup("offer");
+    *OFFERS.lock().unwrap() = Default::default();
+    // No pairing: the link from the bot carries none.
+    let made = call("POST", "/settings/api/offer", None, &json!({ "url": URL, "key": "rented-key" }).to_string());
+    assert_eq!(made.status, 200, "{:?}", made.body);
+    let id = made.body["offer"].as_str().unwrap().to_owned();
+    assert_eq!(offered()["host"], "127.0.0.1");
+    assert!(settings::source().is_none(), "nothing saved before the yes");
+    assert_eq!(call("GET", &format!("/settings/api/offer/{id}"), None, "").body["state"], "pending");
+    assert!(!offered().to_string().contains("rented-key"), "the screen never sees the key");
+
+    answer_offer(true);
+    assert_eq!(settings::source().unwrap().key.as_deref(), Some("rented-key"));
+    let s = call("GET", &format!("/settings/api/offer/{id}"), None, "");
+    assert_eq!(s.body["state"], "accepted");
+    assert!(s.body["result"]["state"].is_string(), "the check's answer: {}", s.body);
+    assert_eq!(offered()["host"], Value::Null);
+
+    // A no saves nothing; a bad address is refused at once.
+    settings::set_source("", "").unwrap();
+    std::thread::sleep(offer::SPACING);
+    let id = call("POST", "/settings/api/offer", None, &json!({ "url": URL, "key": "x" }).to_string()).body["offer"].as_str().unwrap().to_owned();
+    answer_offer(false);
+    assert!(settings::source().is_none());
+    assert_eq!(call("GET", &format!("/settings/api/offer/{id}"), None, "").body["state"], "declined");
+    std::thread::sleep(offer::SPACING);
+    assert_eq!(call("POST", "/settings/api/offer", None, &json!({ "url": "ftp://x" }).to_string()).status, 400);
+    let _ = std::fs::remove_dir_all(&dir);
+}

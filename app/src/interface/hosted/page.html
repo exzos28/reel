@@ -23,6 +23,8 @@ input:focus,select:focus{border-color:var(--snow)}
 input.code{font-size:28px;letter-spacing:.4em;text-align:center;font-variant-numeric:tabular-nums}
 button{height:48px;padding:0 20px;border:0;border-radius:10px;background:var(--snow);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
 button.quiet{background:var(--raise);color:var(--snow)}
+a.button{display:inline-flex;align-items:center;height:48px;padding:0 20px;border-radius:10px;font-weight:600;text-decoration:none}
+a.button.quiet{background:var(--raise);color:var(--snow)}
 button:disabled{opacity:.5}
 .row{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
 .check{display:flex;gap:10px;align-items:center;margin-top:10px;color:var(--soft);font-size:15px}
@@ -57,7 +59,8 @@ button:disabled{opacity:.5}
 <div id="settings" hidden>
   <section>
     <h2>Search source</h2>
-    <p>The Torznab address of your own Jackett (or Prowlarr, JacRed…) and its API key. reel comes with no source of its own.</p>
+    <p>The Torznab address of your own Jackett (or Prowlarr, JacRed…) and its API key.</p>
+    <p id="rent" hidden><a class="button quiet" id="rentLink" rel="noreferrer">Rent a ready source in Telegram</a></p>
     <form id="sourceForm">
       <label for="url">Address</label>
       <input id="url" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api">
@@ -93,6 +96,65 @@ button:disabled{opacity:.5}
   var session = null;
   var pairing = null;
   try { session = localStorage.getItem(KEY); } catch (e) {}
+
+  // Opened from a partner's link (/s?t=<key>&u=<address>): the source to offer the TV. The
+  // address bar drops it at once, so the key stays out of the history.
+  var offered = null;
+  (function () {
+    if (location.pathname !== '/s') return;
+    var q = new URLSearchParams(location.search);
+    if (q.get('u')) offered = { url: q.get('u'), key: q.get('t') || '' };
+    try { history.replaceState(null, '', '/settings'); } catch (e) {}
+  })();
+
+  // Telegram's start takes 64 characters of A-Z a-z 0-9 _ -: the template, base64url.
+  function startOf(text) {
+    var b = btoa(unescape(encodeURIComponent(text)));
+    return b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  // "Rent a ready source": the partner's bot (if this build has one), told to send the viewer
+  // back to this page with the source (design/partner-source.md).
+  function showRent(bot) {
+    var start = bot ? startOf(location.origin + '/s?t={t}&u={u}') : '';
+    $('rent').hidden = !bot || start.length > 64;
+    if (!$('rent').hidden) $('rentLink').href = 'https://t.me/' + bot + '?start=' + start;
+  }
+
+  // Offers the linked source to the TV, where the viewer says yes; then says how it went.
+  function offer() {
+    var o = offered;
+    offered = null;
+    $('url').value = o.url;
+    $('key').value = o.key;
+    $('save').disabled = true;
+    say('sourceMsg', 'Sending to the TV…');
+    $('url').scrollIntoView({ block: 'center' });
+    api('POST', '/offer', o).then(function (r) {
+      if (r.status !== 200) {
+        $('save').disabled = false;
+        return say('sourceMsg', r.body.error === 'address' ? 'The link has no address reel can use: ' + r.body.message : problem(r), 'bad');
+      }
+      say('sourceMsg', 'Confirm on the TV: choose Use there.');
+      watchOffer(r.body.offer);
+    });
+  }
+
+  function watchOffer(id) {
+    api('GET', '/offer/' + id).then(function (r) {
+      var s = r.body.state;
+      if (r.status === 200 && s === 'pending') return setTimeout(function () { watchOffer(id); }, 1000);
+      $('save').disabled = false;
+      if (s === 'declined') return say('sourceMsg', 'Not saved: it was declined on the TV.', 'bad');
+      if (s === 'expired') return say('sourceMsg', 'Not saved: the TV got no answer in time. Open the link again.', 'bad');
+      if (s !== 'accepted') return say('sourceMsg', problem(r), 'bad');
+      $('key').value = '';
+      var c = r.body.result;
+      if (!c || c.state === 'pending') { say('sourceMsg', 'Saved on the TV. Checking the source…'); return setTimeout(function () { watchOffer(id); }, 600); }
+      if (c.state === 'done') return say('sourceMsg', c.caps.movieImdb ? 'Connected. It searches by IMDb id.' : 'Connected. It searches by title.', 'good');
+      say('sourceMsg', 'Saved, but the TV could not reach the source: ' + (c.message || 'no answer'), 'bad');
+    });
+  }
 
   function remember(s) {
     session = s;
@@ -173,6 +235,8 @@ button:disabled{opacity:.5}
       $('pair').hidden = true;
       $('settings').hidden = false;
       show(r.body);
+      showRent(r.body.partnerBot);
+      if (offered) offer();
     });
   }
 

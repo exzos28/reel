@@ -16,6 +16,17 @@ export const pairingCode = signal<PairingCode | null>(null);
 export const hostedUrl = signal<string | null>(null);
 /** Its QR code (an SVG data URL), or null. */
 export const hostedQr = signal<string | null>(null);
+/** A source a phone offers from a partner's link, waiting for a yes here: its host, or null. */
+export const offeredHost = signal<string | null>(null);
+
+/** The partner's bot (in a build with one) and the links to it: `tv` brings the source back to
+ * this device (with its QR code), `app` to the reel app on the phone that opens it. */
+export interface Partner {
+  bot: string;
+  tv: { url: string; qr: string | null } | null;
+  app: string | null;
+}
+export const partner = signal<Partner | null>(null);
 
 /** A JSON answer of the core (awaited: tests' stand-ins answer with a promise). */
 const parse = async <T>(json: () => string | Promise<string>): Promise<T | null> => {
@@ -33,6 +44,19 @@ async function refreshHosted() {
   const link = await parse<{ url: string | null; qr: string | null }>(() => Hosted.link());
   hostedUrl.set(link?.url ?? (await parse<{ url: string | null }>(() => Hosted.address()))?.url ?? null);
   hostedQr.set(link?.qr ?? null);
+  offeredHost.set((await parse<{ host: string | null }>(() => Hosted.offered()))?.host ?? null);
+  const bot = await parse<Partner | { bot: null }>(() => Hosted.partner());
+  partner.set(bot?.bot ? (bot as Partner) : null);
+}
+
+/** The viewer's answer to the offered source (a yes saves and checks it, in the core). */
+export function answerOffer(accept: boolean) {
+  offeredHost.set(null);
+  try {
+    Hosted.answerOffer(accept);
+  } catch (e) {
+    console.warn("could not answer the offer", e);
+  }
 }
 
 /** Reads the settings again (changed elsewhere, e.g. on a phone). */

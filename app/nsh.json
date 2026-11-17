@@ -13,6 +13,7 @@
   },
   "rust": ".",
   "appearance": "dark",
+  "schemes": ["reel"],
   "theme": {
     "cssVars": {
       "theme": {

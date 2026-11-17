@@ -65,6 +65,8 @@ fn router(data_dir: PathBuf) -> Router {
         .route("/shell-log", post(shell_log))
         .route("/app-log", post(app_log))
         .route("/settings", get(settings_page))
+        // The same page at the short address a partner's link opens (reel_app::hosted::SHORT_PAGE).
+        .route(reel_app::hosted::SHORT_PAGE, get(settings_page))
         .route("/settings/api/{*rest}", any(settings_api))
         .with_state(data_dir)
 }

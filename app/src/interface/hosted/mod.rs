@@ -3,8 +3,10 @@
 //! content language and the playback buffer. Everything but the listener is here, so every
 //! host that serves the LAN (the Samsung TV's core, later Android TV) shares it: the host
 //! routes `GET /settings` to [`PAGE`] and `/settings/api/*` to [`handle`], and says the port
-//! with [`serving_on`].
+//! with [`serving_on`]. `GET /s` is the same page, opened from a partner's link with a source to
+//! offer (`offer.rs`).
 
+mod offer;
 mod pairing;
 
 use std::{
@@ -30,10 +32,14 @@ use pairing::{Pairing, Refused};
 pub const PAGE: &str = include_str!("page.html");
 /// Where the API lives; the page is at `/settings`.
 pub const API: &str = "/settings/api";
+/// Where the page also is: the short address a partner's link opens (its template must fit
+/// Telegram's 64 characters).
+pub const SHORT_PAGE: &str = "/s";
 
 /// The port the host serves the page on; 0 while none does.
 static SERVING: AtomicU16 = AtomicU16::new(0);
 static PAIRING: LazyLock<Mutex<Pairing>> = LazyLock::new(Default::default);
+static OFFERS: LazyLock<Mutex<offer::Offers>> = LazyLock::new(Default::default);
 /// The source checks this API started: the only jobs whose results it gives out.
 static CHECKS: LazyLock<Mutex<HashSet<u32>>> = LazyLock::new(Default::default);
 
@@ -56,12 +62,55 @@ fn lan_ip() -> Option<IpAddr> {
     (!ip.is_unspecified() && !ip.is_loopback()).then_some(ip)
 }
 
+/// `http://192.168.1.20:47392`: where this device serves the page, if it does.
+fn origin() -> Option<String> {
+    let port = SERVING.load(Ordering::Relaxed);
+    (port != 0).then(lan_ip).flatten().map(|ip| format!("http://{ip}:{port}"))
+}
+
 /// `{"url":"http://192.168.1.20:47392/settings"}`, or `{"url":null}` where nothing serves the
 /// page or the device has no address on a network.
 pub fn address() -> Value {
-    let port = SERVING.load(Ordering::Relaxed);
-    let url = (port != 0).then(lan_ip).flatten().map(|ip| format!("http://{ip}:{port}/settings"));
-    json!({ "url": url })
+    json!({ "url": origin().map(|o| format!("{o}/settings")) })
+}
+
+/// The partner's bot (named at build time) and the links to it: `tv` brings the source back to
+/// this device's page (with its QR code; null where the page is not served), `app` to the reel
+/// app on the phone it opens on. `{"bot":null}` without a bot.
+pub fn partner() -> Value {
+    let Some(bot) = offer::bot() else { return json!({ "bot": null, "tv": null, "app": null }) };
+    let tv = origin().and_then(|o| offer::bot_link(bot, &offer::template(&o))).map(|url| json!({ "qr": qr_svg(&url), "url": url }));
+    json!({ "bot": bot, "tv": tv, "app": offer::bot_link(bot, &offer::template("reel:/")) })
+}
+
+/// The source in a link that opened the app (`reel://s?t=&u=`): `{"url","key"}`, or
+/// `{"url":null}` for any other link.
+pub fn link_source(link: &str) -> Value {
+    match offer::from_link(link) {
+        Some((url, key)) => json!({ "url": url, "key": key }),
+        None => json!({ "url": null }),
+    }
+}
+
+/// The source a phone offers, waiting for the viewer: `{"host":"jackett.example.com"}`, or
+/// `{"host":null}`.
+pub fn offered() -> Value {
+    offer::view(OFFERS.lock().unwrap().pending(Instant::now()))
+}
+
+/// The viewer's answer to the offered source: on a yes it is saved and checked.
+pub fn answer_offer(accept: bool) {
+    let now = Instant::now();
+    let Some(o) = OFFERS.lock().unwrap().answer(now, accept) else {
+        settings::bump();
+        return;
+    };
+    let check = match settings::set_source_with(&o.url, Some(&o.key)) {
+        Ok(_) => settings::source().map(|s| playback().check_source(s)).unwrap_or(0),
+        Err(_) => 0,
+    };
+    OFFERS.lock().unwrap().accepted(check);
+    settings::bump();
 }
 
 /// `{"code":"482913","expiresIn":115}` while a code waits to be typed, `{"code":null}` else.
@@ -208,6 +257,8 @@ fn state() -> Value {
         "contentLanguages": all["contentLanguages"],
         "bufferMB": all["bufferMB"],
         "bufferChoices": all["bufferChoices"],
+        // The partner's bot, for the page's "Rent a source" (it builds the link from its own address).
+        "partnerBot": offer::bot(),
     })
 }
 
@@ -255,6 +306,29 @@ pub fn handle(req: &Request) -> Response {
             }
         }
         (_, "/pair" | "/pair/confirm") => error(405, "method"),
+        // An offer needs no pairing: nothing is saved until the viewer says yes on the screen.
+        ("POST", "/offer") => {
+            let s: SourceIn = match body(req.body) {
+                Ok(s) => s,
+                Err(r) => return r,
+            };
+            let made = OFFERS.lock().unwrap().offer(now, &s.url, s.key.as_deref().unwrap_or(""), &mut random);
+            match made {
+                Ok(id) => {
+                    settings::bump();
+                    expire_offer_later();
+                    reply(200, json!({ "offer": id }))
+                }
+                Err(offer::Refused::Address(m)) => reply(400, json!({ "error": "address", "message": m })),
+                Err(offer::Refused::TooSoon) => error(429, "too_soon"),
+            }
+        }
+        ("GET", r) if r.starts_with("/offer/") => {
+            let (state, check) = OFFERS.lock().unwrap().status(now, &r["/offer/".len()..]);
+            let result = check.filter(|c| *c != 0).map(|c| playback().search_result(c));
+            reply(200, json!({ "state": state, "result": result }))
+        }
+        (_, "/offer") => error(405, "method"),
         _ => {
             if PAIRING_REQUIRED && !PAIRING.lock().unwrap().session(now, req.session.unwrap_or("")) {
                 return error(401, "session");
@@ -318,6 +392,14 @@ fn authorized(req: &Request, route: &str) -> Response {
         (_, "/state" | "/source" | "/language" | "/buffer") => error(405, "method"),
         _ => error(404, "not_found"),
     }
+}
+
+/// Takes the offer off the screen once its time is up.
+fn expire_offer_later() {
+    catalog::runtime().spawn(async move {
+        tokio::time::sleep(offer::TTL + std::time::Duration::from_millis(500)).await;
+        settings::bump();
+    });
 }
 
 /// Takes the code off the screen once its time is up.

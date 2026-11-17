@@ -4,6 +4,10 @@ import { effect, signal, untracked } from "nsh";
 import { t } from "nsh/i18n";
 import { checkSource, saveSource, source, type CheckResult } from "../../preferences";
 
+/** A source a link that opened the app carried (`reel://s?…`, from a partner's bot): the next
+ * form shows it in its fields, and saves it only when the viewer does. */
+export const linkedSource = signal<{ url: string; key: string } | null>(null);
+
 export function sourceForm() {
   const url = signal(source().url);
   const key = signal("");
@@ -14,6 +18,16 @@ export function sourceForm() {
   effect(() => {
     const saved = source().url;
     untracked(() => url.set(saved));
+  });
+  // A linked source fills the fields (once: the form takes it).
+  effect(() => {
+    const l = linkedSource();
+    if (!l) return;
+    untracked(() => {
+      url.set(l.url);
+      key.set(l.key);
+      linkedSource.set(null);
+    });
   });
 
   const save = async () => {

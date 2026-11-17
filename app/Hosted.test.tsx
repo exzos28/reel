@@ -111,3 +111,67 @@ test("what a phone changed shows on the TV's Settings without a restart", async 
   await app.waitUntil(() => app.texts().includes("Polski"));
   expect(app.texts()).toContain("512 MB · 10 GB free");
 });
+
+test("a source offered from a phone waits for Use on the screen; Back declines it", async () => {
+  const c = core();
+  const offer = { host: null as string | null, answers: [] as boolean[] };
+  const native = {
+    ...c.native,
+    "Hosted.offered": () => JSON.stringify({ host: offer.host }),
+    "Hosted.answerOffer": (yes: boolean) => {
+      offer.answers.push(yes);
+      offer.host = null;
+      c.state.rev++;
+    },
+  };
+  const app = await openApp({ modules: { "app/native": native } });
+  expect(app.shows("offer-dialog")).toBe(false);
+  offer.host = "jackett.partner.example";
+  c.state.rev++;
+  await app.waitFor("offer-dialog");
+  expect(app.texts()).toContain("Use the source from your phone?");
+  expect(app.texts()).toContain("jackett.partner.example");
+  await app.keyboard.press("enter"); // Use is focused first
+  expect(offer.answers).toEqual([true]);
+  await app.waitUntil(() => !app.shows("offer-dialog"));
+
+  offer.host = "other.example";
+  c.state.rev++;
+  await app.waitFor("offer-dialog");
+  await app.keyboard.press("escape");
+  expect(offer.answers).toEqual([true, false]);
+  expect(app.texts()).toContain("Continue watching"); // Back closed the offer, not Home
+});
+
+test("a reel:// link from the partner's bot fills the source's drawer; nothing is saved until Save", async () => {
+  const c = core(null);
+  let saved = 0;
+  const native = {
+    ...c.native,
+    "Hosted.linkSource": (link: string) =>
+      JSON.stringify(link.startsWith("reel://s?") ? { url: "https://jackett.partner.example/api", key: "rented" } : { url: null }),
+    "Settings.setSource": () => (saved++, JSON.stringify({ ok: true, source: { url: "https://jackett.partner.example/api", hasKey: true } })),
+  };
+  const app = await openApp({ modules: { "app/native": native } });
+  await app.openWithUrl("reel://other");
+  expect(app.texts()).not.toContain("Use this source?");
+  await app.openWithUrl("reel://s?t=rented&u=https%3A%2F%2Fjackett.partner.example%2Fapi");
+  await app.waitUntil(() => app.texts().includes("Use this source?"));
+  expect(saved).toBe(0);
+  // Save saves what the link filled in.
+  await app.press("label:Save and check");
+  expect(saved).toBe(1);
+});
+
+test("with a partner, the TV shows its bot's QR beside the source's fields", async () => {
+  const c = core();
+  const native = {
+    ...c.native,
+    "Hosted.partner": JSON.stringify({ bot: "reel_partner_bot", tv: { url: "https://t.me/reel_partner_bot?start=x", qr: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" }, app: "https://t.me/reel_partner_bot?start=y" }),
+  };
+  const app = await openApp({ modules: { "app/native": native } });
+  await app.press("label:Settings");
+  await app.press("label:Search source");
+  await app.waitFor("partner-qr");
+  expect(app.texts().some((x) => x.includes("@reel_partner_bot"))).toBe(true);
+});
