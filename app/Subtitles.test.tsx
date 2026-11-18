@@ -73,25 +73,25 @@ test("the Subtitles column lists the release's files; picking one asks the core"
   await app.keyboard.press("escape"); // close the panel
   await app.keyboard.press("up"); // back on the scrubber
   await app.keyboard.press("right"); // seek to 0:10: the line is on screen
-  expect(app.texts()).toContain("The tide is coming in.");
+  await app.waitFor("text:The tide is coming in."); // the core's answer comes a moment after the seek
 });
 
 test("the overlay shows the cue at the position, and only then", async () => {
   const { app } = await playing("x:5");
   expect(app.shows("subtitle")).toBe(false); // 0:00, nothing yet
   await app.keyboard.press("right"); // 0:10
+  await app.waitFor("text:The tide is coming in."); // the core's answer comes a moment after the seek
   expect(app.shows("subtitle")).toBe(true);
-  expect(app.texts()).toContain("The tide is coming in.");
   await app.keyboard.press("right"); // 0:20, the line is over
-  expect(app.shows("subtitle")).toBe(false);
+  await app.waitFor("subtitle", { state: "gone" });
 });
 
 test("Off takes the subtitles away", async () => {
   const { app, chosen } = await playing("x:5");
   await app.keyboard.press("right"); // 0:10
-  expect(app.texts()).toContain("The tide is coming in.");
+  await app.waitFor("text:The tide is coming in."); // the core's answer comes a moment after the seek
   await app.press("label:Audio and subtitles");
   await app.press("label:Off");
   expect(chosen).toEqual(["off"]);
-  expect(app.texts()).not.toContain("The tide is coming in.");
+  await app.waitFor("text:The tide is coming in.", { state: "gone" });
 });

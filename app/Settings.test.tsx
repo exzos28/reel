@@ -82,7 +82,7 @@ test("Settings: a bad address is refused with the core's message", async () => {
   await app.press("label:Settings");
   await app.press("label:Search source");
   await app.press("Save and check");
-  expect(app.texts()).toContain("not an address");
+  await app.waitFor("text:not an address"); // the core's answer comes a moment after the press
 });
 
 test("Settings: About reel, past the buffer sizes, shows the TMDB logo and notice and the other sources", async () => {

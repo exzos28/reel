@@ -109,6 +109,8 @@ test("pause, play and seeks reach AVPlay", async () => {
   expect(app.shows("label:Play")).toBe(true);
   await app.keyboard.press("space");
   await app.keyboard.press("right"); // 10 s on from 0:01
+  // The seek reaches AVPlay a moment after the key (a slow machine, CI, is not there yet at once).
+  await app.waitUntil(() => ops().length >= 4);
   expect(ops().slice(1)).toEqual([{ op: "pause" }, { op: "play" }, { op: "seek", position: 11 }]);
 });
 
