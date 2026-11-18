@@ -38,3 +38,20 @@ Stage 2, the remote `Playback`:
 - The search source (Torznab) is in reel-engine today. Decide whether a remote setup searches on the server or in the app.
 - `check_space` and `buffer_fits` would measure the server's disk, and the buffer setting would have to reach the server.
 - The engine's state is process-wide: one engine per process.
+## Keep films on iOS in the background through a reel server
+
+iOS runs no app code in the background, so the phone cannot torrent there. What iOS does carry
+in the background is HTTP: a background `URLSession` hands the transfer to the system
+(`nsurlsessiond`), which goes on while the app is suspended or closed, waits for the network,
+resumes after a break and wakes the app at the end (`handleEventsForBackgroundURLSession`).
+Apps that upload or download in the background (Instagram's uploads) work this way.
+
+So with a reel server (the remote engine above, on a PC or NAS):
+- the server keeps the whole film (the offline design, `design/offline-downloads.md`);
+- the phone fetches the finished file from `http://<server>/kept/<id>` with a background
+  `URLSession`, into its own kept folder, and plays it offline as any kept film.
+
+Needs: the remote engine (stage 2 above), a keep API on the server, the native background
+session on iOS (Swift/ObjC beside NSH), the server reachable from where the phone is (home Wi-Fi
+only at first). Webseeds (BEP 19) could go the same way, but releases from Torznab sources
+rarely have them.

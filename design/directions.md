@@ -111,7 +111,7 @@ Phone: title 68, section 19, body 15.
 - Hero block left: title, meta (rating, year, genre, runtime), 2 lines about, the release that Play
   will use (quality, size, people sharing), white Play pill + round secondary buttons.
 - Shelves of portrait posters with quality and rating badges; Continue watching has a watched
-  track under each poster. No downloads screen: reel streams only.
+  track under each poster. Saved films have their own screen (`offline-downloads.md`).
 - Film screen: release list sorted by how fast it starts (quality, source, size, tracks, people
   sharing, a plain-words note: "Plays now", "Needs 25 Mbit/s", "Few people sharing").
 - Player: scrubber shows watched (paper), ready (lamp) and not loaded yet (grey) ranges, with a line
@@ -134,7 +134,7 @@ Phone: title 68, section 19, body 15.
 
 Built from the user's reference movy.sx. **Supersedes Cinematic and Projector where they conflict**
 (palette, type, nav, hero, cards, focus colours); their reel-specific content rules (release line,
-releases sorted by start speed, buffer-aware scrubber, no downloads) still apply. Like Cinematic,
+releases sorted by start speed, buffer-aware scrubber) still apply. Like Cinematic,
 the user's reference overrides the "refused defaults" in the design rules (the generic defaults reel refuses) for:
 near-neutral black, a hero fading to black, a neo-grotesque UI face. The mockups in
 `design/concept/*.html` now show this direction; shared tokens live in `design/concept/minimal.css`.
@@ -194,7 +194,7 @@ TV: title 76–96, page title 60, section 30, body 26, meta 22–24 (nothing bel
 - **Episodes**: full-width `card` rows: big light-weight grey number, 16:9 thumbnail with "★ 7.2"
   in its bottom-left and a watched bar, then title (bold), "19 min · Apr 24, 1940", one line of
   description. The right edge holds torrent info in `ash` ("1080p · plays now") or "✓ Watched".
-  No download button anywhere: reel streams only.
+  Saving episodes: a state icon on the row and the Save drawer (`offline-downloads.md`).
 - **Player**: top-left back + title + "1080p BluRay · resumed from 41:12"; Audio, Subtitles and
   Release in one dark panel (no blur). Bottom: "**6 min ready ahead** · streaming at 3.4 MB/s from
   37 people", the scrubber with watched (`snow`), ready (`snow` 45%) and not loaded yet (`snow` 16%)

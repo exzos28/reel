@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>reel — Mac saved</title>
+<link rel="stylesheet" href="minimal.css">
+<link rel="stylesheet" href="saved.css">
+<style>
+  html, body { width: 1440px; height: 900px; }
+  .lights { position: absolute; left: 20px; top: 20px; display: flex; gap: 8px; z-index: 4; }
+  .lights i { width: 12px; height: 12px; border-radius: 50%; }
+  .logo { position: absolute; left: 64px; top: 52px; font-size: 24px; font-weight: 700; letter-spacing: -.3px; color: var(--red); }
+  .nav { position: absolute; right: 64px; top: 48px; display: flex; align-items: center; gap: 4px; }
+  .nav .pills { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--card); }
+  .nav .item { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 7px; font-size: 13px; font-weight: 500; color: #C8C8C8; }
+  .nav .item svg { width: 15px; height: 15px; }
+  .nav .item.selected { color: var(--snow); background: #333; }
+  .nav .iconbtn { width: 38px; height: 38px; margin-left: 6px; }
+  .nav .iconbtn svg { width: 16px; height: 16px; }
+
+  .head { position: absolute; left: 64px; right: 64px; top: 124px; display: flex; align-items: flex-end; justify-content: space-between; }
+  h1 { font-size: 34px; font-weight: 600; letter-spacing: -.01em; }
+  .sub { margin-top: 6px; font-size: 14px; color: var(--ash); }
+  .sub b { color: var(--snow); font-weight: 500; }
+  .space { width: 360px; }
+  .space .line { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ash); }
+  .space .line b { color: var(--snow); font-weight: 500; }
+  .space .track { margin-top: 8px; height: 4px; border-radius: 2px; background: var(--raise); display: flex; overflow: hidden; }
+  .space .track i { display: block; height: 100%; }
+  .space .folder { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--ash); }
+  .space .folder .btn { height: 26px; padding: 0 10px; border-radius: 6px; font-size: 12px; }
+
+  h2 { font-size: 18px; font-weight: 600; }
+  h2 small { font-size: 13px; font-weight: 400; color: var(--ash); margin-left: 8px; }
+  .saving { position: absolute; left: 64px; right: 64px; top: 232px; }
+  .list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .item { display: grid; grid-template-columns: 136px 1fr 300px 120px; align-items: center; gap: 0 20px; height: 92px; padding: 0 18px 0 8px; border-radius: 10px; background: var(--card); }
+  .item .th { height: 76px; width: 136px; border-radius: 6px; overflow: hidden; }
+  .item .th img { width: 100%; height: 100%; object-fit: cover; }
+  .item .t { font-size: 15px; font-weight: 600; }
+  .item .m { font-size: 12.5px; color: var(--ash); margin-top: 4px; }
+  .item .state { font-size: 12.5px; color: var(--ash); }
+  .item .state b { color: var(--snow); font-weight: 500; }
+  .item .acts { justify-self: end; display: flex; gap: 8px; }
+  .item .acts .iconbtn { width: 34px; height: 34px; background: var(--raise); }
+  .item .acts svg { width: 15px; height: 15px; }
+  .item.waiting .th img { opacity: .55; }
+
+  .ready { position: absolute; left: 64px; right: 64px; top: 516px; }
+  .grid { margin-top: 12px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+  .card .thumb { position: relative; height: 146px; border-radius: 8px; overflow: hidden; }
+  .card .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .card .thumb .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(245,245,245,.22); }
+  .card .thumb .bar i { display: block; height: 100%; background: var(--snow); }
+  .card .t { margin-top: 8px; font-size: 14px; font-weight: 600; }
+  .card .s { margin-top: 2px; font-size: 12.5px; color: var(--ash); }
+  .card.off .thumb img { opacity: .35; filter: grayscale(1); }
+  .card.off .thumb .note { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font-size: 12.5px; padding: 0 16px; color: var(--snow); }
+  .card.hover .thumb .disc { position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: rgba(245,245,245,.92); color: var(--ink); display: grid; place-items: center; }
+  .card.hover .thumb .disc svg { width: 16px; height: 16px; margin-left: 2px; }
+</style>
+</head>
+<body>
+  <div class="lights"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i></div>
+  <div class="logo">reel</div>
+  <nav class="nav">
+    <div class="pills">
+      <div class="item"><svg class="i" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</div>
+      <div class="item"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>Movies</div>
+      <div class="item"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M8 2l4 4 4-4"/></svg>Shows</div>
+    </div>
+    <div class="iconbtn"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>
+    <div class="iconbtn"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div>
+    <div class="iconbtn savedbtn selected"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></div>
+  </nav>
+
+  <section class="head">
+    <div>
+      <h1>Saved</h1>
+      <div class="sub">Plays without the internet. <b>4 films, 3 episodes</b> on this Mac.</div>
+    </div>
+    <div class="space">
+      <div class="line"><span><b>21.6 GB</b> saved</span><span>212 GB free</span></div>
+      <div class="track"><i style="width:9%;background:var(--snow)"></i><i style="width:3%;background:rgba(245,245,245,.45)"></i></div>
+      <div class="folder"><span>~/Movies/reel</span><span class="btn secondary">Change folder</span></div>
+    </div>
+  </section>
+
+  <section class="saving">
+    <h2>Saving <small>while reel is open</small></h2>
+    <div class="list">
+      <div class="item">
+        <div class="th"><img src="img/still-metropolis.jpg" alt="" style="object-position:center 25%"></div>
+        <div><div class="t">Metropolis</div><div class="m">1927 · 1080p BluRay · 3.4 GB</div></div>
+        <div>
+          <div class="state"><b>34%</b> · 1.2 of 3.4 GB · about 12 min left</div>
+          <div class="progress"><i style="width:34%"></i></div>
+          <div class="state" style="margin-top:6px">3.1 MB/s from 58 people</div>
+        </div>
+        <div class="acts">
+          <div class="iconbtn"><svg class="f" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></div>
+          <div class="iconbtn"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+        </div>
+      </div>
+      <div class="item waiting">
+        <div class="th"><img src="img/still-flash-shannon.jpg" alt="" style="object-position:center 30%"></div>
+        <div><div class="t">Flash Gordon</div><div class="m">S3:E5 · The Palace of Terror · 410 MB</div></div>
+        <div>
+          <div class="state"><b>Paused</b> · 120 of 410 MB</div>
+          <div class="progress"><i style="width:29%"></i></div>
+          <div class="state" style="margin-top:6px">You paused it</div>
+        </div>
+        <div class="acts">
+          <div class="iconbtn"><svg class="f" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg></div>
+          <div class="iconbtn"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ready">
+    <h2>Ready to watch</h2>
+    <div class="grid">
+      <div class="card hover"><div class="thumb"><img src="img/still-charade.jpg" alt=""><span class="bar"><i style="width:36%"></i></span><span class="disc"><svg class="f" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg></span></div><div class="t">Charade</div><div class="s">1 h 12 min left · 2.1 GB</div></div>
+      <div class="card"><div class="thumb"><img src="img/still-general.jpg" alt=""></div><div class="t">The General</div><div class="s">1 h 18 min · 1.6 GB</div></div>
+      <div class="card"><div class="thumb"><img src="img/still-flash-lobby.jpg" alt=""><span class="bar"><i style="width:100%"></i></span></div><div class="t">Flash Gordon</div><div class="s">3 episodes · 1.2 GB</div></div>
+      <div class="card"><div class="thumb"><img src="img/still-nosferatu.png" alt=""></div><div class="t">Nosferatu</div><div class="s">1 h 34 min · 2.3 GB</div></div>
+      <div class="card off"><div class="thumb"><img src="img/still-detour.jpg" alt=""><span class="note">On the disk “T7”. Connect it to watch.</span></div><div class="t">Detour</div><div class="s">1 h 8 min · 1.4 GB</div></div>
+    </div>
+  </section>
+</body>
+</html>

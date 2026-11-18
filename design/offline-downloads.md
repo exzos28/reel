@@ -1,0 +1,99 @@
+# Saving films to watch offline
+
+reel saves a film or episodes on the device and plays them without the internet. macOS, Windows,
+Linux, Android phones and tablets, iOS / iPadOS; not the Samsung TV and not Android TV
+(`Offline.supported()` is false there and no Save control shows). Saving runs while the app is
+open; in the background it pauses and goes on when the app is open again (background saving:
+later, and on iOS through a reel server, `docs/todo.md`). iOS builds are not for the App Store.
+
+Words: **Save** and **Saved**, never "Download". Mockups: `concept/mac-saved.html`,
+`mac-series-saved.html`, `mac-series-save.html`, `phone-film-saving.html`, `phone-saved.html`,
+`phone-settings-storage.html` (styles in `concept/saved.css`).
+
+## What the user gets
+
+- **Save** between Play and Add to List. On a film it saves the release the catalog picks at
+  once (another release: from the release list). On a series it opens the **Save drawer**
+  (a sheet on the phone): seasons as tabs ("5 of 12 on Mac"), "Whole season", episodes with
+  checkboxes and sizes, the free space, and "Save 4 episodes".
+- Reopened while saving, the drawer shows what is saved or saving checked and locked, with its
+  state; the button counts only what is new. The drawer only adds; removing is on the Saved
+  screen. While episodes of a season are saved, new ones come from the same release (a season
+  pack gets more files selected, not a second torrent).
+- The hero button shows the state: Save → "Saving 2 of 5" (a ring) → Saved.
+- Episode rows: a round button (save · progress ring · white check).
+- **Saved**: a round icon top right, after settings, with a ring of the overall progress while
+  something saves. The screen: space used and free, the folder (Change folder); "Saving" rows
+  with Pause and Remove; "Ready to watch" cards; films on a disk that is not connected are grey.
+- Offline, Saved plays; the rest of the app says it is offline.
+- Settings: where to save (desktops: any folder, the system dialog; Android: phone or SD card;
+  iOS: no choice), space used, Remove all.
+- Playing: the same Play and Resume, the same player (mpv, AVPlayer on iOS). A saved film plays
+  from its file (`file://`), with no search, torrent or network; one being saved plays from the
+  torrent that saves it.
+
+Saving progress uses the player's "ready" tone (snow 45 %), not the watched one.
+
+## Architecture
+
+Neither streaming nor saving owns a torrent: a registry in the engine does, and they lease it.
+
+```
+engine/src/
+  engine.rs    the session, jobs (streams): lease + ring cache; close() releases the lease
+  keep.rs      saved items: lease + files in the user's folder; remove() releases and deletes
+  (registry)   torrent id -> leases; deletes a torrent at the last release, its files only for the ring
+```
+
+- librqbit holds an infohash once and answers a second add with the handle it has
+  (`AlreadyManaged`, `session.rs:1348`). Without leases closing the player would delete a
+  film being saved.
+- A torrent's storage is fixed when it is added. A torrent being saved is on files and a stream
+  of it reads them, no ring. Save while the same torrent streams on the ring waits for the
+  stream to close.
+- Port `Keep` beside `Playback` (`domain/src/ports.rs`): a remote engine keeps films on the
+  server. Implementations: reel-engine and `NoKeep` (no engine, TVs). Module `Offline` for the UI;
+  every number and word choice comes ready in its JSON.
+- `open(key)` looks for a saved file before `check_space()`, so a full disk still plays what is
+  saved.
+
+## Engine
+
+- **Files**: librqbit's filesystem storage, `only_files` = the video (`episode::pick`) and the
+  subtitle files beside it, in `<folder>/<Title (year)>/`. librqbit creates every file of the
+  torrent (sparse) and edge pieces write into neighbours: the unselected files are deleted when
+  the item is complete.
+- **Library**: `<dataDir>/saved/library.json` (write temp, fsync, rename): id, catalog key,
+  title, infohash, the .torrent file, file indexes, the folder, sizes, state, `next_id`. The
+  source link is never stored (Jackett links carry the API key): only the infohash and the
+  .torrent bytes (`torrent_bytes`, rebuilt for magnets). A manifest `.reel-saved.json` in each
+  folder holds the same, so the library is rebuilt after a crash or a move.
+- **Folder**: default `<dataDir>/saved`, on Windows `%LOCALAPPDATA%` (NSH's `dataDir` there is the
+  roaming `%APPDATA%`). Changing it moves nothing: old items stay, new ones go there. A missing
+  folder (disk unplugged) makes its items `unavailable`, not removed.
+- **Restart**: unfinished items are added again from their .torrent. librqbit without session
+  persistence re-hashes the files at each start; fine on desktops for v1, a patch storing the
+  bitfield beside the manifest later.
+- **With streaming**: while a stream plays, saving is paused except the torrent the stream reads.
+- **Space**: measured on the folder's volume: what is left of every active item plus a reserve. A
+  write error is `waiting_space`, not `failed`.
+- **Sharing**: while saving, as when streaming. Complete: removed from the session with the files
+  kept (`delete(id, false)`).
+
+## Application
+
+- The release to save: what plays here (iOS: MP4/MOV), seeders first, fits the free space; the
+  user's pick wins. An episode from a season pack saves only its file.
+- Metadata within TMDB's 6 months (`cache.rs`): refreshed while online; older than that offline,
+  the library's own title and year are shown.
+
+## Stages
+
+1. Leases in the engine instead of deleting in `close()`.
+2. Saving in the engine: the `Keep` port, `keep.rs`, the library, restart, playing a saved file.
+3. macOS end to end: the `Offline` module, Save, the drawer, Saved, the folder.
+4. Windows and Linux. 5. Android (storage volumes, pause in the background). 6. iOS
+   (`file://` in AVPlayer, MP4 ranking, screen on while saving).
+
+Later: background saving, Wi-Fi only, remove after watching, moving saved films to another
+folder, a speed limit instead of the pause while streaming, the bitfield patch.

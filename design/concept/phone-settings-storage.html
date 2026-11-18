@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>reel — phone settings, where to save (Android)</title>
+<link rel="stylesheet" href="minimal.css">
+<link rel="stylesheet" href="setup.css">
+<style>
+  html, body { width: 390px; height: 844px; }
+  body { position: relative; }
+  .head { position: absolute; top: 54px; left: 16px; }
+  .back { width: 40px; height: 40px; border-radius: 50%; background: var(--card); display: grid; place-items: center; }
+  .back svg { width: 20px; height: 20px; }
+  .main { position: absolute; top: 106px; left: 20px; right: 20px; }
+  h1 { font-size: 30px; font-weight: 600; letter-spacing: -.01em; }
+  .group { margin-top: 22px; font-size: 13px; color: var(--ash); padding-left: 4px; }
+  .rows { margin-top: 8px; border-radius: 10px; overflow: hidden; }
+  .row { height: 54px; padding: 0 16px; font-size: 16px; border-bottom: 1px solid var(--raise); }
+  .row:last-child { border-bottom: 0; }
+  .row .right { display: flex; align-items: center; gap: 10px; }
+  .row .value { font-size: 15px; }
+  .chev { font-size: 22px; line-height: 1; }
+
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.6); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 20px 40px; border-radius: 16px 16px 0 0; background: var(--card); }
+  .grab { width: 36px; height: 5px; border-radius: 3px; background: var(--raise); margin: 0 auto 16px; }
+  .sheet h2 { font-size: 19px; font-weight: 600; }
+  .sheet p { margin-top: 6px; font-size: 13px; line-height: 1.4; color: var(--ash); }
+  .opt { margin-top: 12px; padding: 14px 16px; border-radius: 10px; background: var(--ink); display: grid; grid-template-columns: 1fr 22px; align-items: center; }
+  .opt.selected { background: var(--raise); }
+  .opt .t { font-size: 16px; font-weight: 500; }
+  .opt .s { margin-top: 3px; font-size: 12.5px; color: var(--ash); }
+  .opt .s.warn { color: #D6D6D6; }
+  .opt svg { width: 20px; height: 20px; }
+  .sheet .btn { margin-top: 18px; width: 100%; height: 46px; border-radius: 10px; font-size: 15px; }
+</style>
+</head>
+<body>
+  <div class="head"><div class="back"><svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div></div>
+  <section class="main">
+    <h1>Settings</h1>
+    <div class="rows" style="margin-top:22px">
+      <div class="row">Language <span class="right"><span class="value">English</span><span class="chev">›</span></span></div>
+      <div class="row">Playback buffer <span class="right"><span class="value">512 MB</span><span class="chev">›</span></span></div>
+      <div class="row">Search source <span class="right"><span class="value">Connected</span><span class="chev">›</span></span></div>
+    </div>
+    <div class="group">Saved</div>
+    <div class="rows">
+      <div class="row">Save to <span class="right"><span class="value">Phone</span><span class="chev">›</span></span></div>
+      <div class="row">Saved <span class="right"><span class="value">9.8 GB</span><span class="chev">›</span></span></div>
+      <div class="row">Remove all saved <span class="right"></span></div>
+    </div>
+  </section>
+
+  <div class="scrim"></div>
+  <section class="sheet">
+    <div class="grab"></div>
+    <h2>Save to</h2>
+    <p>New films go here. What’s already saved stays where it is.</p>
+    <div class="opt selected"><div><div class="t">Phone</div><div class="s">41 GB free</div></div><svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></div>
+    <div class="opt"><div><div class="t">SD card</div><div class="s">112 GB free</div><div class="s warn">This card takes files up to 4 GB: larger releases can’t be saved here.</div></div><span></span></div>
+    <div class="btn primary">Done</div>
+  </section>
+</body>
+</html>

@@ -13,6 +13,9 @@
 4. **Play at once.** The built-in torrent engine (librqbit) fetches the start of the film first,
    then what is just ahead of where you watch. It keeps only a window of the film on disk, so a TV
    with little space is enough, and nothing has to download before it plays.
+   On a computer, phone or tablet you can also **save** a film or whole seasons to watch
+   without the internet: reel keeps the files in a folder you choose and plays them from
+   there.
 5. **Every format.** mpv plays it: any container and codec, the audio and subtitle tracks of the
    release, subtitles from separate files. On a Samsung TV the TV's own player does.
 6. **On your device.** Settings and watch progress stay on the device. No accounts, no analytics.

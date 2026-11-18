@@ -1,6 +1,6 @@
 # reel: design brief
 
-**What.** An app that streams films and series straight from torrents (no downloading for later: what the engine fetches is a temporary cache), with the torrent engine
+**What.** An app that streams films and series straight from torrents (what the engine fetches while you watch is a temporary cache; on computers, phones and tablets you can also save a film to watch offline, `offline-downloads.md`), with the torrent engine
 built in (Rust core inside the app, no separate server). Platforms: Samsung Tizen TV first, then
 macOS, Android / Android TV, iOS. One UI codebase in NSH.
 

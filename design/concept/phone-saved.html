@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>reel — phone saved, offline</title>
+<link rel="stylesheet" href="minimal.css">
+<link rel="stylesheet" href="saved.css">
+<style>
+  html, body { width: 390px; height: 844px; }
+  body { position: relative; }
+  .status { position: absolute; top: 0; left: 0; right: 0; height: 50px; display: flex; justify-content: space-between; align-items: center; padding: 6px 30px 0 34px; font-size: 16px; font-weight: 600; }
+  .status .air { width: 16px; height: 16px; }
+  .top { position: absolute; top: 54px; left: 20px; right: 20px; display: flex; justify-content: space-between; }
+  .top .icons { display: flex; gap: 8px; }
+  .top .iconbtn { width: 36px; height: 36px; }
+  .top svg { width: 17px; height: 17px; }
+  .main { position: absolute; top: 104px; left: 20px; right: 20px; }
+  h1 { font-size: 30px; font-weight: 600; letter-spacing: -.01em; }
+  .sub { margin-top: 4px; font-size: 12.5px; color: var(--ash); }
+  .sub b { color: var(--snow); font-weight: 500; }
+  .offline { margin-top: 14px; padding: 11px 14px; border-radius: 10px; background: var(--card); display: flex; gap: 10px; align-items: center; font-size: 12.5px; line-height: 1.35; color: #D6D6D6; }
+  .offline svg { width: 18px; height: 18px; color: var(--ash); }
+
+  h2 { margin-top: 22px; font-size: 16px; font-weight: 600; }
+  h2 small { font-size: 12px; font-weight: 400; color: var(--ash); margin-left: 6px; }
+  .item { margin-top: 10px; display: grid; grid-template-columns: 112px 1fr 32px; gap: 0 12px; align-items: center; }
+  .th { position: relative; height: 63px; border-radius: 6px; overflow: hidden; }
+  .th img { width: 100%; height: 100%; object-fit: cover; }
+  .th .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(245,245,245,.22); }
+  .th .bar i { display: block; height: 100%; background: var(--snow); }
+  .t { font-size: 14px; font-weight: 600; }
+  .m { margin-top: 2px; font-size: 11.5px; color: var(--ash); }
+  .more { width: 32px; height: 32px; display: grid; place-items: center; color: var(--ash); }
+  .more svg { width: 18px; height: 18px; }
+  .item.paused .th img { opacity: .55; }
+  .item .progress { margin-top: 6px; }
+
+  .tabs { position: absolute; left: 0; right: 0; bottom: 0; height: 84px; padding: 8px 10px 0; display: flex; justify-content: space-around; background: var(--ink); border-top: 1px solid var(--card); }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 66px; font-size: 10.5px; font-weight: 500; color: var(--ash); }
+  .tab .pill { width: 48px; height: 30px; border-radius: 9px; display: grid; place-items: center; }
+  .tab svg { width: 21px; height: 21px; }
+  .tab.selected { color: var(--snow); background: none; }
+  .tab.selected .pill { background: var(--raise); }
+  .tab.dim { opacity: .45; }
+  .home-ind { position: absolute; bottom: 8px; left: 50%; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: var(--snow); }
+</style>
+</head>
+<body>
+  <div class="status"><span>9:41</span><svg class="i air" viewBox="0 0 24 24"><path d="M10 20l1-6-5-1-2 3H2l1-5-1-5h2l2 3 5-1-1-6h3l4 7h4a2 2 0 0 1 0 4h-4l-4 7z"/></svg></div>
+  <div class="top"><div class="iconbtn"><svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><div class="icons"><div class="iconbtn"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div><div class="iconbtn"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div><div class="iconbtn savedbtn selected"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></div></div></div>
+  <section class="main">
+    <h1>Saved</h1>
+    <div class="sub"><b>3 films, 3 episodes</b> · 9.8 GB on this phone · 41 GB free</div>
+    <div class="offline"><svg class="i" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0M12 19h.01M3 3l18 18"/></svg><span>You’re offline. What’s saved plays; the rest of reel needs the internet.</span></div>
+
+    <h2>Ready to watch</h2>
+    <div class="item"><div class="th"><img src="img/still-charade.jpg" alt=""><span class="bar"><i style="width:36%"></i></span></div><div><div class="t">Charade</div><div class="m">1 h 12 min left · 2.1 GB</div></div><div class="more"><svg class="f" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
+    <div class="item"><div class="th"><img src="img/still-general.jpg" alt=""></div><div><div class="t">The General</div><div class="m">1 h 18 min · 1.6 GB</div></div><div class="more"><svg class="f" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
+    <div class="item"><div class="th"><img src="img/still-flash-lobby.jpg" alt=""><span class="bar"><i style="width:100%"></i></span></div><div><div class="t">Flash Gordon</div><div class="m">3 episodes · S3:E4 next · 1.2 GB</div></div><div class="more"><svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div></div>
+    <div class="item"><div class="th"><img src="img/still-nosferatu.png" alt=""></div><div><div class="t">Nosferatu</div><div class="m">1 h 34 min · 2.3 GB</div></div><div class="more"><svg class="f" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
+
+    <h2>Not finished <small>continues when you’re online</small></h2>
+    <div class="item paused"><div class="th"><img src="img/still-metropolis.jpg" alt="" style="object-position:center 25%"></div><div><div class="t">Metropolis</div><div class="m">Waits for the internet · 34%</div><div class="progress"><i style="width:34%"></i></div></div><div class="more"><svg class="f" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></div></div>
+  </section>
+
+  <nav class="tabs">
+    <div class="tab dim"><span class="pill"><svg class="i" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span>Home</div>
+    <div class="tab dim"><span class="pill"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg></span>Movies</div>
+    <div class="tab dim"><span class="pill"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M8 2l4 4 4-4"/></svg></span>Shows</div>
+    <div class="tab dim"><span class="pill"><svg class="i" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg></span>My list</div>
+  </nav>
+  <div class="home-ind"></div>
+</body>
+</html>

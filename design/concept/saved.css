@@ -1,0 +1,20 @@
+/* Saved for offline (design/offline-downloads.md), over minimal.css.
+   Saving progress uses the player's "ready" tone (snow 45%), not the watched one (snow):
+   what is on the device is ready to play, not yet watched. */
+.progress { margin-top: 8px; height: 4px; border-radius: 2px; background: var(--raise); overflow: hidden; }
+.progress i { display: block; height: 100%; background: rgba(245,245,245,.45); }
+
+/* the Save button and its states: Save · 34% (a ring fills) · Paused · Saved */
+.ring { width: 16px; height: 16px; flex: none; }
+.ring circle { fill: none; stroke-width: 2.4; }
+.ring .bg { stroke: rgba(245,245,245,.22); }
+.ring .fg { stroke: var(--snow); stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; }
+
+/* Saved: a round icon button top right, after settings. While something saves, a progress
+   ring runs around it; on the Saved screen itself it has the selected fill. */
+.savedbtn { position: relative; }
+.savedbtn .around { position: absolute; inset: -3px; width: calc(100% + 6px); height: calc(100% + 6px); }
+.savedbtn .around circle { fill: none; stroke-width: 2; }
+.savedbtn .around .bg { stroke: rgba(245,245,245,.18); }
+.savedbtn .around .fg { stroke: var(--snow); stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; }
+.savedbtn.selected { background: #333 !important; }

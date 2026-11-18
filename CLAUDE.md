@@ -30,7 +30,10 @@ releases: `docs/releasing.md`.
 
 ## Product rules
 
-- Streams only. No downloads feature, screen, shelf or button. The engine's data is a cache.
+- Streams, and saves a film or episodes on the device to watch without the internet
+  (`design/offline-downloads.md`; not on TVs). The word is Save / Saved, never "Download". No
+  file manager or export. A saved film is not shared once it is complete. The streaming cache
+  stays a cache.
 - reel ships no content sources: no tracker addresses, no tracker-specific modules, no public
   indexer instances, anywhere in the repo or its history. Releases come only from the search source
   the user enters in Settings (a Torznab endpoint: their own Jackett, Prowlarr, JacRed…).

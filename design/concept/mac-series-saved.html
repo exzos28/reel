@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>reel — Mac series, saved episodes</title>
+<link rel="stylesheet" href="minimal.css">
+<link rel="stylesheet" href="saved.css">
+<style>
+  html, body { width: 1440px; height: 900px; }
+  .lights { position: absolute; left: 20px; top: 20px; display: flex; gap: 8px; z-index: 4; }
+  .lights i { width: 12px; height: 12px; border-radius: 50%; }
+  .backdrop { height: 520px; left: 360px; }
+  .backdrop img { object-position: center 35%; }
+  .backdrop::after { background: linear-gradient(0deg, var(--ink) 0%, rgba(15,15,15,.75) 22%, rgba(15,15,15,0) 62%),
+                                linear-gradient(90deg, var(--ink) 0%, rgba(15,15,15,.55) 25%, rgba(15,15,15,0) 60%); }
+
+  .back { position: absolute; left: 64px; top: 52px; width: 36px; height: 36px; z-index: 3; }
+  .back svg { width: 18px; height: 18px; }
+  .nav { position: absolute; right: 64px; top: 50px; display: flex; align-items: center; gap: 4px; z-index: 3; }
+  .nav .pills { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: rgba(26,26,26,.82); }
+  .nav .item { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 7px; font-size: 13px; font-weight: 500; color: #C8C8C8; }
+  .nav .item svg { width: 15px; height: 15px; }
+  .nav .item.selected { color: var(--snow); background: #333; }
+  .nav .iconbtn { width: 38px; height: 38px; margin-left: 6px; background: rgba(26,26,26,.82); }
+  .nav .iconbtn svg { width: 16px; height: 16px; }
+
+  .info { position: absolute; left: 64px; top: 196px; width: 900px; z-index: 2; }
+  .title { font-size: 52px; }
+  .meta { display: flex; align-items: center; gap: 10px; margin-top: 18px; font-size: 14px; font-weight: 500; }
+  .meta .votes { color: var(--ash); font-weight: 400; margin-left: -4px; }
+  .meta .badge { font-size: 11px; padding: 3px 5px; }
+  .genres { margin-top: 8px; font-size: 13px; color: var(--ash); }
+  .about { margin-top: 10px; max-width: 560px; font-size: 15px; line-height: 1.45; color: #D6D6D6; }
+  .actions { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
+  .actions .btn { height: 38px; padding: 0 16px; border-radius: 8px; font-size: 14px; gap: 8px; }
+  .actions svg { width: 15px; height: 15px; }
+  .actions .uses { margin-left: 8px; font-size: 13px; color: var(--ash); white-space: nowrap; }
+  .actions .uses b { color: var(--snow); font-weight: 500; }
+
+  .season { position: absolute; left: 52px; right: 64px; top: 478px; display: flex; align-items: flex-start; justify-content: space-between; }
+  .tabs { display: flex; gap: 4px; }
+  .tab { height: 32px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--ash); }
+  .tab small { font-size: 12px; font-weight: 400; }
+  .tab.selected { color: var(--snow); background: var(--raise); }
+  .sub { margin: 6px 0 0 12px; font-size: 13px; color: var(--ash); }
+  .tools { display: flex; gap: 8px; }
+  .tools .iconbtn { width: 34px; height: 34px; color: #C8C8C8; }
+  .tools .iconbtn.selected { background: var(--raise); color: var(--snow); }
+  .tools svg { width: 15px; height: 15px; }
+
+  .eps { position: absolute; left: 64px; right: 64px; top: 556px; display: flex; flex-direction: column; gap: 8px; }
+  .ep { display: grid; grid-template-columns: 44px 136px 1fr 250px; align-items: center; gap: 0 18px; height: 92px; padding: 0 18px 0 8px; border-radius: 10px; background: var(--card); }
+  .ep .n { font-size: 26px; font-weight: 300; color: #5E5E5E; text-align: center; }
+  .ep .th { position: relative; height: 76px; width: 136px; border-radius: 6px; overflow: hidden; }
+  .ep .th img { width: 100%; height: 100%; object-fit: cover; }
+  .ep .th .rt { position: absolute; left: 5px; bottom: 5px; font-size: 11px; font-weight: 600; padding: 2px 5px; border-radius: 4px; background: rgba(15,15,15,.78); }
+  .ep .th .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(245,245,245,.25); }
+  .ep .th .bar i { display: block; height: 100%; background: var(--snow); }
+  .ep .th .disc { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: rgba(245,245,245,.92); color: var(--ink); display: grid; place-items: center; }
+  .ep .th .disc svg { width: 14px; height: 14px; margin-left: 2px; }
+  .ep .t { font-size: 15px; font-weight: 600; }
+  .ep .m { font-size: 12.5px; color: var(--ash); margin-top: 3px; }
+  .ep .d { font-size: 13px; color: #B5B5B5; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ep .x { justify-self: end; font-size: 12.5px; color: var(--ash); display: flex; align-items: center; gap: 6px; }
+  .ep .x svg { width: 13px; height: 13px; }
+  .ep.watched .n, .ep.watched .t { color: var(--ash); }
+  /* pointer hover: lighter row and a play disc on the thumbnail; no ring */
+  .ep.hover { background: #222; }
+  .ep .x { gap: 10px; }
+  .ep .x .save { width: 32px; height: 32px; border-radius: 50%; background: var(--raise); display: grid; place-items: center; color: var(--snow); }
+  .ep .x .save svg { width: 14px; height: 14px; }
+  .ep .x .save .ring { width: 20px; height: 20px; }
+  .ep .x .save .ring circle { stroke-width: 3; }
+  .ep .x .saved { color: var(--snow); }
+  .ep .x .tip { position: absolute; transform: translate(-50%, -34px); margin-left: 16px; padding: 5px 8px; border-radius: 6px; background: var(--snow); color: var(--ink); font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .ep .x .wrap { position: relative; }
+</style>
+</head>
+<body>
+  <div class="lights"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i></div>
+  <div class="backdrop"><img src="img/still-flash-2.jpg" alt=""></div>
+  <div class="iconbtn back"><svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+  <nav class="nav">
+    <div class="pills">
+      <div class="item"><svg class="i" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</div>
+      <div class="item"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>Movies</div>
+      <div class="item selected"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M8 2l4 4 4-4"/></svg>Shows</div>
+    </div>
+    <div class="iconbtn"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>
+    <div class="iconbtn"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div>
+    <div class="iconbtn savedbtn"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><svg class="around" viewBox="0 0 44 44"><circle class="bg" cx="22" cy="22" r="20"/><circle class="fg" cx="22" cy="22" r="20" stroke-dasharray="77.9 125.7"/></svg></div>
+  </nav>
+
+  <section class="info">
+    <div class="title logotype">Flash Gordon</div>
+    <div class="meta"><span><span class="star">★</span> 7.1</span><span class="votes">6.4K</span><span>1936–1940</span><span>3 Seasons</span><span class="badge">1080p</span><span class="badge">TV-PG</span></div>
+    <div class="genres">Sci-fi, Adventure, Serial</div>
+    <p class="about">Flash Gordon, Dale Arden and Dr. Zarkov fly to the planet Mongo and fight its emperor, Ming the Merciless. Three Universal serials, forty chapters.</p>
+    <div class="actions">
+      <div class="btn primary"><svg class="f" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg>Resume S3:E4</div>
+      <div class="btn secondary"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add to List</div>
+      <div class="uses"><b>1080p restoration</b> · season pack 4.8 GB · 128 people sharing</div>
+    </div>
+  </section>
+
+  <section class="season">
+    <div>
+      <div class="tabs">
+        <div class="tab">Season 1 <small>1936</small></div>
+        <div class="tab">Season 2 <small>1938</small></div>
+        <div class="tab selected">Season 3 <small>1940</small></div>
+      </div>
+      <div class="sub">12 episodes · Flash Gordon Conquers the Universe</div>
+    </div>
+    <div class="tools">
+      <div class="iconbtn"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>
+      <div class="iconbtn"><svg class="i" viewBox="0 0 24 24"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg></div>
+      <div class="iconbtn selected"><svg class="i" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></div>
+      <div class="iconbtn"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg></div>
+    </div>
+  </section>
+
+  <section class="eps">
+    <div class="ep watched">
+      <div class="n">3</div>
+      <div class="th"><img src="img/still-flash-lobby.jpg" alt=""><span class="rt"><span class="star">★</span> 7.0</span><span class="bar"><i style="width:100%"></i></span></div>
+      <div><div class="t">Walking Bombs</div><div class="m">19 min · Apr 17, 1940</div><div class="d">Ming's men march on the rebel camp with bombs strapped to their chests.</div></div>
+      <div class="x"><svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>Watched · <span class="saved">Saved</span> 410 MB <span class="save" style="background:var(--snow);color:var(--ink)"><svg class="i" viewBox="0 0 24 24" style="stroke-width:2.4"><path d="M6 12l4 4 8-9"/></svg></span></div>
+    </div>
+    <div class="ep hover">
+      <div class="n">4</div>
+      <div class="th"><img src="img/still-flash-1.jpg" alt=""><span class="bar"><i style="width:62%"></i></span><span class="disc"><svg class="f" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg></span></div>
+      <div><div class="t">The Destroying Ray</div><div class="m">19 min · Apr 24, 1940 · 7 min left</div><div class="d">Flash races to stop the ray Ming has aimed at the rebels' mountain stronghold.</div></div>
+      <div class="x">1080p · plays now <span class="wrap"><span class="tip">Save to this Mac</span><span class="save" style="background:#3A3A3A"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></span></span></div>
+    </div>
+    <div class="ep">
+      <div class="n">5</div>
+      <div class="th"><img src="img/still-flash-shannon.jpg" alt="" style="object-position:center 30%"><span class="rt"><span class="star">★</span> 6.9</span></div>
+      <div><div class="t">The Palace of Terror</div><div class="m">20 min · May 1, 1940</div><div class="d">Dale is held in Ming's palace, and Zarkov builds a way in through the walls.</div></div>
+      <div class="x"><span class="saved">Saving 62%</span> · 4 min left <span class="save"><svg class="ring" viewBox="0 0 20 20"><circle class="bg" cx="10" cy="10" r="8"/><circle class="fg" cx="10" cy="10" r="8" stroke-dasharray="31.2 50.27"/></svg></span></div>
+    </div>
+    <div class="ep">
+      <div class="n">6</div>
+      <div class="th"><img src="img/still-flash-2.jpg" alt="" style="object-position:0 30%"><span class="rt"><span class="star">★</span> 7.0</span></div>
+      <div><div class="t">Flaming Death</div><div class="m">19 min · May 8, 1940</div><div class="d">The rebels set fire to Ming's laboratory, with Flash still inside.</div></div>
+      <div class="x">1080p · plays now <span class="save"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></span></div>
+    </div>
+  </section>
+</body>
+</html>
