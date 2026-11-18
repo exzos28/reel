@@ -216,11 +216,12 @@ test("grey cards end the grid while its next page comes; a line when it failed; 
 test("desktop: resting the pointer on a card for 0.6 s opens a preview with the details", async () => {
   const { native } = page();
   const all = [{ ...BROWSE_ALL[2], about: "A thief who steals secrets through dreams." }, ...BROWSE_ALL.slice(0, 2)];
-  const app = await movies({ ...native, "Catalog.browse": JSON.stringify({ trending: BROWSE_TRENDING, all, filters: browseFilters(), allState: "done" }) }, { platform: "macos", width: 1440, height: 900 });
+  // A manual clock: 0.3 s is 0.3 s of the app's time however busy the machine is.
+  const app = await movies({ ...native, "Catalog.browse": JSON.stringify({ trending: BROWSE_TRENDING, all, filters: browseFilters(), allState: "done" }) }, { platform: "macos", width: 1440, height: 900, clock: {} });
   await app.hover("label:Inception >> nth=1"); // the grid's first card
   await app.wait(300);
-  expect(app.texts()).not.toContain("A thief who steals secrets through dreams.");
-  await app.wait(600);
+  expect(app.shows("id:preview")).toBe(false);
+  await app.waitFor("id:preview");
   expect(app.texts()).toContain("A thief who steals secrets through dreams.");
   expect(app.shows("label:Open")).toBe(true);
 });
@@ -232,7 +233,7 @@ async function previewOpen() {
   const all = [{ ...BROWSE_ALL[2], about: "A thief who steals secrets through dreams." }, ...browseCards(40)];
   const app = await movies({ ...native, "Catalog.browse": JSON.stringify({ trending: BROWSE_TRENDING, all, filters: browseFilters(), allState: "done" }) }, { platform: "macos", width: 1440, height: 900 });
   await app.hover("label:Inception >> nth=1"); // the grid's first card
-  await app.wait(900);
+  await app.waitFor("id:preview");
   expect(app.shows("label:Open")).toBe(true);
   return app;
 }
@@ -246,6 +247,5 @@ test("desktop: the preview's title opens the title, not only its Open button", a
 test("desktop: scrolling the page closes the preview (the pointer stays still and never leaves)", async () => {
   const app = await previewOpen();
   await app.scroll("Film 10", 300);
-  await app.wait(400);
-  expect(app.shows("label:Open")).toBe(false);
+  await app.waitFor("id:preview", { state: "gone" });
 });
