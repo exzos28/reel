@@ -8,7 +8,7 @@
 // Back closes the keyboard, then takes the focus to the nav, then Home.
 import { computed, keymap, signal, Text, View, type InputRef, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
-import { rememberSearch, search, type SearchAnswer } from "../../catalog";
+import { forgetSearches, rememberSearch, search, type SearchAnswer } from "../../catalog";
 import { byKeys } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
 import { metaText } from "../../kit/text";
@@ -92,6 +92,11 @@ export function SearchScreen() {
     query.set(q);
     toField(false);
   };
+  const clearRecent = () => {
+    forgetSearches();
+    recentAt.set(0);
+    toField(false);
+  };
   const submit = () => {
     if (!query().trim()) return;
     rememberSearch(query());
@@ -112,11 +117,12 @@ export function SearchScreen() {
       enter: () => goFromNav(NAV[navAt()].id),
     },
     field: { up: toNav, down: below, enter: type },
+    // The pills, then Clear history after the last (stop `recent().length`).
     recent: {
-      left: () => recentAt.set(clamp(recentAt() - 1, recent().length - 1)),
-      right: () => recentAt.set(clamp(recentAt() + 1, recent().length - 1)),
+      left: () => recentAt.set(clamp(recentAt() - 1, recent().length)),
+      right: () => recentAt.set(clamp(recentAt() + 1, recent().length)),
       up: () => toField(typesAtOnce),
-      enter: () => pickRecent(clamp(recentAt(), recent().length - 1)),
+      enter: () => (clamp(recentAt(), recent().length) === recent().length ? clearRecent() : pickRecent(clamp(recentAt(), recent().length))),
     },
     results: {
       left: () => setCol(rowAt(), col(rowAt()) - 1),
@@ -167,8 +173,9 @@ export function SearchScreen() {
         <If when={recent().length}>
           <RecentSearches
             queries={recent}
-            focusedAt={() => (zone() === "recent" ? clamp(recentAt(), recent().length - 1) : null)}
+            focusedAt={() => (zone() === "recent" ? clamp(recentAt(), recent().length) : null)}
             onPick={pickRecent}
+            onClear={clearRecent}
           />
         </If>
       </View>

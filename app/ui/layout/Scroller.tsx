@@ -79,6 +79,7 @@ export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; onScroll?: 
   return (
     <View
       style={props.style}
+      onLayout={(e) => c.sized(c.horizontal ? e.bounds.size.width : e.bounds.size.height, null)}
       onMouseMove={poke}
       onWheel={(e) => {
         stopAll();
@@ -108,7 +109,12 @@ export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; onScroll?: 
         onScrollDragStart={stopAll}
         style={c.horizontal ? undefined : { flex: 1 }}
       >
-        <View ref={(r: ViewRef) => (c.content = r)}>{props.children}</View>
+        <View
+          ref={(r: ViewRef) => (c.content = r)}
+          onLayout={(e) => c.sized(null, c.horizontal ? e.bounds.size.width : e.bounds.size.height)}
+        >
+          {props.children}
+        </View>
       </Scroll>
       <If when={bar}>
         <Bar ctl={c} shown={shown} />

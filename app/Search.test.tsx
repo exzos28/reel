@@ -29,6 +29,19 @@ test("nothing typed: the recent searches; Down and OK search one again", async (
   expect(kept).toEqual(["frieren"]);
 });
 
+test("Clear history forgets the recent searches: by a click, and by the remote after the last pill", async () => {
+  let cleared = 0;
+  const app = await searchScreen(SEARCH_RECENT, { "Catalog.forgetSearches": () => void cleared++ });
+  expect(app.texts()).toContain("Clear history");
+  await app.keyboard.press("down"); // the first pill
+  await app.keyboard.press("right"); // the second
+  await app.keyboard.press("right"); // Clear history
+  await app.keyboard.press("enter");
+  expect(cleared).toBe(1);
+  await app.press("id:search-clear");
+  expect(cleared).toBe(2);
+});
+
 test("typing shows the results in rows; Down, OK opens a title; Back comes back, then leaves", async () => {
   const app = await searchScreen(SEARCH_DUNE);
   await app.type("search-field", "dune");

@@ -44,6 +44,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/catalog.ts`.
 - `episodes(show: String, season: u32) -> String`: The episodes of `season` of `show`.
   Called from: `ui/catalog.ts`.
+- `forgetSearches()` (`forget_searches`): Forgets all the recent searches (the history's Clear).
+  Called from: `ui/catalog.ts`.
 - `home() -> String`: The home shelves: `[{"id","items":[summary…]}]` (see `catalog::summary`).
   JSON: `[{"id","items":[summary…]}]`
   Called from: `ui/catalog.ts`.

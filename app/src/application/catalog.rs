@@ -417,9 +417,20 @@ struct Info {
 const STILL_W: u32 = 1280;
 /// A TV's browser decodes and repaints a smaller still more easily: w780, scaled up.
 const STILL_W_TV: u32 = 780;
+/// A desktop's hero runs across a wide window on a 2x screen (2000 pt is 4000 px): the largest
+/// the source has (TMDB's original, 1920 to 3840 px), as w1280 shows soft there.
+const STILL_W_DESKTOP: u32 = u32::MAX;
 
 fn still_width() -> u32 {
-    if compat::profile().device() == Some("tv") { STILL_W_TV } else { STILL_W }
+    // A desktop build: the Mac, Windows, Linux (not the TV's 32-bit ARM core, nor a phone).
+    const DESKTOP: bool = cfg!(any(target_os = "macos", windows, all(target_os = "linux", not(target_arch = "arm"))));
+    if compat::profile().device() == Some("tv") {
+        STILL_W_TV
+    } else if DESKTOP {
+        STILL_W_DESKTOP
+    } else {
+        STILL_W
+    }
 }
 const CARD_W: u32 = 780;
 /// A TV's card is 352 px wide at 1x: w500 (13 KB, 0.14 MP decoded) is enough; w780 is for

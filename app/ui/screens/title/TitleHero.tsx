@@ -5,6 +5,7 @@ import { StateLine } from "../../kit/StateLine";
 import { openSettings } from "../../nav";
 import { openSourceDrawer } from "../source/SourceDrawer";
 import { Hero } from "../../layout/Hero";
+import { wholeAboutInHero } from "./AboutBlock";
 import { heroTop } from "../../layout/metrics";
 import { actionsRow, PlayButton, ReleaseButton, SaveButton, TrailerButton } from "../../layout/HeroActions";
 import { librarySupported, titleSaveState } from "../../library";
@@ -83,6 +84,8 @@ export function TitleHero(props: {
       titleSize={show() ? 76 : 88}
       top={heroTop("title", show() ? 150 : 176)}
       fit
+      wholeAbout={wholeAboutInHero}
+      wholeTitle={wholeAboutInHero}
     >
       <View style={actionsRow(false)}>
         <PlayButton label={() => playLabel(props.data())} focused={focused("play")} onPress={props.onPlay} />

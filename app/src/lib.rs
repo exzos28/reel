@@ -447,6 +447,11 @@ impl Catalog {
         catalog::search::remember(&query)
     }
 
+    /// Forgets all the recent searches (the history's Clear).
+    pub fn forget_searches() {
+        catalog::search::forget()
+    }
+
     /// Makes release `index` the one Play uses for `id`.
     pub fn choose_release(id: String, index: u32) -> bool {
         catalog::choose_release(&id, index as usize)

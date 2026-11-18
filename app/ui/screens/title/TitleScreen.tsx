@@ -32,6 +32,7 @@ import { DetailsBlock, hasDetails } from "./DetailsBlock";
 import { action, castAt, focusTitle, item, releaseAt, season, similarAt, zone, type Zone } from "./focus";
 import { ReleasePanel } from "./ReleasePanel";
 import { SeriesEpisodes } from "./SeriesEpisodes";
+import { shelfCardWidth, wideCardHeight } from "../home/WideCard";
 import { SimilarShelf } from "./SimilarShelf";
 import { heroActions, TitleHero, type HeroAction } from "./TitleHero";
 
@@ -355,7 +356,7 @@ export function TitleScreen(props: { id: string }) {
           <DetailsBlock data={data} />
         </If>
         <If when={similar().length > 0}>
-          <LazyBlock page={page} height={() => u(198 + 160)}>
+          <LazyBlock page={page} height={() => wideCardHeight(shelfCardWidth()) + u(160)}>
           <SimilarShelf
             items={similar}
             focusedAt={() => (zone() === "similar" ? similarAt() : null)}

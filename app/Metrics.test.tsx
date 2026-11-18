@@ -50,25 +50,29 @@ test("a hero's text starts under what is over the page, at its design's place wh
   expect(heroTopFor(tv, 1, 176)).toBe(176);
 });
 
-test("a desktop's content column: 1680 at least, a 16:9 screen of the window's height, 2560 at most", () => {
+test("a desktop's content column: 1680 at least (1280 in an ultra-wide window), a 16:9 screen of the window's height, 2560 at most", () => {
   expect(contentWidthFor(1440, 900)).toBe(1440);
   expect(contentWidthFor(1920, 900)).toBe(1680);
+  // Ultra-wide (wider than 2.2 of its height): 3:2 of the height, 1280 at least.
+  expect(contentWidthFor(3008, 1329)).toBe(1993.5);
+  expect(contentWidthFor(2560, 900)).toBe(1350);
+  expect(contentWidthFor(2560, 600)).toBe(1280);
   expect(Math.round(contentWidthFor(2000, 1250))).toBe(2000);
   expect(contentWidthFor(2560, 1440)).toBe(2560);
-  expect(contentWidthFor(3440, 1440)).toBe(2560);
-  expect(contentWidthFor(5120, 1440)).toBe(2560);
+  expect(contentWidthFor(3440, 1440)).toBe(2160);
+  expect(contentWidthFor(5120, 1440)).toBe(2160);
   // The inset: the family's margin in an ordinary window, what centres the column in a wide one.
   expect(sideInsetFor(1440, 900, 64)).toBe(64);
   expect(sideInsetFor(2000, 1250, 64)).toBe(64);
   expect(sideInsetFor(1920, 900, 64)).toBe(120);
-  expect(sideInsetFor(3440, 1440, 64)).toBe(440);
-  expect(sideInsetFor(5120, 1440, 64)).toBe(1280);
+  expect(sideInsetFor(3440, 1440, 64)).toBe(640);
+  expect(sideInsetFor(5120, 1440, 64)).toBe(1480);
 });
 
 test("a hero's box: a TV's and touch's are the design's; a desktop's grows with the window and its still shows most of the frame", () => {
   // A TV: the design's height, the still from `left` to the right edge.
-  expect(heroBox({ height: 640, left: 0, width: 1920, windowHeight: 1080, desktop: false })).toEqual({ height: 640, stillWidth: 1920, stillLeft: 0 });
-  expect(heroBox({ height: 422, left: 343, width: 1440, windowHeight: 900, desktop: false })).toEqual({ height: 422, stillWidth: 1097, stillLeft: 343 });
+  expect(heroBox({ height: 640, left: 0, width: 1920, windowHeight: 1080, desktop: false })).toEqual({ height: 640, stillWidth: 1920, stillLeft: 0, stillRight: 0, stillFadeRight: 0, stillBelow: 0 });
+  expect(heroBox({ height: 422, left: 343, width: 1440, windowHeight: 900, desktop: false })).toEqual({ height: 422, stillWidth: 1097, stillLeft: 343, stillRight: 0, stillFadeRight: 0, stillBelow: 0 });
   const shown = (b: { height: number; stillWidth: number }) => b.height / ((b.stillWidth * 9) / 16);
   // A desktop: never under the design's height, at most 60% of the window's.
   const mac = heroBox({ height: 515, left: 0, width: 1440, windowHeight: 900, desktop: true });

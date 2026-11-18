@@ -1,7 +1,7 @@
 // The top of home and title screens: the still filling the top of the
 // screen and fading into the background, the logotype, meta, genres,
 // about and the actions bottom-left.
-import { computed, Image, Text, View, type JSX, type TextStyle, type ViewStyle } from "nsh";
+import { computed, Image, Text, View, windowSize, type ImageStyle, type JSX, type TextStyle, type ViewStyle } from "nsh";
 import { aboutText, genresText, titleText, type Summary } from "../catalog";
 import { cover } from "../kit/shape";
 import { bodyText, metaText } from "../kit/text";
@@ -9,47 +9,88 @@ import { alpha, colors, heroFade, insetMaxWidth, safe, ts, type, u } from "../th
 import { MetaLine } from "./HeroMeta";
 import { heroBoxNow, heroFollowsWindow, type HeroBox } from "./metrics";
 
-/** The backdrop: from the window's right edge, as wide and tall as the hero's box says. */
+/** The backdrop: from the window's right edge (a wide desktop window's: its content column's), as
+ * wide and tall as the hero's box says. */
 const backdropStyle = (box: HeroBox): ViewStyle => ({
-  position: "absolute", top: 0, right: 0, width: box.stillWidth, height: box.height, overflow: "hidden",
+  position: "absolute", top: 0, right: box.stillRight, width: box.stillWidth, height: Math.round(box.height + box.stillBelow), overflow: "hidden",
 });
 const paperStyle = (paper: string): ViewStyle => ({ flex: 1, backgroundColor: paper, opacity: 0.55 });
 // A backdrop is a 16:9 frame, and people's heads sit in its upper part. On a TV and touch the
 // box keeps at least 16:9 of its width (taller only when the hero is), never stretched, and
 // anchored to the top: what does not fit is cut at the bottom, where the fade hides it anyway.
 // A desktop's box is no wider than shows most of the frame (`heroBox`): the still covers it,
-// cut a little more at the bottom than at the top.
+// cut a little more at the bottom than at the top, and ends 2 pt above the box: its last row of
+// pixels, drawn at a fraction of a pixel as the page scrolls, showed as a line under the fade's
+// solid bottom.
 const stillStyle = (heroFollowsWindow
-  ? { ...cover(), objectFit: "cover", objectPosition: "center 30%" }
-  : { width: "100%", minHeight: "100%", aspectRatio: 16 / 9, objectFit: "cover", objectPosition: "center top" }) as ViewStyle;
+  ? { ...cover(), bottom: 2, objectFit: "cover", objectPosition: "center 30%" }
+  : { width: "100%", minHeight: "100%", aspectRatio: 16 / 9, objectFit: "cover", objectPosition: "center top" }) as ImageStyle;
 const fadeStyle = (): ViewStyle => ({ ...cover(), backgroundImage: heroFade() });
 const leftFadeStyle = (): ViewStyle => ({
   position: "absolute", top: 0, left: 0, bottom: 0, width: "40%",
   backgroundImage: `linear-gradient(90deg, ${colors.ink()} 0%, ${alpha(colors.ink(), 0)} 100%)`,
 });
+/** In a window wider than its content column, the still fades out on its right across the room
+ * past the column (`HeroBox.stillFadeRight` points). */
+const rightFadeStyle = (width: number): ViewStyle => ({
+  position: "absolute", top: 0, right: 0, bottom: 0, width,
+  backgroundImage: `linear-gradient(270deg, ${RIGHT_FADE.map(([at, a]) => `${alpha(colors.ink(), a)} ${at}%`).join(", ")})`,
+});
+/** The right fade's stops from the still's end, [% of its width, ink's alpha]: a smoothstep, so the
+ * frame dims slowly at the column's edge and fastest midway, with no band where it starts. */
+const RIGHT_FADE: [number, number][] = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((at) => {
+  const x = 1 - at / 100;
+  return [at, Math.round(x * x * (3 - 2 * x) * 1000) / 1000];
+});
+/** A desktop's shade behind the hero's text, from the window's left edge past the text's column:
+ * where the still runs under the text (an ordinary window), its grey meta stays readable on a bright
+ * frame. Dense where the text is, gone well before the still's middle; as tall as the still
+ * (it runs on under the hero), or its bottom edge shows as a line across it. */
+const textShadeStyle = (height: number): ViewStyle => ({
+  position: "absolute", top: 0, left: 0, height, width: Math.min(insetMaxWidth(1500) + u(400), windowSize().width),
+  backgroundImage: `linear-gradient(90deg, ${alpha(colors.ink(), 0.82)} 0%, ${alpha(colors.ink(), 0.68)} 35%, ${alpha(colors.ink(), 0.35)} 62%, ${alpha(colors.ink(), 0.1)} 82%, ${alpha(colors.ink(), 0)} 100%)`,
+});
 /** The text's column: at the inset, as wide as in an ordinary window (a wide desktop window's
  * larger inset moves it, `insetMaxWidth`, instead of narrowing it). */
 const textBlockStyle = (top: number, bottom = 0): ViewStyle => ({
-  paddingHorizontal: safe().x, paddingTop: top, paddingBottom: bottom, gap: u(14), maxWidth: insetMaxWidth(1300),
+  paddingHorizontal: safe().x, paddingTop: top, paddingBottom: bottom, gap: u(14), maxWidth: insetMaxWidth(heroFollowsWindow ? 1500 : 1300),
 });
 /** Steady: the text stands on the hero's bottom, so the actions keep their place whatever
  * the title's lines (it grows upwards into the room `top` leaves). The room under the actions
  * is the design's (`design`, TV pixels), however tall the hero (`height`, points) grows. */
 const steadyBlockStyle = (top: number, design: number, height: number): ViewStyle => ({
-  ...textBlockStyle(0), height, justifyContent: "flex-end", paddingBottom: u(design - HERO_TEXT_ROOM) - top,
+  ...textBlockStyle(0),
+  justifyContent: "flex-end",
+  paddingBottom: u(design - HERO_TEXT_ROOM) - top,
+  // A desktop's hero grows down when its text needs more than its height (a long title): never up
+  // under the window bar, never cut. A TV's keeps its height, so the page stays put as the focus
+  // moves from title to title.
+  ...(heroFollowsWindow ? { minHeight: height, paddingTop: top } : { height }),
 });
 /** The hero's own height (points): at least the backdrop's, or (`fit`) only what its text needs. */
 const heroStyle = (height: number, fit: boolean): ViewStyle => (fit ? {} : { minHeight: height });
 const ABOUT_LINES = 3;
+/** A steady about's room past its three lines, in lines: exactly three lines' height lets the
+ * system's rounding (a Mac's, at some window widths) drop the third, so it jumped between two and
+ * three as the window resized. The limit stays three lines. */
+const ABOUT_SLACK = 0.25;
 /** A steady hero's text block, from `top` to its actions' bottom (TV pixels): a one-line
  * title, the meta, genres, three lines of about and the actions. */
 const HERO_TEXT_ROOM = 444;
-/** `steady`: always the height of its three lines, so what is under it stays put as the text changes. */
-const aboutStyle = (steady: boolean): TextStyle => {
+/** `steady`: always the height of its three lines, so what is under it stays put as the text changes.
+ * `whole`: every line (a desktop's title page), else three. */
+const aboutStyle = (steady: boolean, whole: boolean): TextStyle => {
   const body = bodyText(colors.soft());
-  return { numberOfLines: ABOUT_LINES, ...body, maxWidth: u(980), ...(steady ? { height: (body.lineHeight as number) * ABOUT_LINES } : {}) };
+  return { ...(whole ? {} : { numberOfLines: ABOUT_LINES }), ...body, maxWidth: u(980), ...(steady ? { height: (body.lineHeight as number) * (ABOUT_LINES + ABOUT_SLACK) } : {}) };
 };
-const logotypeStyle = (size: number): TextStyle => ({ numberOfLines: 2, ...type.logotype(size), color: colors.snow(), marginBottom: u(10) });
+/** The title: two lines on a TV and touch; a desktop's whole, however many lines (its hero grows
+ * with its text, Home's too). */
+const logotypeStyle = (size: number, whole: boolean): TextStyle => ({
+  ...(!heroFollowsWindow || !whole ? { numberOfLines: 2 } : {}),
+  ...type.logotype(size),
+  color: colors.snow(),
+  marginBottom: u(10),
+});
 
 /** The still (or the title's paper colour) fading into the background; where it starts
  * after the window's left edge, it also fades in from there. */
@@ -63,6 +104,9 @@ function Backdrop(props: { item: () => Summary; box: () => HeroBox }) {
       <View style={fadeStyle()} />
       <If when={props.box().stillLeft > 0.5}>
         <View style={leftFadeStyle()} />
+      </If>
+      <If when={props.box().stillFadeRight > 0.5}>
+        <View style={rightFadeStyle(props.box().stillFadeRight)} />
       </If>
     </View>
   );
@@ -87,6 +131,10 @@ export function Hero(props: {
   /** The about keeps the height of three lines and the text stands on the hero's bottom
    * (Home: the hero follows the focus, its buttons stay put). */
   steadyAbout?: boolean;
+  /** The whole about, not three lines (a desktop's title page: nothing under it repeats it). */
+  wholeAbout?: boolean;
+  /** The whole title, however many lines (a desktop's title page: the hero grows with its text). */
+  wholeTitle?: boolean;
   children: JSX.Element;
 }) {
   const s = props.item;
@@ -94,18 +142,21 @@ export function Hero(props: {
   return (
     <View style={heroStyle(box().height, !!props.fit)}>
       <Backdrop item={s} box={box} />
+      <If when={heroFollowsWindow}>
+        <View style={textShadeStyle(box().height + box().stillBelow)} />
+      </If>
       {/* Not fit to its text: room under the actions before what follows. */}
       <View style={props.steadyAbout ? steadyBlockStyle(props.top, props.height, box().height) : textBlockStyle(props.top, u(props.room ?? (props.fit ? 0 : 56)))}>
-        <If when={props.onOpen} else={<Text style={logotypeStyle(props.titleSize)}>{titleText(s())}</Text>}>
+        <If when={props.onOpen} else={<Text style={logotypeStyle(props.titleSize, !!props.wholeTitle)}>{titleText(s())}</Text>}>
           {(open) => (
             <View role="link" accessibilityLabel={titleText(s())} onPress={open()} style={{ alignSelf: "flex-start" }}>
-              <Text style={logotypeStyle(props.titleSize)}>{titleText(s())}</Text>
+              <Text style={logotypeStyle(props.titleSize, !!props.wholeTitle)}>{titleText(s())}</Text>
             </View>
           )}
         </If>
         <MetaLine item={s} />
         <Text style={{ ...metaText(), fontSize: ts(24) }}>{genresText(s())}</Text>
-        <Text style={aboutStyle(!!props.steadyAbout)}>{aboutText(s())}</Text>
+        <Text style={aboutStyle(!!props.steadyAbout, !!props.wholeAbout)}>{aboutText(s())}</Text>
         {props.children}
       </View>
     </View>
