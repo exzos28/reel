@@ -109,9 +109,9 @@ Formatting shared by every platform.
 - `position(seconds: u32) -> String`: Playback position in seconds as "1:12:40" / "4:05".
   Called from: `ui/Player.tsx`, `ui/catalog.ts`.
 - `size(bytes: f64) -> String`: A size in bytes as "256 MB", "1 GB", "1.4 GB".
-  Called from: `ui/Player.tsx`, `ui/screens/settings/SettingsScreen.tsx`, `ui/screens/settings/choices.ts`.
+  Called from: `ui/Player.tsx`, `ui/screens/saved/SavedRow.tsx`, `ui/screens/saved/SavedScreen.tsx`, `ui/screens/settings/SettingsScreen.tsx`, `ui/screens/settings/choices.ts`, `ui/screens/title/SaveDrawer.tsx`.
 - `speed(mib_per_s: f64) -> String`: A download speed in MiB/s as "3.4 MB/s" (one decimal under 10, whole above).
-  Called from: `ui/Player.tsx`.
+  Called from: `ui/Player.tsx`, `ui/screens/saved/SavedRow.tsx`.
 
 ## Hosted
 
@@ -142,6 +142,39 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   JSON: `{"bot","tv":{"url","qr"}|null,"app":{"url","qr"}}`, `{"bot":null}`
   Called from: `ui/hosted.ts`.
 
+## Library
+
+Saving films and episodes to watch offline (design/offline-downloads.md). Results are JSON strings; states and messages are keys the UI words (`saved.*`).
+
+Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
+
+- `item(key: String) -> String`: One key's state for its button: `{"state","progress","id","message"}` (see `library::item`).
+  JSON: `{"state","progress","id","message"}`
+  Called from: nothing in the UI.
+- `list() -> String`: The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, each item `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`.
+  JSON: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`
+  Called from: `ui/library.ts`.
+- `pause(id: u32)`: Pauses saving the item (its whole torrent: episodes of one pack pause together).
+  Called from: `ui/library.ts`.
+- `plan(show: String, season: u32) -> String`: The Save drawer for a season: `{"episodes":[{"key","number","title","size","state", "progress","locked"}],"saved","total","size"}`.
+  JSON: `{"episodes":[{"key","number","title","size","state", "progress","locked"}],"saved","total","size"}`
+  Called from: `ui/library.ts`.
+- `remove(id: u32)`: Stops saving the item and deletes its files.
+  Called from: `ui/library.ts`.
+- `resume(id: u32)`: Goes on saving a paused item.
+  Called from: `ui/library.ts`.
+- `revision() -> f64`: Goes up when anything the Saved screen and the Save buttons show changed.
+  Called from: nothing in the UI.
+- `save(keys: String) -> bool`: Saves the catalog keys in `keys` (a JSON array: a film, or episodes) once their release is known; what is saved already stays. False when this device saves nothing.
+  Called from: `ui/library.ts`.
+- `setFolder(folder: String) -> String` (`set_folder`): Saves new items into `folder` from now on: "" when done, else why not.
+  Called from: nothing in the UI.
+- `supported() -> bool`: Whether this device saves films (false on TVs and without the engine): no Save control shows when it does not.
+  Called from: `ui/library.ts`.
+- `title(id: String, show: bool) -> String`: The Save button of a title (`show`: a series): `{"state","saved","saving","progress"}`.
+  JSON: `{"state","saved","saving","progress"}`
+  Called from: `ui/library.ts`.
+
 ## Meta
 
 Movie, series and anime metadata: TMDB, AniList, Jikan (MAL score), tied by the Fribb anime ID lists, cached in SQLite. Results are JSON strings.
@@ -171,39 +204,6 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: nothing in the UI.
 - `async trending(kind: String, language: String) -> String`: A home shelf: `kind` is "movie" | "tv" (TMDB trending this week), "movie-popular" | "tv-popular" (TMDB discover), "anime" (AniList trending) | "anime-popular" (AniList, this season). `data`: `{"items":[TitleCard]}`.
   JSON: `{"items":[TitleCard]}`
-  Called from: nothing in the UI.
-
-## Offline
-
-Saving films and episodes to watch offline (design/offline-downloads.md). Results are JSON strings; states and messages are keys the UI words (`saved.*`).
-
-Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
-
-- `item(key: String) -> String`: One key's state for its button: `{"state","progress","id","message"}` (see `offline::item`).
-  JSON: `{"state","progress","id","message"}`
-  Called from: nothing in the UI.
-- `list() -> String`: The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, each item `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`.
-  JSON: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`
-  Called from: nothing in the UI.
-- `pause(id: u32)`: Pauses saving the item (its whole torrent: episodes of one pack pause together).
-  Called from: nothing in the UI.
-- `plan(show: String, season: u32) -> String`: The Save drawer for a season: `{"episodes":[{"key","number","title","size","state", "progress","locked"}],"saved","total","size"}`.
-  JSON: `{"episodes":[{"key","number","title","size","state", "progress","locked"}],"saved","total","size"}`
-  Called from: nothing in the UI.
-- `remove(id: u32)`: Stops saving the item and deletes its files.
-  Called from: nothing in the UI.
-- `resume(id: u32)`: Goes on saving a paused item.
-  Called from: nothing in the UI.
-- `revision() -> f64`: Goes up when anything the Saved screen and the Save buttons show changed.
-  Called from: nothing in the UI.
-- `save(keys: String) -> bool`: Saves the catalog keys in `keys` (a JSON array: a film, or episodes) once their release is known; what is saved already stays. False when this device saves nothing.
-  Called from: nothing in the UI.
-- `setFolder(folder: String) -> String` (`set_folder`): Saves new items into `folder` from now on: "" when done, else why not.
-  Called from: nothing in the UI.
-- `supported() -> bool`: Whether this device saves films (false on TVs and without the engine): no Save control shows when it does not.
-  Called from: nothing in the UI.
-- `title(id: String, show: bool) -> String`: The Save button of a title (`show`: a series): `{"state","saved","saving","progress"}`.
-  JSON: `{"state","saved","saving","progress"}`
   Called from: nothing in the UI.
 
 ## Settings

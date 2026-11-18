@@ -5,7 +5,7 @@ import { stack } from "../../nav";
 
 /** `header`: Add to list, top-right; `release`: the release button under the
  * actions; `releases`: its panel. */
-export type Zone = "header" | "actions" | "release" | "releases" | "tabs" | "list" | "cast" | "similar";
+export type Zone = "header" | "actions" | "release" | "releases" | "save" | "tabs" | "list" | "cast" | "similar";
 
 let shownId = "";
 export const zone = signal<Zone>("actions");
@@ -29,7 +29,7 @@ const saved = new Map<string, Saved>();
 export function focusTitle(id: string, startSeason: number) {
   if (shownId === id) return;
   // The release panel closes when the screen does: back on its button.
-  if (shownId) saved.set(shownId, [zone() === "releases" ? "release" : zone(), action(), season(), item(), castAt(), similarAt()]);
+  if (shownId) saved.set(shownId, [zone() === "releases" ? "release" : zone() === "save" ? "actions" : zone(), action(), season(), item(), castAt(), similarAt()]);
   // Only titles still under this one are come back to.
   const open = new Set(stack().flatMap((r) => (r.name === "title" ? [r.id] : [])));
   for (const k of saved.keys()) if (!open.has(k)) saved.delete(k);

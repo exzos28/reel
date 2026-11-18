@@ -18,7 +18,9 @@ import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { caps } from "../../platform";
 import { ListToggle } from "../../layout/ListToggle";
-import { openTitle } from "../../nav";
+import { go, openTitle } from "../../nav";
+import { save as saveKeys, seasonPlan, titleSaveState, watchSaved } from "../../library";
+import { SaveDrawer } from "./SaveDrawer";
 import { openSourceDrawer } from "../source/SourceDrawer";
 import { playGate } from "../source/playGate";
 import { pickReleaseFor, play as startPlay, playing } from "../../playback";
@@ -64,6 +66,52 @@ export function TitleScreen(props: { id: string }) {
     zone.set("releases");
   };
   const gate = playGate(data, () => startPlay({ ...data().play, title: data() }));
+  // ---- Save (design/offline-downloads.md): a film saves at once; a show opens the drawer.
+  watchSaved();
+  /** The drawer's season, the episodes ticked in it (keys) and its focused row. */
+  const saveSeason = signal(1);
+  const picked = signal<Set<string>>(new Set());
+  const saveAt = signal(0);
+  const plan = () => seasonPlan(props.id, saveSeason());
+  const saveRows = () => plan().episodes.length + 2;
+  const openSave = () => {
+    if (!isShow()) {
+      const st = titleSaveState(props.id, false).state;
+      // Saved or being saved: the Saved screen shows how it goes.
+      return st === "none" || st === "failed" ? saveKeys([props.id]) : go("saved");
+    }
+    saveSeason.set(season());
+    picked.set(new Set());
+    saveAt.set(0);
+    zone.set("save");
+  };
+  const togglePick = (key: string) => {
+    const next = new Set(picked());
+    next.has(key) ? next.delete(key) : next.add(key);
+    picked.set(next);
+  };
+  /** Whole season: tick every episode not saved yet, or untick them all when they are. */
+  const toggleWhole = () => {
+    const open = plan().episodes.filter((e) => !e.locked);
+    const next = new Set(picked());
+    const all = open.every((e) => next.has(e.key));
+    for (const e of open) all ? next.delete(e.key) : next.add(e.key);
+    picked.set(next);
+  };
+  const saveRow = (i: number) => {
+    const eps = plan().episodes;
+    if (i === 0) return toggleWhole();
+    if (i <= eps.length) return eps[i - 1].locked ? undefined : togglePick(eps[i - 1].key);
+    doSave();
+  };
+  const doSave = () => {
+    const keys = [...picked()];
+    if (!keys.length) return;
+    saveKeys(keys);
+    picked.set(new Set());
+    zone.set("actions");
+  };
+  const seasonsForSave = () => (data().seasonList ?? []).map((s) => ({ number: s.number, episodes: s.episodes }));
   /** Play; with no search source the drawer that adds one (the player would only fail). */
   const play = (p: Parameters<typeof startPlay>[0]) => (data().playable ? startPlay(p) : openSourceDrawer());
   const closePanel = () => {
@@ -125,6 +173,7 @@ export function TitleScreen(props: { id: string }) {
   const run: Record<HeroAction, () => void> = {
     // Play waits for the source's answer: the release plays once known, the drawer opens if there is none.
     play: gate.press,
+    save: openSave,
     trailer: openTrailer,
   };
   const toggle = () => toggleList(props.id);
@@ -199,6 +248,13 @@ export function TitleScreen(props: { id: string }) {
         down: () => releaseAt.set(Math.min(releaseAt() + 1, releaseRows() - 1)),
         enter: () => pressRelease(releaseAt()),
       },
+      save: {
+        up: () => saveAt.set(Math.max(saveAt() - 1, 0)),
+        down: () => saveAt.set(Math.min(saveAt() + 1, saveRows() - 1)),
+        left: () => saveSeason.set(Math.max(saveSeason() - 1, 1)),
+        right: () => saveSeason.set(Math.min(saveSeason() + 1, seasonCount())),
+        enter: () => saveRow(saveAt()),
+      },
       tabs: {
         left: () => season.set(Math.max(season() - 1, 1)),
         right: () => season.set(Math.min(season() + 1, seasonCount())),
@@ -226,8 +282,8 @@ export function TitleScreen(props: { id: string }) {
         enter: () => openSimilar(clamp(similarAt(), similar().length - 1)),
       },
     },
-    // Back closes the release panel first.
-    () => panelOpen() && (closePanel(), true),
+    // Back closes the release panel or the Save drawer first.
+    () => (panelOpen() && (closePanel(), true)) || (zone() === "save" && (zone.set("actions"), true)),
   );
 
   const listFocus = () => (zone() === "list" ? item() : null);
@@ -249,6 +305,7 @@ export function TitleScreen(props: { id: string }) {
           releaseFocused={() => zone() === "release"}
           onPlay={run.play}
           onTrailer={run.trailer}
+          onSave={run.save}
           onReleases={() => openPanel()}
         />
       </View>
@@ -320,6 +377,21 @@ export function TitleScreen(props: { id: string }) {
         }}
         onClose={closePanel}
       />
+    <If when={isShow()}>
+      <SaveDrawer
+        open={() => zone() === "save"}
+        onClose={() => zone.set("actions")}
+        seasons={seasonsForSave}
+        season={saveSeason}
+        onSeason={(n) => saveSeason.set(n)}
+        plan={plan}
+        picked={picked}
+        onToggle={togglePick}
+        onWhole={toggleWhole}
+        focusedAt={() => (zone() === "save" ? saveAt() : null)}
+        onSave={doSave}
+      />
+    </If>
     </View>
   );
 }

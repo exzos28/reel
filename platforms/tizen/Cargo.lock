@@ -4009,6 +4009,7 @@ dependencies = [
  "quick-xml",
  "reel-domain",
  "reqwest",
+ "serde",
  "serde_json",
  "tokio",
  "tracing",

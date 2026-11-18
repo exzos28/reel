@@ -6,6 +6,7 @@ import { BrowseScreen } from "./browse/BrowseScreen";
 import { HomeScreen } from "./home/HomeScreen";
 import { SearchScreen } from "./search/SearchScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
+import { SavedScreen } from "./saved/SavedScreen";
 import { TitleScreen } from "./title/TitleScreen";
 
 export function screenFor(r: Route) {
@@ -21,6 +22,8 @@ export function screenFor(r: Route) {
       return <SearchScreen />;
     case "settings":
       return <SettingsScreen />;
+    case "saved":
+      return <SavedScreen />;
     case "about":
       return <AboutScreen />;
     case "title":

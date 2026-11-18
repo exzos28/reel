@@ -6,15 +6,21 @@ import { openSettings } from "../../nav";
 import { openSourceDrawer } from "../source/SourceDrawer";
 import { Hero } from "../../layout/Hero";
 import { heroTop } from "../../layout/metrics";
-import { actionsRow, PlayButton, ReleaseButton, TrailerButton } from "../../layout/HeroActions";
+import { actionsRow, PlayButton, ReleaseButton, SaveButton, TrailerButton } from "../../layout/HeroActions";
+import { librarySupported, titleSaveState } from "../../library";
 import { rounded } from "../../kit/shape";
 import { alpha, colors, cs, ts, type, u } from "../../theme";
 
 /** The hero's action row, left to right as the remote walks it: Play, then
  * the trailer when there is one. Add to list is the page's header action
  * (`ListToggle`); the release button has its own line under the row. */
-export type HeroAction = "play" | "trailer";
-export const heroActions = (title: Title): HeroAction[] => ["play", ...(title.trailer ? (["trailer"] as const) : [])];
+export type HeroAction = "play" | "save" | "trailer";
+export const heroActions = (title: Title): HeroAction[] => [
+  "play",
+  // Save, where this device saves films (design/offline-downloads.md).
+  ...(librarySupported ? (["save"] as const) : []),
+  ...(title.trailer ? (["trailer"] as const) : []),
+];
 
 /** The release row's place: the button's height and its margin over it, so
  * nothing moves when the release arrives. */
@@ -58,6 +64,7 @@ export function TitleHero(props: {
   releaseFocused: () => boolean;
   onPlay: () => void;
   onTrailer: () => void;
+  onSave: () => void;
   onReleases: () => void;
 }) {
   const show = () => props.data().kind === "show";
@@ -77,6 +84,9 @@ export function TitleHero(props: {
     >
       <View style={actionsRow(false)}>
         <PlayButton label={() => playLabel(props.data())} focused={focused("play")} onPress={props.onPlay} />
+        <If when={librarySupported}>
+          <SaveButton state={() => titleSaveState(props.data().id, show())} show={show} focused={focused("save")} onPress={props.onSave} />
+        </If>
         <If when={props.data().trailer}>
           <TrailerButton focused={focused("trailer")} onPress={props.onTrailer} />
         </If>

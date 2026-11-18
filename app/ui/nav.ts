@@ -4,11 +4,11 @@
 // up. On a phone and a tablet each tab keeps its own stack.
 import { cleanup, signal } from "nsh";
 
-export type Destination = "home" | "movies" | "shows" | "cartoons" | "anime" | "search" | "settings";
+export type Destination = "home" | "movies" | "shows" | "cartoons" | "anime" | "search" | "settings" | "saved";
 export type Route = { name: Destination } | { name: "title"; id: string } | { name: "about" };
 
 /** The nav's destinations: a page with nothing under it. */
-export const ROOTS: Destination[] = ["home", "movies", "shows", "cartoons", "anime", "search", "settings"];
+export const ROOTS: Destination[] = ["home", "movies", "shows", "cartoons", "anime", "search", "settings", "saved"];
 export const isRoot = (name: string) => ROOTS.includes(name as Destination);
 
 export const stack = signal<Route[]>([{ name: "home" }]);

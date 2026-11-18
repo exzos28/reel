@@ -11,6 +11,7 @@ nav:
   anime: Anime
   search: Search
   settings: Settings
+  saved: Saved
   # The phone's last tab: the destinations that do not fit in its tab bar.
   more: More
   back: Back
@@ -63,6 +64,11 @@ title:
   add_to_list: Add to list
   in_list: In my list
   trailer: Trailer
+  save: Save
+  saving: "Saving %{percent}%"
+  saving_some: "Saving %{count} of %{total}"
+  save_paused: Paused
+  saved: Saved
 
 card:
   left: "%{time} left"
@@ -451,3 +457,46 @@ menu:
   go: Go
   back: Back
   window: Window
+
+# Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
+saved:
+  title: Saved
+  empty: Nothing saved yet. Save a film or a season from its page to watch it without the internet.
+  saving: Saving
+  while_open: while reel is open
+  ready: Ready to watch
+  not_saved: Not saved
+  pause: Pause
+  resume: Go on saving
+  remove: Remove
+  speed: "%{speed} from %{peers} people"
+  space:
+    saved: "%{size} saved"
+    free: "%{size} free"
+  state:
+    searching: Finding a release…
+    resolving: Getting the torrent…
+    saving: "%{percent}% · %{have} of %{size}"
+    paused: "Paused · %{have} of %{size}"
+    waiting: Starts when the film you watch stops
+    saved: "Saved · %{size}"
+    unavailable: Its disk is not connected
+  failed:
+    no_source: No release found to save
+    not_in_release: This episode is not in its season's release
+    unsupported: This release does not play on this device
+    no_video: No video in this release
+    interrupted: Stopped before it started. Save it again.
+    other: Could not be saved. Save it again.
+  drawer:
+    title: Save to this device
+    note: Plays without the internet
+    whole_season: Whole season
+    episodes: "%{count} episodes"
+    season_state: "%{saved} of %{total} saved"
+    release_locked: Saved episodes come from this release, so new ones do too.
+    save_n: "Save %{count} episodes"
+    save_one: Save 1 episode
+    choose: Choose episodes
+    more: "%{size} more"
+    new: new

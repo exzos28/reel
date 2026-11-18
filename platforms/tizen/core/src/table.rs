@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 
-use reel_app::{Catalog, Engine, Fmt, Hosted, Meta, Offline, Settings, Sources, VideoEngine};
+use reel_app::{Catalog, Engine, Fmt, Hosted, Meta, Library, Settings, Sources, VideoEngine};
 use reel_rpc::{Error, Registry, args, no_args, ret};
 
 /// `Settings.load` and `Meta.init` take the host's data dir (`process.dataDir` on native
@@ -152,50 +152,50 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         ret(Hosted::link_source(link))
     });
 
-    // The TV saves nothing (`Offline.supported()` is false there): its answers say so.
-    r.sync("Offline", "supported", |a| {
+    // The TV saves nothing (`Library.supported()` is false there): its answers say so.
+    r.sync("Library", "supported", |a| {
         no_args(&a)?;
-        ret(Offline::supported())
+        ret(Library::supported())
     })
-    .sync("Offline", "save", |a| {
+    .sync("Library", "save", |a| {
         let (keys,): (String,) = args(a)?;
-        ret(Offline::save(keys))
+        ret(Library::save(keys))
     })
-    .sync("Offline", "item", |a| {
+    .sync("Library", "item", |a| {
         let (key,): (String,) = args(a)?;
-        ret(Offline::item(key))
+        ret(Library::item(key))
     })
-    .sync("Offline", "title", |a| {
+    .sync("Library", "title", |a| {
         let (id, show): (String, bool) = args(a)?;
-        ret(Offline::title(id, show))
+        ret(Library::title(id, show))
     })
-    .sync("Offline", "plan", |a| {
+    .sync("Library", "plan", |a| {
         let (show, season): (String, u32) = args(a)?;
-        ret(Offline::plan(show, season))
+        ret(Library::plan(show, season))
     })
-    .sync("Offline", "list", |a| {
+    .sync("Library", "list", |a| {
         no_args(&a)?;
-        ret(Offline::list())
+        ret(Library::list())
     })
-    .sync("Offline", "pause", |a| {
+    .sync("Library", "pause", |a| {
         let (id,): (u32,) = args(a)?;
-        ret(Offline::pause(id))
+        ret(Library::pause(id))
     })
-    .sync("Offline", "resume", |a| {
+    .sync("Library", "resume", |a| {
         let (id,): (u32,) = args(a)?;
-        ret(Offline::resume(id))
+        ret(Library::resume(id))
     })
-    .sync("Offline", "remove", |a| {
+    .sync("Library", "remove", |a| {
         let (id,): (u32,) = args(a)?;
-        ret(Offline::remove(id))
+        ret(Library::remove(id))
     })
-    .sync("Offline", "setFolder", |a| {
+    .sync("Library", "setFolder", |a| {
         let (folder,): (String,) = args(a)?;
-        ret(Offline::set_folder(folder))
+        ret(Library::set_folder(folder))
     })
-    .sync("Offline", "revision", |a| {
+    .sync("Library", "revision", |a| {
         no_args(&a)?;
-        ret(Offline::revision())
+        ret(Library::revision())
     });
 
     r.sync("Sources", "search", |a| {

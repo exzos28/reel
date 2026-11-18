@@ -15,7 +15,7 @@
 // engine, up to a second), so the frames it blocks are few. The Promise-returning methods
 // (Meta's data calls, which may wait for the network) use an asynchronous request.
 import type {
-  CatalogModule, EngineModule, FmtModule, HostedModule, MetaModule, OfflineModule, SettingsModule, SourcesModule, VideoEngineModule,
+  CatalogModule, EngineModule, FmtModule, HostedModule, MetaModule, LibraryModule, SettingsModule, SourcesModule, VideoEngineModule,
 } from "app/native";
 
 // NSH's typings (nsh/globals.d.ts) do not declare these browser globals; on the web they exist.
@@ -216,7 +216,7 @@ export const Hosted: HostedModule = {
 };
 
 // A TV saves no films (design/offline-downloads.md): no call goes to the core for it.
-export const Offline: OfflineModule = {
+export const Library: LibraryModule = {
   supported: () => false,
   save: () => false,
   item: () => '{"state":"none","progress":0}',

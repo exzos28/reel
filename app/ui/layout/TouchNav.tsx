@@ -23,7 +23,7 @@ import { ChoicePanel, type Choice } from "./ChoicePanel";
 import moreIcon from "../icons/more.svg";
 
 /** The tabs: the nav's destinations but Settings. */
-const TABS = NAV.filter((n) => n.id !== "settings");
+const TABS = NAV.filter((n) => n.id !== "settings" && n.id !== "saved");
 /** Android's Material bar, else iOS's. */
 const android = look.system === "material";
 /** Points as TV pixels, for `Icon`'s size. */

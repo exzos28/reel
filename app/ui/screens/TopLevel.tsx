@@ -6,6 +6,7 @@ import { BrowseScreen } from "./browse/BrowseScreen";
 import { HomeScreen } from "./home/HomeScreen";
 import { SearchScreen } from "./search/SearchScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
+import { SavedScreen } from "./saved/SavedScreen";
 
 export function TopLevel() {
   const current = () => route().name;
@@ -31,6 +32,9 @@ export function TopLevel() {
       </If>
       <If when={current() === "settings"}>
         <SettingsScreen />
+      </If>
+      <If when={current() === "saved"}>
+        <SavedScreen />
       </If>
     </View>
   );

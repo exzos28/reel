@@ -2,7 +2,7 @@
 
 reel saves a film or episodes on the device and plays them without the internet. macOS, Windows,
 Linux, Android phones and tablets, iOS / iPadOS; not the Samsung TV and not Android TV
-(`Offline.supported()` is false there and no Save control shows). Saving runs while the app is
+(`Library.supported()` is false there and no Save control shows). Saving runs while the app is
 open; in the background it pauses and goes on when the app is open again (background saving:
 later, and on iOS through a reel server, `docs/todo.md`). iOS builds are not for the App Store.
 
@@ -25,7 +25,7 @@ Words: **Save** and **Saved**, never "Download". Mockups: `concept/mac-saved.htm
 - **Saved**: a round icon top right, after settings, with a ring of the overall progress while
   something saves. The screen: space used and free, the folder (Change folder); "Saving" rows
   with Pause and Remove; "Ready to watch" cards; films on a disk that is not connected are grey.
-- Offline, Saved plays; the rest of the app says it is offline.
+- Library, Saved plays; the rest of the app says it is offline.
 - Settings: where to save (desktops: any folder, the system dialog; Android: phone or SD card;
   iOS: no choice), space used, Remove all.
 - Playing: the same Play and Resume, the same player (mpv, AVPlayer on iOS). A saved film plays

@@ -10,6 +10,8 @@ import plusIcon from "../icons/plus.svg";
 import checkIcon from "../icons/check.svg";
 import chevronIcon from "../icons/chevron.svg";
 import trailerIcon from "../icons/trailer.svg";
+import savedIcon from "../icons/saved.svg";
+import type { SaveState } from "../library";
 import { Icon } from "../kit/Icon";
 import { rounded } from "../kit/shape";
 import { alpha, colors, focusRing } from "../theme";
@@ -62,4 +64,28 @@ export function ReleaseButton(props: { name: () => string; rest: () => string; f
       <Icon src={() => chevronIcon} size={22} color={() => colors.snow()} />
     </View>
   );
+}
+
+/** Save (design/offline-downloads.md): "Save", then what is saved of the title: "Saving 34%",
+ * a show's "Saving 2 of 5", "Paused", "Saved" with a check. */
+export function SaveButton(props: { state: () => SaveState; show: () => boolean; focused: () => boolean; onPress: () => void }) {
+  const s = props.state;
+  const label = () => {
+    switch (s().state) {
+      case "saving":
+      case "searching":
+      case "resolving":
+      case "waiting":
+        return props.show()
+          ? t("title.saving_some", { count: s().saving ?? 0, total: (s().saving ?? 0) + (s().saved ?? 0) })
+          : t("title.saving", { percent: Math.floor(s().progress * 100) });
+      case "paused":
+        return t("title.save_paused");
+      case "saved":
+        return t("title.saved");
+      default:
+        return t("title.save");
+    }
+  };
+  return <Button kind="secondary" icon={() => (s().state === "saved" ? checkIcon : savedIcon)} label={label} focused={props.focused} onPress={props.onPress} />;
 }

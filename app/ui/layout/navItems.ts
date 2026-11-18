@@ -8,6 +8,8 @@ import animeIcon from "../icons/anime.svg";
 import cartoonsIcon from "../icons/cartoons.svg";
 import searchIcon from "../icons/search.svg";
 import settingsIcon from "../icons/settings.svg";
+import savedIcon from "../icons/saved.svg";
+import { librarySupported } from "../library";
 
 /** `pill`: in the pill group; otherwise a round button after it. */
 export const NAV: { id: Destination; icon: ImageAsset; pill: boolean }[] = [
@@ -18,4 +20,6 @@ export const NAV: { id: Destination; icon: ImageAsset; pill: boolean }[] = [
   { id: "anime", icon: animeIcon, pill: true },
   { id: "search", icon: searchIcon, pill: false },
   { id: "settings", icon: settingsIcon, pill: false },
+  // Saved films, after settings, where this device saves them (design/offline-downloads.md).
+  ...(librarySupported ? [{ id: "saved" as const, icon: savedIcon, pill: false }] : []),
 ];
