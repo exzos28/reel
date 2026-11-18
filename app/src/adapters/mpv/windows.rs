@@ -31,7 +31,7 @@ use windows::{
 
 use super::{
     ffi::{self, Lib},
-    player::{Player, Raw},
+    player::{LoadGate, Player, Raw},
 };
 
 /// What mpv drew into and the bitmap Direct2D draws it with, at a size in pixels.
@@ -47,6 +47,8 @@ struct Drawing {
     target: Option<Target>,
     /// Making the render context failed: nothing more is tried.
     failed: bool,
+    /// The player's file waits for the render context (made on the first draw).
+    gate: Option<Arc<LoadGate>>,
 }
 
 /// mpv's thread: a frame is ready; NSH draws the view again.
@@ -74,8 +76,13 @@ pub struct MpvComponent {
 impl MpvComponent {
     pub fn new(cx: ComponentContext, lib: &'static Lib) -> MpvComponent {
         let emit_cx = cx.clone();
+        let mut gate = None;
         let player = match Player::new(lib, "libmpv", &[], Arc::new(move |name, data| emit_cx.emit(name, data))) {
-            Ok(p) => Some(p),
+            Ok(mut p) => {
+                // A file that opens at once (a saved film on disk) would find no video output yet.
+                gate = Some(p.hold_until_drawn());
+                Some(p)
+            }
             Err(e) => {
                 cx.emit("error", serde_json::json!({ "message": e }));
                 None
@@ -85,7 +92,7 @@ impl MpvComponent {
             lib,
             raw: player.as_ref().map(Player::raw).unwrap_or(Raw(std::ptr::null_mut())),
             shared: Box::new(Shared { cx, dirty: AtomicBool::new(true) }),
-            drawing: RefCell::new(Drawing { render: None, target: None, failed: player.is_none() }),
+            drawing: RefCell::new(Drawing { render: None, target: None, failed: player.is_none(), gate }),
             player,
         }
     }
@@ -168,6 +175,10 @@ impl NativeComponent for MpvComponent {
             if d.render.is_none() {
                 d.failed = true;
                 return;
+            }
+            // mpv has a video output now: the file held until this loads.
+            if let Some(gate) = d.gate.take() {
+                gate.open(self.lib, self.raw);
             }
         }
         let (mut dpi_x, mut dpi_y) = (96.0, 96.0);

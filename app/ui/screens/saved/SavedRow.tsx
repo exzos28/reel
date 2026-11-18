@@ -54,7 +54,7 @@ export function stateLine(i: SavedItem): string {
     case "saved":
       return t("saved.state.saved", { size });
     case "failed":
-      return t(`saved.failed.${i.message && ["no_source", "not_in_release", "unsupported", "no_video", "interrupted", "no_peers", "no_space", "write"].includes(i.message) ? i.message : "other"}`);
+      return t(`saved.failed.${i.message && ["no_source", "not_in_release", "unsupported", "no_video", "interrupted", "no_peers", "no_space", "write", "path_too_long"].includes(i.message) ? i.message : "other"}`);
     default:
       return t(`saved.state.${i.state}`);
   }

@@ -16,7 +16,7 @@ use serde_json::Value;
 
 use super::{
     ffi::{self, Lib},
-    player::{Player, Raw},
+    player::{LoadGate, Player, Raw},
 };
 
 /// GL's functions for mpv: EGL's lookup (GTK 4 draws with EGL on X11 and Wayland), else GLX's.
@@ -59,6 +59,8 @@ struct State {
     /// mpv's render context, made in the area's GL context once it is realized.
     render: RefCell<Option<ffi::RenderContext>>,
     closed: Cell<bool>,
+    /// The player's file waits for the render context (made once the area is realized).
+    gate: RefCell<Option<Arc<LoadGate>>>,
     /// For mpv's update callback: the area, reachable from mpv's thread. Boxed so its address
     /// (the callback's argument) stays put.
     area: Box<glib::SendWeakRef<GLArea>>,
@@ -101,6 +103,10 @@ impl State {
         let arg = &*self.area as *const glib::SendWeakRef<GLArea> as *mut c_void;
         unsafe { (self.lib.render_context_set_update_callback)(made, Some(on_update), arg) };
         *self.render.borrow_mut() = Some(made);
+        // mpv has a video output now: the file held until this loads.
+        if let Some(gate) = self.gate.borrow_mut().take() {
+            gate.open(self.lib, self.raw);
+        }
     }
 
     /// Draws mpv's frame into the area's framebuffer (bound by GTK for the `render` signal).
@@ -149,8 +155,13 @@ pub struct MpvComponent {
 impl MpvComponent {
     pub fn new(cx: ComponentContext, lib: &'static Lib) -> MpvComponent {
         let emit_cx = cx.clone();
+        let mut gate = None;
         let player = match Player::new(lib, "libmpv", &[], Arc::new(move |name, data| emit_cx.emit(name, data))) {
-            Ok(p) => Some(p),
+            Ok(mut p) => {
+                // A file that opens at once (a saved film on disk) would find no video output yet.
+                gate = Some(p.hold_until_drawn());
+                Some(p)
+            }
             Err(e) => {
                 cx.emit("error", serde_json::json!({ "message": e }));
                 None
@@ -168,6 +179,7 @@ impl MpvComponent {
             raw: player.as_ref().map(Player::raw).unwrap_or(Raw(std::ptr::null_mut())),
             render: RefCell::new(None),
             closed: Cell::new(player.is_none()),
+            gate: RefCell::new(gate),
             area: Box::new(glib::SendWeakRef::from(area.downgrade())),
         });
         {

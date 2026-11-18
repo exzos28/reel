@@ -152,7 +152,9 @@ impl TorrentMetadata {
             .iter_file_details_ext()
             .map(|fd| {
                 Ok::<_, anyhow::Error>(FileInfo {
-                    relative_filename: fd.details.filename.to_pathbuf(),
+                    relative_filename: crate::file_info::local_path(
+                        fd.details.filename.iter_components(),
+                    ),
                     offset_in_torrent: fd.offset,
                     piece_range: fd.pieces,
                     len: fd.details.len,

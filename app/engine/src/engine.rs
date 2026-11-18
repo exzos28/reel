@@ -921,8 +921,26 @@ pub(crate) fn local_files(job: u32) -> Option<(PathBuf, usize, Vec<(usize, Strin
 
 /// A `file://` URL for a path, its bytes percent-encoded except the unreserved ones and `/`.
 pub(crate) fn file_url(path: &std::path::Path) -> String {
-    let raw = path.to_string_lossy();
-    let raw = raw.replace('\\', "/");
+    file_url_of(&path.to_string_lossy(), cfg!(windows))
+}
+
+/// `file_url` of a path as text; `windows`: a Windows path, whose `\` are separators (elsewhere
+/// `\` is a character of a name and is encoded). mpv takes `file:///C:/…` on Windows: it drops
+/// `file://`, then the `/` before a drive (`mp_file_url_to_filename`), and decodes the rest; a
+/// share (`\\server\x`) is `file:////server/x`, which mpv opens as `//server/x`. A long-path
+/// prefix (`\\?\`) goes: mpv opens what it gets with forward slashes, which such a path does
+/// not take.
+fn file_url_of(raw: &str, windows: bool) -> String {
+    let raw = if windows {
+        let plain = if let Some(share) = raw.strip_prefix(r"\\?\UNC\") {
+            format!(r"\\{share}")
+        } else {
+            raw.strip_prefix(r"\\?\").unwrap_or(raw).to_owned()
+        };
+        plain.replace('\\', "/")
+    } else {
+        raw.to_owned()
+    };
     let mut out = String::from("file://");
     if !raw.starts_with('/') {
         out.push('/'); // a Windows drive: file:///C:/…
@@ -1068,6 +1086,18 @@ pub(crate) mod tests {
     fn file_urls_are_encoded() {
         assert_eq!(super::file_url(std::path::Path::new("/Users/me/Movies/Metropolis (1927)/a b.mkv")), "file:///Users/me/Movies/Metropolis%20%281927%29/a%20b.mkv");
         assert_eq!(super::file_url(std::path::Path::new("/x/Фильм.mp4")), "file:///x/%D0%A4%D0%B8%D0%BB%D1%8C%D0%BC.mp4");
+        // A `\` in a Unix name is a character, not a separator.
+        assert_eq!(super::file_url_of(r"/x/a\b.mkv", false), "file:///x/a%5Cb.mkv");
+    }
+
+    #[test]
+    fn windows_file_urls_have_a_drive_and_forward_slashes() {
+        let url = |p| super::file_url_of(p, true);
+        assert_eq!(url(r"C:\Users\me\AppData\Local\reel\saved\Metropolis (1927)\a b.mkv"), "file:///C:/Users/me/AppData/Local/reel/saved/Metropolis%20%281927%29/a%20b.mkv");
+        assert_eq!(url(r"D:\Фильм.mp4"), "file:///D:/%D0%A4%D0%B8%D0%BB%D1%8C%D0%BC.mp4");
+        assert_eq!(url(r"\\nas\films\x.mkv"), "file:////nas/films/x.mkv");
+        assert_eq!(url(r"\\?\C:\long\x.mkv"), "file:///C:/long/x.mkv");
+        assert_eq!(url(r"\\?\UNC\nas\films\x.mkv"), "file:////nas/films/x.mkv");
     }
 
     #[test]

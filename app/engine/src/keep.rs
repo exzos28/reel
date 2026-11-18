@@ -172,6 +172,8 @@ fn load(file: &Path) -> Stored {
 struct Library {
     /// `<data>/saved`: the library file and the .torrent files.
     home: PathBuf,
+    /// Where films go while the user has chosen no folder (`default_folder`).
+    films: PathBuf,
     stored: Stored,
     /// The torrents being saved, by infohash: their handle and librqbit id.
     live: HashMap<String, (usize, Arc<ManagedTorrent>)>,
@@ -198,7 +200,7 @@ impl Library {
     }
 
     fn folder(&self) -> PathBuf {
-        self.stored.folder.clone().unwrap_or_else(|| self.home.clone())
+        self.stored.folder.clone().unwrap_or_else(|| self.films.clone())
     }
 
     /// Writes the library (a temp file, synced, then renamed: a crash leaves the old one).
@@ -257,18 +259,67 @@ impl Library {
     }
 }
 
-/// A folder name from a title: no characters a file system refuses, at most 100 characters.
+/// The longest folder name `folder_name` makes, in characters.
+const NAME_MAX: usize = 100;
+
+/// A folder name from a title, the same on every system and one Windows takes too: no
+/// characters a file system refuses, no dot or space at the ends (Windows drops them, so the
+/// folder would not be found by its name), no device name of Windows (`CON`, `NUL`, `COM1`…,
+/// also before an extension: `CON.x`), at most 100 characters with the year.
 pub fn folder_name(title: &str, year: Option<u32>) -> String {
     let clean: String = title
         .chars()
         .map(|c| if c.is_control() || r#"/\:*?"<>|"#.contains(c) { ' ' } else { c })
         .collect();
     let clean = clean.split_whitespace().collect::<Vec<_>>().join(" ");
-    let clean: String = clean.trim_matches('.').chars().take(100).collect();
-    let clean = if clean.is_empty() { "reel".to_owned() } else { clean };
-    match year {
-        Some(y) => format!("{clean} ({y})"),
-        None => clean,
+    let year = year.map(|y| format!(" ({y})")).unwrap_or_default();
+    let room = NAME_MAX - year.chars().count();
+    let clean: String = clean.trim_matches(['.', ' ']).chars().take(room).collect();
+    let clean = clean.trim_end_matches(['.', ' ']);
+    let name = if clean.is_empty() { format!("reel{year}") } else { format!("{clean}{year}") };
+    let name: String = not_a_device(&name).chars().take(NAME_MAX).collect();
+    name.trim_end_matches(['.', ' ']).to_owned()
+}
+
+/// `name` with a `_` after its stem when Windows reads it as a device (`CON` → `CON_`,
+/// `nul.txt` → `nul_.txt`): the part before its first dot, spaces at the end dropped, is `CON`,
+/// `PRN`, `AUX`, `NUL`, `COM0`–`COM9` or `LPT0`–`LPT9` (or `¹ ² ³` for the digit), in any case.
+fn not_a_device(name: &str) -> String {
+    let stem_len = name.find('.').unwrap_or(name.len());
+    let stem = name[..stem_len].trim_end_matches(' ').to_ascii_uppercase();
+    let mut chars = stem.chars();
+    let head: String = chars.by_ref().take(3).collect();
+    let tail: Vec<char> = chars.collect();
+    let device = match (head.as_str(), tail.as_slice()) {
+        ("CON" | "PRN" | "AUX" | "NUL", []) => true,
+        ("COM" | "LPT", [d]) => d.is_ascii_digit() || "¹²³".contains(*d),
+        _ => false,
+    };
+    if device { format!("{}_{}", &name[..stem_len], &name[stem_len..]) } else { name.to_owned() }
+}
+
+/// The longest path Windows opens without its long-path prefix (`MAX_PATH`: 260 UTF-16 units
+/// with the closing NUL). Rust's `std::fs`, and so librqbit, which writes the files with it,
+/// adds `\\?\` to longer paths itself (`sys::path::windows::maybe_verbatim`), but mpv opens the
+/// video with `_wopen` as it is and reel's executable does not declare `longPathAware`: a
+/// longer path would save and never play.
+const WINDOWS_MAX_PATH: usize = 259;
+
+/// Whether Windows opens `path` without the long-path prefix (checked on every system in tests).
+fn fits_windows(path: &Path) -> bool {
+    path.to_string_lossy().encode_utf16().count() <= WINDOWS_MAX_PATH
+}
+
+/// Where films go while the user has chosen no folder: the library's own (`<data>/saved`),
+/// except on Windows (`local`: `%LOCALAPPDATA%`), where NSH's data dir is the roaming
+/// `%APPDATA%`, copied to every computer the user signs in to: films go to
+/// `%LOCALAPPDATA%\reel\saved` there (unset or empty: the library's). The library itself
+/// (`library.json`, the .torrent files) stays in the data dir: it is small, the settings are
+/// there too, and each item keeps its folder in full, so it finds its files wherever they are.
+fn default_folder(home: &Path, local: Option<std::ffi::OsString>) -> PathBuf {
+    match local.filter(|l| !l.is_empty()) {
+        Some(local) => PathBuf::from(local).join("reel").join("saved"),
+        None => home.to_owned(),
     }
 }
 
@@ -304,7 +355,8 @@ pub fn init(data_dir: &Path) {
     }
     let _ = std::fs::create_dir_all(home.join("torrents"));
     let stored = load(&home.join("library.json"));
-    let mut lib = Library { home, stored, live: HashMap::new(), revision: 1 };
+    let films = default_folder(&home, if cfg!(windows) { std::env::var_os("LOCALAPPDATA") } else { None });
+    let mut lib = Library { home, films, stored, live: HashMap::new(), revision: 1 };
     // Without its link (never stored) an item that had no torrent yet cannot go on.
     for item in lib.stored.items.iter_mut() {
         if item.infohash.is_none() && item.unfinished() || item.state == State::Waiting {
@@ -591,6 +643,10 @@ async fn resolve(id: u32, source: String) {
     let torrent_bytes = handle.with_metadata(|m| m.torrent_bytes.clone()).ok();
     // The torrent's folder is where librqbit writes it (a magnet's, or one added earlier).
     let written_to = handle.output_folder().to_owned();
+    // A video Windows could not open for the player: said now, not once it is saved.
+    if cfg!(windows) && !fits_windows(&written_to.join(&all[video].1)) {
+        return fail("path_too_long");
+    }
     let wanted = with(|lib| {
         // Removed while its torrent was being found.
         lib.item_mut(id)?;
@@ -899,6 +955,51 @@ mod tests {
     }
 
     #[test]
+    fn folder_names_are_ones_windows_takes() {
+        // No dot or space at the end, also once cut to length.
+        assert_eq!(folder_name("Se7en.", None), "Se7en");
+        assert_eq!(folder_name(" Amélie . ", None), "Amélie");
+        assert_eq!(folder_name(&format!("{}. b", "a".repeat(98)), None), "a".repeat(98));
+        // At most 100 characters with the year, and the year kept.
+        let long = folder_name(&"é".repeat(300), Some(2001));
+        assert_eq!(long.chars().count(), 100);
+        assert!(long.ends_with("é (2001)"), "{long}");
+        assert_eq!(folder_name("...", Some(1999)), "reel (1999)");
+        // Device names, in any case and before an extension, get a `_`.
+        assert_eq!(folder_name("CON", None), "CON_");
+        assert_eq!(folder_name("nul", None), "nul_");
+        assert_eq!(folder_name("Aux.Files", None), "Aux_.Files");
+        assert_eq!(folder_name("com1", None), "com1_");
+        assert_eq!(folder_name("LPT9.x", None), "LPT9_.x");
+        assert_eq!(folder_name("COM¹", None), "COM¹_");
+        assert_eq!(folder_name("Con . Air", None), "Con _. Air");
+        // Not devices.
+        assert_eq!(folder_name("Con Air", Some(1997)), "Con Air (1997)");
+        assert_eq!(folder_name("CON", Some(2020)), "CON (2020)");
+        assert_eq!(folder_name("Console", None), "Console");
+        assert_eq!(folder_name("COM10", None), "COM10");
+        assert_eq!(folder_name("LPT", None), "LPT");
+    }
+
+    #[test]
+    fn paths_longer_than_windows_opens_are_found() {
+        let dir = PathBuf::from(r"C:\Users\me\AppData\Local\reel\saved\Film (2001)");
+        assert!(fits_windows(&dir.join("Film.mkv")));
+        assert!(fits_windows(Path::new(&"a".repeat(259))));
+        assert!(!fits_windows(Path::new(&"a".repeat(260))));
+        // UTF-16 units, not bytes: 259 Cyrillic letters fit (518 bytes).
+        assert!(fits_windows(Path::new(&"ф".repeat(259))));
+    }
+
+    #[test]
+    fn films_go_to_local_app_data_when_it_is_given() {
+        let home = Path::new("/data/saved");
+        assert_eq!(default_folder(home, Some(r"C:\Users\me\AppData\Local".into())), PathBuf::from(r"C:\Users\me\AppData\Local").join("reel").join("saved"));
+        assert_eq!(default_folder(home, Some("".into())), home);
+        assert_eq!(default_folder(home, None), home);
+    }
+
+    #[test]
     fn an_item_knows_its_video_and_size() {
         let i = Item {
             id: 1,
@@ -1053,6 +1154,7 @@ mod tests {
         let base = home.join("Film (1999)");
         let lib = Library {
             home: home.clone(),
+            films: home.clone(),
             stored: Stored { items: vec![item(1, "k", "aa", &base.to_string_lossy(), &["f.mkv"])], ..Default::default() },
             live: HashMap::new(),
             revision: 0,
@@ -1095,6 +1197,7 @@ mod tests {
     fn a_path_two_items_use_is_never_deleted_with_one() {
         let lib = Library {
             home: PathBuf::from("/h"),
+            films: PathBuf::from("/h"),
             stored: Stored { items: vec![item(1, "a", "aa", "/f/T", &["x.mkv", "x.srt"]), item(2, "b", "aa", "/f/T", &["y.mkv", "x.srt"])], ..Default::default() },
             live: HashMap::new(),
             revision: 0,

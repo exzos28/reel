@@ -41,7 +41,8 @@ pub struct Player {
     shared: Arc<Shared>,
     thread: Option<JoinHandle<()>>,
     src: String,
-    /// A view that draws through a render context it makes on its first draw (macOS) holds
+    /// A view that draws through a render context it makes on its first draw (macOS, Windows,
+    /// Linux) holds
     /// `loadfile` until then: a file that opens at once (a saved film on disk) found no video
     /// output yet, and mpv played its sound only. None: load at once.
     gate: Option<Arc<LoadGate>>,
@@ -178,7 +179,8 @@ impl Player {
     }
 
     /// Files load only once the view draws (`LoadGate::open`).
-    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    /// Android draws through its Surface (`wid`), which is there before a file loads.
+    #[cfg_attr(not(any(target_os = "macos", all(target_os = "linux", not(target_arch = "arm")), windows)), allow(dead_code))]
     pub fn hold_until_drawn(&mut self) -> Arc<LoadGate> {
         let gate = Arc::new(LoadGate::default());
         self.gate = Some(gate.clone());

@@ -159,3 +159,13 @@ disconnected every peer that has the whole torrent, its seeders, as not needed. 
 opens and closes HTTP connections (the file's end, then its start), so there were such moments:
 347 of 622 peers ended "not needed", 5 stayed, and the stream ran at 0 MB/s. A torrent that
 selects no file now never drops its seeders that way.
+
+## Windows file names (src/file_info.rs, src/torrent_state/mod.rs)
+
+A torrent's file names are written as they are; on Windows a component `C:x` made
+`PathBuf::push` replace the whole path, so the file went outside the torrent's folder, `a:b`
+wrote the stream `b` of the file `a`, and a trailing dot or a device name (`CON`, `nul.txt`) did
+not name the file asked for. On Windows each component of `FileInfo::relative_filename` is now
+made one Windows takes (`file_info::windows_name`: `<>:"/\|?*` and control characters as `_`, no
+dot or space at the end, `_` after a device name's stem). Other platforms are unchanged. Test:
+`file_info::tests::test_windows_name`.
