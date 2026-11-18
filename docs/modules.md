@@ -154,6 +154,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `list() -> String`: The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, each item `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`.
   JSON: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`
   Called from: `ui/library.ts`.
+- `openFolder() -> bool` (`open_folder`): Opens the folder saved films go into in the system's file manager (desktops); false where there is none or it did not open.
+  Called from: `ui/library.ts`.
 - `pause(id: u32)`: Pauses saving the item (its whole torrent: episodes of one pack pause together).
   Called from: `ui/library.ts`.
 - `plan(show: String, season: u32) -> String`: The Save drawer for a season: `{"episodes":[{"key","number","title","size","state", "progress","locked"}],"saved","total","size"}`.

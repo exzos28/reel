@@ -85,7 +85,23 @@ export function SaveDrawer(props: {
   const someOn = () => eps().some((e) => e.locked || props.picked().has(e.key));
   const saveLabel = () => (fresh().length === 0 ? t("saved.drawer.choose") : fresh().length === 1 ? t("saved.drawer.save_one") : t("saved.drawer.save_n", { count: fresh().length }));
   return (
-    <Drawer id="save" open={props.open} onClose={props.onClose} title={() => t("saved.drawer.title")} note={() => t("saved.drawer.note")} tvWidth={760}>
+    <Drawer
+      id="save"
+      open={props.open}
+      onClose={props.onClose}
+      title={() => t("saved.drawer.title")}
+      note={() => t("saved.drawer.note")}
+      tvWidth={760}
+      // Save stays in view at the foot, whatever row the list is scrolled to.
+      footer={() => (
+        <View style={{ gap: u(10) }}>
+          <If when={more() > 0}>
+            <Text style={metaText()}>{t("saved.drawer.more", { size: Fmt.size(more()) })}</Text>
+          </If>
+          <Button kind="primary" label={saveLabel} focused={() => props.focusedAt() === eps().length + 1} disabled={() => fresh().length === 0} onPress={props.onSave} />
+        </View>
+      )}
+    >
       {(list) => (
         <View style={{ gap: u(10) }}>
           <View style={row(u(6))}>
@@ -117,12 +133,6 @@ export function SaveDrawer(props: {
               />
             )}
           </Each>
-          <View ref={list.follow(() => props.focusedAt() === eps().length + 1)} style={{ marginTop: u(12), gap: u(10) }}>
-            <If when={more() > 0}>
-              <Text style={metaText()}>{t("saved.drawer.more", { size: Fmt.size(more()) })}</Text>
-            </If>
-            <Button kind="primary" label={saveLabel} focused={() => props.focusedAt() === eps().length + 1} disabled={() => fresh().length === 0} onPress={props.onSave} />
-          </View>
         </View>
       )}
     </Drawer>

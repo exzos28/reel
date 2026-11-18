@@ -469,6 +469,7 @@ saved:
   pause: Pause
   resume: Go on saving
   remove: Remove
+  open_folder: Open folder
   speed: "%{speed} from %{peers} people"
   space:
     saved: "%{size} saved"

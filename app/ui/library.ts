@@ -133,5 +133,8 @@ export function removeSaved(id: number) {
   refresh();
 }
 
+/** Shows the folder of saved films in the file manager (desktops). */
+export const openSavedFolder = () => librarySupported && Library.openFolder();
+
 /** The title a saved key belongs to: a show's for an episode. */
 export const titleOf = (key: string) => key.replace(/:s\d+e\d+$/, "");

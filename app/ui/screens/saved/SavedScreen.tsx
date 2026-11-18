@@ -17,7 +17,9 @@ import { scroller } from "../../layout/Scroller";
 import { goFromNav, openTitle } from "../../nav";
 import { metaText, sectionTitle } from "../../kit/text";
 import { Fmt } from "../../native";
-import { pauseSaved, removeSaved, savedList, titleOf, watchSaved, type SavedItem } from "../../library";
+import { openSavedFolder, pauseSaved, removeSaved, savedList, titleOf, watchSaved, type SavedItem } from "../../library";
+import { Button } from "../../kit/Button";
+import { row } from "../../kit/shape";
 import { alpha, colors, cs, safe, u } from "../../theme";
 import { rounded } from "../../kit/shape";
 import { SavedRow } from "./SavedRow";
@@ -101,7 +103,13 @@ export function SavedScreen() {
   return (
     <PageFrame ctl={page} kind={caps.touch ? "deep" : "root"} title={() => t("saved.title")}>
       <View style={pageStyle()}>
-        <Text style={metaText()}>{spaceLine(used(), free(), list().space.folder)}</Text>
+        <View style={row(u(20))}>
+          <Text style={{ ...metaText(), flexShrink: 1 }}>{spaceLine(used(), free(), list().space.folder)}</Text>
+          {/* The folder in Finder / File Explorer: a desktop has a file manager. */}
+          <If when={!caps.touch && !caps.remote}>
+            <Button kind="secondary" height={44} label={() => t("saved.open_folder")} focused={() => false} onPress={openSavedFolder} />
+          </If>
+        </View>
         <View style={spaceTrack()}>
           <View style={{ width: `${Math.max(1, Math.round(share() * 100))}%`, height: "100%", backgroundColor: colors.snow() }} />
         </View>

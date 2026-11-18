@@ -67,10 +67,20 @@ function CloseButton(props: { onPress: () => void }) {
   );
 }
 
-function Body(props: { title: () => string; note?: () => string; children: (list: ScrollCtl) => JSX.Element }) {
+/** What stays at the drawer's foot under the scrolling rows (its main action). */
+const footerStyle = (): ViewStyle => ({
+  ...(frame.panel === "tv"
+    ? { paddingHorizontal: u(48), paddingTop: u(20), paddingBottom: safe().y, gap: u(12) }
+    : { paddingHorizontal: 16, paddingTop: 12, paddingBottom: frame.panel === "bottom-sheet" ? 28 : 16, gap: 10 }),
+  borderTopWidth: 1,
+  borderTopColor: alpha(colors.snow(), 0.08),
+});
+
+function Body(props: { title: () => string; note?: () => string; children: (list: ScrollCtl) => JSX.Element; footer?: () => JSX.Element }) {
   /** The drawer keeps the focused row in its upper third. */
   const list = scroller({ anchor: (viewport) => viewport / 3 });
   return (
+    <View style={{ flex: 1 }}>
     <Scroller ctl={list} style={{ flex: 1 }}>
       <View style={contentStyle()}>
         {/* Room on the right for the ✕ where there is one. */}
@@ -83,6 +93,10 @@ function Body(props: { title: () => string; note?: () => string; children: (list
         {props.children(list)}
       </View>
     </Scroller>
+    <If when={props.footer}>
+      <View style={footerStyle()}>{props.footer!()}</View>
+    </If>
+    </View>
   );
 }
 
@@ -99,6 +113,8 @@ export function Drawer(props: {
   id: string;
   /** The rows; `list` follows the focus (`list.follow`). */
   children: (list: ScrollCtl) => JSX.Element;
+  /** Fixed at the foot, under the rows: always in view (a Save button). */
+  footer?: () => JSX.Element;
 }) {
   const close = () => props.open() && props.onClose();
   return (
@@ -109,7 +125,7 @@ export function Drawer(props: {
           {[
             <View testID={`${props.id}-backdrop`} style={tvBackdrop()} onPress={close} />,
             <View testID={`${props.id}-panel`} style={tvPanel(props.tvWidth ?? 640)}>
-              <Body title={props.title} note={props.note}>{props.children}</Body>
+              <Body title={props.title} note={props.note} footer={props.footer}>{props.children}</Body>
             </View>,
           ]}
         </If>
@@ -131,7 +147,7 @@ export function Drawer(props: {
             <View style={grabberStyle()} />
           </If>
           <CloseButton onPress={close} />
-          <Body title={props.title} note={props.note}>{props.children}</Body>
+          <Body title={props.title} note={props.note} footer={props.footer}>{props.children}</Body>
         </View>
       </Sheet>
     </If>

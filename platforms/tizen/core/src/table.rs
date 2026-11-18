@@ -193,6 +193,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         let (folder,): (String,) = args(a)?;
         ret(Library::set_folder(folder))
     })
+    .sync("Library", "openFolder", |a| {
+        no_args(&a)?;
+        ret(Library::open_folder())
+    })
     .sync("Library", "revision", |a| {
         no_args(&a)?;
         ret(Library::revision())

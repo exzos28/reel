@@ -660,6 +660,12 @@ impl Library {
         library::set_folder(&folder).err().unwrap_or_default()
     }
 
+    /// Opens the folder saved films go into in the system's file manager (desktops); false
+    /// where there is none or it did not open.
+    pub fn open_folder() -> bool {
+        library::open_folder()
+    }
+
     /// Goes up when anything the Saved screen and the Save buttons show changed.
     pub fn revision() -> f64 {
         library::revision() as f64

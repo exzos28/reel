@@ -227,6 +227,7 @@ export const Library: LibraryModule = {
   resume: () => {},
   remove: () => {},
   setFolder: () => "",
+  openFolder: () => false,
   revision: () => 0,
 };
 

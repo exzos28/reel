@@ -209,6 +209,28 @@ pub fn set_folder(folder: &str) -> Result<(), String> {
     keep().set_folder(Path::new(folder))
 }
 
+/// Opens the folder new items are saved into in the system's file manager (Finder, File
+/// Explorer, the desktop's own); false where there is none (phones, TVs) or it did not open.
+pub fn open_folder() -> bool {
+    let Some(folder) = keep().folder() else { return false };
+    let _ = std::fs::create_dir_all(&folder);
+    #[cfg(target_os = "macos")]
+    let opened = std::process::Command::new("open").arg(&folder).spawn();
+    #[cfg(windows)]
+    let opened = std::process::Command::new("explorer").arg(&folder).spawn();
+    #[cfg(all(target_os = "linux", not(target_os = "android")))]
+    let opened = std::process::Command::new("xdg-open").arg(&folder).spawn();
+    #[cfg(not(any(target_os = "macos", windows, all(target_os = "linux", not(target_os = "android")))))]
+    let opened: std::io::Result<()> = Err(std::io::Error::other("no file manager"));
+    match opened {
+        Ok(_) => true,
+        Err(e) => {
+            tracing::warn!("reel saved: opening {}: {e}", folder.display());
+            false
+        }
+    }
+}
+
 /// Goes up when anything the screens show changed.
 pub fn revision() -> u64 {
     keep().revision() + REVISION.load(Ordering::Relaxed)
