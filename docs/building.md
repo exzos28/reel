@@ -22,7 +22,9 @@ cargo test --workspace        # the core's crates
 ../dev/ui-rules.sh            # screens render content only
 ```
 
-All of them pass before every commit.
+All of them pass before every commit: `dev/checks.sh` runs them in turn. To run it before every
+push, enable the repo's hooks once per clone: `git config core.hooksPath .githooks`
+(`git push --no-verify` skips it).
 
 ## Packages
 

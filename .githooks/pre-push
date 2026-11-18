@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Runs dev/checks.sh before a push, so main does not get a commit that breaks the build or the
+# tests. Enable once per clone: git config core.hooksPath .githooks
+# Skip for one push: git push --no-verify
+exec "$(git rev-parse --show-toplevel)/dev/checks.sh"
