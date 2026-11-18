@@ -3,9 +3,22 @@ import { cardMeta, leftText, titleText, type Summary } from "../../catalog";
 import { Card, cardBox } from "../../kit/Card";
 import { Picture, WatchedBar, watchedClip } from "../../kit/Picture";
 import { CardMeta } from "../../kit/Rating";
-import { rounded } from "../../kit/shape";
+import { cardRadius, rounded } from "../../kit/shape";
 import { labelText, metaText, oneLine } from "../../kit/text";
-import { u } from "../../theme";
+import { GRID_GAP, gridCardWidth } from "../../layout/Grid";
+import { density, u } from "../../theme";
+
+/** A 16:9 card's still height for its width (198 of 352). */
+export const wideCardHeight = (width: number) => (width * 198) / 352;
+
+/** A shelf of these cards (Home, Search's rows, More like this): on a desktop the cards of the Films
+ * and Series grid, as big and as far apart; a TV and touch keep 352 TV pixels, 24 apart. */
+const desktop = density === "regular";
+export const shelfCardWidth = () => (desktop ? gridCardWidth() : u(352));
+/** Between a shelf's cards, TV pixels. */
+export const SHELF_GAP = desktop ? GRID_GAP : 24;
+/** From one card's start to the next one's, points (a row's arrows move by it). */
+export const shelfStep = () => shelfCardWidth() + u(SHELF_GAP);
 
 const titleStyle = () => ({ ...oneLine, ...labelText(), fontWeight: 600, marginTop: u(10) });
 
@@ -17,17 +30,21 @@ export function WideCard(props: {
   focused: () => boolean;
   follow: (when: () => boolean) => (r: ViewRef) => void;
   onPress: () => void;
+  /** Its width, points; 352 TV pixels unless the shelf says. */
+  width?: () => number;
 }) {
   const s = props.item;
+  const width = () => props.width?.() ?? u(352);
   return (
     <Card
       label={() => titleText(s())}
       focused={props.focused}
       onPress={props.onPress}
-      style={cardBox(u(352), 4)}
+      preview={s}
+      style={cardBox(width(), 4)}
       viewRef={props.follow(props.focused)}
       picture={[
-        <Picture item={s} src={() => s().card} titleSize={26} style={{ height: u(198), ...rounded() }} />,
+        <Picture item={s} src={() => s().card} titleSize={26} style={{ height: wideCardHeight(width()), ...rounded(cardRadius()) }} />,
         <If when={props.continuing && s().progress > 0}>
           <View style={watchedClip()}>
             <WatchedBar progress={() => s().progress} />

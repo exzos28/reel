@@ -7,7 +7,7 @@ import { scroller, type ScrollCtl } from "../../layout/Scroller";
 import { Rail, railLead } from "../../layout/Rail";
 import { RowGap, rowWindow } from "../../layout/reach";
 import { u } from "../../theme";
-import { WideCard } from "./WideCard";
+import { SHELF_GAP, shelfCardWidth, shelfStep, WideCard, wideCardHeight } from "./WideCard";
 
 /** A shelf's title and its row of 16:9 cards. `focusedAt`: the card the
  * focus is on, null while it is elsewhere. The title is `shelf.<id>` unless
@@ -24,20 +24,21 @@ export function HomeShelf(props: {
 }) {
   /** The shelf puts the focused card at the left edge of its inset. */
   const line = scroller({ horizontal: true, anchor: railLead, step: () => step() });
-  const step = () => u(352 + 24);
+  const step = shelfStep;
   const win = rowWindow({ line, focusedAt: props.focusedAt, step });
   return (
     <View ref={props.blockRef} style={{ gap: u(22) }}>
       <SectionTitle text={props.title ?? (() => t(`shelf.${props.shelf().id}`))} inset rail={line} />
-      <LazyBlock page={props.page} eager={props.eager} height={() => u(198 + 110)}>
-      <Rail ctl={line} gap={24} top={0} bottom={24}>
-        <RowGap window={win} step={step} gap={24} />
+      <LazyBlock page={props.page} eager={props.eager} height={() => wideCardHeight(shelfCardWidth()) + u(110)}>
+      <Rail ctl={line} gap={SHELF_GAP} top={0} bottom={24}>
+        <RowGap window={win} step={step} gap={SHELF_GAP} />
         <Each of={props.shelf().items.slice(win().from, win().to)} key={(f) => f.id}>
           {(item, c) => (
             <WideCard
               item={item}
               continuing={props.shelf().id === "continue"}
               focused={() => props.focusedAt() === win().from + c()}
+              width={shelfCardWidth}
               follow={line.follow}
               onPress={() => props.onOpen(win().from + c())}
             />

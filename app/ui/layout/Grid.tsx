@@ -1,7 +1,8 @@
 // A grid of cards that fills the safe area's width: as many columns as fit
 // at about `cell` TV pixels each.
 import { computed, signal, View, windowSize, type JSX, type ViewRef, type ViewStyle } from "nsh";
-import { safe, u } from "../theme";
+import { density, safe, u } from "../theme";
+import { ultraWide } from "./chrome";
 import type { ScrollCtl } from "./scrollCtl";
 
 /** Rows mounted before and after the one in view: the rest are blanks of a row's height,
@@ -15,14 +16,32 @@ export interface GridRow<T> {
   items: T[];
 }
 
-/** Columns that fit `cell`-wide cards `gap` apart (at least two). */
+/** The most cards in a row: more make them small and the page heavy to look at. An ultra-wide
+ * window's column is narrow for its height (`chrome.ultraWide`): six there are too small, five. */
+export const MAX_COLUMNS = 6;
+export const MAX_COLUMNS_ULTRA_WIDE = 5;
+
+/** Columns that fit `cell`-wide cards `gap` apart (at least two, at most `MAX_COLUMNS`). */
 export function gridColumns(cell: number, gap: number) {
   const width = windowSize().width - 2 * safe().x;
-  return Math.max(2, Math.floor((width + u(gap)) / (u(cell) + u(gap))));
+  const most = ultraWide() ? MAX_COLUMNS_ULTRA_WIDE : MAX_COLUMNS;
+  return Math.min(most, Math.max(2, Math.floor((width + u(gap)) / (u(cell) + u(gap)))));
 }
 
 /** The width of a card in `columns` columns `gap` apart. */
 export const cellWidth = (columns: number, gap: number) => (windowSize().width - 2 * safe().x - (columns - 1) * u(gap)) / columns;
+
+/** The 16:9 cards' grid (Films, Series), TV pixels: about this wide, this far apart and between
+ * rows. More room on a desktop, where the cards are seen closer and the pointer's ring and preview
+ * need space round a card. */
+export const GRID_CELL = 326;
+export const GRID_GAP = density === "ten-foot" ? 24 : 30;
+export const GRID_ROW_GAP = density === "ten-foot" ? 28 : 38;
+/** Columns of the grid now. */
+export const gridColumnsNow = () => gridColumns(GRID_CELL, GRID_GAP);
+/** A grid card's width, points: what a desktop's shelves of 16:9 cards use too (Home), so a shelf
+ * and the grid show cards of one size. */
+export const gridCardWidth = () => cellWidth(gridColumnsNow(), GRID_GAP);
 
 export function gridRows<T>(all: T[], columns: number): GridRow<T>[] {
   const out: GridRow<T>[] = [];

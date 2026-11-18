@@ -14,7 +14,7 @@ import { clamp } from "../../focus/memory";
 import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
 import { metaText } from "../../kit/text";
-import { cellWidth, Grid, gridColumns, gridRows } from "../../layout/Grid";
+import { cellWidth, Grid, GRID_GAP, GRID_ROW_GAP, gridColumnsNow, gridRows } from "../../layout/Grid";
 import { NAV } from "../../layout/navItems";
 import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
@@ -36,7 +36,7 @@ export function BrowseScreen(props: { page: Page }) {
   const data = computed(() => browse(props.page));
   const { zone, nav, trend, pill, row, cell, gridIds } = focusOf[props.page];
   /** Cards per grid row: as many as fit at about 330 TV pixels each. */
-  const columns = computed(() => gridColumns(326, 24));
+  const columns = computed(() => gridColumnsNow());
   const rows = computed(() => gridRows<Summary>(data().all, columns()));
   const count = () => data().all.length;
   const groups = () => data().filters;
@@ -203,15 +203,15 @@ export function BrowseScreen(props: { page: Page }) {
           rows={rows}
           key={(s) => s.id}
           top={20}
-          rowGap={28}
-          gap={24}
+          rowGap={GRID_ROW_GAP}
+          gap={GRID_GAP}
           rowRef={(r) => page.follow(() => zone() === "grid" && cell() >= r().at && cell() < r().at + r().items.length)}
           page={page}
           focusRow={() => (zone() === "grid" ? Math.floor(cell() / columns()) : null)}
           cell={(item, at) => (
             <GridCard
               item={item}
-              width={() => cellWidth(columns(), 24)}
+              width={() => cellWidth(columns(), GRID_GAP)}
               focused={() => zone() === "grid" && cell() === at()}
               onPress={() => openCell(at())}
             />
@@ -221,8 +221,8 @@ export function BrowseScreen(props: { page: Page }) {
           page={page}
           state={() => (data().more ? data().moreState : "idle")}
           columns={columns}
-          width={() => cellWidth(columns(), 24)}
-          gap={24}
+          width={() => cellWidth(columns(), GRID_GAP)}
+          gap={GRID_GAP}
           grid={data}
           onNear={askMore}
         />

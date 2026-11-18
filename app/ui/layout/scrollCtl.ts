@@ -21,6 +21,10 @@ export type Placement = "anchor" | "nearest" | "start";
 export type Follow = (when: () => boolean) => (r: ViewRef) => void;
 
 const running = new Set<() => void>();
+/** Counts every move of any scroll view where a pointer rests (a desktop): what is anchored to a
+ * view that scrolled away (a card's preview) reads it to close, as the pointer under a wheel does
+ * not move and says nothing. A TV and touch never count. */
+export const scrolled = signal(0);
 /** Where each remembered page was left (`scroller({ memory })`). */
 const offsets = new Map<string, number>();
 /** The page remembered as `memory` opens at its top next time. */
@@ -38,6 +42,9 @@ export interface ScrollCtl {
   offset: ReturnType<typeof signal<number>>;
   /** @internal Where the view is now, from `Scroller`'s scroll events. */
   remember(offset: number): void;
+  /** @internal The view's and its content's lengths along its axis, from `Scroller`'s layout: a
+   * row whose cards all fit has nowhere to go on (its arrow is off at once, not after a move). */
+  sized(viewport: number | null, content: number | null): void;
   /** @internal The scroll view and its content, set by `Scroller`. */
   scroll: ReturnType<typeof signal<ScrollRef | undefined>>;
   content?: ViewRef;
@@ -64,10 +71,15 @@ let scrollers = 0;
  * then move it by the cards it shows whole, the next one landing at the anchor. */
 export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number) => number; memory?: string; step?: () => number }): ScrollCtl {
   const horizontal = !!opts.horizontal;
+  /** The view's and its content's lengths along its axis, points (0: not laid out yet). */
+  let lengths = { viewport: 0, content: 0 };
   const remember = (offset: number) => {
-    // The row's arrows: back is off at the start; on is off only where a move found the end,
-    // until the view moves back from it.
-    if ((ctl.offset() ?? 0) > offset) ctl.atEnd.set(false);
+    if (caps.windowBar) scrolled.set(scrolled() + 1);
+    // The row's arrows: back is off at the start; on is off at the end, wherever the move came from
+    // (the arrows, the keys, a trackpad), once the row's lengths are known (`sized`); before that,
+    // only where a move found the end, until the view moves back from it.
+    if (lengths.viewport && lengths.content) ctl.atEnd.set(offset >= lengths.content - lengths.viewport - 1);
+    else if ((ctl.offset() ?? 0) > offset) ctl.atEnd.set(false);
     ctl.atStart.set(offset <= 1);
     ctl.offset.set(offset);
     if (opts.memory) offsets.set(opts.memory, offset);
@@ -152,9 +164,15 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     go(target, true);
     setTimeout(() => heading === target && (heading = null), 400);
   };
+  const sized = (viewport: number | null, content: number | null) => {
+    lengths = { viewport: viewport ?? lengths.viewport, content: content ?? lengths.content };
+    if (!lengths.viewport || !lengths.content) return;
+    ctl.atEnd.set((ctl.offset() ?? 0) >= lengths.content - lengths.viewport - 1);
+  };
   const ctl: ScrollCtl = {
     horizontal,
     domId,
+    sized,
     nudge,
     page(dir) {
       extent().then((e) => e && nudge(pageDelta(dir, e.viewport)));
