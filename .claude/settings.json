@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(/app/target/**)",
+      "Read(/out/**)",
+      "Read(/.claude/worktrees/**)",
+      "Read(/logs/**)"
+    ]
+  },
+  "claudeMdExcludes": ["**/vendor/librqbit/webui/CLAUDE.md"],
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/dev/ui-rules-hook.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

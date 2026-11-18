@@ -43,16 +43,16 @@ The app in `app/` and `platforms/tizen/`, its build and release in `build/`, dev
 
 ## UI
 
-- Design rules: `.claude/skills/ui-design/SKILL.md` and `design/directions.md` (the newest
-  direction wins). Mockups in `design/concept/`.
-- TV first: everything works with arrows, OK and Back; focus (white ring + lift) differs from
-  selected (lighter fill + check); leave `ringRoom()` around items in scroll views.
-- Small components and named style helpers; no long inline style objects in markup.
-- Screens render content only, inside `PageFrame` (`app/ui/layout/PageFrame.tsx`): it places
-  what is over and under a page (nav, heads, Back, the status bar's scrim), the page's title and
-  the room under it, from `layout/metrics.ts`. Sideways rows are `Rail`; touch targets reach
-  44 / 48 pt through `theme.targetSlop`. A screen never reads `safeArea`, `ringRoom`, the family
-  or positions overlays: `dev/ui-rules.sh` checks it.
+- UI rules (design, TV focus, components, `PageFrame`) are in `app/ui/CLAUDE.md`; it loads when you
+  touch a file there.
+
+## Navigating the code
+
+- Search content with `grep`/`rg` from a specific directory (`app/src`, `app/ui`, `docs`…); don't
+  run `find` over the repo root: it walks ignored build dirs (`app/target`, `out`) and worktrees.
+- `ast-grep` (`sg`) does structural search over Rust/TS/TSX; prefer it to regex for code-shape
+  queries (calls, impls, JSX props).
+- Core ↔ UI module map: `docs/modules.md` (generated; see its header for how to regenerate).
 
 ## Secrets
 

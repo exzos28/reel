@@ -6,8 +6,10 @@ logs/
 # Every build's packages (build/: out/linux, out/windows, out/tizen…).
 /out/
 
-# Local only: the coding agent's skills and internal research notes.
-/.claude/
+# Local only: the coding agent's skills and internal research notes; its shared project settings
+# are committed.
+/.claude/*
+!/.claude/settings.json
 /design/research-plugin-model.md
 /docs/research-indexers.md
 /docs/research-metadata.md
