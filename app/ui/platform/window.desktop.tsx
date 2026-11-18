@@ -5,10 +5,13 @@ import { currentWindow, isAvailable as hasWindows } from "nsh/desktop";
 import { BAR_HEIGHT, barBackBox, WindowBar } from "../layout/WindowBar";
 import type { Fullscreen, WindowFrameProps } from "./window";
 
+/** The least the window may be made, points: narrower and the bar and a page no longer fit. */
+const MIN_WINDOW = { width: 640, height: 340 };
+
 /** The window has no system title bar: the window bar is reel's own, the hero's still
  * running up to the top edge under it and the window's controls. */
 export function hideTitleBar() {
-  if (hasWindows) currentWindow().set({ titleBar: { style: "hidden", height: BAR_HEIGHT } });
+  if (hasWindows) currentWindow().set({ titleBar: { style: "hidden", height: BAR_HEIGHT }, minSize: MIN_WINDOW });
 }
 
 /** The player has no bar: its top still drags the window, around its Back (a strip over

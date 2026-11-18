@@ -211,7 +211,7 @@ test("Mac: Back in the window bar is disabled on a root, goes back from a title;
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
   expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
-  expect(app.shows("label:Add to Watchlist")).toBe(true); // the page's action, in the bar
+  expect(app.shows("label:Add to Watchlist")).toBe(true); // the page's action, beside Play
   await app.press("label:Back to Movies");
   expect(app.texts()).toContain("All movies");
   await app.press("label:Dune >> nth=0");
