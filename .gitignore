@@ -10,9 +10,6 @@ logs/
 # are committed.
 /.claude/*
 !/.claude/settings.json
-/design/research-plugin-model.md
-/docs/research-indexers.md
-/docs/research-metadata.md
 
 # Local only: this machine's files for the project (secrets is a link to ~/Documents/secrets/reel).
 /.local/
