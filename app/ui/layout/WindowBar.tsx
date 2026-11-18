@@ -16,7 +16,7 @@ import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
 import { canGoBack, go, handleBack, route, section, stack, type Destination, type Route } from "../nav";
 import { alpha, colors, font, iconPt, u } from "../theme";
-import { chrome } from "./chrome";
+import { centering, chrome } from "./chrome";
 import { frameSolid as barSolid } from "./frameState";
 import { BAR_HEIGHT } from "./metrics";
 import { ListToggle } from "./ListToggle";
@@ -238,7 +238,9 @@ export function WindowBar() {
             <PageAction />
           </View>
         </If>
-        <View desktop={{ windowDrag: true }} style={{ width: titleBar().right + (chrome === "mac" ? 16 : 10), alignSelf: "stretch" }} />
+        {/* The system's room; a window wider than its content column also keeps the nav at the
+            column's right edge (as the page's content and the hero's still end there). */}
+        <View desktop={{ windowDrag: true }} style={{ width: titleBar().right + (chrome === "mac" ? 16 : 10) + centering(), alignSelf: "stretch" }} />
       </View>
     </View>
     </If>

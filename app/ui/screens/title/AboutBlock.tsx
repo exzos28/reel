@@ -5,7 +5,14 @@ import { t } from "nsh/i18n";
 import { aboutText, crewLabel, namesText, type Title } from "../../catalog";
 import { bodyText, labelText, metaText } from "../../kit/text";
 import { SectionTitle } from "../../layout/Section";
+import { heroFollowsWindow } from "../../layout/metrics";
 import { colors, insetMaxWidth, safe, u } from "../../theme";
+
+/** A desktop's title hero shows the whole about (a pointer reads it there, no remote has to
+ * scroll past it); a TV's and touch's cut it to three lines and this block shows it whole. */
+export const wholeAboutInHero = heroFollowsWindow;
+/** The whole overview here: only where the hero cut it. */
+const overviewHere = (d: Title) => d.aboutFull && !wholeAboutInHero;
 
 /** At the inset, as wide as in an ordinary window (a wide window's inset moves it, not narrows it). */
 const blockStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, gap: u(18), maxWidth: insetMaxWidth(1400) });
@@ -19,7 +26,7 @@ export function AboutBlock(props: { data: () => Title }) {
   return (
     <View style={blockStyle()}>
       <SectionTitle text={() => t("about.title")} />
-      <If when={d().aboutFull}>
+      <If when={overviewHere(d())}>
         <Text style={overviewStyle()}>{aboutText(d())}</Text>
       </If>
       <View style={{ gap: u(10) }}>
@@ -37,4 +44,4 @@ export function AboutBlock(props: { data: () => Title }) {
 }
 
 /** Whether the About block has anything to show. */
-export const hasAbout = (d: Title) => d.aboutFull || d.crew.length > 0;
+export const hasAbout = (d: Title) => overviewHere(d) || d.crew.length > 0;

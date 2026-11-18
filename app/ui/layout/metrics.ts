@@ -5,7 +5,7 @@
 import { safeArea, windowSize } from "nsh";
 import { look } from "../platform/look";
 import { u } from "../theme";
-import { frame } from "./chrome";
+import { centering, frame, sideInset } from "./chrome";
 
 /** A root page (a destination: the nav over it), a title (its hero runs under what is
  * over it) or a deep page (Settings on touch, About: Back over it). */
@@ -128,6 +128,16 @@ export interface HeroBox {
    * window's left (more than 0: it fades in from the background there). */
   stillWidth: number;
   stillLeft: number;
+  /** How far in from the window's right edge the still ends, points: a desktop window wider than
+   * its content column runs it past the column into the room beside it, not to the window's edge
+   * when that room is wide. */
+  stillRight: number;
+  /** How wide the still's fade on its right is, points (0: none, it ends at the window's edge):
+   * across the room past the column and a little into it, so the column shows the still whole. */
+  stillFadeRight: number;
+  /** How far the still runs on under the hero's bottom, points: on a desktop it goes on behind
+   * the first shelf's title and fades out there, instead of ending at the actions. */
+  stillBelow: number;
 }
 
 /** A hero's box. On a desktop it grows with the window (up to 60% of its height, never past a
@@ -135,11 +145,19 @@ export interface HeroBox {
  * anchored right; where it starts after the window's left edge it fades in from the background. */
 export function heroBox(i: HeroBoxInput): HeroBox {
   const room = i.width - i.left;
-  if (!i.desktop) return { height: i.height, stillWidth: room, stillLeft: i.left };
+  if (!i.desktop) return { height: i.height, stillWidth: room, stillLeft: i.left, stillRight: 0, stillFadeRight: 0, stillBelow: 0 };
   const height = Math.max(i.height, Math.min(HERO_SHARE * i.windowHeight, (i.width * 9) / 16));
   const stillWidth = Math.min(room, (height * 16) / 9 / STILL_SHOWN);
-  return { height, stillWidth, stillLeft: i.width - stillWidth };
+  return { height, stillWidth, stillLeft: i.width - stillWidth, stillRight: 0, stillFadeRight: 0, stillBelow: 0 };
 }
+
+/** How far a desktop's still runs on under the hero, TV pixels: to about the first shelf's title. */
+const STILL_BELOW = 150;
+/** How far past a wide window's content column the still runs at most, TV pixels, and how far into
+ * the column its fade starts: a little, so the fade is long enough to be gentle without the still
+ * running far past the column. */
+const STILL_PAST = 240;
+const STILL_FADE_IN = 360;
 
 /** A desktop's hero follows its window; a TV's and touch's keep their design. */
 export const heroFollowsWindow = frame.nav === "window-bar";
@@ -147,5 +165,11 @@ export const heroFollowsWindow = frame.nav === "window-bar";
 /** This window's hero box for a design `height` and backdrop `left`, TV pixels. */
 export function heroBoxNow(height: number, left = 0): HeroBox {
   const w = windowSize();
-  return heroBox({ height: u(height), left: u(left), width: w.width, windowHeight: w.height, desktop: heroFollowsWindow });
+  // A window wider than its content column: the still runs past the column's right edge by up to
+  // `STILL_PAST` and fades out there, rather than to the window's edge in a wide room.
+  const wide = heroFollowsWindow && centering() > 0.5;
+  const right = wide ? Math.max(0, sideInset() - u(STILL_PAST)) : 0;
+  const fade = wide ? sideInset() - right + u(STILL_FADE_IN) : 0;
+  const box = heroBox({ height: u(height), left: u(left), width: w.width - right, windowHeight: w.height, desktop: heroFollowsWindow });
+  return { ...box, stillRight: right, stillFadeRight: Math.min(fade, box.stillWidth * 0.6), stillBelow: heroFollowsWindow ? u(STILL_BELOW) : 0 };
 }
