@@ -1,6 +1,6 @@
 //! The core on a desktop, for running the web build in a browser against it:
 //!
-//!   cargo run -p reel-tizen-core --bin reel-core -- [--port N] [--token T] [--data-dir D] [--cache-dir C] [--ui-dir W] [--profile P]
+//!   cargo run -p reel-tizen-core --bin reel-core -- [--port N] [--token T] [--data-dir D] [--cache-dir C] [--ui-dir W] [--profile P] [--device D]
 //!
 //! Without `--token` a random one is made and printed. With `--ui-dir` (an NSH web build, e.g.
 //! out/web) the UI is at http://127.0.0.1:N/ui/index.html?reelToken=T. Serves until Ctrl-C.
@@ -28,6 +28,14 @@ fn main() {
             "--ui-dir" => config.ui_dir = Some(PathBuf::from(value())),
             // "tizen" to filter releases as on the TV; default: this desktop's player.
             "--profile" => config.profile = Some(value()),
+            // The kind of device the UI lays itself out for (mac, windows, linux, tablet, phone, tv):
+            // the web build in a browser standing in for one, for screenshots (dev/screens.sh).
+            "--device" => {
+                let name = value();
+                if reel_domain::compat::set_device(&name).is_none() {
+                    usage(&format!("--device is one of {}", reel_domain::compat::DEVICES.join(", ")));
+                }
+            }
             _ => usage(&format!("unknown argument {flag}")),
         }
     }
@@ -47,7 +55,7 @@ fn main() {
 }
 
 fn usage(problem: &str) -> ! {
-    eprintln!("{problem}\nusage: reel-core [--port N] [--token T] [--data-dir D] [--cache-dir C] [--ui-dir W] [--profile P]");
+    eprintln!("{problem}\nusage: reel-core [--port N] [--token T] [--data-dir D] [--cache-dir C] [--ui-dir W] [--profile P] [--device D]");
     std::process::exit(2)
 }
 

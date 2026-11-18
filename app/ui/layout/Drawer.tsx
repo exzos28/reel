@@ -13,7 +13,7 @@
 // bindings in a headless run, and the remote must always reach Back.
 import { Text, View, type JSX, type ViewStyle } from "nsh";
 import { Sheet } from "nsh/base";
-import { titleBar } from "nsh/desktop";
+import { titleBar } from "../platform/titlebar";
 import { t } from "nsh/i18n";
 import { Icon } from "../kit/Icon";
 import { rounded } from "../kit/shape";

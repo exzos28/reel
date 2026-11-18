@@ -78,6 +78,28 @@ pub fn set_profile(p: Profile) {
     *PROFILE.lock().unwrap() = Some(p);
 }
 
+/// The kinds of device a development host may stand in for (`set_device`), as the UI names its
+/// platform families.
+pub const DEVICES: [&str; 6] = ["tv", "mac", "windows", "linux", "tablet", "phone"];
+
+static DEVICE: Mutex<Option<&'static str>> = Mutex::new(None);
+
+/// The kind of device the UI is told it runs on, past what the profile says: a development host
+/// (platforms/tizen's reel-core with `--device`) serving the web build in a browser as a Mac, a
+/// phone, a TV… for screenshots (dev/screens.sh). Never set on a real device. `None` for one not
+/// in `DEVICES`.
+pub fn set_device(name: &str) -> Option<&'static str> {
+    let known = DEVICES.iter().copied().find(|d| *d == name)?;
+    *DEVICE.lock().unwrap() = Some(known);
+    Some(known)
+}
+
+/// The kind of device: the one a development host stands in for, else the profile's ("tv" on a
+/// Samsung TV), else none.
+pub fn device() -> Option<&'static str> {
+    DEVICE.lock().unwrap().or_else(|| profile().device())
+}
+
 /// Why a release or file will not play here. The UI words it (`compat.<key>`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -121,6 +143,14 @@ pub fn file_ok(name: &str, profile: Profile) -> Result<(), Reason> {
 mod tests {
     use super::*;
     use crate::release::parse;
+
+    #[test]
+    fn a_stand_in_device_is_one_of_the_families() {
+        // A known one is not set here: the stand-in is the process's, and other tests read it.
+        assert_eq!(set_device("watch"), None);
+        assert_eq!(set_device(""), None);
+        assert!(DEVICES.contains(&"mac") && DEVICES.contains(&"phone") && DEVICES.contains(&"tv"));
+    }
 
     #[test]
     fn tizen_refuses_what_it_cannot_decode() {

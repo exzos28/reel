@@ -4035,6 +4035,7 @@ dependencies = [
  "axum",
  "libc",
  "reel-app",
+ "reel-domain",
  "reel-rpc",
  "serde_json",
  "tokio",

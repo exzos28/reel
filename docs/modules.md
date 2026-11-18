@@ -220,7 +220,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/hosted.ts`.
 - `current() -> String`: The settings as `load` answers them, from memory (after a change made elsewhere, e.g. on the hosted page from a phone).
   Called from: `ui/hosted.ts`.
-- `device() -> String`: The kind of device, when the host knows better than the system ("tv" on a Samsung TV, whose web view NSH takes for a desktop browser); empty otherwise.
+- `device() -> String`: The kind of device, when the host knows better than the system ("tv" on a Samsung TV, whose web view NSH takes for a desktop browser; a development host's stand-in, `compat::set_device`); empty otherwise.
   Called from: `ui/platform/index.ts`.
 - `finishSetup()` (`finish_setup`): The first-run setup is done (it does not show again).
   Called from: `ui/preferences.ts`.

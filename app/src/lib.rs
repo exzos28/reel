@@ -216,9 +216,10 @@ pub struct Settings;
 #[module]
 impl Settings {
     /// The kind of device, when the host knows better than the system ("tv" on a
-    /// Samsung TV, whose web view NSH takes for a desktop browser); empty otherwise.
+    /// Samsung TV, whose web view NSH takes for a desktop browser; a development host's stand-in,
+    /// `compat::set_device`); empty otherwise.
     pub fn device() -> String {
-        reel_domain::compat::profile().device().unwrap_or_default().to_owned()
+        reel_domain::compat::device().unwrap_or_default().to_owned()
     }
 
     /// Loads the settings from `data_dir` (the app's data directory, empty

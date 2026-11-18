@@ -11,12 +11,22 @@ export { runtime } from "./runtime";
  * where Back is, how panels open. */
 export type Family = "tv" | "mac" | "windows" | "linux" | "tablet" | "phone";
 
+const FAMILIES: Family[] = ["tv", "mac", "windows", "linux", "tablet", "phone"];
+/** What the core says this device is: "tv" on a Samsung TV; on a development host serving the web
+ * build in a browser (reel-core --device, dev/screens.sh), the family to stand in for. */
+const device = Settings.device();
+
 /** A TV: the system says so, or the core does (a Samsung TV's web view looks
  * like a desktop browser to NSH, but the core there runs the TV's player). */
-const tv = runtime.idiom === "tv" || Settings.device() === "tv";
+const tv = runtime.idiom === "tv" || device === "tv";
+
+/** The web build standing in for another family than a TV (a Mac, a phone…), for screenshots in a
+ * browser: laid out as it, with a stand-in for what only the real platform has (`titleBar`). */
+export const standIn = runtime.web && !tv && (FAMILIES as string[]).includes(device);
 
 function detect(): Family {
   if (tv) return "tv";
+  if (standIn) return device as Family;
   if (runtime.desktop) {
     if (runtime.os === "macos") return "mac";
     if (runtime.os === "windows") return "windows";

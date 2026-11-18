@@ -1,0 +1,57 @@
+{
+  "//": "dev/screens.sh's matrix: per target (the family the web build stands in for, reel-core --device) its window sizes in CSS points and whether it is a touch device; the screens each size is shot on. Ratios matter for desktops: wider than 2.2 of the height is ultra-wide (app/ui/layout/chrome.ts).",
+  "targets": {
+    "mac": {
+      "touch": false,
+      "sizes": [
+        ["macbook-14", 1512, 945],
+        ["fhd", 1920, 1080],
+        ["qhd", 2560, 1440],
+        ["qhd-short", 2560, 1208],
+        ["wide-2.26", 3008, 1329],
+        ["uw-21x9", 3440, 1440],
+        ["short-wide", 2560, 900],
+        ["uw-32x9", 5120, 1440]
+      ]
+    },
+    "windows": {
+      "touch": false,
+      "sizes": [
+        ["hd", 1366, 768],
+        ["fhd", 1920, 1080],
+        ["uw-21x9", 3440, 1440]
+      ]
+    },
+    "linux": {
+      "touch": false,
+      "sizes": [
+        ["fhd", 1920, 1080],
+        ["qhd", 2560, 1440]
+      ]
+    },
+    "tv": {
+      "touch": false,
+      "sizes": [
+        ["fhd", 1920, 1080],
+        ["hd", 1280, 720]
+      ]
+    },
+    "tablet": {
+      "touch": true,
+      "sizes": [
+        ["ipad-portrait", 820, 1180],
+        ["ipad-landscape", 1180, 820],
+        ["ipad-pro-landscape", 1366, 1024]
+      ]
+    },
+    "phone": {
+      "touch": true,
+      "sizes": [
+        ["small", 375, 667],
+        ["regular", 393, 852],
+        ["large", 430, 932]
+      ]
+    }
+  },
+  "screens": ["home", "shelves", "title", "movies", "search", "settings"]
+}

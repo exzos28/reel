@@ -17,6 +17,8 @@ path = "src/main.rs"
 
 [dependencies]
 reel-app = { path = "../../../app" }
+# The device a development host stands in for (reel-core --device).
+reel-domain = { path = "../../../app/domain" }
 reel-rpc = { path = "../rpc" }
 axum.workspace = true
 tokio.workspace = true

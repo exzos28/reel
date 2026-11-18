@@ -26,6 +26,11 @@ All of them pass before every commit: `dev/checks.sh` runs them in turn. To run 
 push, enable the repo's hooks once per clone: `git config core.hooksPath .githooks`
 (`git push --no-verify` skips it).
 
+Screenshots of every layout, with no window on screen: `dev/screens.sh` (`--targets mac,phone`,
+`--sizes`, `--screens`; the matrix is `dev/screens/matrix.json`) shoots the web build in headless
+Chrome against `reel-core` standing in for each device, into `out/screens/` with an `index.html`
+to look at them. It needs Google Chrome, Node and, on a Mac, Homebrew's LLVM.
+
 ## Packages
 
 Every build writes its package to `out/<platform>/` at the repository's root.

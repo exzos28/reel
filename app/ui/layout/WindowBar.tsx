@@ -8,7 +8,7 @@
 // (the default), right after the logo, or in the middle of the window. Away from the right
 // edge the page's action goes there instead, so the nav stays put from page to page.
 import { Text, View, type JSX, type TextStyle, type ViewStyle } from "nsh";
-import { titleBar } from "nsh/desktop";
+import { titleBar } from "../platform/titlebar";
 import { t } from "nsh/i18n";
 import { title as titleOf, titleText, toggleList } from "../catalog";
 import backIcon from "../icons/back.svg";
