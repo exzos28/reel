@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 
-use reel_app::{Catalog, Engine, Fmt, Hosted, Meta, Settings, Sources, VideoEngine};
+use reel_app::{Catalog, Engine, Fmt, Hosted, Meta, Offline, Settings, Sources, VideoEngine};
 use reel_rpc::{Error, Registry, args, no_args, ret};
 
 /// `Settings.load` and `Meta.init` take the host's data dir (`process.dataDir` on native
@@ -150,6 +150,52 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Hosted", "linkSource", |a| {
         let (link,): (String,) = args(a)?;
         ret(Hosted::link_source(link))
+    });
+
+    // The TV saves nothing (`Offline.supported()` is false there): its answers say so.
+    r.sync("Offline", "supported", |a| {
+        no_args(&a)?;
+        ret(Offline::supported())
+    })
+    .sync("Offline", "save", |a| {
+        let (keys,): (String,) = args(a)?;
+        ret(Offline::save(keys))
+    })
+    .sync("Offline", "item", |a| {
+        let (key,): (String,) = args(a)?;
+        ret(Offline::item(key))
+    })
+    .sync("Offline", "title", |a| {
+        let (id, show): (String, bool) = args(a)?;
+        ret(Offline::title(id, show))
+    })
+    .sync("Offline", "plan", |a| {
+        let (show, season): (String, u32) = args(a)?;
+        ret(Offline::plan(show, season))
+    })
+    .sync("Offline", "list", |a| {
+        no_args(&a)?;
+        ret(Offline::list())
+    })
+    .sync("Offline", "pause", |a| {
+        let (id,): (u32,) = args(a)?;
+        ret(Offline::pause(id))
+    })
+    .sync("Offline", "resume", |a| {
+        let (id,): (u32,) = args(a)?;
+        ret(Offline::resume(id))
+    })
+    .sync("Offline", "remove", |a| {
+        let (id,): (u32,) = args(a)?;
+        ret(Offline::remove(id))
+    })
+    .sync("Offline", "setFolder", |a| {
+        let (folder,): (String,) = args(a)?;
+        ret(Offline::set_folder(folder))
+    })
+    .sync("Offline", "revision", |a| {
+        no_args(&a)?;
+        ret(Offline::revision())
     });
 
     r.sync("Sources", "search", |a| {

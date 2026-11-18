@@ -24,7 +24,7 @@ pub use interface::{hosted, thumbs};
 use nsh_core::prelude::*;
 
 #[cfg(not(target_arch = "wasm32"))]
-use application::{catalog, progress, settings, tracks};
+use application::{catalog, offline, progress, settings, tracks};
 #[cfg(any(target_os = "macos", target_os = "android", target_os = "linux", windows))]
 use adapters::mpv;
 #[cfg(not(target_arch = "wasm32"))]
@@ -34,7 +34,7 @@ use wiring::{metadata, playback};
 fn native(registry: &mut Registry) {
     registry.module::<Fmt>();
     #[cfg(not(target_arch = "wasm32"))]
-    registry.module::<Engine>().module::<Catalog>().module::<Settings>().module::<Sources>().module::<Meta>().module::<VideoEngine>().module::<Hosted>();
+    registry.module::<Engine>().module::<Catalog>().module::<Settings>().module::<Sources>().module::<Meta>().module::<VideoEngine>().module::<Hosted>().module::<Offline>();
 }
 
 /// The mpv video view (`reel/mpv`), where libmpv is found.
@@ -227,8 +227,9 @@ impl Settings {
     pub fn load(data_dir: String) -> String {
         let dir = (!data_dir.is_empty()).then(|| std::path::PathBuf::from(data_dir));
         let loaded = settings::load(dir.as_deref());
-        // Watch progress and the metadata cache live there too.
+        // Watch progress and the metadata cache live there too, and the saved films' library.
         catalog::init(dir.as_deref());
+        offline::init(dir.as_deref());
         loaded.to_string()
     }
 
@@ -590,6 +591,78 @@ impl Sources {
     /// `{"state":"failed","message"}`.
     pub fn result(id: u32) -> String {
         playback().search_result(id).to_string()
+    }
+}
+
+/// Saving films and episodes to watch offline (design/offline-downloads.md). Results are
+/// JSON strings; states and messages are keys the UI words (`saved.*`).
+#[cfg(not(target_arch = "wasm32"))]
+#[module]
+pub struct Offline;
+
+#[cfg(not(target_arch = "wasm32"))]
+#[module]
+impl Offline {
+    /// Whether this device saves films (false on TVs and without the engine): no Save
+    /// control shows when it does not.
+    pub fn supported() -> bool {
+        offline::supported()
+    }
+
+    /// Saves the catalog keys in `keys` (a JSON array: a film, or episodes) once their
+    /// release is known; what is saved already stays. False when this device saves nothing.
+    pub fn save(keys: String) -> bool {
+        let keys: Vec<String> = serde_json::from_str(&keys).unwrap_or_default();
+        offline::save(&keys)
+    }
+
+    /// One key's state for its button: `{"state","progress","id","message"}` (see
+    /// `offline::item`).
+    pub fn item(key: String) -> String {
+        offline::item(&key).to_string()
+    }
+
+    /// The Save button of a title (`show`: a series): `{"state","saved","saving","progress"}`.
+    pub fn title(id: String, show: bool) -> String {
+        offline::title(&id, show).to_string()
+    }
+
+    /// The Save drawer for a season: `{"episodes":[{"key","number","title","size","state",
+    /// "progress","locked"}],"saved","total","size"}`.
+    pub fn plan(show: String, season: u32) -> String {
+        offline::plan(&show, season).to_string()
+    }
+
+    /// The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free",
+    /// "folder"}}`, each item `{"id","key","title","label","image","season","number","state",
+    /// "size","have","progress","speed","peers","message","folder"}`.
+    pub fn list() -> String {
+        offline::list().to_string()
+    }
+
+    /// Pauses saving the item (its whole torrent: episodes of one pack pause together).
+    pub fn pause(id: u32) {
+        offline::set_running(id, false);
+    }
+
+    /// Goes on saving a paused item.
+    pub fn resume(id: u32) {
+        offline::set_running(id, true);
+    }
+
+    /// Stops saving the item and deletes its files.
+    pub fn remove(id: u32) {
+        offline::remove(id);
+    }
+
+    /// Saves new items into `folder` from now on: "" when done, else why not.
+    pub fn set_folder(folder: String) -> String {
+        offline::set_folder(&folder).err().unwrap_or_default()
+    }
+
+    /// Goes up when anything the Saved screen and the Save buttons show changed.
+    pub fn revision() -> f64 {
+        offline::revision() as f64
     }
 }
 

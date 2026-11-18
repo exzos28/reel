@@ -102,6 +102,50 @@ impl Playback for NoEngine {
     }
 }
 
+/// `Keep` where nothing is saved: no engine, or a TV (no room, no offline use).
+#[derive(Default)]
+pub struct NoKeep;
+
+impl reel_domain::ports::Keep for NoKeep {
+    fn supported(&self) -> bool {
+        false
+    }
+
+    fn init(&self, _data_dir: &std::path::Path) {}
+
+    fn folder(&self) -> Option<std::path::PathBuf> {
+        None
+    }
+
+    fn set_folder(&self, _folder: &std::path::Path) -> Result<(), String> {
+        Err(NO_ENGINE.into())
+    }
+
+    fn add(&self, _request: reel_domain::ports::KeepRequest) -> Result<u32, String> {
+        Err(NO_ENGINE.into())
+    }
+
+    fn list(&self) -> Value {
+        json!([])
+    }
+
+    fn set_running(&self, _id: u32, _on: bool) {}
+
+    fn remove(&self, _id: u32) {}
+
+    fn local_file(&self, _key: &str) -> Option<std::path::PathBuf> {
+        None
+    }
+
+    fn space(&self) -> Value {
+        json!({ "saved": 0, "free": null, "folder": null })
+    }
+
+    fn revision(&self) -> u64 {
+        0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

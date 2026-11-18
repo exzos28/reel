@@ -6,7 +6,7 @@
 
 use std::sync::OnceLock;
 
-use reel_domain::ports::{Metadata, Playback};
+use reel_domain::ports::{Keep, Metadata, Playback};
 
 /// Finding and playing releases: the engine inside the app (cargo feature `engine`, on by
 /// default), else `NoEngine`, whose answers say there is no engine on this device.
@@ -21,6 +21,23 @@ pub fn playback() -> &'static dyn Playback {
             p
         })
         .as_ref()
+}
+
+/// Saving films to watch offline: the engine's (the same session as `playback`), else
+/// `NoKeep`. A Samsung TV's core has the engine but saves nothing (no room, no offline use).
+pub fn keep() -> &'static dyn Keep {
+    static KEEP: OnceLock<Box<dyn Keep>> = OnceLock::new();
+    KEEP.get_or_init(|| {
+        let tv = reel_domain::compat::profile().device() == Some("tv");
+        #[cfg(feature = "engine")]
+        if !tv {
+            let _ = playback(); // the engine is built with its host first
+            return Box::new(reel_engine::Local);
+        }
+        let _ = tv;
+        Box::new(crate::adapters::no_engine::NoKeep)
+    })
+    .as_ref()
 }
 
 /// Titles and the rest: TMDB, AniList and Jikan behind the cache. A background refresh

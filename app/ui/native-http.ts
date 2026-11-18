@@ -15,7 +15,7 @@
 // engine, up to a second), so the frames it blocks are few. The Promise-returning methods
 // (Meta's data calls, which may wait for the network) use an asynchronous request.
 import type {
-  CatalogModule, EngineModule, FmtModule, HostedModule, MetaModule, SettingsModule, SourcesModule, VideoEngineModule,
+  CatalogModule, EngineModule, FmtModule, HostedModule, MetaModule, OfflineModule, SettingsModule, SourcesModule, VideoEngineModule,
 } from "app/native";
 
 // NSH's typings (nsh/globals.d.ts) do not declare these browser globals; on the web they exist.
@@ -213,6 +213,21 @@ export const Hosted: HostedModule = {
   offered: s("Hosted", "offered"),
   answerOffer: s("Hosted", "answerOffer"),
   linkSource: s("Hosted", "linkSource"),
+};
+
+// A TV saves no films (design/offline-downloads.md): no call goes to the core for it.
+export const Offline: OfflineModule = {
+  supported: () => false,
+  save: () => false,
+  item: () => '{"state":"none","progress":0}',
+  title: () => '{"state":"none","saved":0,"saving":0,"progress":0}',
+  plan: () => '{"episodes":[],"saved":0,"total":0,"size":null}',
+  list: () => '{"saving":[],"ready":[],"failed":[],"space":{"saved":0,"free":null,"folder":null}}',
+  pause: () => {},
+  resume: () => {},
+  remove: () => {},
+  setFolder: () => "",
+  revision: () => 0,
 };
 
 // Fmt is pure and also registered in the wasm32 build, which `ui/native.ts` uses. Over HTTP

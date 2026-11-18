@@ -522,6 +522,8 @@ pub fn list() -> Value {
                     "title": i.title,
                     "label": i.label,
                     "image": i.image,
+                    "season": i.episode.map(|e| e.0),
+                    "number": i.episode.map(|e| e.1),
                     "state": state,
                     "size": size,
                     "have": have,

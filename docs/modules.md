@@ -173,6 +173,39 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   JSON: `{"items":[TitleCard]}`
   Called from: nothing in the UI.
 
+## Offline
+
+Saving films and episodes to watch offline (design/offline-downloads.md). Results are JSON strings; states and messages are keys the UI words (`saved.*`).
+
+Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
+
+- `item(key: String) -> String`: One key's state for its button: `{"state","progress","id","message"}` (see `offline::item`).
+  JSON: `{"state","progress","id","message"}`
+  Called from: nothing in the UI.
+- `list() -> String`: The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, each item `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`.
+  JSON: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`
+  Called from: nothing in the UI.
+- `pause(id: u32)`: Pauses saving the item (its whole torrent: episodes of one pack pause together).
+  Called from: nothing in the UI.
+- `plan(show: String, season: u32) -> String`: The Save drawer for a season: `{"episodes":[{"key","number","title","size","state", "progress","locked"}],"saved","total","size"}`.
+  JSON: `{"episodes":[{"key","number","title","size","state", "progress","locked"}],"saved","total","size"}`
+  Called from: nothing in the UI.
+- `remove(id: u32)`: Stops saving the item and deletes its files.
+  Called from: nothing in the UI.
+- `resume(id: u32)`: Goes on saving a paused item.
+  Called from: nothing in the UI.
+- `revision() -> f64`: Goes up when anything the Saved screen and the Save buttons show changed.
+  Called from: nothing in the UI.
+- `save(keys: String) -> bool`: Saves the catalog keys in `keys` (a JSON array: a film, or episodes) once their release is known; what is saved already stays. False when this device saves nothing.
+  Called from: nothing in the UI.
+- `setFolder(folder: String) -> String` (`set_folder`): Saves new items into `folder` from now on: "" when done, else why not.
+  Called from: nothing in the UI.
+- `supported() -> bool`: Whether this device saves films (false on TVs and without the engine): no Save control shows when it does not.
+  Called from: nothing in the UI.
+- `title(id: String, show: bool) -> String`: The Save button of a title (`show`: a series): `{"state","saved","saving","progress"}`.
+  JSON: `{"state","saved","saving","progress"}`
+  Called from: nothing in the UI.
+
 ## Settings
 
 The user's settings, kept on the device.

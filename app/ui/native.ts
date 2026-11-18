@@ -28,6 +28,8 @@ export const Meta = remote ? http.Meta : local.Meta;
 export const VideoEngine = remote ? http.VideoEngine : local.VideoEngine;
 // Settings from a phone: the page's address and its pairing code (docs/hosted-settings.md).
 export const Hosted = remote ? http.Hosted : local.Hosted;
+// Saving films to watch offline (design/offline-downloads.md); a TV saves none.
+export const Offline = remote ? http.Offline : local.Offline;
 export const Fmt = local.Fmt;
 
 /** The data dir to pass to `Settings.load` and `Meta.init`: the core's on the web (the

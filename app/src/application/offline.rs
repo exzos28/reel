@@ -1,0 +1,215 @@
+//! Saving films and episodes to watch offline (design/offline-downloads.md): what the Save
+//! button, the Save drawer and the Saved screen ask. The engine saves (`wiring::keep`); this
+//! finds the release each key plays (the catalog may still be searching) and words nothing:
+//! states are keys the UI translates, sizes are bytes.
+
+use std::{
+    collections::HashMap,
+    path::Path,
+    sync::{
+        Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::{Duration, Instant},
+};
+
+use serde_json::{Value, json};
+
+use super::catalog::{self, SaveAsk};
+use crate::wiring::keep;
+use reel_domain::{episode, keys::episode_key};
+
+/// How long a key may wait for its release before it is given up on.
+const SEARCH_FOR: Duration = Duration::from_secs(150);
+
+/// Keys asked to be saved that have no item yet: still searching, or why they cannot be.
+static ASKED: Mutex<Option<HashMap<String, Asked>>> = Mutex::new(None);
+static REVISION: AtomicU64 = AtomicU64::new(1);
+
+#[derive(Clone)]
+enum Asked {
+    Searching,
+    No(&'static str),
+}
+
+fn asked(key: &str) -> Option<Asked> {
+    ASKED.lock().unwrap().as_ref()?.get(key).cloned()
+}
+
+fn set_asked(key: &str, a: Option<Asked>) {
+    let mut all = ASKED.lock().unwrap();
+    let all = all.get_or_insert_with(HashMap::new);
+    match a {
+        Some(a) => all.insert(key.to_owned(), a),
+        None => all.remove(key),
+    };
+    REVISION.fetch_add(1, Ordering::Relaxed);
+}
+
+pub fn supported() -> bool {
+    keep().supported()
+}
+
+/// Opens the library (Settings.load hands the data dir over once).
+pub fn init(data_dir: Option<&Path>) {
+    if let (true, Some(dir)) = (supported(), data_dir) {
+        keep().init(dir);
+    }
+}
+
+fn items() -> Vec<Value> {
+    keep().list().as_array().cloned().unwrap_or_default()
+}
+
+/// Saves each key once its release is known (a film, or episodes). Keys already saved or
+/// being saved are left as they are.
+pub fn save(keys: &[String]) -> bool {
+    if !supported() {
+        return false;
+    }
+    let have = items();
+    for key in keys {
+        if have.iter().any(|i| i["key"] == key.as_str() && i["state"] != "failed") {
+            continue;
+        }
+        set_asked(key, Some(Asked::Searching));
+        let key = key.clone();
+        std::thread::spawn(move || {
+            let started = Instant::now();
+            loop {
+                match catalog::save_request(&key) {
+                    SaveAsk::Ready(request) => {
+                        let r = keep().add(request);
+                        set_asked(&key, r.err().map(|_| Asked::No("failed")));
+                        return;
+                    }
+                    SaveAsk::No(why) => return set_asked(&key, Some(Asked::No(why))),
+                    SaveAsk::Searching if started.elapsed() > SEARCH_FOR => return set_asked(&key, Some(Asked::No("no_source"))),
+                    SaveAsk::Searching => std::thread::sleep(Duration::from_millis(400)),
+                }
+            }
+        });
+    }
+    true
+}
+
+/// One key's state for its button: `{"state","progress","id","message"}`; state is
+/// "none", "searching", "resolving", "saving", "paused", "waiting", "saved", "unavailable"
+/// or "failed" (`message`: "no_source", "not_in_release", "unsupported", …).
+pub fn item(key: &str) -> Value {
+    item_in(&items(), key)
+}
+
+fn item_in(items: &[Value], key: &str) -> Value {
+    if let Some(i) = items.iter().find(|i| i["key"] == key) {
+        return json!({ "state": i["state"], "progress": i["progress"], "id": i["id"], "message": i["message"] });
+    }
+    match asked(key) {
+        Some(Asked::Searching) => json!({ "state": "searching", "progress": 0.0 }),
+        Some(Asked::No(why)) => json!({ "state": "failed", "progress": 0.0, "message": why }),
+        None => json!({ "state": "none", "progress": 0.0 }),
+    }
+}
+
+const UNFINISHED: [&str; 4] = ["resolving", "saving", "paused", "waiting"];
+
+/// The hero button of a title. A film: its item. A show: what is saved of it,
+/// `{"state","saved","saving","progress"}`, state "none", "saving" while anything is
+/// unfinished ("paused" when all of that is paused), else "saved".
+pub fn title(id: &str, show: bool) -> Value {
+    if !show {
+        return item(id);
+    }
+    let prefix = format!("{id}:s");
+    let mine: Vec<Value> = items().into_iter().filter(|i| i["key"].as_str().is_some_and(|k| k.starts_with(&prefix))).collect();
+    let searching = ASKED
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map_or(0, |a| a.iter().filter(|(k, v)| k.starts_with(&prefix) && matches!(v, Asked::Searching)).count());
+    let saved = mine.iter().filter(|i| i["state"] == "saved").count();
+    let unfinished: Vec<&Value> = mine.iter().filter(|i| UNFINISHED.contains(&i["state"].as_str().unwrap_or(""))).collect();
+    let (have, size) = unfinished.iter().fold((0u64, 0u64), |(h, s), i| (h + i["have"].as_u64().unwrap_or(0), s + i["size"].as_u64().unwrap_or(0)));
+    let state = if !unfinished.is_empty() || searching > 0 {
+        if searching == 0 && unfinished.iter().all(|i| i["state"] == "paused") { "paused" } else { "saving" }
+    } else if saved > 0 {
+        "saved"
+    } else {
+        "none"
+    };
+    json!({
+        "state": state,
+        "saved": saved,
+        "saving": unfinished.len() + searching,
+        "progress": if size > 0 { have as f64 / size as f64 } else { 0.0 },
+    })
+}
+
+/// The Save drawer for a season: `{"episodes":[{"key","number","title","size","state",
+/// "progress","locked"}],"saved","total","size"}`. Sizes are bytes, null until the release's
+/// files are known; `locked`: saved or being saved, so the drawer does not pick it again.
+pub fn plan(show: &str, season: u32) -> Value {
+    let files = catalog::season_files(show, season);
+    let all = items();
+    let episodes: Vec<Value> = catalog::episodes(show, season)
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|e| e["upcoming"] != true)
+        .map(|e| {
+            let number = e["number"].as_u64().unwrap_or(0) as u32;
+            let key = episode_key(show, season, number);
+            let from_pack = files.as_ref().and_then(|f| {
+                let i = episode::pick(f, Some((season as u16, number as u16)))?;
+                f.iter().find(|x| x.0 == i).map(|x| x.2)
+            });
+            let saved_size = all.iter().find(|i| i["key"] == key.as_str()).and_then(|i| i["size"].as_u64()).filter(|s| *s > 0);
+            let st = item_in(&all, &key);
+            let state = st["state"].as_str().unwrap_or("none").to_owned();
+            json!({
+                "key": key,
+                "number": number,
+                "title": e["title"],
+                "size": saved_size.or(from_pack),
+                "locked": !matches!(state.as_str(), "none" | "failed"),
+                "state": state,
+                "progress": st["progress"],
+            })
+        })
+        .collect();
+    let saved = episodes.iter().filter(|e| e["locked"] == true).count();
+    let size: Option<u64> = episodes.iter().map(|e| e["size"].as_u64()).sum();
+    json!({ "episodes": episodes, "saved": saved, "total": episodes.len(), "size": size })
+}
+
+/// The Saved screen: `{"saving":[item…],"ready":[item…],"failed":[item…],"space"}`, items
+/// as `Keep::list` gives them, newest first.
+pub fn list() -> Value {
+    let all = items();
+    let of = |states: &[&str]| -> Vec<Value> { all.iter().filter(|i| states.contains(&i["state"].as_str().unwrap_or(""))).cloned().collect() };
+    json!({
+        "saving": of(&UNFINISHED),
+        "ready": of(&["saved", "unavailable"]),
+        "failed": of(&["failed"]),
+        "space": keep().space(),
+    })
+}
+
+pub fn set_running(id: u32, on: bool) {
+    keep().set_running(id, on);
+}
+
+pub fn remove(id: u32) {
+    keep().remove(id);
+}
+
+/// Saves new items into `folder` from now on. Err: it cannot be written to.
+pub fn set_folder(folder: &str) -> Result<(), String> {
+    keep().set_folder(Path::new(folder))
+}
+
+/// Goes up when anything the screens show changed.
+pub fn revision() -> u64 {
+    keep().revision() + REVISION.load(Ordering::Relaxed)
+}

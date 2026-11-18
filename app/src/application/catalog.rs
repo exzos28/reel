@@ -957,6 +957,55 @@ pub fn play_source(key: &str) -> PlaySource {
     }
 }
 
+/// What saving `key` takes: the release it plays and the words the Saved screen keeps.
+pub enum SaveAsk {
+    Ready(reel_domain::ports::KeepRequest),
+    /// Still finding out (the title, the season or the search): ask again.
+    Searching,
+    /// It cannot be saved: "no_source" or "not_in_release" (the UI words it).
+    No(&'static str),
+}
+
+pub fn save_request(key: &str) -> SaveAsk {
+    let (show, ep) = parse_key(key);
+    let source = match play_source(key) {
+        PlaySource::Ready(source, episode) => (source, episode),
+        PlaySource::Searching => return SaveAsk::Searching,
+        PlaySource::None => return SaveAsk::No("no_source"),
+        PlaySource::NotInRelease => return SaveAsk::No("not_in_release"),
+    };
+    let Some(t) = peek(&Call::Title(show.to_owned())) else { return SaveAsk::Searching };
+    let info = Info { id: show.to_owned(), ..from_title(&t) };
+    let (label, image) = match ep {
+        Some((s, e)) => {
+            let found = peek(&Call::Season(show.to_owned(), s)).and_then(|season| find_episode(&season, e).cloned());
+            let name = found.as_ref().and_then(|x| text(&x["name"])).unwrap_or_default();
+            let thumb = found.as_ref().and_then(|x| image_url(&x["still"], THUMB_W));
+            (name, thumb.or(info.still.clone()))
+        }
+        None => (String::new(), info.still.clone()),
+    };
+    SaveAsk::Ready(reel_domain::ports::KeepRequest {
+        key: key.to_owned(),
+        source: source.0,
+        episode: source.1,
+        title: info.title.clone(),
+        year: info.year.map(u32::from),
+        label,
+        image: image.unwrap_or_default(),
+    })
+}
+
+/// The release the season's episodes play from and its files, when known (sizes in the
+/// Save drawer): None while either is not.
+pub fn season_files(show: &str, season: u32) -> Option<reel_domain::play::Files> {
+    // The season's release is what its first episode plays from (unless one was picked for it).
+    match play_source(&episode_key(show, season, 1)) {
+        PlaySource::Ready(source, Some(_)) => playback().torrent_files(&source),
+        _ => None,
+    }
+}
+
 // ---- Episodes.
 
 fn find_episode(season: &Value, number: u32) -> Option<&Value> {
