@@ -153,3 +153,10 @@ any                                     401 {"error":"session"}  403 {"error":"h
 ```
 
 `key` absent or `""` keeps the saved key; `removeKey: true` clears it.
+
+## Decided (2026-11-18): open on the home network
+
+The page works without pairing (`PAIRING_REQUIRED` stays false): anyone on the same network who
+opens it can change the source, the language and the buffer, as with the TV's own remote. A
+source sent from a partner's link still waits for Use on the screen. The pairing stays built and
+tested, to turn on if that changes.
