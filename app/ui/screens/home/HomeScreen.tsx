@@ -49,7 +49,8 @@ export function HomeScreen() {
     if (hero().release) return play({ ...hero().play, title: hero() });
     gate.press();
   };
-  const heroActions = [playFocused, () => toggleList(focused().id)];
+  /** Play, the Watchlist, the title's page (left to right as the remote walks them). */
+  const heroActions = [playFocused, () => toggleList(focused().id), () => openTitle(hero().id)];
 
   /** The page puts the focused shelf in its upper third. */
   const page = scroller({ anchor: (viewport) => viewport / 3, memory: "home" });
