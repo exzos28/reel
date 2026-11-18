@@ -183,6 +183,9 @@ fn has_frame(&self) -> bool {
             if r < 0 {
                 tracing::warn!("reel mpv: render context: {}", ffi::error_text(ivars.lib, r));
                 ivars.closed.store(true, Ordering::Release);
+                if let Some(gate) = ivars.gate.lock().unwrap().take() {
+                    gate.fail(super::player::FAILED_VIEW);
+                }
                 return;
             }
             let flag = Arc::as_ptr(&ivars.dirty) as *mut c_void;

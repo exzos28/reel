@@ -46,13 +46,17 @@ pub struct Player {
     /// `loadfile` until then: a file that opens at once (a saved film on disk) found no video
     /// output yet, and mpv played its sound only. None: load at once.
     gate: Option<Arc<LoadGate>>,
+    /// The view's events (`load`, `error`…), for the gate's failure.
+    emit: Emit,
 }
 
 /// Holds the file to load until the view can draw (`Player::hold_until_drawn`).
-#[derive(Default)]
 pub struct LoadGate {
     drawn: AtomicBool,
+    /// The view could not make mpv's render context: nothing will load.
+    failed: AtomicBool,
     pending: std::sync::Mutex<Option<String>>,
+    emit: Emit,
 }
 
 impl LoadGate {
@@ -61,6 +65,16 @@ impl LoadGate {
         self.drawn.store(true, Ordering::Release);
         if let Some(src) = self.pending.lock().unwrap().take() {
             command(lib, raw, &["loadfile", &src, "replace"]);
+        }
+    }
+
+    /// The view cannot draw (no render context): the file held, and any later one, will never
+    /// load. The player says so (`error`) instead of waiting for the picture for ever.
+    pub fn fail(&self, message: &str) {
+        self.failed.store(true, Ordering::Release);
+        let held = self.pending.lock().unwrap().take();
+        if held.is_some() {
+            (self.emit)("error", json!({ "message": message }));
         }
     }
 }
@@ -141,10 +155,13 @@ impl Player {
             let shared = shared.clone();
             std::thread::Builder::new()
                 .name("reel-mpv-events".into())
-                .spawn(move || events(lib, raw, &shared, &emit))
+                .spawn({
+                    let emit = emit.clone();
+                    move || events(lib, raw, &shared, &emit)
+                })
                 .map_err(|e| e.to_string())?
         };
-        Ok(Player { lib, raw, shared, thread: Some(thread), src: String::new(), gate: None })
+        Ok(Player { lib, raw, shared, thread: Some(thread), src: String::new(), gate: None, emit })
     }
 
     pub fn raw(&self) -> Raw {
@@ -182,7 +199,7 @@ impl Player {
     /// Android draws through its Surface (`wid`), which is there before a file loads.
     #[cfg_attr(not(any(target_os = "macos", all(target_os = "linux", not(target_arch = "arm")), windows)), allow(dead_code))]
     pub fn hold_until_drawn(&mut self) -> Arc<LoadGate> {
-        let gate = Arc::new(LoadGate::default());
+        let gate = Arc::new(LoadGate { drawn: AtomicBool::new(false), failed: AtomicBool::new(false), pending: Default::default(), emit: self.emit.clone() });
         self.gate = Some(gate.clone());
         gate
     }
@@ -205,6 +222,7 @@ impl Player {
                 } else {
                     let src = self.src.clone();
                     match &self.gate {
+                        Some(g) if g.failed.load(Ordering::Acquire) => (self.emit)("error", json!({ "message": FAILED_VIEW })),
                         Some(g) if !g.drawn.load(Ordering::Acquire) => *g.pending.lock().unwrap() = Some(src),
                         _ => self.command(&["loadfile", &src, "replace"]),
                     }
@@ -250,6 +268,9 @@ impl Player {
         }
     }
 }
+
+/// What the player shows when the view could not make mpv's render context.
+pub const FAILED_VIEW: &str = "the video view could not start";
 
 /// A track prop: a track id, `"no"` (none), or null (mpv's own choice).
 fn track_value(value: Option<&Value>) -> String {
