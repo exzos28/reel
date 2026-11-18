@@ -259,8 +259,10 @@ fn state() -> Value {
         "contentLanguages": all["contentLanguages"],
         "bufferMB": all["bufferMB"],
         "bufferChoices": all["bufferChoices"],
-        // The partner's bot, for the page's "Rent a source" (it builds the link from its own address).
+        // The partner's bot, for the page's "Get a ready source" (it builds the link from its own address).
         "partnerBot": offer::bot(),
+        // The room the buffer has on the TV, bytes (null when it cannot be read).
+        "freeBytes": playback().check_space()["free"],
     })
 }
 
@@ -364,6 +366,14 @@ fn authorized(req: &Request, route: &str) -> Response {
                 CHECKS.lock().unwrap().insert(check);
             }
             reply(200, json!({ "ok": true, "source": source_view(), "check": check }))
+        }
+        // The saved source checked again (the page opening says whether it answers).
+        ("POST", "/source/check") => {
+            let check = settings::source().map(|s| playback().check_source(s)).unwrap_or(0);
+            if check != 0 {
+                CHECKS.lock().unwrap().insert(check);
+            }
+            reply(200, json!({ "check": check }))
         }
         ("GET", r) if r.starts_with("/check/") => match r["/check/".len()..].parse::<u32>() {
             Ok(id) if CHECKS.lock().unwrap().contains(&id) => reply(200, playback().search_result(id)),

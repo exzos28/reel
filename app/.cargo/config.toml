@@ -1,8 +1,8 @@
 # librqbit with the small patch the ring-buffer cache needs (see
 # vendor/librqbit/REEL_PATCH.md), and librqbit-dualstack-sockets with the one
 # iOS needs (vendor/librqbit-dualstack-sockets/REEL_PATCH.md). Here rather than
-# in Cargo.toml so that it also applies to the workspace nsh generates in .nsh/rust (a manifest's
-# [patch] only counts at a workspace root). Paths are relative to app/.
+# in Cargo.toml so that it also applies to the workspace nsh generates in
+# .nsh/rust (a manifest's [patch] only counts at a workspace root). Paths are relative to app/.
 [patch.crates-io]
 librqbit = { path = "../vendor/librqbit" }
 librqbit-dualstack-sockets = { path = "../vendor/librqbit-dualstack-sockets" }

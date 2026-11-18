@@ -132,10 +132,6 @@ fn method(f: &syn::ImplItemFn) -> Method {
     Method { rust: f.sig.ident.to_string(), args, ret, is_async: f.sig.asyncness.is_some(), doc: doc(&f.attrs).join(" ") }
 }
 
-fn self_name(item: &syn::ItemImpl) -> String {
-    type_name(&item.self_ty)
-}
-
 /// The `#[module]`s of src/, sorted by name, their methods by name.
 fn modules() -> Vec<Module> {
     let mut docs = Vec::new();
@@ -168,26 +164,11 @@ fn module(item: &syn::ItemImpl) -> Module {
         })
         .collect();
     methods.sort_by_key(Method::ts);
-    Module { name: self_name(item), doc: Vec::new(), native_only: native_only(&item.attrs), methods }
+    Module { name: type_name(&item.self_ty), doc: Vec::new(), native_only: native_only(&item.attrs), methods }
 }
 
-/// Up to the first full stop outside backticks and brackets ("e.g." in brackets stays).
-fn first_sentence(text: &str) -> &str {
-    let (mut depth, mut code) = (0i32, false);
-    let bytes = text.as_bytes();
-    for (i, c) in text.char_indices() {
-        match c {
-            '`' => code = !code,
-            '(' | '[' | '{' if !code => depth += 1,
-            ')' | ']' | '}' if !code => depth -= 1,
-            '.' if !code && depth == 0 && bytes.get(i + 1).is_none_or(|b| *b == b' ') => return &text[..=i],
-            _ => {}
-        }
-    }
-    text
-}
-
-/// The JSON shapes the doc spells out: its code spans that open with `{` or `[`.
+/// The JSON shapes the doc spells out: its code spans that open with `{` or `[` (for a `String`
+/// result; they may include an element's shape).
 fn json_shapes(text: &str) -> Vec<&str> {
     text.split('`').skip(1).step_by(2).filter(|s| s.starts_with('{') || s.starts_with('[')).collect()
 }
@@ -245,14 +226,15 @@ fn header(out: &mut String) {
          ```sh\n{REGENERATE}\n```\n\n\
          Every NSH module the Rust core gives the UI (`app/native`, through `app/ui/native.ts`), by\n\
          name, with its methods by the names the TSX side calls (the Rust name in brackets when it\n\
-         differs). Arguments and results are the Rust types; most results are JSON strings, and the\n\
-         JSON shapes are the ones the doc comments spell out (the code builds them as\n\
-         `serde_json::Value`s in `app/src/application`, so no Rust type names them). `async` methods\n\
-         return a Promise in TS.\n\n\
+         differs). Arguments and results are the Rust types. Most results are JSON strings: the\n\
+         \"JSON\" line lists the shapes their doc comments spell out (the code builds them as\n\
+         `serde_json::Value`s in `app/src`, so no Rust type names them). `async`\n\
+         methods return a Promise in TS.\n\n\
          \"Called from\" lists the files (`app/App.tsx` and `app/ui`, without tests and the wiring in\n\
          `ui/native.ts` and `ui/native-http.ts`) that name `Module.method` outside a comment; a call\n\
-         through another name would not show. On a TV the same modules are served over HTTP by\n\
-         `platforms/tizen/core/src/table.rs`, which checks the names.\n"
+         through another name would not show. \"Nothing in the UI\" can still be a host's call (the\n\
+         TV's core sets `Sources.setProfile`) or one kept for later. On a TV the same modules are\n\
+         served over HTTP by `platforms/tizen/core/src/table.rs`, which checks the names."
     );
 }
 
@@ -261,12 +243,11 @@ fn render_method(out: &mut String, module: &str, m: &Method, sources: &[(String,
     let prefix = if m.is_async { "async " } else { "" };
     let ret = m.ret.as_ref().map(|r| format!(" -> {r}")).unwrap_or_default();
     let rust = if ts == m.rust { String::new() } else { format!(" (`{}`)", m.rust) };
-    let purpose = first_sentence(&m.doc);
-    let _ = writeln!(out, "- `{prefix}{ts}({}){ret}`{rust}: {purpose}", m.args.join(", "));
-    let shapes: Vec<_> = json_shapes(&m.doc).into_iter().filter(|s| !purpose.contains(*s)).collect();
-    if !shapes.is_empty() {
+    let _ = writeln!(out, "- `{prefix}{ts}({}){ret}`{rust}: {}", m.args.join(", "), m.doc);
+    let shapes = json_shapes(&m.doc);
+    if m.ret.as_deref() == Some("String") && !shapes.is_empty() {
         let shapes: Vec<_> = shapes.iter().map(|s| format!("`{s}`")).collect();
-        let _ = writeln!(out, "  JSON: {}", shapes.join(" or "));
+        let _ = writeln!(out, "  JSON: {}", shapes.join(", "));
     }
     let called = callers(sources, module, &ts);
     let called = if called.is_empty() {

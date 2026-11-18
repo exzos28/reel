@@ -26,6 +26,8 @@ reel-domain and reel-engine are native only, as everything but `Fmt` is (wasm32,
   where the viewer stopped, and it tells it when a torrent's files are known.
 - JSON shapes and module and method names are the UI's contract (`platforms/tizen/core/src/table.rs`
   checks the names).
+- `docs/modules.md` maps every module and method to its JSON and its callers in the UI, generated
+  and checked by `tests/modules_map.rs` (`UPDATE_MODULES_MAP=1 cargo test -p reel-app --test modules_map`).
 
 ## Tests
 

@@ -76,6 +76,7 @@ red `#E5383B`). Steps:
    - Search source: address, API key (empty field keeps the saved key; "Remove the key" clears
      it), **Save and check**. The answer carries a check job; the page polls
      `GET /settings/api/check/<id>`, which is `Sources.result`, and says "Connected. It searches
+- `POST /settings/api/source/check`: checks the saved source again; `{check}` for `GET /check/<id>` (the page says whether it answers as it opens).
      by IMDb id / by title" or the core's message, as the TV's Settings does.
    - Language (of titles and descriptions): the core's `contentLanguages`.
    - Playback buffer: only the core's `bufferChoices` (the sizes this TV has room for); the core

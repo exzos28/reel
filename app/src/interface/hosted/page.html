@@ -7,85 +7,114 @@
 <meta name="referrer" content="no-referrer">
 <title>reel settings</title>
 <style>
-:root{--ink:#0F0F0F;--card:#1A1A1A;--raise:#2A2A2A;--snow:#F5F5F5;--soft:#D6D6D6;--ash:#8C8C8C;--red:#E5383B;--faint:#5E5E5E}
+:root{--ink:#0F0F0F;--card:#1A1A1A;--raise:#2A2A2A;--snow:#F5F5F5;--soft:#D6D6D6;--ash:#8C8C8C;--red:#E5383B;--ok:#3DDC84;--tg:#2AABEE}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--ink);color:var(--snow);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
-main{max-width:520px;margin:0 auto;padding:28px 16px 48px}
-h1{font-size:28px;font-weight:700;letter-spacing:-.01em;margin:0 0 4px}
-h2{font-size:19px;font-weight:600;margin:0 0 6px}
-p{margin:0;color:var(--soft)}
-.sub{color:var(--ash);margin-bottom:28px}
-section{background:var(--card);border-radius:14px;padding:18px 16px;margin:0 0 16px}
-section>p{margin-bottom:14px;font-size:15px}
-label{display:block;font-size:13px;color:var(--ash);margin:12px 0 6px}
-input,select{width:100%;height:48px;padding:0 14px;border:1px solid var(--raise);border-radius:10px;background:var(--ink);color:var(--snow);font:inherit;outline:none}
+main{max-width:520px;margin:0 auto;padding:20px 16px 40px}
+.top{display:flex;align-items:center;justify-content:space-between;padding:8px 4px 18px}
+.logo{color:var(--red);font-weight:800;font-size:28px;letter-spacing:-.03em}
+.tv{display:flex;align-items:center;gap:8px;background:var(--card);border-radius:999px;padding:7px 12px;font-size:13px;color:var(--soft)}
+.tv i{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.tv.off i{background:var(--red)}
+section{background:var(--card);border-radius:16px;padding:18px 16px;margin:0 0 12px}
+h2{font-size:19px;font-weight:600;margin:0}
+.sub{color:var(--ash);font-size:14px;margin:4px 0 0}
+.status{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:14px;color:var(--soft)}
+.status b{width:18px;height:18px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:11px}
+.status.ok b{background:rgba(61,220,132,.18);color:var(--ok)}
+.status.bad{color:var(--snow)}.status.bad b{background:rgba(229,56,59,.2);color:var(--red)}
+.status.wait b{background:var(--raise);color:var(--ash)}
+.rentbig{background:linear-gradient(135deg,rgba(42,171,238,.16),rgba(42,171,238,.06));border:1px solid rgba(42,171,238,.35);border-radius:14px;padding:16px;margin-top:16px}
+.rentbig .h{display:flex;gap:12px;align-items:center}
+.rentbig strong{display:block;font-size:16px}.rentbig small{display:block;color:var(--soft);font-size:13px;line-height:1.4;margin-top:3px}
+.tgdot{width:44px;height:44px;flex:none;border-radius:50%;background:var(--tg);display:grid;place-items:center;color:#fff;font-weight:800}
+.rentrow{display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--raise);font-size:14px;color:var(--soft)}
+.rentrow .tgdot{width:28px;height:28px;font-size:12px}
+.rentrow a{margin-left:auto;color:var(--tg);font-weight:600;text-decoration:none}
+.or{display:flex;align-items:center;gap:10px;color:var(--ash);font-size:12px;margin:16px 0 0}
+.or:before,.or:after{content:"";flex:1;height:1px;background:var(--raise)}
+label{display:block;font-size:13px;color:var(--ash);margin:14px 0 6px}
+.field{position:relative}
+input,select{width:100%;height:48px;padding:0 14px;border:1px solid transparent;border-radius:10px;background:var(--raise);color:var(--snow);font:inherit;outline:none}
 input:focus,select:focus{border-color:var(--snow)}
 input.code{font-size:28px;letter-spacing:.4em;text-align:center;font-variant-numeric:tabular-nums}
-button{height:48px;padding:0 20px;border:0;border-radius:10px;background:var(--snow);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.field input{padding-right:64px}
+.show{position:absolute;right:6px;top:6px;height:36px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--ash);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+button,a.btn{height:48px;padding:0 20px;border:0;border-radius:10px;background:var(--snow);color:var(--ink);font:inherit;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
 button.quiet{background:var(--raise);color:var(--snow)}
-a.button{display:inline-flex;align-items:center;height:48px;padding:0 20px;border-radius:10px;font-weight:600;text-decoration:none}
-a.button.quiet{background:var(--raise);color:var(--snow)}
+button.text{background:transparent;color:var(--ash);padding:0 6px}
+a.btn.tg{background:var(--tg);color:#fff;width:100%;margin-top:14px}
 button:disabled{opacity:.5}
-.row{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
-.check{display:flex;gap:10px;align-items:center;margin-top:10px;color:var(--soft);font-size:15px}
-.check input{width:20px;height:20px;margin:0}
-.msg{font-size:15px;color:var(--ash);min-height:1.45em}
-.msg.bad{color:var(--red)}
-.msg.good{color:var(--snow)}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chips button{background:var(--raise);color:var(--snow);font-weight:500;height:44px;padding:0 16px}
+.row{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.flash{font-size:13px;color:var(--ok);min-height:0;margin-top:8px;transition:opacity .4s}
+.flash.bad{color:var(--snow)}
+.flash:empty{display:none}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chips button{height:auto;min-height:44px;padding:9px 14px;background:var(--raise);color:var(--snow);flex-direction:column;align-items:flex-start;font-size:15px}
+.chips button small{font-size:11px;font-weight:500;color:var(--ash)}
 .chips button[aria-pressed=true]{background:var(--snow);color:var(--ink)}
-.note{font-size:13px;color:var(--faint);margin-top:24px}
+.chips button[aria-pressed=true] small{color:#555}
+.free{font-size:13px;color:var(--ash);margin-top:10px}
+.free:empty{display:none}
+.foot{color:var(--ash);font-size:12px;text-align:center;margin-top:16px}
 [hidden]{display:none!important}
 </style>
 </head>
 <body>
 <main>
-<h1>reel</h1>
-<p class="sub">Settings of reel on your TV.</p>
+<div class="top"><span class="logo">reel</span><span class="tv" id="tv"><i></i><span id="tvText">Your TV</span></span></div>
 
 <section id="pair">
   <h2>Pair with the TV</h2>
-  <p>Ask the TV for a code, then type the code it shows.</p>
+  <p class="sub">Ask the TV for a code, then type the code it shows.</p>
   <div class="row" id="askRow"><button id="ask">Show a code on the TV</button></div>
   <form id="codeForm" hidden>
     <label for="code">Code on the TV</label>
     <input id="code" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
     <div class="row"><button type="submit">Pair</button><button type="button" class="quiet" id="again">New code</button></div>
   </form>
-  <p class="msg" id="pairMsg"></p>
+  <p class="flash bad" id="pairMsg"></p>
 </section>
 
 <div id="settings" hidden>
   <section>
     <h2>Search source</h2>
-    <p>A Torznab address and its API key.</p>
-    <p id="rent" hidden><a class="button quiet" id="rentLink" rel="noreferrer">Get a ready source in Telegram</a></p>
+    <div class="status wait" id="status"><b>…</b><span id="statusText">Checking…</span></div>
+    <!-- No source yet: getting a ready one comes first, then your own. -->
+    <div class="rentbig" id="rentBig" hidden>
+      <div class="h"><span class="tgdot">➤</span><div><strong>Get a ready source</strong><small id="rentNote">The bot sends a link back: open it here and the source fills in.</small></div></div>
+      <a class="btn tg" id="rentBigLink" rel="noreferrer">Open the bot</a>
+    </div>
+    <div class="or" id="orOwn" hidden>or use your own</div>
     <form id="sourceForm">
-      <label for="url">Torznab address (required)</label>
-      <input id="url" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api">
-      <label for="key">API key (optional)</label>
-      <input id="key" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
-      <div class="check" id="removeRow" hidden><input type="checkbox" id="removeKey"><label for="removeKey" style="margin:0;font-size:15px;color:inherit">Remove the saved key</label></div>
-      <div class="row"><button type="submit" id="save">Save and check</button></div>
-      <p class="msg" id="sourceMsg"></p>
+      <label for="url">Torznab address</label>
+      <input id="url" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://…/torznab/api">
+      <label for="key">API key · optional</label>
+      <div class="field">
+        <input id="key" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="Only if your source has one">
+        <button type="button" class="show" id="showKey">Show</button>
+      </div>
+      <div class="row"><button type="submit" class="quiet" id="save">Check</button><button type="button" class="text" id="remove" hidden>Remove source</button></div>
     </form>
+    <!-- A source set: getting another stays at hand, quietly. -->
+    <div class="rentrow" id="rentRow" hidden><span class="tgdot">➤</span>Need another source?<a id="rentRowLink" rel="noreferrer">Get one in Telegram</a></div>
   </section>
   <section>
     <h2>Language</h2>
-    <p>The language of titles, descriptions and episode names.</p>
-    <select id="language" aria-label="Language"></select>
-    <p class="msg" id="languageMsg"></p>
+    <p class="sub">Titles, descriptions and episode names.</p>
+    <select id="language" aria-label="Language" style="margin-top:14px"></select>
+    <p class="flash" id="languageMsg"></p>
   </section>
   <section>
     <h2>Playback buffer</h2>
-    <p>How much of a film reel keeps ahead while it plays. Only the sizes the TV has room for.</p>
+    <p class="sub">How much of a film reel keeps ahead while it plays.</p>
     <div class="chips" id="buffer"></div>
-    <p class="msg" id="bufferMsg"></p>
+    <p class="free" id="free"></p>
+    <p class="flash" id="bufferMsg"></p>
   </section>
 </div>
 
-<p class="note">This page talks to your TV over plain HTTP on your home network. Use it on a network you trust.</p>
+<p class="foot">Works on your home Wi-Fi only.</p>
 </main>
 <script>
 (function () {
@@ -95,6 +124,8 @@ button:disabled{opacity:.5}
   var $ = function (id) { return document.getElementById(id); };
   var session = null;
   var pairing = null;
+  var bot = null;
+  var hasSource = false;
   try { session = localStorage.getItem(KEY); } catch (e) {}
 
   // Opened from a partner's link (/s?t=<key>&u=<address>): the source to offer the TV. The
@@ -113,12 +144,53 @@ button:disabled{opacity:.5}
     return b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
-  // "Get a ready source": the partner's bot (if this build has one), told to send the viewer
-  // back to this page with the source (design/partner-source.md).
-  function showRent(bot) {
-    var start = bot ? startOf(location.origin + '/s?t={t}&u={u}') : '';
-    $('rent').hidden = !bot || start.length > 64;
-    if (!$('rent').hidden) $('rentLink').href = 'https://t.me/' + bot + '?start=' + start;
+  // The source's line under its title: 'ok', 'bad', 'wait' or 'none'.
+  function status(kind, text) {
+    var el = $('status');
+    el.className = 'status ' + (kind === 'none' ? 'bad' : kind);
+    el.firstChild.textContent = kind === 'ok' ? '✓' : kind === 'wait' ? '…' : '!';
+    $('statusText').textContent = text;
+  }
+  function connected(caps) {
+    status('ok', caps && caps.movieImdb ? 'Connected · searches by IMDb id' : 'Connected · searches by title');
+  }
+  // Why a source did not answer, as the app says it (the core's reason).
+  function failed(c) {
+    var host = c.host || 'The source';
+    if (c.reason === 'unreachable') return status('bad', 'Can’t reach ' + host + '. Check the address, and that the source is on.');
+    if (c.reason === 'key') return status('bad', host + ' refused the API key. Check the key.');
+    if (c.reason === 'not_torznab') return status('bad', host + ' answered, but not as a Torznab source. Check the address.');
+    status('bad', 'The source did not answer' + (c.message ? ': ' + c.message : '.'));
+  }
+
+  // Getting a ready source: big and first while there is none, a quiet line once there is one.
+  // Shown where this build has the partner's bot (design/partner-source.md).
+  function layout() {
+    var link = '';
+    if (bot) {
+      var start = startOf(location.origin + '/s?t={t}&u={u}');
+      if (start.length <= 64) link = 'https://t.me/' + bot + '?start=' + start;
+    }
+    $('rentBig').hidden = !link || hasSource;
+    $('orOwn').hidden = !link || hasSource;
+    $('rentRow').hidden = !link || !hasSource;
+    $('remove').hidden = !hasSource;
+    if (link) {
+      $('rentBigLink').href = link;
+      $('rentRowLink').href = link;
+      $('rentBigLink').textContent = 'Open @' + bot;
+      $('rentNote').textContent = '@' + bot + ' sends a link back: open it here and the source fills in.';
+    }
+    if (!hasSource) status('none', 'Not set: reel can browse, not play');
+  }
+
+  function flash(id, text, bad) {
+    var el = $(id);
+    el.textContent = text || '';
+    el.className = 'flash' + (bad ? ' bad' : '');
+    el.style.opacity = '1';
+    clearTimeout(el._t);
+    if (text && !bad) el._t = setTimeout(function () { el.textContent = ''; }, 2500);
   }
 
   // Offers the linked source to the TV, where the viewer says yes; then says how it went.
@@ -128,14 +200,13 @@ button:disabled{opacity:.5}
     $('url').value = o.url;
     $('key').value = o.key;
     $('save').disabled = true;
-    say('sourceMsg', 'Sending to the TV…');
-    $('url').scrollIntoView({ block: 'center' });
+    status('wait', 'Sending to the TV…');
     api('POST', '/offer', o).then(function (r) {
       if (r.status !== 200) {
         $('save').disabled = false;
-        return say('sourceMsg', r.body.error === 'address' ? 'The link has no address reel can use: ' + r.body.message : problem(r), 'bad');
+        return status('bad', r.body.error === 'address' ? 'The link has no address reel can use.' : problem(r));
       }
-      say('sourceMsg', 'Confirm on the TV: choose Use there.');
+      status('wait', 'Confirm on the TV: choose Use there.');
       watchOffer(r.body.offer);
     });
   }
@@ -145,26 +216,22 @@ button:disabled{opacity:.5}
       var s = r.body.state;
       if (r.status === 200 && s === 'pending') return setTimeout(function () { watchOffer(id); }, 1000);
       $('save').disabled = false;
-      if (s === 'declined') return say('sourceMsg', 'Not saved: it was declined on the TV.', 'bad');
-      if (s === 'expired') return say('sourceMsg', 'Not saved: the TV got no answer in time. Open the link again.', 'bad');
-      if (s !== 'accepted') return say('sourceMsg', problem(r), 'bad');
+      if (s === 'declined') return status('bad', 'Not saved: it was declined on the TV.');
+      if (s === 'expired') return status('bad', 'Not saved: the TV got no answer in time. Open the link again.');
+      if (s !== 'accepted') return status('bad', problem(r));
       $('key').value = '';
+      hasSource = true;
+      layout();
       var c = r.body.result;
-      if (!c || c.state === 'pending') { say('sourceMsg', 'Saved on the TV. Checking the source…'); return setTimeout(function () { watchOffer(id); }, 600); }
-      if (c.state === 'done') return say('sourceMsg', c.caps.movieImdb ? 'Connected. It searches by IMDb id.' : 'Connected. It searches by title.', 'good');
-      say('sourceMsg', 'Saved, but the TV could not reach the source: ' + (c.message || 'no answer'), 'bad');
+      if (!c || c.state === 'pending') { status('wait', 'Saved on the TV. Checking…'); return setTimeout(function () { watchOffer(id); }, 600); }
+      if (c.state === 'done') return connected(c.caps);
+      failed(c);
     });
   }
 
   function remember(s) {
     session = s;
     try { s ? localStorage.setItem(KEY, s) : localStorage.removeItem(KEY); } catch (e) {}
-  }
-
-  function say(id, text, kind) {
-    var el = $(id);
-    el.textContent = text || '';
-    el.className = 'msg' + (kind ? ' ' + kind : '');
   }
 
   // The API's answer as {status, body}; a lost session goes back to pairing.
@@ -197,20 +264,20 @@ button:disabled{opacity:.5}
     $('pair').hidden = false;
     $('codeForm').hidden = true;
     $('askRow').hidden = false;
-    say('pairMsg', text, text ? 'bad' : '');
+    flash('pairMsg', text, !!text);
   }
 
   function ask() {
     $('ask').disabled = true;
     api('POST', '/pair').then(function (r) {
       $('ask').disabled = false;
-      if (r.status !== 200) return say('pairMsg', problem(r), 'bad');
+      if (r.status !== 200) return flash('pairMsg', problem(r), true);
       pairing = r.body.pairing;
       $('askRow').hidden = true;
       $('codeForm').hidden = false;
       $('code').value = '';
       $('code').focus();
-      say('pairMsg', 'The code is on the TV now. It works for ' + Math.round(r.body.expiresIn / 60) + ' minutes.');
+      flash('pairMsg', 'The code is on the TV now. It works for ' + Math.round(r.body.expiresIn / 60) + ' minutes.', true);
     });
   }
 
@@ -221,7 +288,7 @@ button:disabled{opacity:.5}
     api('POST', '/pair/confirm', { pairing: pairing, code: $('code').value.trim() }).then(function (r) {
       if (r.status !== 200) {
         if (r.body.error === 'expired' || r.body.attemptsLeft === 0) { $('codeForm').hidden = true; $('askRow').hidden = false; }
-        return say('pairMsg', problem(r), 'bad');
+        return flash('pairMsg', problem(r), true);
       }
       remember(r.body.session);
       load();
@@ -231,22 +298,38 @@ button:disabled{opacity:.5}
   function load() {
     api('GET', '/state').then(function (r) {
       if (r.status === 401) return;
-      if (r.status !== 200) return showPair(problem(r));
+      if (r.status !== 200) {
+        $('tv').className = 'tv off';
+        $('tvText').textContent = 'TV not answering';
+        return showPair(problem(r));
+      }
       $('pair').hidden = true;
       $('settings').hidden = false;
+      bot = r.body.partnerBot;
       show(r.body);
-      showRent(r.body.partnerBot);
-      if (offered) offer();
+      if (offered) return offer();
+      // Whether the saved source answers, said at once.
+      if (hasSource) recheck();
+    });
+  }
+
+  function recheck() {
+    status('wait', 'Checking…');
+    api('POST', '/source/check').then(function (r) {
+      if (r.status !== 200 || !r.body.check) return status('bad', problem(r));
+      poll(r.body.check);
     });
   }
 
   function showSource(src) {
+    hasSource = !!src.url;
     $('url').value = src.url;
     $('key').value = '';
     $('key').placeholder = src.hasKey ? 'Key saved. Type a new one to replace it' : 'Only if your source has one';
-    $('removeRow').hidden = !src.hasKey;
-    $('removeKey').checked = false;
+    layout();
   }
+
+  function size(mb) { return mb >= 1024 ? mb / 1024 + ' GB' : mb + ' MB'; }
 
   function show(s) {
     showSource(s.source);
@@ -265,43 +348,61 @@ button:disabled{opacity:.5}
       var b = document.createElement('button');
       b.type = 'button';
       b.dataset.mb = String(c.mb);
-      b.textContent = (c.mb >= 1024 ? c.mb / 1024 + ' GB' : c.mb + ' MB') + (c.default ? ' (default)' : '');
+      b.textContent = size(c.mb);
+      if (c.default) {
+        var small = document.createElement('small');
+        small.textContent = 'Recommended';
+        b.appendChild(small);
+      }
       b.setAttribute('aria-pressed', String(c.mb === s.bufferMB));
       b.addEventListener('click', function () { chooseBuffer(c.mb); });
       box.appendChild(b);
     });
+    var free = s.freeBytes;
+    $('free').textContent = free == null ? '' : (free / 1073741824).toFixed(1).replace(/\.0$/, '') + ' GB free on the TV';
   }
 
   $('language').addEventListener('change', function () {
-    say('languageMsg', 'Saving…');
     api('POST', '/language', { tag: $('language').value }).then(function (r) {
-      say('languageMsg', r.status === 200 ? 'Saved. The TV shows titles in this language now.' : problem(r), r.status === 200 ? 'good' : 'bad');
+      r.status === 200 ? flash('languageMsg', '✓ Saved on the TV') : flash('languageMsg', problem(r), true);
     });
   });
 
   function chooseBuffer(mb) {
-    say('bufferMsg', 'Saving…');
     api('POST', '/buffer', { mb: mb }).then(function (r) {
-      if (r.status !== 200) return say('bufferMsg', problem(r), 'bad');
+      if (r.status !== 200) return flash('bufferMsg', problem(r), true);
       Array.prototype.forEach.call($('buffer').children, function (b) {
         b.setAttribute('aria-pressed', String(Number(b.dataset.mb) === r.body.bufferMB));
       });
-      say('bufferMsg', 'Saved.', 'good');
+      flash('bufferMsg', '✓ Saved on the TV');
+    });
+  }
+
+  $('showKey').addEventListener('click', function () {
+    var shown = $('key').type === 'text';
+    $('key').type = shown ? 'password' : 'text';
+    $('showKey').textContent = shown ? 'Show' : 'Hide';
+  });
+
+  function saveSource(body) {
+    $('save').disabled = true;
+    status('wait', 'Saving…');
+    api('POST', '/source', body).then(function (r) {
+      if (r.status !== 200) { $('save').disabled = false; return status('bad', problem(r)); }
+      showSource(r.body.source);
+      if (!r.body.source.url) { $('save').disabled = false; return; }
+      status('wait', 'Checking…');
+      poll(r.body.check);
     });
   }
 
   $('sourceForm').addEventListener('submit', function (ev) {
     ev.preventDefault();
-    $('save').disabled = true;
-    say('sourceMsg', 'Saving…');
-    var body = { url: $('url').value.trim(), key: $('key').value.trim(), removeKey: $('removeKey').checked };
-    api('POST', '/source', body).then(function (r) {
-      if (r.status !== 200) { $('save').disabled = false; return say('sourceMsg', problem(r), 'bad'); }
-      showSource(r.body.source);
-      if (!r.body.source.url) { $('save').disabled = false; return say('sourceMsg', 'Search source removed.', 'good'); }
-      say('sourceMsg', 'Checking the source…');
-      poll(r.body.check);
-    });
+    if (!$('url').value.trim()) return status('bad', 'Enter the Torznab address first.');
+    saveSource({ url: $('url').value.trim(), key: $('key').value.trim() });
+  });
+  $('remove').addEventListener('click', function () {
+    saveSource({ url: '', removeKey: true });
   });
 
   function poll(id) {
@@ -309,10 +410,8 @@ button:disabled{opacity:.5}
       var s = r.body.state;
       if (r.status === 200 && s === 'pending') return setTimeout(function () { poll(id); }, 400);
       $('save').disabled = false;
-      if (r.status === 200 && s === 'done') {
-        return say('sourceMsg', r.body.caps.movieImdb ? 'Connected. It searches by IMDb id.' : 'Connected. It searches by title.', 'good');
-      }
-      say('sourceMsg', 'Could not reach the source: ' + (r.body.message || problem(r)), 'bad');
+      if (r.status === 200 && s === 'done') return connected(r.body.caps);
+      failed(r.body.state ? r.body : { message: problem(r) });
     });
   }
 
