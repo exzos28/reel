@@ -117,7 +117,9 @@ fn home_shelves_from_meta() {
     assert_eq!(first["id"], "tmdb:movie:1368337");
     assert_eq!(first["kind"], "movie");
     assert_eq!(first["title"], "Odyseja");
-    assert!(first["still"].as_str().unwrap().starts_with("https://image.tmdb.org/t/p/w1280/"));
+    // The hero's still: the original on a desktop (a wide window on a 2x screen), w1280 elsewhere.
+    let still = if cfg!(any(target_os = "macos", windows, all(target_os = "linux", not(target_arch = "arm")))) { "original" } else { "w1280" };
+    assert!(first["still"].as_str().unwrap().starts_with(&format!("https://image.tmdb.org/t/p/{still}/")));
     assert!(first["card"].as_str().unwrap().starts_with("https://image.tmdb.org/t/p/w780/"));
     assert!(first["poster"].as_str().unwrap().starts_with("https://image.tmdb.org/t/p/w342/"));
     assert_eq!(first["play"]["id"], "tmdb:movie:1368337");
