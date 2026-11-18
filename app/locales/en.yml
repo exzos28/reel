@@ -291,6 +291,7 @@ search:
   placeholder: Films, series and anime by title
   hint: Type a title to find films, series and anime.
   recent: Recent searches
+  clear: Clear history
   searching: Searching…
   none: "Nothing found for “%{query}”."
   failed: TMDB and AniList did not answer. Check the connection and try again.

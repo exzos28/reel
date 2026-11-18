@@ -766,6 +766,12 @@ fn an_empty_query_lists_the_recent_searches_kept_in_the_data_dir() {
     search::reset();
     assert_eq!(search::recent()[0], "q14");
     assert!(dir.join("recent_searches.json").exists());
+    // Clear: gone from the list and from the file.
+    search::forget();
+    assert_eq!(search::search("")["recent"], json!([]));
+    assert!(!dir.join("recent_searches.json").exists());
+    search::reset();
+    assert!(search::recent().is_empty());
     *DATA_DIR.lock().unwrap() = None;
     let _ = std::fs::remove_dir_all(&dir);
 }

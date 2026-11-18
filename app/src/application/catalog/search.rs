@@ -236,6 +236,21 @@ pub fn remember(query: &str) {
     bump();
 }
 
+/// Forgets every recent search (the viewer cleared the history), in memory and in the data dir.
+pub fn forget() {
+    with_recent(|r| {
+        r.queries.clear();
+        if let Some(file) = &r.file {
+            if let Err(e) = std::fs::remove_file(file) {
+                if e.kind() != std::io::ErrorKind::NotFound {
+                    eprintln!("reel catalog: removing {}: {e}", file.display());
+                }
+            }
+        }
+    });
+    bump();
+}
+
 /// Forgets every answer and the recent searches in memory (tests).
 #[cfg(test)]
 pub(super) fn reset() {

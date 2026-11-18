@@ -283,6 +283,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         let (query,): (String,) = args(a)?;
         ret(Catalog::remember_search(query))
     })
+    .sync("Catalog", "forgetSearches", |a| {
+        no_args(&a)?;
+        ret(Catalog::forget_searches())
+    })
     .sync("Catalog", "toggleList", |a| {
         let (id,): (String,) = args(a)?;
         ret(Catalog::toggle_list(id))

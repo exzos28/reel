@@ -160,6 +160,7 @@ export const Catalog: CatalogModule = {
   saveProgress: s("Catalog", "saveProgress"),
   search: s("Catalog", "search"),
   rememberSearch: s("Catalog", "rememberSearch"),
+  forgetSearches: s("Catalog", "forgetSearches"),
 };
 
 export const Settings: SettingsModule = {

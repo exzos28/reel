@@ -286,6 +286,8 @@ export interface SearchAnswer {
 export const search = (query: string) => read<SearchAnswer>("search", () => Catalog.search(query));
 /** Keeps `query` among the recent searches. */
 export const rememberSearch = (query: string) => Catalog.rememberSearch(query);
+/** Clears the recent searches. */
+export const forgetSearches = () => Catalog.forgetSearches();
 
 export function toggleList(id: string) {
   Catalog.toggleList(id);
