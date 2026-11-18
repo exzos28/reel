@@ -1,14 +1,16 @@
 // The desktop's window bar (design/navigation.md, "Desktop"): one 52 pt row
 // over every page, outside the scroll view. Left to right: the window's own
-// controls' room (macOS's traffic lights), Back, the logo on a blurred pill, the nav (Search,
-// the pills and Settings, one group, on the same backing), and the room of the system's caption
-// buttons (Windows, GNOME). Its empty parts drag the window. Clear over a hero, solid once
-// content is under it. The nav sits where Settings says: at the right edge (the default), right
-// after the logo, or in the middle of the window.
-import { Text, View, windowSize, type JSX, type TextStyle, type ViewStyle } from "nsh";
+// controls' room (macOS's traffic lights), Back, the logo, the page's action
+// (a title's Add to list), the nav pills, search and settings, the room of
+// the system's caption buttons (Windows, GNOME). Its empty parts drag the
+// window. Clear over a hero, solid once content is under it.
+// The nav (pills and round buttons, one group) sits where Settings says: at the right edge
+// (the default), right after the logo, or in the middle of the window. Away from the right
+// edge the page's action goes there instead, so the nav stays put from page to page.
+import { Text, View, type JSX, type TextStyle, type ViewStyle } from "nsh";
 import { titleBar } from "nsh/desktop";
 import { t } from "nsh/i18n";
-import { title as titleOf, titleText } from "../catalog";
+import { title as titleOf, titleText, toggleList } from "../catalog";
 import backIcon from "../icons/back.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
@@ -17,6 +19,7 @@ import { alpha, colors, font, iconPt, u } from "../theme";
 import { chrome } from "./chrome";
 import { frameSolid as barSolid } from "./frameState";
 import { BAR_HEIGHT } from "./metrics";
+import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
 import { navPosition, setupDone } from "../preferences";
 
@@ -89,19 +92,12 @@ const logoRoom = (afterBack: boolean, grow: boolean): ViewStyle => ({
 });
 const tipStyle = (): ViewStyle => ({ ...row(6), paddingHorizontal: 9, paddingVertical: 5, ...rounded(6), backgroundColor: colors.raise() });
 const tipText = (color: string): TextStyle => ({ fontFamily: font, fontSize: 12, fontWeight: 500, color });
-/** The logo's dark, blurred backing, as the nav's: the red stays readable over any still. */
-const logoPill = (solid: boolean): ViewStyle => ({ paddingHorizontal: 11, paddingVertical: 4, ...rounded(999), ...glass(solid) });
 const logoStyle = (): TextStyle => ({ fontFamily: font, fontSize: 20, fontWeight: 700, letterSpacing: -0.3, color: colors.red() });
-/** What the bar's controls float on: a translucent fill and a blur of what scrolls under them. */
-const glass = (solid: boolean): ViewStyle => ({
-  backgroundColor: solid ? alpha(colors.card(), 0.9) : alpha(colors.card(), 0.62),
-  backdropFilter: "blur(18px)",
-});
 const groupStyle = (solid: boolean): ViewStyle => ({
   ...row(2, "stretch"),
   padding: 3,
   ...rounded(10),
-  ...glass(solid),
+  backgroundColor: solid ? colors.card() : alpha(colors.card(), 0.82),
 });
 const pillStyle = (selected: boolean): ViewStyle => ({
   ...row(6),
@@ -117,8 +113,7 @@ const roundStyle = (selected: boolean, solid: boolean): ViewStyle => ({
   ...rounded(999),
   alignItems: "center",
   justifyContent: "center",
-  ...glass(solid),
-  ...(selected ? { backgroundColor: colors.nav() } : {}),
+  backgroundColor: selected ? colors.nav() : solid ? colors.card() : alpha(colors.card(), 0.82),
 });
 /** Points as TV pixels, for `Icon`'s size. */
 const pt = iconPt;
@@ -152,21 +147,7 @@ export function BarBack(props: { onPress: () => void; enabled: () => boolean; ti
 }
 
 const pills = NAV.filter((n) => n.pill);
-/** The round buttons either side of the pills: Search before Home, Settings after Anime. */
-const searchButton = NAV.filter((n) => n.id === "search");
-const settingsButton = NAV.filter((n) => n.id === "settings");
-
-/** A window narrower than this shows the pills as icons alone, so the bar fits down to the window's least width. */
-const ICONS_ONLY_BELOW = 900;
-const iconsOnly = () => windowSize().width < ICONS_ONLY_BELOW;
-/** The nav in the middle with its pills as icons (Search, five pills, Settings), and what the logo
- * takes beside Back (its pill, the gap before it and some air before the nav), points. */
-const ICONS_NAV_WIDTH = 300;
-const LOGO_ROOM = 96;
-/** The logo stays while the bar's left part, beside Back, has room for it: only a nav in the middle
- * can leave it none, in the narrowest windows (and on a Mac, whose traffic lights take part of that side). */
-const logoFits = () =>
-  navPosition() !== "center" || !iconsOnly() || (windowSize().width - ICONS_NAV_WIDTH) / 2 >= backLeft() + back().width + LOGO_ROOM;
+const buttons = NAV.filter((n) => !n.pill);
 
 function Pills(props: { solid: () => boolean }) {
   const selected = (id: Destination) => section() === id;
@@ -182,9 +163,7 @@ function Pills(props: { solid: () => boolean }) {
             style={pillStyle(selected(n().id))}
           >
             <Icon src={() => n().icon} size={pt(15)} color={() => (selected(n().id) ? colors.snow() : colors.dim())} />
-            <If when={!iconsOnly()}>
-              <Text style={pillText(selected(n().id))}>{t(`nav.${n().id}`)}</Text>
-            </If>
+            <Text style={pillText(selected(n().id))}>{t(`nav.${n().id}`)}</Text>
           </View>
         )}
       </Each>
@@ -192,22 +171,22 @@ function Pills(props: { solid: () => boolean }) {
   );
 }
 
-/** One of the bar's round buttons (Search, Settings). */
-function RoundButtons(props: { items: typeof NAV }) {
+/** A title's Add to list, before the nav. */
+function PageAction() {
+  const shown = () => {
+    const r = route();
+    if (r.name !== "title") return null;
+    const s = titleOf(r.id);
+    return s ? { id: r.id, inList: s.inList } : null;
+  };
   return (
-    <Each of={props.items} key={(n) => n.id}>
-      {(n) => (
-        <View
-          role="button"
-          accessibilityLabel={t(`nav.${n().id}`)}
-          onPress={() => go(n().id)}
-          hoverStyle={{ backgroundColor: colors.raise() }}
-          style={roundStyle(section() === n().id, barSolid())}
-        >
-          <Icon src={() => n().icon} size={pt(15)} color={() => (section() === n().id ? colors.snow() : colors.dim())} />
+    <If when={shown()}>
+      {(s) => (
+        <View style={{ marginRight: 10 }}>
+          <ListToggle inList={() => s().inList} focused={() => false} onPress={() => toggleList(s().id)} />
         </View>
       )}
-    </Each>
+    </If>
   );
 }
 
@@ -224,28 +203,41 @@ export function WindowBar() {
   return (
     <If when={!inSetup()} else={<View desktop={{ windowDrag: true }} style={barStyle(false)} />}>
     <View style={barStyle(barSolid())}>
-      {/* The sides: with the nav in the middle both take half of what is left, so it is centred in
-          the window; elsewhere the one away from the nav takes it all. */}
       <View style={sideStyle(navPosition() !== "left")}>
         <View desktop={{ windowDrag: true }} style={{ width: backLeft(), alignSelf: "stretch" }} />
         <If when={showBack()}>
           <BarBack onPress={handleBack} enabled={canGoBack} tip={tip} />
         </If>
         <View desktop={{ windowDrag: true }} style={logoRoom(showBack(), navPosition() !== "left")}>
-          <If when={logoFits()}>
-            <View style={logoPill(barSolid())}>
-              <Text style={logoStyle()}>{t("app.name")}</Text>
-            </View>
-          </If>
+          <Text style={logoStyle()}>{t("app.name")}</Text>
         </View>
+        <If when={navPosition() === "right"}>
+          <PageAction />
+        </If>
       </View>
       <View testID={`window-nav-${navPosition()}`} style={row(6)}>
-        <RoundButtons items={searchButton} />
         <Pills solid={barSolid} />
-        <RoundButtons items={settingsButton} />
+        <Each of={buttons} key={(n) => n.id}>
+          {(n) => (
+            <View
+              role="button"
+              accessibilityLabel={t(`nav.${n().id}`)}
+              onPress={() => go(n().id)}
+              hoverStyle={{ backgroundColor: colors.raise() }}
+              style={roundStyle(section() === n().id, barSolid())}
+            >
+              <Icon src={() => n().icon} size={pt(15)} color={() => (section() === n().id ? colors.snow() : colors.dim())} />
+            </View>
+          )}
+        </Each>
       </View>
       <View style={sideStyle(navPosition() !== "right")}>
         <View desktop={{ windowDrag: true }} style={{ flex: 1, alignSelf: "stretch" }} />
+        <If when={navPosition() !== "right"}>
+          <View style={{ marginLeft: 10 }}>
+            <PageAction />
+          </View>
+        </If>
         <View desktop={{ windowDrag: true }} style={{ width: titleBar().right + (chrome === "mac" ? 16 : 10), alignSelf: "stretch" }} />
       </View>
     </View>
