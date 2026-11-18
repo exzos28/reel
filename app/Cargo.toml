@@ -40,6 +40,11 @@ rusqlite = { version = "0.42", features = ["bundled"] }
 # Pairing codes and sessions of the hosted settings page (src/interface/hosted); already in the tree.
 getrandom = "0.3"
 
+[dev-dependencies]
+# Reads the `#[module]`s from src/ for the generated map of the core's API (tests/modules_map.rs,
+# docs/modules.md); already in the tree.
+syn = { version = "2", default-features = false, features = ["full", "parsing"] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 # The mpv video view (`src/adapters/mpv`): a native component on NSH's AppKit host.
 libc = "0.2"

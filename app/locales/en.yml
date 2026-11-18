@@ -365,9 +365,9 @@ settings:
     save: Save and check
     remove: Remove source
     # The partner's ready source (design/partner-source.md).
-    partner_tv_title: Rent a ready source
+    partner_tv_title: Get a ready source
     partner_tv_text: "Scan with your phone and pay in Telegram (@%{bot}). The source comes back here: confirm it on this screen."
-    partner_app: Rent a ready source in Telegram
+    partner_app: Get a ready source in Telegram
     partner_app_note: "@%{bot} sends a link back: open it, and the source fills in here."
     saving: Saving…
     checking: Checking the source…
@@ -432,9 +432,9 @@ setup:
     recommended: Recommended
   source:
     title: Where should reel find films?
-    help: Enter your own, or rent one ready.
+    help: Enter your own, or get a ready one.
     own_title: Your own source
-    rent_title: Or rent a ready one
+    rent_title: Or get a ready one
     check: Check
     finish: Finish
     skip: Skip

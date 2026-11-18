@@ -60,7 +60,7 @@ button:disabled{opacity:.5}
   <section>
     <h2>Search source</h2>
     <p>A Torznab address and its API key.</p>
-    <p id="rent" hidden><a class="button quiet" id="rentLink" rel="noreferrer">Rent a ready source in Telegram</a></p>
+    <p id="rent" hidden><a class="button quiet" id="rentLink" rel="noreferrer">Get a ready source in Telegram</a></p>
     <form id="sourceForm">
       <label for="url">Torznab address (required)</label>
       <input id="url" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api">
@@ -113,7 +113,7 @@ button:disabled{opacity:.5}
     return b.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
-  // "Rent a ready source": the partner's bot (if this build has one), told to send the viewer
+  // "Get a ready source": the partner's bot (if this build has one), told to send the viewer
   // back to this page with the source (design/partner-source.md).
   function showRent(bot) {
     var start = bot ? startOf(location.origin + '/s?t={t}&u={u}') : '';

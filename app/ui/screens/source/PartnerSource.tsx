@@ -31,7 +31,7 @@ function Qr(props: { src: string; title: string | null; text: string; children?:
   );
 }
 
-/** `titled`: false where the place gives it its own heading (the setup's "Or rent a ready one"). */
+/** `titled`: false where the place gives it its own heading (the setup's "Or get a ready one"). */
 export function PartnerSource(props: { focused?: () => boolean; titled?: boolean }) {
   const title = () => ((props.titled ?? true) ? t("settings.source.partner_tv_title") : null);
   const open = () => {

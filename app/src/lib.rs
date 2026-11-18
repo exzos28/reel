@@ -559,13 +559,13 @@ impl Sources {
         }
     }
 
-    /// Sets the player profile of this device (what it can play): "mpv",
     /// The tallest picture Play picks by itself, in lines (1080 on a phone or a tablet: 4K costs it
     /// time and space for nothing it can show); 0: any. The viewer can still choose any release.
     pub fn set_picture_cap(lines: u32) {
         catalog::set_picture_cap(lines);
     }
 
+    /// Sets the player profile of this device (what it can play): "mpv",
     /// "apple_avplayer", "android_mediaplayer", "tizen". Releases it cannot
     /// play are hidden from searches. False for an unknown name.
     pub fn set_profile(name: String) -> bool {
