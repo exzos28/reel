@@ -11,9 +11,10 @@ import { Fmt } from "../../native";
 import type { SavedGroup } from "../../library";
 import { alpha, colors, cs, targetSlop, u } from "../../theme";
 import chevronIcon from "../../icons/chevron.svg";
+import { SpeedLine } from "../../kit/SpeedLine";
 import pauseIcon from "../../icons/pause.svg";
 import playIcon from "../../icons/play.svg";
-import closeIcon from "../../icons/plus.svg";
+import trashIcon from "../../icons/trash.svg";
 
 const groupStyle = (focused: boolean): ViewStyle => ({ ...rowStyle(false, focused, u(24)), height: cs(108), paddingLeft: cs(10), paddingRight: cs(22) });
 const thumbStyle = (): ViewStyle => ({ width: cs(160), height: cs(90), ...rounded(u(8)), overflow: "hidden", backgroundColor: colors.raise() });
@@ -37,7 +38,7 @@ export function SavedGroupRow(props: {
   onRemove: () => void;
 }) {
   const g = props.group;
-  const line = () => t("saved.group_line", { count: g().count, size: Fmt.size(g().size) });
+  const line = () => t(g().count === 1 ? "saved.group_line_one" : "saved.group_line", { count: g().count, size: Fmt.size(g().size) });
   return (
     <View
       ref={props.viewRef}
@@ -60,10 +61,13 @@ export function SavedGroupRow(props: {
       </View>
       <If when={props.saving}>
         <View style={{ width: cs(340) }}>
-          <Text style={metaText()}>{t("saved.group_saving", { percent: Math.floor(g().progress * 100) })}</Text>
+          <Text style={metaText()}>{t("saved.state.saving", { percent: Math.floor(g().progress * 100), have: Fmt.size(g().have), size: Fmt.size(g().size) })}</Text>
           <View style={progressTrack()}>
             <View style={progressFill(g().progress)} />
           </View>
+          <If when={g().speed != null}>
+            <SpeedLine speed={() => g().speed!} peers={() => g().peers} />
+          </If>
         </View>
       </If>
       <View style={row(u(12))}>
@@ -80,9 +84,7 @@ export function SavedGroupRow(props: {
         <View style={{ transform: [{ rotate: props.open() ? "180deg" : "0deg" }] }}>
           <Icon src={() => chevronIcon} size={22} color={() => colors.snow()} />
         </View>
-        <View style={{ transform: [{ rotate: "45deg" }] }}>
-          <IconButton size={44} icon={() => closeIcon} label={() => t("saved.remove_all")} focused={() => props.focusedPart() === 2} background={() => colors.raise()} onPress={props.onRemove} />
-        </View>
+        <IconButton size={44} icon={() => trashIcon} label={() => t("saved.remove_all")} focused={() => props.focusedPart() === 2} background={() => colors.raise()} onPress={props.onRemove} />
       </View>
     </View>
   );

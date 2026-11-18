@@ -722,6 +722,8 @@ pub fn list() -> Value {
                     "peers": live.as_ref().map(|l| l.snapshot.peer_stats.live),
                     "message": i.message,
                     "folder": i.dir,
+                    // Speed and people are the torrent's (librqbit does not split them by file).
+                    "torrent": i.infohash,
                 })
             })
             .collect();

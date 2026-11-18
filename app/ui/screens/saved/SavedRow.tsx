@@ -12,9 +12,10 @@ import { Fmt } from "../../native";
 import type { SavedItem } from "../../library";
 import { alpha, colors, cs, targetSlop, u } from "../../theme";
 import { episodeCode } from "../../catalog";
+import { SpeedLine } from "../../kit/SpeedLine";
 import pauseIcon from "../../icons/pause.svg";
 import playIcon from "../../icons/play.svg";
-import closeIcon from "../../icons/plus.svg";
+import trashIcon from "../../icons/trash.svg";
 
 const itemStyle = (focused: boolean, nested: boolean): ViewStyle => ({
   ...rowStyle(false, focused, u(24)),
@@ -28,8 +29,6 @@ const imageStyle = () => ({ ...cover(), objectFit: "cover" }) as ViewStyle;
 const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", marginTop: u(8), width: cs(300) });
 /** What is on the device: the player's "ready" tone, not the watched one. */
 const progressFill = (p: number): ViewStyle => ({ height: "100%", width: `${Math.round(p * 100)}%`, backgroundColor: alpha(colors.snow(), 0.45) });
-/** Remove: the plus turned a quarter. */
-const turned: ViewStyle = { transform: [{ rotate: "45deg" }] };
 
 /** "S3:E5 · The Palace of Terror", or nothing for a film. */
 function episodeLine(i: SavedItem) {
@@ -54,8 +53,6 @@ export function stateLine(i: SavedItem): string {
   }
 }
 
-/** Under the state while it saves: "3.1 MB/s from 58 people". */
-const speedLine = (i: SavedItem) => (i.state === "saving" && i.speed != null ? t("saved.speed", { speed: Fmt.speed(i.speed), peers: i.peers ?? 0 }) : "");
 
 export function SavedRow(props: {
   item: () => SavedItem;
@@ -99,13 +96,14 @@ export function SavedRow(props: {
             <View style={progressFill(i().progress)} />
           </View>
         </If>
-        <If when={speedLine(i())}>
-          <Text style={{ ...metaText(), marginTop: u(6) }}>{speedLine(i())}</Text>
+        {/* An episode's torrent is its show's: its speed shows on the show's row. */}
+        <If when={!props.nested && i().state === "saving" && i().speed != null}>
+          <SpeedLine speed={() => i().speed!} peers={() => i().peers ?? 0} />
         </If>
       </View>
       <View style={row(u(12))}>
         <If when={i().state === "saved"}>
-          <IconButton size={44} icon={() => playIcon} label={() => t("title.play")} focused={() => props.focusedPart() === 1} background={() => colors.snow()} onPress={props.onPlay} />
+          <IconButton size={44} icon={() => playIcon} label={() => t("title.play")} focused={() => props.focusedPart() === 1} background={() => colors.raise()} onPress={props.onPlay} />
         </If>
         <If when={i().state === "saving" || i().state === "paused"}>
           <IconButton
@@ -117,16 +115,14 @@ export function SavedRow(props: {
             onPress={props.onPause}
           />
         </If>
-        <View style={turned}>
-          <IconButton
-            size={44}
-            icon={() => closeIcon}
-            label={() => t("saved.remove")}
-            focused={() => props.focusedPart() === 2}
-            background={() => colors.raise()}
-            onPress={props.onRemove}
-          />
-        </View>
+        <IconButton
+          size={44}
+          icon={() => trashIcon}
+          label={() => t("saved.remove")}
+          focused={() => props.focusedPart() === 2}
+          background={() => colors.raise()}
+          onPress={props.onRemove}
+        />
       </View>
     </View>
   );

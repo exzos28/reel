@@ -75,6 +75,8 @@ pub struct LayerIvars {
     dirty: Arc<AtomicBool>,
     /// The size last drawn, pixels.
     drawn: Mutex<(c_int, c_int)>,
+    /// The player's file waits for the render context (made on the first draw).
+    gate: Mutex<Option<Arc<super::player::LoadGate>>>,
 }
 
 unsafe extern "C" fn on_update(flag: *mut c_void) {
@@ -153,6 +155,7 @@ fn has_frame(&self) -> bool {
             closed: AtomicBool::new(false),
             dirty: Arc::new(AtomicBool::new(true)),
             drawn: Mutex::new((0, 0)),
+            gate: Mutex::new(None),
         });
         let this: Retained<MpvLayer> = unsafe { msg_send![super(this), init] };
         this.setAsynchronous(true);
@@ -185,6 +188,10 @@ fn has_frame(&self) -> bool {
             let flag = Arc::as_ptr(&ivars.dirty) as *mut c_void;
             unsafe { (ivars.lib.render_context_set_update_callback)(made, Some(on_update), flag) };
             *render = Some(Render { ctx: made, gl: ctx });
+            // mpv has a video output now: the file held until this loads.
+            if let Some(gate) = ivars.gate.lock().unwrap().take() {
+                gate.open(ivars.lib, ivars.raw);
+            }
         }
         let Some(r) = render.as_ref() else { return };
         let get: GetIntegerv = unsafe { std::mem::transmute(libc::dlsym(gl(), c"glGetIntegerv".as_ptr())) };
@@ -279,8 +286,12 @@ impl MpvComponent {
         let mtm = MainThreadMarker::new().expect("components are made on the main thread");
         let emit_cx = cx.clone();
         let player = Player::new(lib, "libmpv", &[], Arc::new(move |name, data| emit_cx.emit(name, data)));
+        let mut gate = None;
         let player = match player {
-            Ok(p) => Some(p),
+            Ok(mut p) => {
+                gate = Some(p.hold_until_drawn());
+                Some(p)
+            }
             Err(e) => {
                 cx.emit("error", serde_json::json!({ "message": e }));
                 None
@@ -289,6 +300,7 @@ impl MpvComponent {
         // Without a player the layer never draws (closed below).
         let raw = player.as_ref().map(Player::raw).unwrap_or(Raw(std::ptr::null_mut()));
         let layer = MpvLayer::new(lib, raw);
+        *layer.ivars().gate.lock().unwrap() = gate;
         if player.is_none() {
             layer.close();
         }

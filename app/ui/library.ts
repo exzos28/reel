@@ -50,6 +50,9 @@ export interface SavedGroup {
   size: number;
   have: number;
   progress: number;
+  /** MiB/s of its torrents while saving, null when none saves; people sharing them. */
+  speed: number | null;
+  peers: number;
   items: SavedItem[];
 }
 

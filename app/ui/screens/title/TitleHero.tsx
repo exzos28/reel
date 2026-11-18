@@ -87,7 +87,15 @@ export function TitleHero(props: {
       <View style={actionsRow(false)}>
         <PlayButton label={() => playLabel(props.data())} focused={focused("play")} onPress={props.onPlay} />
         <If when={librarySupported}>
-          <SaveButton state={saveState} show={show} focused={focused("save")} onPress={props.onSave} />
+          <SaveButton
+            state={saveState}
+            show={show}
+            focused={focused("save")}
+            onPress={props.onSave}
+            // Nothing to save until a release is known (a film's search found none, or still runs);
+            // what is saved already stays reachable.
+            disabled={() => !show() && !props.data().release && saveState().state === "none"}
+          />
         </If>
         <If when={props.data().trailer}>
           <TrailerButton focused={focused("trailer")} onPress={props.onTrailer} />

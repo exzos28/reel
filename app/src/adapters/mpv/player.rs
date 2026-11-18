@@ -41,6 +41,38 @@ pub struct Player {
     shared: Arc<Shared>,
     thread: Option<JoinHandle<()>>,
     src: String,
+    /// A view that draws through a render context it makes on its first draw (macOS) holds
+    /// `loadfile` until then: a file that opens at once (a saved film on disk) found no video
+    /// output yet, and mpv played its sound only. None: load at once.
+    gate: Option<Arc<LoadGate>>,
+}
+
+/// Holds the file to load until the view can draw (`Player::hold_until_drawn`).
+#[derive(Default)]
+pub struct LoadGate {
+    drawn: AtomicBool,
+    pending: std::sync::Mutex<Option<String>>,
+}
+
+impl LoadGate {
+    /// The view draws now: the file held, if any, loads.
+    pub fn open(&self, lib: &'static Lib, raw: Raw) {
+        self.drawn.store(true, Ordering::Release);
+        if let Some(src) = self.pending.lock().unwrap().take() {
+            command(lib, raw, &["loadfile", &src, "replace"]);
+        }
+    }
+}
+
+/// Runs an mpv command (`args`), logging a failure.
+pub fn command(lib: &'static Lib, raw: Raw, args: &[&str]) {
+    let owned: Vec<_> = args.iter().map(|a| cstr(a)).collect();
+    let mut ptrs: Vec<*const c_char> = owned.iter().map(|c| c.as_ptr()).collect();
+    ptrs.push(std::ptr::null());
+    let r = unsafe { (lib.command)(raw.0, ptrs.as_mut_ptr()) };
+    if r < 0 {
+        tracing::warn!("reel mpv: {}: {}", args.join(" "), ffi::error_text(lib, r));
+    }
 }
 
 const OBSERVED: [(&str, c_int); 8] = [
@@ -111,7 +143,7 @@ impl Player {
                 .spawn(move || events(lib, raw, &shared, &emit))
                 .map_err(|e| e.to_string())?
         };
-        Ok(Player { lib, raw, shared, thread: Some(thread), src: String::new() })
+        Ok(Player { lib, raw, shared, thread: Some(thread), src: String::new(), gate: None })
     }
 
     pub fn raw(&self) -> Raw {
@@ -142,13 +174,15 @@ impl Player {
     }
 
     fn command(&self, args: &[&str]) {
-        let owned: Vec<_> = args.iter().map(|a| cstr(a)).collect();
-        let mut ptrs: Vec<*const c_char> = owned.iter().map(|c| c.as_ptr()).collect();
-        ptrs.push(std::ptr::null());
-        let r = unsafe { (self.lib.command)(self.raw.0, ptrs.as_mut_ptr()) };
-        if r < 0 {
-            tracing::warn!("reel mpv: {}: {}", args.join(" "), ffi::error_text(self.lib, r));
-        }
+        command(self.lib, self.raw, args);
+    }
+
+    /// Files load only once the view draws (`LoadGate::open`).
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub fn hold_until_drawn(&mut self) -> Arc<LoadGate> {
+        let gate = Arc::new(LoadGate::default());
+        self.gate = Some(gate.clone());
+        gate
     }
 
     /// A prop of the TSX view changed (`None`: removed).
@@ -162,10 +196,16 @@ impl Player {
                 self.src = src;
                 self.shared.at_end.store(false, Ordering::Relaxed);
                 if self.src.is_empty() {
+                    if let Some(g) = &self.gate {
+                        g.pending.lock().unwrap().take();
+                    }
                     self.command(&["stop"]);
                 } else {
                     let src = self.src.clone();
-                    self.command(&["loadfile", &src, "replace"]);
+                    match &self.gate {
+                        Some(g) if !g.drawn.load(Ordering::Acquire) => *g.pending.lock().unwrap() = Some(src),
+                        _ => self.command(&["loadfile", &src, "replace"]),
+                    }
                 }
             }
             "paused" => {

@@ -111,7 +111,7 @@ Formatting shared by every platform.
 - `size(bytes: f64) -> String`: A size in bytes as "256 MB", "1 GB", "1.4 GB".
   Called from: `ui/Player.tsx`, `ui/screens/saved/SavedGroupRow.tsx`, `ui/screens/saved/SavedRow.tsx`, `ui/screens/saved/SavedScreen.tsx`, `ui/screens/settings/SettingsScreen.tsx`, `ui/screens/settings/choices.ts`, `ui/screens/title/SaveDrawer.tsx`.
 - `speed(mib_per_s: f64) -> String`: A download speed in MiB/s as "3.4 MB/s" (one decimal under 10, whole above).
-  Called from: `ui/Player.tsx`, `ui/screens/saved/SavedRow.tsx`.
+  Called from: `ui/Player.tsx`, `ui/kit/SpeedLine.tsx`.
 
 ## Hosted
 

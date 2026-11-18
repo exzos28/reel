@@ -68,7 +68,7 @@ export function ReleaseButton(props: { name: () => string; rest: () => string; f
 
 /** Save (design/offline-downloads.md): "Save", then what is saved of the title: "Saving 34%",
  * a show's "Saving 2 of 5", "Paused", "Saved" with a check. */
-export function SaveButton(props: { state: () => SaveState; show: () => boolean; focused: () => boolean; onPress: () => void }) {
+export function SaveButton(props: { state: () => SaveState; show: () => boolean; focused: () => boolean; onPress: () => void; disabled?: () => boolean }) {
   const s = props.state;
   const label = () => {
     switch (s().state) {
@@ -87,5 +87,5 @@ export function SaveButton(props: { state: () => SaveState; show: () => boolean;
         return t("title.save");
     }
   };
-  return <Button kind="secondary" icon={() => (s().state === "saved" ? checkIcon : savedIcon)} label={label} focused={props.focused} onPress={props.onPress} />;
+  return <Button kind="secondary" icon={() => (s().state === "saved" ? checkIcon : savedIcon)} label={label} focused={props.focused} onPress={props.onPress} disabled={props.disabled} />;
 }

@@ -476,8 +476,7 @@ saved:
   remove_about: "%{size} is deleted from this device. You can save it again later."
   open_folder: Open folder
   group_line: "%{count} episodes · %{size}"
-  group_saving: "%{percent}% saved"
-  speed: "%{speed} from %{peers} people"
+  group_line_one: "1 episode · %{size}"
   space:
     saved: "%{size} saved"
     free: "%{size} free"

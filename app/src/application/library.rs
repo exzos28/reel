@@ -185,18 +185,21 @@ pub fn plan(show: &str, season: u32) -> Value {
 
 /// The Saved screen: `{"saving":[group…],"ready":[group…],"failed":[group…],"space"}`.
 /// A group is one title, `{"id","title","image","show","count","size","have","progress",
-/// "items":[item…]}`: a film's holds its one item, a show's its episodes (by season and
+/// "speed","peers","items":[item…]}` (speed and people of its torrents, each counted once): a film's holds its one item, a show's its episodes (by season and
 /// number); groups newest first. Items as `Keep::list` gives them.
 pub fn list() -> Value {
     let all = items();
-    let of = |states: &[&str]| -> Value {
-        let mine: Vec<Value> = all.iter().filter(|i| states.contains(&i["state"].as_str().unwrap_or(""))).cloned().collect();
-        Value::from(groups(mine))
-    };
+    let state = |i: &Value| i["state"].as_str().unwrap_or("").to_owned();
+    // A title is in one place: Saving while anything of it saves (its saved episodes with it),
+    // else Ready to watch; what failed is listed apart.
+    let kept: Vec<Value> = all.iter().filter(|i| state(i) != "failed").cloned().collect();
+    let (saving, ready): (Vec<Value>, Vec<Value>) =
+        groups(kept).into_iter().partition(|g| g["items"].as_array().is_some_and(|items| items.iter().any(|i| UNFINISHED.contains(&state(i).as_str()))));
+    let failed: Vec<Value> = all.iter().filter(|i| state(i) == "failed").cloned().collect();
     json!({
-        "saving": of(&UNFINISHED),
-        "ready": of(&["saved", "unavailable"]),
-        "failed": of(&["failed"]),
+        "saving": saving,
+        "ready": ready,
+        "failed": groups(failed),
         "space": keep().space(),
     })
 }
@@ -220,6 +223,15 @@ fn groups(items: Vec<Value>) -> Vec<Value> {
             let show = items.iter().any(|i| i["season"].is_u64());
             let size: u64 = items.iter().map(|i| i["size"].as_u64().unwrap_or(0)).sum();
             let have: u64 = items.iter().map(|i| i["have"].as_u64().unwrap_or(0)).sum();
+            // Speed and people are a torrent's, not an episode's: each torrent counted once.
+            let mut torrents: HashMap<String, (f64, u64)> = HashMap::new();
+            for i in &items {
+                if let (Some(t), Some(speed)) = (i["torrent"].as_str(), i["speed"].as_f64()) {
+                    torrents.insert(t.to_owned(), (speed, i["peers"].as_u64().unwrap_or(0)));
+                }
+            }
+            let speed = (!torrents.is_empty()).then(|| torrents.values().map(|t| t.0).sum::<f64>());
+            let peers: u64 = torrents.values().map(|t| t.1).sum();
             let first = items.first().cloned().unwrap_or(Value::Null);
             json!({
                 "id": id,
@@ -232,6 +244,8 @@ fn groups(items: Vec<Value>) -> Vec<Value> {
                 "size": size,
                 "have": have,
                 "progress": if size > 0 { have as f64 / size as f64 } else { 0.0 },
+                "speed": speed,
+                "peers": peers,
                 "items": items,
             })
         })
