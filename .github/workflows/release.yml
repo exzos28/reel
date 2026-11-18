@@ -1,34 +1,71 @@
-# On a v* tag (git tag v0.1.4 && git push origin v0.1.4): build every platform, the Samsung TV
-# package too, and publish them as the tag's GitHub Release under the names the site and the
-# README link to (build/publish-release.sh: each package checked by build/package-check.py).
-# The version in app/nsh.json should match the tag.
+# Publishes a version when main gets one: a merged version PR (build/release.sh) changes
+# app/nsh.json's version, and if the release v<version> does not exist yet, this checks the commit,
+# builds every platform and the Samsung TV package and publishes them as the release v<version>
+# (the tag made on this commit) under the names the site and the README link to
+# (build/publish-release.sh: each package checked by build/package-check.py), with the version's
+# CHANGELOG.md section as its notes. By hand (workflow_dispatch) it publishes main's version again,
+# replacing the release's files (docs/releasing.md, "Fixing a release").
 name: release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths: [app/nsh.json]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  # A release is published only when the tag's commit passes the checks.
+  version:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      publish: ${{ steps.v.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(python3 -I build/changes.py version)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_EVENT_NAME" != workflow_dispatch ] && gh release view "v$version" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::notice::v$version is already released: nothing to publish"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            python3 -I build/changes.py notes "$version" > /dev/null
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
   checks:
+    needs: version
+    if: needs.version.outputs.publish == 'true'
     uses: ./.github/workflows/checks.yml
 
   build:
+    needs: version
+    if: needs.version.outputs.publish == 'true'
     uses: ./.github/workflows/build.yml
     with:
-      version: ${{ github.ref_name }}
+      release: true
     secrets: inherit
 
   tv:
+    needs: version
+    if: needs.version.outputs.publish == 'true'
     uses: ./.github/workflows/tizen.yml
     secrets: inherit
 
   release:
-    needs: [checks, build, tv]
+    needs: [version, checks, build, tv]
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:
@@ -39,7 +76,8 @@ jobs:
         with:
           pattern: reel-*
           path: dist
-      - run: build/publish-release.sh "$GITHUB_REF_NAME" --from dist
+      - run: build/publish-release.sh "${{ needs.version.outputs.version }}" --from dist
         env:
           GH_TOKEN: ${{ github.token }}
           REEL_RELEASES_REPO: ${{ github.repository }}
+          REEL_RELEASE_TARGET: ${{ github.sha }}

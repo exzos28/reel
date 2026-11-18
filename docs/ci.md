@@ -17,7 +17,8 @@ dev/ios-sim-smoke.sh iPad   # install + launch the simulator build on an iPad (o
 ```
 
 Packages land in `app/.nsh/dist/<target>/reel-*` (git-ignored); nsh's raw output is in `pkg/` next to them.
-`REEL_VERSION` / `REEL_BUILD` override `nsh.json`'s version and build number.
+The version and build come from `app/nsh.json` only (`docs/releasing.md`). `REEL_VERSION` /
+`REEL_BUILD` override them for a local test build; CI never sets them.
 
 ## Workflows
 
@@ -26,7 +27,8 @@ Packages land in `app/.nsh/dist/<target>/reel-*` (git-ignored); nsh's raw output
   (`build.yml` and `tizen.yml`) run only on a PR with the `build` label, on a version PR (branch
   `release/*`) and by hand (`workflow_dispatch`, input `build`). A newer push to a PR cancels its
   older run; on main every commit keeps its run.
-- `checks.yml`: `ui-rules` and `test-crates` on Ubuntu, and one macOS job `app` with the steps
+- `checks.yml`: `ui-rules`, `changeset` (a PR that changes the app adds an entry to `.changes/`,
+  `build/changes.py check`; the `no-changeset` label skips it) and `test-crates` on Ubuntu, and one macOS job `app` with the steps
   `typecheck`, `no-engine` and `test-app` (one build of reel-app and one Cargo cache; a failed step
   does not skip the next). Nothing of it has to run locally before a push: the pre-push hook
   (`.githooks/pre-push`) runs only `dev/ui-rules.sh`; `dev/checks.sh` runs every check here.
@@ -40,10 +42,12 @@ Packages land in `app/.nsh/dist/<target>/reel-*` (git-ignored); nsh's raw output
     signing secrets exist
   - Web: the static site
 - `tizen.yml`: the Samsung TV package (`.wgt`); by hand, from `ci.yml` and from `release.yml`.
-- `release.yml`: on a `v*` tag it runs `checks.yml`, `build.yml` with the tag as the version and
-  `tizen.yml`; when all pass, `build/publish-release.sh --from` publishes the tag's GitHub Release under the names the
-  site links to (`reel-macos.zip`, `reel-android.apk`, `reel-samsung-tv.wgt`, `reel-linux.tar.gz`,
-  `reel-windows.zip`), each checked by `build/package-check.py`.
+- `release.yml`: when main's `app/nsh.json` gets a version that has no release yet (a merged
+  version PR, `build/release.sh`), or by hand: `checks.yml`, `build.yml` (`release: true`, a
+  universal macOS app) and `tizen.yml`; when all pass, `build/publish-release.sh --from`
+  publishes the release `v<version>` on that commit, its notes from `CHANGELOG.md`, under the names
+  the site links to (`reel-macos.zip`, `reel-android.apk`, `reel-samsung-tv.wgt`,
+  `reel-linux.tar.gz`, `reel-windows.zip`), each checked by `build/package-check.py`.
 
 ## Secrets
 

@@ -24,8 +24,8 @@
 #
 # Environment (all optional):
 #   REEL_TMDB_TOKEN        baked into the binary by option_env!; without it the app asks for a key
-#   REEL_VERSION           overrides nsh.json "version" (--app-version)
-#   REEL_BUILD             overrides nsh.json "build" (--build)
+#   REEL_VERSION           overrides nsh.json "version" (--app-version), local test builds only
+#   REEL_BUILD             overrides nsh.json "build" (--build), local test builds only
 #   REEL_MACOS_ARCH        arm64 | x86_64 | universal (default: this Mac's)
 #   REEL_ANDROID_KEYSTORE  release keystore path; with REEL_ANDROID_KEY_ALIAS and NSH_KEYSTORE_PASSWORD
 #   REEL_ANDROID_ABI       --abi value (default: nsh's, arm64-v8a + armeabi-v7a)

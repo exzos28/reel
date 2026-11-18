@@ -14,7 +14,9 @@
 #   reel-windows.zip       out/windows/reel-windows-*.zip
 #                          (build/linux-docker.sh windows)
 # Each goes through build/package-check.py; a kind with no package, or one that fails it, is
-# left out and named. Needs gh, signed in with access to the repository.
+# left out and named. The notes are the version's CHANGELOG.md section (build/changes.py notes).
+# REEL_RELEASE_TARGET: the commit a new tag goes on (CI: the release's commit; default: gh's,
+# the default branch). Needs gh, signed in with access to the repository.
 set -euo pipefail
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
@@ -88,10 +90,12 @@ ls "$stage"/* > /dev/null 2>&1 || die "no package to publish"
 [ "${#missing[@]}" -eq 0 ] || log "not in this release: ${missing[*]}"
 ls -la "$stage" >&2
 
-notes="reel $version.
+changes="$(python3 -I "$repo/build/changes.py" notes "$version")" || die "no CHANGELOG.md section for $version"
+notes="$changes
 
 Packages built from the same sources, without the build machine's paths or metadata; their
 checksums are in SHA256SUMS.txt. Not in this release: ${missing[*]:-nothing}."
+printf '%s\n' "$notes" >&2
 if [ "$dry" = 1 ]; then
   log "dry run: v$version not published to $releases"
   exit 0
@@ -101,7 +105,8 @@ command -v gh > /dev/null || die "gh not found"
 # out (HTTP 408), and gh drops the whole release when one fails during create.
 # A re-run (CI's) finds the release there and only replaces its files.
 gh release view "v$version" --repo "$releases" > /dev/null 2>&1 \
-  || gh release create "v$version" --repo "$releases" --title "reel $version" --notes "$notes" --latest
+  || gh release create "v$version" --repo "$releases" --title "reel $version" --notes "$notes" --latest \
+       ${REEL_RELEASE_TARGET:+--target "$REEL_RELEASE_TARGET"}
 for f in "$stage"/*; do
   for try in 1 2 3; do
     gh release upload "v$version" "$f" --repo "$releases" --clobber && break
