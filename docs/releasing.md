@@ -58,5 +58,7 @@ Linux comes out for this machine's architecture (ARM64 on Apple silicon).
 
 - macOS: ad-hoc, no certificate (macOS asks to confirm the first start).
 - Android: the release key from the repository's secrets (`ANDROID_KEYSTORE_*`, its owner `CN=reel`);
+  on the maintainer's machine it and its password are in `.local/secrets/` (a link to a folder
+  outside the repository) and `.env` points at them;
   without them a debug key, which differs on every CI run, so such APKs do not update each other.
 - Samsung TV: the Tizen SDK's default certificate; Apps2Samsung signs it again for each TV.
