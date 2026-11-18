@@ -66,8 +66,12 @@ releases: `docs/releasing.md`.
 
 ## Build and test (from `app/`)
 
-- `cargo test --workspace`, `cargo build --no-default-features`, `nsh check .`, `nsh test .` and
-  `../dev/ui-rules.sh` must pass before every commit. The layers and crates (reel-domain, reel-engine, reel-app) are in
+- The checks run on GitHub (`.github/workflows/checks.yml`: ui-rules, test-crates, and one macOS
+  job with typecheck, no-engine and test-app); main accepts a PR only when they pass. Locally run
+  only what the change touches (`cargo test -p <crate>`, `nsh test <file>.test.tsx`); the pre-push
+  hook runs only `dev/ui-rules.sh`, and `dev/checks.sh` runs every check here when wanted. The
+  platform builds run on a PR with the `build` label (add it when a change touches a platform's
+  native code or the build), on a version PR and on a release (`docs/ci.md`). The layers and crates (reel-domain, reel-engine, reel-app) are in
   `docs/architecture.md`.
 - `nsh package . --target macos` (with `.env` loaded) for a demo build; `build/build.sh <target>`
   is what CI runs.
@@ -76,7 +80,10 @@ releases: `docs/releasing.md`.
 
 ## Git
 
-- Commit after every working step; keep main building.
+- Nothing is pushed to main directly. Work on a branch, in your own worktree (never switch
+  branches or pull in the main checkout another agent may use), commit after every working step,
+  push the branch, open a PR and let it merge itself when the checks pass:
+  `gh pr merge --auto --merge`. A red check is fixed on the branch.
 - Stage only your own files (several agents work in this repo): never `git add -A`, `git add .` or
   `git commit -a`, and check `git diff --cached --stat` before committing.
 - Tizen installs go through Apps2Samsung from GitHub Releases (`.tpk`), never the Samsung store.

@@ -5,9 +5,14 @@ and call `build/`.
 
 ```sh
 build/install-nsh.sh          # nsh at the version app/Cargo.lock pins nsh-core to (0.5.1)
-build/build.sh check          # cargo check + TypeScript
-build/build.sh test           # cargo test + *.test.tsx headless (JUnit in app/.nsh/dist/test/)
-build/build.sh macos          # or linux, windows, android, ios-simulator, ios, web, armv7
+build/build.sh ui-rules       # what screens must not do (seconds)
+build/build.sh test-crates    # cargo test of reel-domain and reel-engine (no nsh, no GTK)
+build/build.sh typecheck      # nsh check: cargo check of app/ + TypeScript
+build/build.sh no-engine      # app/ without the torrent engine
+build/build.sh test-app       # nsh test: cargo test of app/ + *.test.tsx headless (JUnit in app/.nsh/dist/test/)
+build/build.sh check          # typecheck + no-engine
+build/build.sh test           # test-crates + test-app
+build/build.sh macos          # or linux, windows, android, ios-simulator, ios, web
 dev/ios-sim-smoke.sh iPad   # install + launch the simulator build on an iPad (or iPhone)
 ```
 
@@ -16,18 +21,27 @@ Packages land in `app/.nsh/dist/<target>/reel-*` (git-ignored); nsh's raw output
 
 ## Workflows
 
-- `ci.yml`: on push to main and on PRs. Runs `check` and `test` on macOS, then calls `build.yml`.
+- `ci.yml`: on PRs and on main. Calls `checks.yml`, which main's branch protection requires before
+  a PR merges (PRs merge themselves with `gh pr merge --auto --merge`). The platform builds
+  (`build.yml` and `tizen.yml`) run only on a PR with the `build` label, on a version PR (branch
+  `release/*`) and by hand (`workflow_dispatch`, input `build`). A newer push to a PR cancels its
+  older run; on main every commit keeps its run.
+- `checks.yml`: `ui-rules` and `test-crates` on Ubuntu, and one macOS job `app` with the steps
+  `typecheck`, `no-engine` and `test-app` (one build of reel-app and one Cargo cache; a failed step
+  does not skip the next). Nothing of it has to run locally before a push: the pre-push hook
+  (`.githooks/pre-push`) runs only `dev/ui-rules.sh`; `dev/checks.sh` runs every check here.
 - `build.yml`: builds each platform and uploads it as an artifact:
   - macOS: `.app` zip
   - Linux: Ubuntu 24.04, GTK 4.14, `.tar.gz`
   - Windows: `.zip`, plus `-setup.exe` when Inno Setup is on the runner
   - Android: `.apk`
   - iOS simulator: one universal `.app`, launched on an iPhone and an iPad simulator
-  - iOS device: `.ipa`, only with signing secrets
+  - iOS device: `.ipa`, only when the repository variable `REEL_IOS_DEVICE` is `true` and the
+    signing secrets exist
   - Web: the static site
-  - Tizen core: armv7 `.so`
-- `release.yml`: on a `v*` tag it runs `build.yml` with the tag as the version and `tizen.yml`,
-  then `build/publish-release.sh --from` publishes the tag's GitHub Release under the names the
+- `tizen.yml`: the Samsung TV package (`.wgt`); by hand, from `ci.yml` and from `release.yml`.
+- `release.yml`: on a `v*` tag it runs `checks.yml`, `build.yml` with the tag as the version and
+  `tizen.yml`; when all pass, `build/publish-release.sh --from` publishes the tag's GitHub Release under the names the
   site links to (`reel-macos.zip`, `reel-android.apk`, `reel-samsung-tv.wgt`, `reel-linux.tar.gz`,
   `reel-windows.zip`), each checked by `build/package-check.py`.
 
@@ -52,18 +66,4 @@ that changes. In TSX, `platform.idiom` is `"pad"` on iPad and `"phone"` on iPhon
 
 ## Known gaps
 
-- **Android and armv7 (OpenSSL).** librqbit's default features use `crypto-hash`, which links
-  OpenSSL on Linux and Android. Linux and the armv7 job install OpenSSL. Android has nothing to link,
-  so that job is `continue-on-error` for now. The fix belongs in `app/Cargo.toml`: build librqbit with
-  `default-features = false` and `features = ["rust-tls", "http-api-client", "http-api",
-  "tracing-subscriber-utils"]` (ring/aws-lc sha1, rustls). That removes OpenSSL everywhere.
-- **Web.** The crate does not build for `wasm32-unknown-unknown`. tokio's `net` feature (librqbit,
-  sockets) pulls in mio, which has no support for that target. The web job is `continue-on-error`. The
-  Tizen plan (Rust core as a native `.so`, UI from the NSH web build in a WebView) needs a web build
-  without the native crate, or the crate's modules behind `cfg(not(target_arch = "wasm32"))` with a
-  bridge to the `.so`.
-- **Tizen core (armv7).** It builds with `cargo rustc --crate-type cdylib`, so `app/Cargo.toml` needs
-  no `[lib] crate-type`. It links against Debian bookworm's armel glibc, not the Tizen rootstrap, so it
-  is only a toolchain smoke test and the job is `continue-on-error`. `.tpk` packaging (`build/build.sh
-  tpk`, Tizen Studio CLI) is a TODO until `platforms/tizen` exists.
 - **macOS** builds for the runner's architecture (arm64). Set `REEL_MACOS_ARCH=universal` for both.

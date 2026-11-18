@@ -3,9 +3,10 @@ name: Tizen package
 # Builds the TV hybrid package (web launcher + .NET service hosting the Rust core) with
 # build/tizen.sh, the way tizen-os-ambilight's tv-package.yml does. The package is signed
 # with the Tizen SDK's default certificate; Apps2Samsung re-signs it for each TV.
-# A push builds the full package: the NSH web build of app/ (wasm32) served by the core. Run it by
-# hand with shell_only for the diagnostics screen instead, which checks each step on the TV and
-# plays Sintel through AVPlay.
+# It builds the full package: the NSH web build of app/ (wasm32) served by the core. It runs where
+# the other platform builds run (ci.yml: a PR with the `build` label, a version PR, by hand;
+# release.yml), and by hand here; with shell_only, the diagnostics screen instead, which checks
+# each step on the TV and plays Sintel through AVPlay.
 on:
   workflow_dispatch:
     inputs:
@@ -13,13 +14,6 @@ on:
         description: Diagnostics shell only (no NSH web build)
         type: boolean
         default: false
-  push:
-    branches: [main]
-    paths:
-      - platforms/tizen/**
-      - build/tizen.sh
-      - app/**
-      - .github/workflows/tizen.yml
   workflow_call:
     inputs:
       shell_only:
@@ -28,6 +22,11 @@ on:
 
 permissions:
   contents: read
+
+# By hand, a newer run replaces an older one; called from ci.yml or release.yml, it runs in theirs.
+concurrency:
+  group: tizen-${{ github.workflow == 'Tizen package' && github.ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   package:
@@ -40,27 +39,27 @@ jobs:
       # A push has no inputs: a missing one is not `true`, so it builds the full package.
       SHELL_ONLY: ${{ inputs.shell_only == true }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
 
       - uses: dtolnay/rust-toolchain@stable
         with:
           # wasm32: NSH's web build of app/ (the TV's UI).
           targets: armv7-unknown-linux-gnueabi,wasm32-unknown-unknown
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2.9.3
         with:
           workspaces: platforms/tizen
 
       # The core's C parts (sqlite, TLS) are cross-compiled with zig, pinned to glibc 2.28 so the
       # library loads on the TV whatever glibc the runner has.
-      - uses: mlugg/setup-zig@v2
+      - uses: mlugg/setup-zig@v2.2.1
         with:
           version: 0.13.0
 
       - name: Install cargo-zigbuild
         run: cargo install --locked cargo-zigbuild
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4.3.1
         with:
           dotnet-version: 8.0.x
 
@@ -130,7 +129,7 @@ jobs:
             build/tizen.sh package out/tizen
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: reel-tv
           path: out/tizen/

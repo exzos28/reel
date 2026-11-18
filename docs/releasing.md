@@ -14,8 +14,8 @@
 
 ## Steps
 
-1. Everything for the release is on `main` and its checks pass (`dev/checks.sh`, which the
-   pre-push hook runs).
+1. Everything for the release is on `main` and its `ci` run is green. The release workflow runs the
+   checks again on the tag and publishes nothing if they fail.
 2. Bump `version` and `build` in `app/nsh.json`; commit: `Version 0.1.4`.
 3. Tag and push the tag:
    ```sh

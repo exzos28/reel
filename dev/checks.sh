@@ -1,22 +1,18 @@
 #!/usr/bin/env bash
-# The checks every commit on main must pass (CLAUDE.md, "Build and test"): the Rust tests, the
-# build without default features, nsh's type check and tests, and the UI rules. Run from anywhere;
-# .githooks/pre-push runs it before every push. Stops at the first failure.
+# Every check CI runs before a merge (.github/workflows/checks.yml), here, one after another: the UI
+# rules, the domain and engine crates' tests, nsh's type check, app/ without the engine, and the
+# app's tests. Nothing requires running it locally (CLAUDE.md, "Build and test"); it is for when you
+# want the whole answer before pushing. Run from anywhere. Stops at the first failure.
 set -euo pipefail
 
-repo="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$repo/app"
+build="$(cd "$(dirname "$0")/.." && pwd)/build/build.sh"
 
 step() {
   local start=$SECONDS
-  printf '==> %s\n' "$*" >&2
-  "$@" || { printf 'checks.sh: failed: %s\n' "$*" >&2; exit 1; }
+  printf '==> build.sh %s\n' "$1" >&2
+  "$build" "$1" || { printf 'checks.sh: failed: build.sh %s\n' "$1" >&2; exit 1; }
   printf '    %ss\n' "$(( SECONDS - start ))" >&2
 }
 
-step cargo test --workspace -q
-step cargo build --no-default-features -q
-step nsh check .
-step nsh test .
-step ../dev/ui-rules.sh
+for target in ui-rules test-crates typecheck no-engine test-app; do step "$target"; done
 echo "checks.sh: all passed" >&2

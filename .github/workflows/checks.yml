@@ -1,0 +1,61 @@
+# The checks every change must pass before it reaches main (a PR's required checks). Called by
+# ci.yml and release.yml. Each job and step runs build/build.sh <target>, the same command a
+# developer can run locally. The cheap checks run on Ubuntu; everything that builds reel-app runs
+# in one macOS job with one Cargo cache (one build of the app, the steps named apart).
+name: checks
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Seconds: what screens must not do (dev/ui-rules.sh).
+  ui-rules:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: build/build.sh ui-rules
+
+  # cargo test of reel-domain and reel-engine: plain Rust, no GTK, no nsh.
+  test-crates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: Swatinem/rust-cache@v2.9.3
+        with:
+          workspaces: app -> target
+          key: test-crates
+      - run: build/build.sh test-crates
+
+  # reel-app: the type check, the build without the engine and the app's tests. A failed step
+  # does not stop the next one, so one run says which of them broke.
+  app:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-nsh
+        with:
+          rust-cache-key: checks
+      - name: typecheck (nsh check, cargo check + TypeScript)
+        run: build/build.sh typecheck
+      - name: no-engine (app/ without the torrent engine)
+        if: ${{ !cancelled() }}
+        run: build/build.sh no-engine
+      - name: test-app (nsh test, cargo test of app/ + *.test.tsx headless)
+        if: ${{ !cancelled() }}
+        run: build/build.sh test-app
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: test-results
+          path: app/.nsh/dist/test/junit.xml
+          if-no-files-found: ignore
