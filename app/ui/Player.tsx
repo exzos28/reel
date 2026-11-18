@@ -784,7 +784,8 @@ function TracksPanel(props: {
     const p = col === 2 ? props.picked()[col] : undefined;
     return p != null ? p === i : fromCore;
   };
-  const column = (col: number, heading: string, options: () => { main: string; sub?: string; selected: boolean }[]) => (
+  /** `id` names a row for tests (`testID`): `audio-<key>`, `subtitles-<key>` (the core's keys), `release-<index>`. */
+  const column = (col: number, heading: string, options: () => { id: string; main: string; sub?: string; selected: boolean }[]) => (
     <View style={{ flex: col === 2 ? 1.25 : 1, paddingHorizontal: u(18), borderLeftWidth: col > 0 ? 1 : 0, borderColor: colors.raise() }}>
       <Text style={{ fontFamily: font, fontSize: ts(21), fontWeight: 500, color: colors.ash(), marginLeft: u(16), marginBottom: u(10) }}>
         {heading}
@@ -794,6 +795,7 @@ function TracksPanel(props: {
       <Each of={options()} key="index">
         {(o, i) => (
           <View
+            testID={o().id}
             role="button"
             accessibilityLabel={o().main}
             accessibilityState={{ selected: isSelected(col, i(), o().selected) }}
@@ -832,10 +834,11 @@ function TracksPanel(props: {
         flexDirection: "row", padding: u(26), borderRadius: radius() + u(26), borderCurve: "continuous", backgroundColor: colors.card(),
       }}
     >
-      {column(0, t("player.audio"), () => props.audio().map((a, i) => ({ main: trackName(a, i + 1), sub: trackNote(a), selected: a.selected })))}
-      {column(1, t("player.subtitles"), () => props.subtitles().map((s, i) => ({ main: trackName(s, i), sub: trackNote(s), selected: s.selected })))}
+      {column(0, t("player.audio"), () => props.audio().map((a, i) => ({ id: `audio-${a.key}`, main: trackName(a, i + 1), sub: trackNote(a), selected: a.selected })))}
+      {column(1, t("player.subtitles"), () => props.subtitles().map((s, i) => ({ id: `subtitles-${s.key}`, main: trackName(s, i), sub: trackNote(s), selected: s.selected })))}
       {column(2, t("player.release"), () =>
-        props.releases().map((r) => ({
+        props.releases().map((r, i) => ({
+          id: `release-${i}`,
           main: `${r.quality} ${r.source}`,
           sub: `${r.size} · ${t("release.sharing_short", { count: r.peers })}`,
           selected: r.selected,

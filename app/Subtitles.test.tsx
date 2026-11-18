@@ -53,7 +53,8 @@ async function playing(remembered: "off" | "x:5") {
   });
   await app.keyboard.press("down"); // Trending movies: Dune
   await app.press("Play");
-  await app.wait(600); // one poll of the engine
+  // The core's answers come from outside the app's clock: wait for the blocks they bring, not for a time.
+  await app.waitFor("stage", { state: "gone" }); // the first frame played: the controls are there
   return { app, chosen };
 }
 
@@ -63,35 +64,39 @@ test("the Subtitles column lists the release's files; picking one asks the core"
   await app.keyboard.press("right");
   await app.keyboard.press("right"); // → audio and subtitles
   await app.keyboard.press("enter");
+  await app.waitFor("id:subtitles-x:5"); // the core's menu came: the release's file is listed
   expect(app.texts()).toContain("Off");
   expect(app.texts()).toContain("English");
   expect(app.texts()).toContain("File in the release");
   await app.keyboard.press("right"); // → Subtitles
   await app.keyboard.press("down"); // → English
   await app.keyboard.press("enter");
+  await app.waitUntil(() => chosen.length > 0);
   expect(chosen).toEqual(["x:5"]);
   await app.keyboard.press("escape"); // close the panel
   await app.keyboard.press("up"); // back on the scrubber
   await app.keyboard.press("right"); // seek to 0:10: the line is on screen
-  await app.waitFor("text:The tide is coming in."); // the core's answer comes a moment after the seek
+  await app.waitFor("id:subtitle"); // the core's answer comes a moment after the seek
+  expect(app.texts()).toContain("The tide is coming in.");
 });
 
 test("the overlay shows the cue at the position, and only then", async () => {
   const { app } = await playing("x:5");
   expect(app.shows("subtitle")).toBe(false); // 0:00, nothing yet
   await app.keyboard.press("right"); // 0:10
-  await app.waitFor("text:The tide is coming in."); // the core's answer comes a moment after the seek
-  expect(app.shows("subtitle")).toBe(true);
+  await app.waitFor("id:subtitle"); // the core's answer comes a moment after the seek
+  expect(app.texts()).toContain("The tide is coming in.");
   await app.keyboard.press("right"); // 0:20, the line is over
-  await app.waitFor("subtitle", { state: "gone" });
+  await app.waitFor("id:subtitle", { state: "gone" });
 });
 
 test("Off takes the subtitles away", async () => {
   const { app, chosen } = await playing("x:5");
   await app.keyboard.press("right"); // 0:10
-  await app.waitFor("text:The tide is coming in."); // the core's answer comes a moment after the seek
+  await app.waitFor("id:subtitle"); // the core's answer comes a moment after the seek
   await app.press("label:Audio and subtitles");
-  await app.press("label:Off");
+  await app.press("id:subtitles-off");
+  await app.waitUntil(() => chosen.length > 0);
   expect(chosen).toEqual(["off"]);
-  await app.waitFor("text:The tide is coming in.", { state: "gone" });
+  await app.waitFor("id:subtitle", { state: "gone" });
 });
