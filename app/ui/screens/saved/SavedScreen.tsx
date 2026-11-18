@@ -180,7 +180,7 @@ export function SavedScreen() {
               focusedPart={() => (here() ? part() : null)}
               viewRef={page.follow(here)}
               onToggle={() => act(e(), 0)}
-              onPause={section === "saving" ? () => act(e(), 1) : undefined}
+              onPause={section === "saving" && pausable((e() as Extract<Entry, { kind: "group" }>).group).length > 0 ? () => act(e(), 1) : undefined}
               paused={() => allPaused((e() as Extract<Entry, { kind: "group" }>).group)}
               onRemove={() => act(e(), 2)}
             />

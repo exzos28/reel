@@ -227,9 +227,10 @@ impl Library {
         self.stored.items.iter().filter(move |i| i.infohash.as_deref() == Some(infohash))
     }
 
-    /// The files every item of `infohash` needs (what librqbit downloads of it).
+    /// The files librqbit downloads of `infohash`: those of its items not failed and not paused
+    /// (one episode of a pack pauses alone: its files are left out).
     fn wanted(&self, infohash: &str) -> HashSet<usize> {
-        self.of(infohash).filter(|i| i.state != State::Failed).flat_map(|i| i.indexes().collect::<Vec<_>>()).collect()
+        self.of(infohash).filter(|i| !matches!(i.state, State::Failed | State::Paused)).flat_map(|i| i.indexes().collect::<Vec<_>>()).collect()
     }
 
     /// Every file some item uses, on disk.
@@ -317,7 +318,7 @@ pub fn init(data_dir: &Path) {
     let resume: Vec<_> = hashes
         .into_iter()
         .map(|h| {
-            let paused = lib.of(&h).filter(|i| i.unfinished()).all(|i| i.state == State::Paused);
+            let paused = lib.wanted(&h).is_empty();
             let dir = lib.of(&h).find(|i| i.unfinished()).map(|i| i.dir.clone()).unwrap_or_default();
             (lib.torrent_file(&h), lib.wanted(&h), h, dir, paused)
         })
@@ -485,12 +486,19 @@ async fn open_source(source: &str) -> Result<(AddTorrent<'static>, Option<String
 async fn resolve(id: u32, source: String) {
     let Some((base, ep)) = with(|lib| lib.item_mut(id).map(|i| (i.dir.clone(), i.episode))).flatten() else { return };
     let Ok(core) = engine::core() else { return };
+    let started = std::time::Instant::now();
+    let step = |what: &str| engine::log_line(&format!("saved {id} +{} ms {what}", started.elapsed().as_millis()));
     let lock = opening(&source);
     let _opening = lock.lock().await;
+    step("opening the source");
     let (add, known) = match open_source(&source).await {
         Ok(x) => x,
-        Err(e) => return set_failed(id, &e),
+        Err(e) => {
+            step(&format!("the source failed: {e}"));
+            return set_failed(id, &e);
+        }
     };
+    step(if known.is_some() { "source opened, infohash known" } else { "source opened" });
     // The torrent's folder, from its infohash when known now (a torrent saved already keeps
     // its own); a magnet that does not say gets one by its title.
     let Some(dir) = with(|lib| {
@@ -512,8 +520,12 @@ async fn resolve(id: u32, source: String) {
     let added = match tokio::time::timeout(FIND_FOR, core.session.add_torrent(add, Some(options))).await {
         Ok(r) => r,
         // Nobody gave the torrent's metadata in time: no one shares it now.
-        Err(_) => return set_failed(id, "no_peers"),
+        Err(_) => {
+            step("no metadata in time");
+            return set_failed(id, "no_peers");
+        }
     };
+    step("torrent added");
     let (tid, handle) = match added {
         Ok(AddTorrentResponse::Added(tid, handle)) => {
             leases::with(|l| l.take_keep(tid));
@@ -586,10 +598,6 @@ async fn resolve(id: u32, source: String) {
         i.files = mine;
         i.state = State::Saving;
         i.message = None;
-        // Its torrent saves again: the other items of it no longer show as paused.
-        for o in lib.stored.items.iter_mut().filter(|o| o.infohash.as_deref() == Some(&hash) && o.state == State::Paused) {
-            o.state = State::Saving;
-        }
         lib.live.insert(hash.clone(), (tid, handle.clone()));
         let wanted = lib.wanted(&hash);
         lib.save();
@@ -607,6 +615,7 @@ async fn resolve(id: u32, source: String) {
     if let Err(e) = core.session.update_only_files(&handle, &wanted).await {
         set_failed(id, &format!("{e:#}"));
     }
+    step("files selected, saving");
 }
 
 // ---- Progress and completion -----------------------------------------------------------
@@ -768,25 +777,35 @@ pub(crate) fn paused_by_user(tid: usize) -> bool {
 
 // ---- Pausing and removing --------------------------------------------------------------
 
+/// Pauses one item or goes on with it. An episode of a pack pauses alone: its files leave the
+/// torrent's selection; the torrent itself pauses only once nothing of it is left to save.
 pub fn set_running(id: u32, on: bool) {
-    let Some(Some((hash, handle))) = with(|lib| {
-        let hash = lib.item_mut(id)?.infohash.clone()?;
-        let (_, handle) = lib.live.get(&hash)?.clone();
-        for i in lib.stored.items.iter_mut().filter(|i| i.infohash.as_deref() == Some(&hash)) {
-            match (i.state, on) {
-                (State::Saving, false) => i.state = State::Paused,
-                (State::Paused, true) => i.state = State::Saving,
-                _ => {}
-            }
+    let Some(Some((hash, handle, wanted))) = with(|lib| {
+        let item = lib.item_mut(id)?;
+        match (item.state, on) {
+            (State::Saving, false) => item.state = State::Paused,
+            (State::Paused, true) => item.state = State::Saving,
+            _ => return None,
         }
+        let hash = item.infohash.clone()?;
+        let (_, handle) = lib.live.get(&hash)?.clone();
+        let wanted = lib.wanted(&hash);
         lib.save();
-        Some((hash, handle))
+        Some((hash, handle, wanted))
     }) else {
         return;
     };
     let Ok(core) = engine::core() else { return };
     core.rt.spawn(async move {
-        let r = if on { core.session.unpause(&handle).await } else { core.session.pause(&handle).await };
+        let r = if wanted.is_empty() {
+            core.session.pause(&handle).await
+        } else {
+            let _ = handle.wait_until_initialized().await;
+            if handle.is_paused() {
+                let _ = core.session.unpause(&handle).await;
+            }
+            core.session.update_only_files(&handle, &wanted).await
+        };
         if let Err(e) = r {
             tracing::warn!("reel saved: {} {hash}: {e:#}", if on { "resuming" } else { "pausing" });
         }

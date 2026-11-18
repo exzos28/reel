@@ -407,7 +407,7 @@ const BLOCKING_PERMITS: usize = 64;
 /// Peers connected or being connected per torrent (librqbit's default is 128).
 const PEER_LIMIT: usize = 300;
 
-fn log_line(line: &str) {
+pub(crate) fn log_line(line: &str) {
     use std::io::Write;
     eprintln!("reel timing {line}");
     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(timing_log()) {

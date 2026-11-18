@@ -15,8 +15,9 @@ import { Drawer } from "../../layout/Drawer";
 import { scroller, Scroller } from "../../layout/Scroller";
 import { Fmt } from "../../native";
 import type { PlanEpisode, SeasonPlan } from "../../library";
-import { colors, cs, targetSlop, u } from "../../theme";
+import { alpha, colors, cs, targetSlop, u } from "../../theme";
 import checkIcon from "../../icons/check.svg";
+import { SaveMark } from "../../kit/SaveMark";
 
 const tabStyle = (selected: boolean): ViewStyle => ({ paddingHorizontal: cs(14), paddingVertical: cs(8), ...rounded(u(8)), backgroundColor: selected ? colors.raise() : "transparent" });
 const rowBox = (focused: boolean): ViewStyle => ({ ...rowStyle(false, focused, u(14)), height: cs(56), paddingHorizontal: cs(14) });
@@ -32,24 +33,29 @@ const boxStyle = (on: boolean, locked: boolean): ViewStyle => ({
   opacity: locked ? 0.4 : 1,
 });
 
-/** A checkbox: ticked (a dark check on white), or empty. */
-function Box(props: { on: () => boolean; locked: () => boolean }) {
+const dashStyle = (): ViewStyle => ({ width: cs(12), height: cs(2.5), ...rounded(999), backgroundColor: colors.ink() });
+
+/** A checkbox: ticked (a dark check on white), some of it (a dash: part of a season), or empty. */
+function Box(props: { on: () => boolean; locked: () => boolean; some?: () => boolean }) {
   return (
-    <View style={boxStyle(props.on(), props.locked())}>
-      <If when={props.on()}>
+    <View style={boxStyle(props.on() || (props.some?.() ?? false), props.locked())}>
+      <If when={props.on()} else={<If when={props.some?.()}><View style={dashStyle()} /></If>}>
         <Icon src={() => checkIcon} size={16} color={() => colors.ink()} />
       </If>
     </View>
   );
 }
 
-/** Its state on the right: Saved, 62%, new (ticked, not saved yet), or nothing. */
-function stateText(e: PlanEpisode, picked: boolean) {
-  if (e.state === "saved") return t("title.saved");
-  if (e.state === "saving" || e.state === "paused") return `${Math.floor(e.progress * 100)}%`;
-  if (e.locked) return t(`saved.state.${e.state}`);
-  return picked ? t("saved.drawer.new") : "";
-}
+/** A row in the place of an episode while the season's episodes are coming. */
+const skeletonRow = (): ViewStyle => ({
+  height: cs(56),
+  ...rounded(u(10)),
+  backgroundColor: alpha(colors.snow(), 0.05),
+  animationName: "pulse",
+  animationDuration: 1400,
+  animationIterationCount: "infinite",
+  animationFrameRate: 30,
+});
 
 function EpisodeLine(props: { e: () => PlanEpisode; picked: () => boolean; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
   const e = props.e;
@@ -59,7 +65,12 @@ function EpisodeLine(props: { e: () => PlanEpisode; picked: () => boolean; focus
       <Text style={{ ...metaText(colors.faint()), width: cs(30), textAlign: "right" }}>{String(e().number)}</Text>
       <Text style={{ ...labelText(), ...oneLine, flex: 1 }}>{e().title}</Text>
       <Text style={metaText()}>{e().size != null ? Fmt.size(e().size!) : ""}</Text>
-      <Text style={{ ...metaText(e().state === "saved" ? colors.snow() : colors.ash()), width: cs(90), textAlign: "right" }}>{stateText(e(), props.picked())}</Text>
+      {/* Saved, saving or being found: a round mark, as Apple's apps show a download. */}
+      <View style={{ width: cs(34), alignItems: "flex-end" }}>
+        <If when={e().locked}>
+          <SaveMark state={() => e().state} progress={() => e().progress} background={() => (props.focused() ? colors.raise() : colors.card())} />
+        </If>
+      </View>
     </View>
   );
 }
@@ -83,7 +94,9 @@ export function SaveDrawer(props: {
   const eps = () => props.plan().episodes;
   const fresh = () => eps().filter((e) => !e.locked && props.picked().has(e.key));
   const more = () => fresh().reduce((s, e) => s + (e.size ?? 0), 0);
-  const someOn = () => eps().some((e) => e.locked || props.picked().has(e.key));
+  /** Whole season: ticked when every episode is saved or ticked, a dash when some are. */
+  const allOn = () => eps().length > 0 && eps().every((e) => e.locked || props.picked().has(e.key));
+  const someOn = () => !allOn() && eps().some((e) => e.locked || props.picked().has(e.key));
   /** The season tabs scroll sideways (a show may have a dozen), the chosen one kept in view. */
   const tabs = scroller({ horizontal: true, anchor: () => 0 });
   const saveLabel = () => (fresh().length === 0 ? t("saved.drawer.choose") : fresh().length === 1 ? t("saved.drawer.save_one") : t("saved.drawer.save_n", { count: fresh().length }));
@@ -123,10 +136,16 @@ export function SaveDrawer(props: {
             <Text style={metaText()}>{t("saved.drawer.release_locked")}</Text>
           </If>
           <View ref={list.follow(() => props.focusedAt() === 0)} role="checkbox" accessibilityLabel={t("saved.drawer.whole_season")} onPress={props.onWhole} hoverStyle={{ backgroundColor: colors.raise() }} style={rowBox(props.focusedAt() === 0)}>
-            <Box on={someOn} locked={() => false} />
+            <Box on={allOn} some={someOn} locked={() => false} />
             <Text style={{ ...labelText(), flex: 1, fontWeight: 600 }}>{t("saved.drawer.whole_season")}</Text>
             <Text style={metaText()}>{props.plan().size != null ? `${t("saved.drawer.episodes", { count: eps().length })} · ${Fmt.size(props.plan().size!)}` : t("saved.drawer.episodes", { count: eps().length })}</Text>
           </View>
+          {/* The season's episodes are coming: rows in their place, as many as it has. */}
+          <If when={eps().length === 0}>
+            <Each of={Array.from({ length: Math.min(12, props.seasons().find((s) => s.number === props.season())?.episodes ?? 6) }, (_, i) => i)} key={(i) => String(i)}>
+              {() => <View style={skeletonRow()} />}
+            </Each>
+          </If>
           <Each of={eps()} key={(e) => e.key}>
             {(e, i) => (
               <EpisodeLine
