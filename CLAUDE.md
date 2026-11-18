@@ -8,7 +8,8 @@ Samsung Tizen TV (first), macOS, Android / Android TV, iOS / iPadOS, Windows, Li
 ## Layout
 
 The app in `app/` and `platforms/tizen/`, its build and release in `build/`, development tools in
-`dev/`, packages in `out/` (ignored): `docs/structure.md`. Building: `docs/building.md`.
+`dev/`, packages in `out/` (ignored): `docs/structure.md`. Building: `docs/building.md`. Versions and
+releases: `docs/releasing.md`.
 
 ## Architecture rule: TS/TSX is UI only, everything else is Rust
 

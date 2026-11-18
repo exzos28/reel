@@ -31,7 +31,7 @@
 <td align="center"><img src="design/readme/platforms/linux.svg" width="36" alt=""><br>Linux</td>
 </tr></table>
 
-[How it works](docs/how-it-works.md) · [Building](docs/building.md) ·
+[How it works](docs/how-it-works.md) · [Building](docs/building.md) · [Releasing](docs/releasing.md) ·
 [Repository layout](docs/structure.md) · [Architecture](docs/architecture.md)
 
 PolyForm Noncommercial 1.0.0: free for any noncommercial use ([licence](LICENSE), [notices](NOTICE)).
