@@ -46,23 +46,78 @@ pub struct Player {
     /// `loadfile` until then: a file that opens at once (a saved film on disk) found no video
     /// output yet, and mpv played its sound only. None: load at once.
     gate: Option<Arc<LoadGate>>,
+    /// The view's events (`load`, `error`…), for the gate's failure.
+    emit: Emit,
 }
 
 /// Holds the file to load until the view can draw (`Player::hold_until_drawn`).
-#[derive(Default)]
 pub struct LoadGate {
-    drawn: AtomicBool,
-    pending: std::sync::Mutex<Option<String>>,
+    /// Where the view is and the file held, under one lock: a file set while the view opens or
+    /// fails is never left waiting.
+    state: std::sync::Mutex<Gate>,
+    emit: Emit,
+}
+
+#[derive(Default)]
+struct Gate {
+    drawn: bool,
+    /// The view could not make mpv's render context: nothing will load.
+    failed: bool,
+    pending: Option<String>,
 }
 
 impl LoadGate {
+    fn new(emit: Emit) -> LoadGate {
+        LoadGate { state: Default::default(), emit }
+    }
+
     /// The view draws now: the file held, if any, loads.
     pub fn open(&self, lib: &'static Lib, raw: Raw) {
-        self.drawn.store(true, Ordering::Release);
-        if let Some(src) = self.pending.lock().unwrap().take() {
+        let mut g = self.state.lock().unwrap();
+        g.drawn = true;
+        if let Some(src) = g.pending.take() {
             command(lib, raw, &["loadfile", &src, "replace"]);
         }
     }
+
+    /// The view cannot draw (no render context, no device): the file held, and any later one,
+    /// will never load. The player says so (`error`, code `view`) instead of waiting for the
+    /// picture for ever.
+    pub fn fail(&self) {
+        let held = {
+            let mut g = self.state.lock().unwrap();
+            g.failed = true;
+            g.pending.take()
+        };
+        if held.is_some() {
+            (self.emit)("error", view_failed());
+        }
+    }
+
+    /// The file held, if any, is not to load any more (the player stops).
+    fn forget(&self) {
+        self.state.lock().unwrap().pending = None;
+    }
+
+    /// Plays `src` when the view can: at once once it drew, after its first draw before, never
+    /// when it failed (an error instead).
+    fn load(&self, lib: &'static Lib, raw: Raw, src: String) {
+        let mut g = self.state.lock().unwrap();
+        if g.failed {
+            drop(g);
+            (self.emit)("error", view_failed());
+        } else if g.drawn {
+            command(lib, raw, &["loadfile", &src, "replace"]);
+        } else {
+            g.pending = Some(src);
+        }
+    }
+}
+
+/// The error a view that cannot draw gives: a code the UI words (`player.errors.view`), and the
+/// words for a log.
+fn view_failed() -> Value {
+    json!({ "code": "view", "message": "the video view could not start" })
 }
 
 /// Runs an mpv command (`args`), logging a failure.
@@ -141,10 +196,13 @@ impl Player {
             let shared = shared.clone();
             std::thread::Builder::new()
                 .name("reel-mpv-events".into())
-                .spawn(move || events(lib, raw, &shared, &emit))
+                .spawn({
+                    let emit = emit.clone();
+                    move || events(lib, raw, &shared, &emit)
+                })
                 .map_err(|e| e.to_string())?
         };
-        Ok(Player { lib, raw, shared, thread: Some(thread), src: String::new(), gate: None })
+        Ok(Player { lib, raw, shared, thread: Some(thread), src: String::new(), gate: None, emit })
     }
 
     pub fn raw(&self) -> Raw {
@@ -182,7 +240,7 @@ impl Player {
     /// Android draws through its Surface (`wid`), which is there before a file loads.
     #[cfg_attr(not(any(target_os = "macos", all(target_os = "linux", not(target_arch = "arm")), windows)), allow(dead_code))]
     pub fn hold_until_drawn(&mut self) -> Arc<LoadGate> {
-        let gate = Arc::new(LoadGate::default());
+        let gate = Arc::new(LoadGate::new(self.emit.clone()));
         self.gate = Some(gate.clone());
         gate
     }
@@ -199,14 +257,14 @@ impl Player {
                 self.shared.at_end.store(false, Ordering::Relaxed);
                 if self.src.is_empty() {
                     if let Some(g) = &self.gate {
-                        g.pending.lock().unwrap().take();
+                        g.forget();
                     }
                     self.command(&["stop"]);
                 } else {
                     let src = self.src.clone();
                     match &self.gate {
-                        Some(g) if !g.drawn.load(Ordering::Acquire) => *g.pending.lock().unwrap() = Some(src),
-                        _ => self.command(&["loadfile", &src, "replace"]),
+                        Some(g) => g.load(self.lib, self.raw, src),
+                        None => self.command(&["loadfile", &src, "replace"]),
                     }
                 }
             }

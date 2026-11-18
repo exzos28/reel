@@ -118,7 +118,8 @@ export function Player() {
   const buffering = signal(false);
   let stallTimer: ReturnType<typeof setTimeout> | undefined;
   cleanup(() => clearTimeout(stallTimer));
-  const error = signal<string | null>(null);
+  /** What the video view said went wrong: its words, and a code when the UI words it itself. */
+  const error = signal<{ message: string; code?: string } | null>(null);
   /** The first frame played: the stage gives way to the picture and the controls. */
   const started = signal(false);
   /** Where the film resumes once loaded; it has started when it plays from there. */
@@ -326,7 +327,11 @@ export function Player() {
         hint: t("player.no_space_hint"),
       };
     if (s.phase === "failed") return { text: t("player.failed", { message: s.message }), hint: t("player.failed_hint") };
-    if (error()) return { text: t("player.failed", { message: error()! }), hint: t("player.failed_hint") };
+    const e = error();
+    // The video view could not start (the mpv view made no render context): another release
+    // plays no better.
+    if (e?.code === "view") return { text: t("player.view_failed"), hint: t("player.view_failed_hint") };
+    if (e) return { text: t("player.failed", { message: e.message }), hint: t("player.failed_hint") };
     return null;
   };
   const failed = () => problem() != null || lowSpace();
@@ -458,7 +463,7 @@ export function Player() {
             stallTimer = setTimeout(() => buffering.set(true), STALL_MS);
           }}
           onEnd={() => { paused.set(true); poke(); }}
-          onError={(e) => error.set(e.message)}
+          onError={(e) => error.set(e)}
           style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
         />
       </If>

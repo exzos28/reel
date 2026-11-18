@@ -15,7 +15,7 @@ test("home starts on Continue watching and the hero follows the focus", async ()
   expect(app.texts()).toContain("Resume S3:E2");
   await app.keyboard.press("down");
   expect(app.texts()).toContain("Trending movies");
-  expect(app.texts()).toContain("2 h 35 min");
+  await app.waitFor("2 h 35 min"); // as above: once the focus rests on the first card
   expect(app.texts()).toContain("Play");
 });
 

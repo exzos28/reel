@@ -356,6 +356,8 @@ player:
   not_in_release_hint: Go back to pick a release for it.
   failed: "Could not play: %{message}"
   failed_hint: Go back and pick another release.
+  view_failed: The video could not start on this device.
+  view_failed_hint: Go back and try again; restarting reel may help.
   no_space: "Not enough space to play: needs %{needed}, %{free} free."
   no_space_unknown: "Not enough space to play: needs %{needed}."
   no_space_hint: Free up space on this device or lower the buffer size in Settings.

@@ -101,4 +101,28 @@ mod tests {
         assert!(wait(&|e| e.iter().any(|(n, _)| n == "end")), "ends");
         drop(p);
     }
+
+    /// A view that cannot make mpv's render context fails its gate: the file it held, and any
+    /// later one, end in `error` (the player says so) instead of waiting for a picture for
+    /// ever. Needs libmpv: `REEL_LIBMPV=… cargo test -- --ignored gate_failure` (on Windows,
+    /// `libmpv-2.dll`'s folder on the `PATH`).
+    #[test]
+    #[ignore]
+    fn gate_failure_is_an_error_not_a_wait() {
+        let lib = super::ffi::lib().expect("libmpv (REEL_LIBMPV)");
+        let events: Arc<Mutex<Vec<(String, Value)>>> = Default::default();
+        let sink = events.clone();
+        let mut p = Player::new(lib, "null", &[], Arc::new(move |name, data| sink.lock().unwrap().push((name.into(), data)))).unwrap();
+        let gate = p.hold_until_drawn();
+        p.set_prop("src", Some(&json!("file:///nowhere/held.mkv")));
+        assert!(events.lock().unwrap().is_empty(), "held until the view draws");
+        gate.fail();
+        let errors = |e: &[(String, Value)]| e.iter().filter(|(n, d)| n == "error" && d["code"] == "view").count();
+        assert_eq!(errors(&events.lock().unwrap()), 1, "{:?}", events.lock().unwrap());
+        p.set_prop("src", Some(&json!("file:///nowhere/next.mkv")));
+        assert_eq!(errors(&events.lock().unwrap()), 2, "a later file fails too");
+        std::thread::sleep(Duration::from_millis(500));
+        assert!(!events.lock().unwrap().iter().any(|(n, _)| n == "load"), "nothing loads");
+        drop(p);
+    }
 }

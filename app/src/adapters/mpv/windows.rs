@@ -13,6 +13,7 @@ use std::{
         Arc,
         atomic::{AtomicBool, Ordering},
     },
+    time::{Duration, Instant},
 };
 
 use nsh_platform_windows::{ComponentContext, NativeComponent};
@@ -21,7 +22,7 @@ use windows::{
     Win32::Graphics::{
         Direct2D::{
             Common::{D2D_RECT_F, D2D1_ALPHA_MODE_PREMULTIPLIED, D2D1_PIXEL_FORMAT},
-            D2D1_BITMAP_OPTIONS_NONE, D2D1_BITMAP_PROPERTIES1, D2D1_INTERPOLATION_MODE_LINEAR, ID2D1Bitmap1, ID2D1DeviceContext,
+            D2D1_BITMAP_OPTIONS_NONE, D2D1_BITMAP_PROPERTIES1, D2D1_INTERPOLATION_MODE_LINEAR, ID2D1Bitmap1, ID2D1Device2, ID2D1DeviceContext,
         },
         Direct3D11::{D3D11_BIND_RENDER_TARGET, D3D11_BIND_SHADER_RESOURCE, D3D11_TEXTURE2D_DESC, D3D11_USAGE_DEFAULT, ID3D11Device, ID3D11Texture2D},
         Dxgi::{Common::{DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC}, IDXGISurface},
@@ -49,7 +50,16 @@ struct Drawing {
     failed: bool,
     /// The player's file waits for the render context (made on the first draw).
     gate: Option<Arc<LoadGate>>,
+    /// Since when draws find no Direct3D device, while the view has never drawn: a frame
+    /// drawn into a command list may find none, but one that never does means the file waits
+    /// for ever (`NO_DEVICE_FOR`).
+    no_device_since: Option<Instant>,
 }
+
+/// How long a view that has never drawn may find no Direct3D device before its file fails
+/// instead of waiting: NSH draws a view into a command list for a transition's frames, never
+/// this long.
+const NO_DEVICE_FOR: Duration = Duration::from_secs(3);
 
 /// mpv's thread: a frame is ready; NSH draws the view again.
 unsafe extern "C" fn on_update(arg: *mut c_void) {
@@ -92,17 +102,27 @@ impl MpvComponent {
             lib,
             raw: player.as_ref().map(Player::raw).unwrap_or(Raw(std::ptr::null_mut())),
             shared: Box::new(Shared { cx, dirty: AtomicBool::new(true) }),
-            drawing: RefCell::new(Drawing { render: None, target: None, failed: player.is_none(), gate }),
+            drawing: RefCell::new(Drawing { render: None, target: None, failed: player.is_none(), gate, no_device_since: None }),
             player,
         }
     }
 
-    /// The Direct3D 11 device NSH's Direct2D context draws with: its target's DXGI surface's.
+    /// The Direct3D 11 device NSH's Direct2D context draws with: its Direct2D device's DXGI
+    /// device, whatever the context draws into now. NSH also draws views into command lists
+    /// (a view with a filter, a shadow or a blend mode, a screen kept as a picture for its
+    /// transition), which have no DXGI surface: asking the target, as a fallback, finds the
+    /// device only on the window's own.
     fn device(dc: &ID2D1DeviceContext) -> windows::core::Result<ID3D11Device> {
-        let target = unsafe { dc.GetTarget()? };
-        let bitmap: ID2D1Bitmap1 = target.cast()?;
-        let surface: IDXGISurface = unsafe { bitmap.GetSurface()? };
-        unsafe { surface.GetDevice::<ID3D11Device>() }
+        let from_device = || -> windows::core::Result<ID3D11Device> {
+            let device: ID2D1Device2 = unsafe { dc.GetDevice()? }.cast()?;
+            unsafe { device.GetDxgiDevice()? }.cast()
+        };
+        from_device().or_else(|_| {
+            let target = unsafe { dc.GetTarget()? };
+            let bitmap: ID2D1Bitmap1 = target.cast()?;
+            let surface: IDXGISurface = unsafe { bitmap.GetSurface()? };
+            unsafe { surface.GetDevice::<ID3D11Device>() }
+        })
     }
 
     fn make_render(&self, device: &ID3D11Device) -> Option<ffi::RenderContext> {
@@ -165,15 +185,32 @@ impl NativeComponent for MpvComponent {
         let device = match Self::device(dc) {
             Ok(device) => device,
             Err(e) => {
-                tracing::warn!("reel mpv: no Direct3D device to draw the video with: {e}");
-                d.failed = true;
+                // Not for good: the next frame may draw where the device is found. A view that
+                // drew skips this frame; one that never did gives up after a while.
+                if d.render.is_none() {
+                    let since = *d.no_device_since.get_or_insert_with(|| {
+                        tracing::warn!("reel mpv: no Direct3D device to draw the video with: {e}");
+                        Instant::now()
+                    });
+                    if since.elapsed() >= NO_DEVICE_FOR {
+                        d.failed = true;
+                        if let Some(gate) = d.gate.take() {
+                            gate.fail();
+                        }
+                    }
+                }
                 return;
             }
         };
+        d.no_device_since = None;
         if d.render.is_none() {
             d.render = self.make_render(&device);
             if d.render.is_none() {
+                // The file would wait for a picture that never comes: the player says so.
                 d.failed = true;
+                if let Some(gate) = d.gate.take() {
+                    gate.fail();
+                }
                 return;
             }
             // mpv has a video output now: the file held until this loads.
