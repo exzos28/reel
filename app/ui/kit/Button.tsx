@@ -20,6 +20,8 @@ const buttonStyle = (kind: Kind, focused: boolean, height: number): ViewStyle =>
 /** A rounded-rectangle button: white Play, grey secondary. */
 export function Button(props: {
   label: () => string;
+  /** What a screen reader says, where the label alone does not say what it does ("Watchlist"). */
+  spoken?: () => string;
   icon?: () => ImageAsset;
   kind: Kind;
   focused: () => boolean;
@@ -33,7 +35,7 @@ export function Button(props: {
   return (
     <View
       role="button"
-      accessibilityLabel={props.label()}
+      accessibilityLabel={props.spoken?.() ?? props.label()}
       hitSlop={targetSlop(cs(props.height ?? 60))}
       accessibilityState={{ disabled: off() }}
       onPress={() => !off() && props.onPress()}

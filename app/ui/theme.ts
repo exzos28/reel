@@ -2,12 +2,15 @@
 // film is the only colour on screen. Colors come from nsh.json's theme via
 // token(); sizes are written in TV pixels and scaled by density.
 import { computed, token, windowSize, type TextStyle, type ViewStyle } from "nsh";
+import cormorant from "../fonts/Cormorant.ttf";
 import geist from "../fonts/Geist.ttf";
 import { centering, chrome, sideInset } from "./layout/chrome";
 import { keysInUse } from "./focus/keys";
 import { look } from "./platform/look";
 
 export const font = geist;
+/** The title's logotype face: a high-contrast serif in capitals, as a film's credits. */
+const logoFont = cormorant;
 
 export const colors = {
   /** Background. */
@@ -92,9 +95,9 @@ const text = (size: number, weight: number, extra: TextStyle = {}): TextStyle =>
 
 /** The type scale (TV pixels; nothing below 20 on a TV). */
 export const type = {
-  /** The film's title as a thin, wide-tracked logotype. */
+  /** The film's title as a logotype: serif capitals, close-set. */
   logotype: (size: number): TextStyle =>
-    text(size, 200, { textTransform: "uppercase", fontSize: u(size), letterSpacing: u(size) * 0.22, lineHeight: u(size) * 1.05 }),
+    text(size, 700, { fontFamily: logoFont, textTransform: "uppercase", fontSize: u(size) * 1.12, letterSpacing: u(size) * 0.05, lineHeight: u(size) * 1.08 }),
   page: () => text(60, 600, { letterSpacing: -u(1) }),
   section: () => text(30, 600),
   body: () => text(26, 400, { lineHeight: ts(36) }),
