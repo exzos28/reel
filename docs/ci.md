@@ -4,7 +4,7 @@ GitHub Actions run the same scripts a developer runs locally. Workflows only set
 and call `build/`.
 
 ```sh
-build/install-nsh.sh          # nsh at the version app/Cargo.lock pins nsh-core to (0.5.0)
+build/install-nsh.sh          # nsh at the version app/Cargo.lock pins nsh-core to (0.5.1)
 build/build.sh check          # cargo check + TypeScript
 build/build.sh test           # cargo test + *.test.tsx headless (JUnit in app/.nsh/dist/test/)
 build/build.sh macos          # or linux, windows, android, ios-simulator, ios, web, armv7
