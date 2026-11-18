@@ -35,6 +35,7 @@ hosted:
 
 shelf:
   continue: Continue watching
+  watchlist: Watchlist
   trending_movies: Trending movies
   trending_shows: Trending series
   popular: Popular
@@ -60,9 +61,13 @@ empty:
 title:
   play: Play
   resume: "Resume %{at}"
-  my_list: My list
-  add_to_list: Add to list
-  in_list: In my list
+  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # a screen reader says the whole action.
+  my_list: Watchlist
+  add_to_list: Watchlist
+  in_list: In Watchlist
+  add_to_list_spoken: Add to Watchlist
+  remove_from_list_spoken: Remove from Watchlist
   trailer: Trailer
   save: Save
   saving: "Saving %{percent}%"
@@ -499,6 +504,7 @@ saved:
     no_peers: No one shares this release now. Save it again later, or pick another release.
     no_space: The disk is full. Free some space and save it again.
     write: Could not write to the folder. Save it again.
+    path_too_long: The names of its files are too long to play here. Pick another release.
     other: Could not be saved. Save it again.
   drawer:
     title: Save to this device

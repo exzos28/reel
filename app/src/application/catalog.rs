@@ -184,6 +184,7 @@ static META_STARTED: AtomicBool = AtomicBool::new(false);
 pub fn init(data_dir: Option<&std::path::Path>) {
     *DATA_DIR.lock().unwrap() = data_dir.map(ToOwned::to_owned);
     progress::init(data_dir);
+    super::watchlist::init(data_dir);
     if META_STARTED.load(Ordering::Acquire) && data_dir.is_some() {
         metadata().init(data_dir);
     }
@@ -1346,7 +1347,7 @@ pub fn home() -> Value {
     let calls: Vec<Call> = kinds.iter().map(|k| Call::Trending(k)).collect();
     let got = meta_all(&calls);
     let by = |k: &str| kinds.iter().position(|x| *x == k).map(|i| cards(&got[i])).unwrap_or_default();
-    let mut shelves = vec![("continue", continuing())];
+    let mut shelves = vec![("continue", continuing()), ("watchlist", watching())];
     if tmdb {
         shelves.push(("trending_movies", shelf_items(&by("movie"))));
         shelves.push(("trending_shows", shelf_items(&by("tv"))));
@@ -1549,24 +1550,27 @@ pub fn tracks(key: &str) -> Value {
     })
 }
 
-/// The user's list while the app runs.
-static LIST: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(Default::default);
-
 fn in_list(id: &str) -> bool {
-    LIST.lock().unwrap().contains(id)
+    super::watchlist::contains(id)
 }
 
-/// Adds the title to the user's list or takes it off; whether it is on it now.
+/// Adds the title to the Watchlist or takes it off; whether it is on it now.
 pub fn toggle_list(id: &str) -> bool {
-    let mut list = LIST.lock().unwrap();
-    let on = if list.remove(id) {
-        false
-    } else {
-        list.insert(id.to_string());
-        true
-    };
+    let on = super::watchlist::toggle(id);
     bump();
     on
+}
+
+/// The Watchlist's titles as Home's shelf shows them (what the catalog has of each; one it
+/// does not have yet is asked for and shows once it is in).
+fn watching() -> Vec<Value> {
+    super::watchlist::ids()
+        .into_iter()
+        .filter_map(|id| {
+            let t = meta(&Call::Title(id.clone()))?;
+            Some(summary(&Info { id, ..from_title(&t) }))
+        })
+        .collect()
 }
 
 /// Makes release `index` (of `title(id).releases[].index`) the one Play

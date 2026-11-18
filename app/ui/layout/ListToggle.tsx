@@ -48,19 +48,21 @@ const labelStyle = (inList: boolean): TextStyle => ({
 
 export function ListToggle(props: { inList: () => boolean; focused: () => boolean; onPress: () => void }) {
   const label = () => (props.inList() ? t("title.in_list") : t("title.add_to_list"));
+  /** What a screen reader says: the action, not the button's short words. */
+  const spoken = () => (props.inList() ? t("title.remove_from_list_spoken") : t("title.add_to_list_spoken"));
   const icon = () => (props.inList() ? checkIcon : plusIcon);
   const tint = () => (props.inList() ? colors.snow() : colors.dim());
   return (
     <If
       when={caps.touch}
       else={
-        <View role="button" hitSlop={targetSlop(size().height)} accessibilityLabel={label()} onPress={props.onPress} hoverStyle={{ backgroundColor: colors.raise() }} style={pillStyle(props.inList(), props.focused())}>
+        <View role="button" hitSlop={targetSlop(size().height)} accessibilityLabel={spoken()} onPress={props.onPress} hoverStyle={{ backgroundColor: colors.raise() }} style={pillStyle(props.inList(), props.focused())}>
           <Icon src={icon} size={size().icon} color={tint} />
           <Text style={labelStyle(props.inList())}>{label()}</Text>
         </View>
       }
     >
-      <View role="button" hitSlop={targetSlop(DISC)} accessibilityLabel={label()} onPress={props.onPress} style={discStyle(props.inList())}>
+      <View role="button" hitSlop={targetSlop(DISC)} accessibilityLabel={spoken()} onPress={props.onPress} style={discStyle(props.inList())}>
         <Icon src={icon} size={iconPt(20)} color={tint} />
       </View>
     </If>

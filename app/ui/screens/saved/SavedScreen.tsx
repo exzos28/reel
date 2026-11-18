@@ -53,12 +53,14 @@ function spaceLine(saved: number, free: number | null, folder: string | null) {
 /** An item's name in the question before it is removed: "The Mentalist S1:E1" or the film. */
 const itemName = (i: SavedItem) => (i.season != null && i.number != null ? `${i.title} ${episodeCode(i.season, i.number)}` : i.title);
 
+/** Shows opened (or, while they save, closed) by the viewer: "<section>:<title id>". Kept while
+ * the app runs: the player over the page makes the page again after it closes. */
+const toggled = signal<Set<string>>(new Set());
+
 export function SavedScreen() {
   watchSaved();
   /** Asked once per second (and per change), not once per place that reads it. */
   const list = computed(() => savedList());
-  /** Shows opened (or, while they save, closed) by the viewer: "<section>:<title id>". */
-  const toggled = signal<Set<string>>(new Set());
   /** A show's episodes show under it: while saving unless closed, when ready once opened. */
   const isOpen = (section: Section, g: SavedGroup) => (section === "saving") !== toggled().has(`${section}:${g.id}`);
   const toggle = (section: Section, g: SavedGroup) => {

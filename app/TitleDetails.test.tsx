@@ -82,8 +82,8 @@ test("Trailer shows only when the title has one", async () => {
   const app = await inception(withTrailer);
   const texts = app.texts();
   expect(texts.indexOf("Trailer")).toBeLessThan(texts.indexOf("1080p BluRay · 8 GB · 412 people sharing"));
-  // Add to list is the page's header action, not one of the hero's.
-  expect(texts).toContain("Add to list");
+  // The Watchlist is the page's header action, not one of the hero's.
+  expect(texts).toContain("Watchlist");
 });
 
 test("Left and Right stay in the actions row; the release button is the row under it, Up returns to the action left", async () => {
@@ -109,11 +109,11 @@ test("Left and Right stay in the actions row; the release button is the row unde
   expect(app.openedUrls()).toEqual([TRAILER, TRAILER]);
 });
 
-test("Up from the actions reaches Add to list in the header; OK toggles it; Down returns to the action left", async () => {
+test("Up from the actions reaches the Watchlist in the header; OK toggles it; Down returns to the action left", async () => {
   const toggled: string[] = [];
   const app = await inception({ ...withTrailer, "Catalog.toggleList": (id: string) => void toggled.push(id) });
   await app.keyboard.press("right"); // Trailer
-  await app.keyboard.press("up"); // Add to list
+  await app.keyboard.press("up"); // the Watchlist
   await app.keyboard.press("left"); // stays: nothing beside it
   await app.keyboard.press("enter");
   expect(toggled.length).toBe(1);

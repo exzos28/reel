@@ -72,7 +72,7 @@ fn reset(tmdb_on: bool, source: bool) {
     SLOTS.0.lock().unwrap().clear();
     SEARCHES.lock().unwrap().clear();
     CHOSEN.lock().unwrap().clear();
-    LIST.lock().unwrap().clear();
+    crate::application::watchlist::clear();
     SHOWN.lock().unwrap().clear();
     filters::clear();
     paging::clear();

@@ -76,7 +76,8 @@ const backStyle = (enabled: boolean, background?: string): ViewStyle => ({
   alignItems: "center",
   justifyContent: "center",
   backgroundColor: background ?? back().fill,
-  opacity: enabled ? 1 : 0.32,
+  // Nowhere to go back to: not shown, but its slot stays (the logo does not move).
+  opacity: enabled ? 1 : 0,
 });
 const tipStyle = (): ViewStyle => ({ ...row(6), paddingHorizontal: 9, paddingVertical: 5, ...rounded(6), backgroundColor: colors.raise() });
 const tipText = (color: string): TextStyle => ({ fontFamily: font, fontSize: 12, fontWeight: 500, color });
@@ -107,7 +108,7 @@ const roundStyle = (selected: boolean, solid: boolean): ViewStyle => ({
 const pt = iconPt;
 
 /** Back in the bar's slot: the page it goes to and the shortcut as a tooltip.
- * Disabled on a root on a Mac (it keeps its slot); none there elsewhere. */
+ * Hidden on a root on a Mac (it keeps its slot, so the logo stays put); none there elsewhere. */
 export function BarBack(props: { onPress: () => void; enabled: () => boolean; tip: () => string; background?: string }) {
   const tip = (): JSX.Element => (
     <View style={tipStyle()}>
@@ -122,7 +123,7 @@ export function BarBack(props: { onPress: () => void; enabled: () => boolean; ti
       disabled={!props.enabled()}
       tooltip={props.enabled() ? tip() : undefined}
       onPress={props.onPress}
-      hoverStyle={{ backgroundColor: colors.raise() }}
+      hoverStyle={props.enabled() ? { backgroundColor: colors.raise() } : undefined}
       style={backStyle(props.enabled(), props.background)}
     >
       <Icon src={() => backIcon} size={pt(back().icon)} />

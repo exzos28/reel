@@ -42,11 +42,11 @@ test("phone held sideways: the tabs are a rail at the left", async () => {
   expect(app.texts()).toContain("All movies");
 });
 
-test("phone: the back disc over a title's hero goes back; Add to list is the disc across from it", async () => {
+test("phone: the back disc over a title's hero goes back; the Watchlist is the disc across from it", async () => {
   const app = await phone();
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
-  expect(app.shows("label:Add to list")).toBe(true);
+  expect(app.shows("label:Add to Watchlist")).toBe(true);
   await app.press("label:Back");
   expect(app.texts()).toContain("All movies");
 });

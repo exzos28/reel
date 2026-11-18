@@ -206,11 +206,12 @@ test("Home, Movies, Series, Cartoons and Anime have the same nav in the window b
 
 test("Mac: Back in the window bar is disabled on a root, goes back from a title; ⌘[ and Esc go back, never past a root", async () => {
   const app = await app_(NATIVE, { platform: "macos", width: 1440, height: 900 });
+  // Nowhere to go back to: Back keeps its slot, hidden and disabled.
   await expect(app.press("label:Back")).rejects.toMatchObject({ code: "ERR_NSH_TEST_DISABLED" });
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
   expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
-  expect(app.shows("label:Add to list")).toBe(true); // the page's action, in the bar
+  expect(app.shows("label:Add to Watchlist")).toBe(true); // the page's action, in the bar
   await app.press("label:Back to Movies");
   expect(app.texts()).toContain("All movies");
   await app.press("label:Dune >> nth=0");
@@ -245,7 +246,7 @@ test("the nav opens Anime after Series and Cartoons: its trending row and all an
   expect(app.texts()).toContain("All anime");
   await app.keyboard.press("down"); // from the nav into the row
   await app.keyboard.press("enter"); // the first in the row
-  expect(app.texts()).toContain("Add to list");
+  expect(app.texts()).toContain("Watchlist");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("All anime");
   await app.keyboard.press("escape"); // the nav

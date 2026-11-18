@@ -6,3 +6,4 @@ pub mod library;
 pub mod progress;
 pub mod settings;
 pub mod tracks;
+pub mod watchlist;
