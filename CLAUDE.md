@@ -84,6 +84,9 @@ releases: `docs/releasing.md`.
   branches or pull in the main checkout another agent may use), commit after every working step,
   push the branch, open a PR and let it merge itself when the checks pass:
   `gh pr merge --auto --merge`. A red check is fixed on the branch.
+- A PR that changes what the viewer sees adds an entry to `.changes/` (`.changes/README.md`);
+  otherwise label it `no-changeset`. Versions and releases come from those entries
+  (`build/release.sh`, `docs/releasing.md`); never bump `app/nsh.json` by hand.
 - Stage only your own files (several agents work in this repo): never `git add -A`, `git add .` or
   `git commit -a`, and check `git diff --cached --stat` before committing.
 - Tizen installs go through Apps2Samsung from GitHub Releases (`.tpk`), never the Samsung store.

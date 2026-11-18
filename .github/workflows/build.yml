@@ -6,10 +6,10 @@ name: build
 on:
   workflow_call:
     inputs:
-      version:
-        description: App version for the packages (overrides nsh.json); empty keeps nsh.json's.
-        type: string
-        default: ""
+      release:
+        description: A release's build (a universal macOS app); the version is always app/nsh.json's.
+        type: boolean
+        default: false
   workflow_dispatch:
 
 permissions:
@@ -17,8 +17,6 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  REEL_VERSION: ${{ inputs.version }}
-  REEL_BUILD: ${{ github.run_number }}
   # Baked in by option_env!; empty (forks, no secret) means the app asks the user for a key.
   REEL_TMDB_TOKEN: ${{ secrets.REEL_TMDB_TOKEN }}
   # The partner's bot (a repository variable, not a secret): "Rent a ready source".
@@ -30,7 +28,7 @@ jobs:
     timeout-minutes: 60
     env:
       # A release runs on Apple silicon and Intel Macs alike; other builds, this runner's only.
-      REEL_MACOS_ARCH: ${{ inputs.version != '' && 'universal' || '' }}
+      REEL_MACOS_ARCH: ${{ inputs.release && 'universal' || '' }}
       APPLE_CERT_P12_BASE64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
       APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
       MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
