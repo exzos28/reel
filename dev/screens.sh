@@ -9,8 +9,11 @@
 #   dev/screens.sh --targets mac,phone                 some targets
 #   dev/screens.sh --targets mac --sizes fhd,uw-21x9   some of a target's sizes
 #   dev/screens.sh --screens home,title                some screens
+#   dev/screens.sh --jobs 2                            two targets at a time (default: what this
+#                                                      machine's cores and memory allow)
 #
-# Or the same through REEL_SCREENS_TARGETS, REEL_SCREENS_SIZES, REEL_SCREENS_SCREENS, and
+# Or the same through REEL_SCREENS_TARGETS, REEL_SCREENS_SIZES, REEL_SCREENS_SCREENS,
+# REEL_SCREENS_JOBS, and
 # REEL_SCREENS_OUT for another folder. Each target's core starts from dev/screens/state (Continue
 # watching, the Watchlist: free films) and the search source in .env, if any; the catalog is
 # TMDB's live one. What a browser cannot be: AppKit's, UIKit's or Android's own drawing, the
@@ -29,18 +32,23 @@ fi
 targets=${REEL_SCREENS_TARGETS:-}
 sizes=${REEL_SCREENS_SIZES:-}
 screens=${REEL_SCREENS_SCREENS:-}
+jobs=${REEL_SCREENS_JOBS:-}
 while [ $# -gt 0 ]; do
   case "$1" in
     --targets) targets=$2; shift 2 ;;
     --sizes) sizes=$2; shift 2 ;;
     --screens) screens=$2; shift 2 ;;
-    -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-    *) echo "screens: unknown argument $1 (--targets, --sizes, --screens)" >&2; exit 2 ;;
+    --jobs) jobs=$2; shift 2 ;;
+    -h|--help) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "screens: unknown argument $1 (--targets, --sizes, --screens, --jobs)" >&2; exit 2 ;;
   esac
 done
 if [ -z "$targets" ]; then
   targets=$(node -e 'console.log(Object.keys(require(process.argv[1]).targets).join(","))' "$root/dev/screens/matrix.json")
 fi
+case "$jobs" in
+  ''|*[!0-9]*|0) [ -z "$jobs" ] || { echo "screens: --jobs is a number of targets at a time, 1 or more" >&2; exit 2; } ;;
+esac
 out="${REEL_SCREENS_OUT:-$root/out/screens}"
 web="$root/out/web"
 
@@ -59,22 +67,14 @@ core="$root/platforms/tizen/target/debug/reel-core"
 rm -rf "$out"
 mkdir -p "$out"
 
-pid=
-data=
-stop() {
-  if [ -n "$pid" ]; then
-    kill "$pid" 2>/dev/null || true
-    wait "$pid" 2>/dev/null || true
-  fi
-  if [ -n "$data" ]; then rm -rf "$data"; fi
-  pid=
-  data=
-}
-trap stop EXIT INT TERM
-
-failed=
-for target in $(echo "$targets" | tr ',' ' '); do
+# One target: its own data dir, core (on a port of its own) and Chrome; its log in
+# <out>/<target>.log. Run for every target at once (they share nothing but the web build).
+shoot() {
+  target=$1
+  log="$out/$target.log"
   data=$(mktemp -d "${TMPDIR:-/tmp}/reel-screens-data.XXXXXX")
+  pid=
+  trap 'if [ -n "$pid" ]; then kill "$pid" 2>/dev/null || true; fi; rm -rf "$data"' EXIT
   cp "$root/dev/screens/state/"*.json "$data/"
   # Set up already (no first-run setup over the pages), the UI in English, the search source from
   # .env when there is one (it stays in this folder, removed after).
@@ -82,25 +82,76 @@ for target in $(echo "$targets" | tr ',' ' '); do
     const [file, url, key] = process.argv.slice(1);
     require("fs").writeFileSync(file, JSON.stringify({ setupDone: true, language: "en", sourceUrl: url || "", sourceKey: key || "" }));
   ' "$data/settings.json" "${REEL_TORZNAB_URL:-}" "${REEL_TORZNAB_KEY:-}"
-  port=$(node -e 'const s = require("net").createServer().listen(0, "127.0.0.1", () => { console.log(s.address().port); s.close(); })')
-  token="reel-screens-$$-$(date +%s)" # the core wants 16 characters or more
+  token="reel-screens-$$-$target-$(date +%s)" # the core wants 16 characters or more
   profile=mpv
-  [ "$target" = tv ] && profile=tizen
-  "$core" --port "$port" --token "$token" --data-dir "$data" --cache-dir "$data/cache" --ui-dir "$web/reel" --profile "$profile" --device "$target" >"$data/core.log" 2>&1 &
+  if [ "$target" = tv ]; then profile=tizen; fi
+  # Port 0: the system picks a free one, which the core prints ("reel core on http://127.0.0.1:N").
+  "$core" --port 0 --token "$token" --data-dir "$data" --cache-dir "$data/cache" --ui-dir "$web/reel" --profile "$profile" --device "$target" >"$data/core.log" 2>&1 &
   pid=$!
-  up=
+  port=
   for _ in $(seq 1 100); do
-    if curl -sf -o /dev/null -H "X-Reel-Token: $token" "http://127.0.0.1:$port/health"; then up=1; break; fi
+    port=$(sed -n 's|^reel core on http://127.0.0.1:\([0-9]*\) .*|\1|p' "$data/core.log")
+    if [ -n "$port" ] && curl -sf -o /dev/null -H "X-Reel-Token: $token" "http://127.0.0.1:$port/health"; then break; fi
+    port=
     sleep 0.1
   done
-  if [ -z "$up" ]; then
-    echo "screens: the core did not start for $target:" >&2
-    cat "$data/core.log" >&2
-    exit 1
+  if [ -z "$port" ]; then
+    echo "screens: the core did not start for $target:" >"$log"
+    cat "$data/core.log" >>"$log"
+    return 1
   fi
-  node "$root/dev/screens.mjs" shoot "http://127.0.0.1:$port/ui/index.html?reelToken=$token" "$out" "$target" "$sizes" "$screens" || failed="$failed $target"
-  stop
+  node "$root/dev/screens.mjs" shoot "http://127.0.0.1:$port/ui/index.html?reelToken=$token" "$out" "$target" "$sizes" "$screens" >"$log" 2>&1
+}
+
+# How many targets at a time: as asked, else half the cores (each target is a Chrome and a core,
+# a picture of a wide window takes a core for a moment) and about 1.5 GB of memory each, at most
+# one per target.
+count=$(echo "$targets" | tr ',' '\n' | grep -c .)
+if [ -z "$jobs" ]; then
+  if [ "$(uname)" = Darwin ]; then
+    cores=$(sysctl -n hw.ncpu)
+    memory=$(( $(sysctl -n hw.memsize) / 1048576 ))
+  else
+    cores=$(nproc)
+    memory=$(( $(sed -n 's/^MemAvailable: *\([0-9]*\) kB/\1/p' /proc/meminfo) / 1024 ))
+  fi
+  jobs=$(( cores / 2 ))
+  if [ $(( memory / 1536 )) -lt "$jobs" ]; then jobs=$(( memory / 1536 )); fi
+  if [ "$jobs" -lt 1 ]; then jobs=1; fi
+  how="from $cores cores and $(( memory / 1024 )) GB"
+else
+  how="as asked"
+fi
+if [ "$jobs" -gt "$count" ]; then jobs=$count; fi
+echo "screens: $count targets, $jobs at a time ($how); each target's log: $out/<target>.log"
+
+# The targets running (target:pid), oldest first; one is waited for when they are as many as jobs.
+running=
+failed=
+trap 'for r in $running; do kill "${r#*:}" 2>/dev/null || true; done' INT TERM
+finish() {
+  r=$1
+  target=${r%%:*}
+  if wait "${r#*:}"; then
+    echo "screens: $target: $(grep -c '\.png$' "$out/$target.log" || true) pictures"
+  else
+    failed="$failed $target"
+    echo "screens: $target failed:" >&2
+    tail -n 5 "$out/$target.log" >&2
+  fi
+}
+for target in $(echo "$targets" | tr ',' ' '); do
+  # shellcheck disable=SC2086
+  set -- $running
+  if [ $# -ge "$jobs" ]; then
+    finish "$1"
+    shift
+    running="$*"
+  fi
+  (shoot "$target") &
+  running="$running $target:$!"
 done
+for r in $running; do finish "$r"; done
 
 node "$root/dev/screens.mjs" index "$out"
 if [ -n "$failed" ]; then
