@@ -14,6 +14,7 @@ mod buffer;
 mod http_client;
 mod disk;
 mod engine;
+mod keep;
 mod leases;
 mod sources;
 mod subtitles;
@@ -24,7 +25,7 @@ use serde_json::Value;
 
 use reel_domain::{
     play::Files,
-    ports::{Playback, PlaybackHost},
+    ports::{Keep, KeepRequest, Playback, PlaybackHost},
     search::{Request, Source},
     subtitles::files::SubFile,
 };
@@ -114,5 +115,52 @@ impl Playback for Local {
 
     fn cues(&self, job: u32, id: usize, from: f64, to: f64) -> Value {
         subtitles::cues(job, id, from, to)
+    }
+}
+
+/// Saving films on the device (`keep`): the same engine and session as `Playback`.
+impl Keep for Local {
+    fn supported(&self) -> bool {
+        true
+    }
+
+    fn init(&self, data_dir: &std::path::Path) {
+        keep::init(data_dir);
+    }
+
+    fn folder(&self) -> Option<std::path::PathBuf> {
+        keep::folder()
+    }
+
+    fn set_folder(&self, folder: &std::path::Path) -> Result<(), String> {
+        keep::set_folder(folder)
+    }
+
+    fn add(&self, request: KeepRequest) -> Result<u32, String> {
+        keep::add(request)
+    }
+
+    fn list(&self) -> Value {
+        keep::list()
+    }
+
+    fn set_running(&self, id: u32, on: bool) {
+        keep::set_running(id, on);
+    }
+
+    fn remove(&self, id: u32) {
+        keep::remove(id);
+    }
+
+    fn local_file(&self, key: &str) -> Option<std::path::PathBuf> {
+        keep::local_file(key)
+    }
+
+    fn space(&self) -> Value {
+        keep::space()
+    }
+
+    fn revision(&self) -> u64 {
+        keep::revision()
     }
 }

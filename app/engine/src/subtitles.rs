@@ -36,6 +36,12 @@ struct JobSubs {
     loaded: HashMap<usize, Loaded>,
 }
 
+/// Where a job's subtitle files are read from.
+enum From {
+    Torrent(std::sync::Arc<librqbit::ManagedTorrent>),
+    Disk(std::path::PathBuf),
+}
+
 static JOBS: LazyLock<Mutex<HashMap<u32, JobSubs>>> = LazyLock::new(Default::default);
 
 /// The job ended: its cues go.
@@ -49,7 +55,16 @@ pub fn job_files(job: u32) -> Option<Vec<SubFile>> {
     if let Some(files) = JOBS.lock().unwrap().get(&job).and_then(|j| j.files.clone()) {
         return Some(files);
     }
-    let (handle, video, all) = engine::playing_files(job)?;
+    // A saved film's subtitle files are on disk beside it; a playing torrent's come through
+    // the engine.
+    let (from, video, all) = match engine::local_files(job) {
+        Some((dir, video, all)) => (From::Disk(dir), video, all),
+        None => {
+            let (handle, video, all) = engine::playing_files(job)?;
+            (From::Torrent(handle), video, all)
+        }
+    };
+    let paths: HashMap<usize, String> = all.iter().map(|(i, p, _)| (*i, p.clone())).collect();
     let found: Vec<SubFile> = files::find(&all, video).into_iter().take(MAX_FILES).collect();
     {
         let mut jobs = JOBS.lock().unwrap();
@@ -71,10 +86,18 @@ pub fn job_files(job: u32) -> Option<Vec<SubFile>> {
                 return; // the film was closed
             }
             let result = tokio::time::timeout(FETCH_TIMEOUT, async {
-                let mut stream = handle.clone().stream(file.id).await?;
-                let mut bytes = Vec::new();
-                stream.read_to_end(&mut bytes).await?;
-                anyhow::Ok(bytes)
+                match &from {
+                    From::Torrent(handle) => {
+                        let mut stream = handle.clone().stream(file.id).await?;
+                        let mut bytes = Vec::new();
+                        stream.read_to_end(&mut bytes).await?;
+                        anyhow::Ok(bytes)
+                    }
+                    From::Disk(dir) => {
+                        let rel = paths.get(&file.id).cloned().unwrap_or_default();
+                        anyhow::Ok(std::fs::read(dir.join(rel))?)
+                    }
+                }
             })
             .await;
             let loaded = match result {

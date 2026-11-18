@@ -31,8 +31,8 @@ use serde_json::{Value, json};
 use tokio::runtime::Runtime;
 
 pub(crate) struct Core {
-    rt: Runtime,
-    session: Arc<Session>,
+    pub(crate) rt: Runtime,
+    pub(crate) session: Arc<Session>,
     api: Api,
     port: u16,
     next_job: AtomicU32,
@@ -54,6 +54,8 @@ enum Job {
     /// Playing; the link reaches the torrent's ring-buffer cache. None when the job reads a
     /// torrent someone else added (a film being saved, on files; or another job's ring).
     Ready(Arc<librqbit::ManagedTorrent>, Option<buffer::Link>),
+    /// A saved film: its file on disk, played without the engine (`keep`).
+    Local(PathBuf),
     Failed(String),
 }
 
@@ -130,7 +132,7 @@ fn low_space() -> bool {
     disk::free_bytes(&cache_dir()).is_ok_and(|free| free < RESERVE_MB * MIB)
 }
 
-fn core() -> anyhow::Result<&'static Core> {
+pub(crate) fn core() -> anyhow::Result<&'static Core> {
     if let Some(core) = CORE.get() {
         return Ok(core);
     }
@@ -206,6 +208,13 @@ pub fn start() -> anyhow::Result<u16> {
 /// starts when a release is found (`no_source` when none is). A job id to
 /// poll with `status` (which says when there is no source or no room).
 pub fn open(key: &str) -> anyhow::Result<u32> {
+    // A saved film plays from its file, before anything else: no search, no torrent, and
+    // no room needed for the cache (a disk full of saved films still plays them).
+    if let Some(path) = crate::keep::local_file(key) {
+        let job = new_job(Job::Local(path));
+        remember_key(job, key);
+        return Ok(job);
+    }
     let space = check_space();
     if space["ok"] == false {
         let needed = space["needed"].as_u64().unwrap_or_default();
@@ -317,7 +326,7 @@ const OPEN_TRACKERS: [&str; 6] = [
 ];
 
 /// A magnet with the open trackers it does not name yet; other URLs as they are.
-fn with_open_trackers(url: &str) -> String {
+pub(crate) fn with_open_trackers(url: &str) -> String {
     if !url.starts_with("magnet:") {
         return url.to_owned();
     }
@@ -563,7 +572,7 @@ fn prefetched(url: &str) -> (Prefetched, bool) {
     (cell, true)
 }
 
-async fn fetch_once(url: &str) -> Result<Fetched, String> {
+pub(crate) async fn fetch_once(url: &str) -> Result<Fetched, String> {
     let (cell, _) = prefetched(url);
     let r = cell.get_or_init(|| async { fetch_torrent(url).await.map_err(|e| format!("{e:#}")) }).await.clone();
     if r.is_err() {
@@ -587,7 +596,7 @@ pub fn prefetch(url: &str) {
 
 /// What a source's http(s) link turned out to be.
 #[derive(Clone)]
-enum Fetched {
+pub(crate) enum Fetched {
     /// A .torrent file.
     Torrent(Vec<u8>),
     /// A magnet the link redirects to (Jackett does so for trackers that only give magnets).
@@ -751,6 +760,20 @@ pub fn status(job: u32) -> Value {
         Job::Searching => json!({ "phase": "resolving", "stage": "searching" }),
         Job::Resolving => json!({ "phase": "resolving", "stage": "finding" }),
         Job::Failed(message) => json!({ "phase": "failed", "message": message }),
+        Job::Local(path) => json!({
+            "phase": "ready",
+            "name": path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
+            "file": 0,
+            "stream_url": file_url(&path),
+            "low_space": false,
+            "speed": 0.0,
+            "peers": null,
+            "found": null,
+            "start": 100,
+            "stage": "starting",
+            "progress": 1.0,
+            "local": true,
+        }),
         Job::Ready(handle, link) => {
             let Some(file) = video_file(&handle, job) else {
                 // A pack whose name promised the episode, but its files lack it.
@@ -860,6 +883,32 @@ pub(crate) fn playing_files(job: u32) -> Option<(Arc<librqbit::ManagedTorrent>, 
     Some((handle, video, files))
 }
 
+/// What a saved film's job plays, for its subtitles: the item's folder, the video's index and
+/// its files (index, path in that folder, length).
+pub(crate) fn local_files(job: u32) -> Option<(PathBuf, usize, Vec<(usize, String, u64)>)> {
+    let core = CORE.get()?;
+    let Some(Job::Local(_)) = core.jobs.lock().unwrap().get(&job).cloned() else { return None };
+    let key = JOB_KEYS.lock().unwrap().as_ref()?.get(&job)?.clone();
+    crate::keep::local_files(&key)
+}
+
+/// A `file://` URL for a path, its bytes percent-encoded except the unreserved ones and `/`.
+pub(crate) fn file_url(path: &std::path::Path) -> String {
+    let raw = path.to_string_lossy();
+    let raw = raw.replace('\\', "/");
+    let mut out = String::from("file://");
+    if !raw.starts_with('/') {
+        out.push('/'); // a Windows drive: file:///C:/…
+    }
+    for b in raw.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' | b'/' | b':' => out.push(b as char),
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
+}
+
 /// Runs `task` on the engine's runtime (started by then: a job is ready).
 pub(crate) fn spawn(task: impl std::future::Future<Output = ()> + Send + 'static) {
     if let Some(core) = CORE.get() {
@@ -875,7 +924,12 @@ pub(crate) fn spawn(task: impl std::future::Future<Output = ()> + Send + 'static
 pub fn timeline(job: u32, position: f64, duration: f64, cached: f64, read_byte: f64, read_time: f64) -> Value {
     let empty = json!({ "ranges": [], "ahead": 0 });
     let Some(core) = CORE.get() else { return empty };
-    let Some(Job::Ready(handle, _)) = core.jobs.lock().unwrap().get(&job).cloned() else { return empty };
+    let state = core.jobs.lock().unwrap().get(&job).cloned();
+    if let Some(Job::Local(_)) = state {
+        // All of a saved film is on disk.
+        return json!({ "ranges": [[0.0, 1.0]], "ahead": (duration - position).max(0.0) });
+    }
+    let Some(Job::Ready(handle, _)) = state else { return empty };
     let Some(file) = video_file(&handle, job) else { return empty };
     let Some(layout) = file_layout(&handle, file) else { return empty };
     // Exactly the pieces on disk now (evicted ones are not "have" any more): the scrubber never
@@ -982,6 +1036,12 @@ mod tests {
     use std::time::{Duration, Instant};
 
     use super::{Layout, with_open_trackers};
+
+    #[test]
+    fn file_urls_are_encoded() {
+        assert_eq!(super::file_url(std::path::Path::new("/Users/me/Movies/Metropolis (1927)/a b.mkv")), "file:///Users/me/Movies/Metropolis%20%281927%29/a%20b.mkv");
+        assert_eq!(super::file_url(std::path::Path::new("/x/Фильм.mp4")), "file:///x/%D0%A4%D0%B8%D0%BB%D1%8C%D0%BC.mp4");
+    }
 
     #[test]
     fn magnets_get_open_trackers_once() {

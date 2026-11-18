@@ -78,6 +78,57 @@ pub trait Playback: Send + Sync {
     fn cues(&self, job: u32, id: usize, from: f64, to: f64) -> Value;
 }
 
+/// Saving films and episodes on the device to watch without the internet
+/// (design/offline-downloads.md). Not on TVs and not without the engine: `supported` is false
+/// there and every call does nothing. Work runs in the background; `list` and `revision` say
+/// how it goes.
+pub trait Keep: Send + Sync {
+    fn supported(&self) -> bool;
+    /// Opens the library in `data_dir` and goes on saving what was unfinished. Once.
+    fn init(&self, data_dir: &Path);
+    /// Where new items are saved.
+    fn folder(&self) -> Option<std::path::PathBuf>;
+    /// Saves new items into `folder` from now on (what is saved stays where it is). Err: it
+    /// cannot be written to.
+    fn set_folder(&self, folder: &Path) -> Result<(), String>;
+    /// Starts saving; the item's id. An item for the same key that is not failed is answered
+    /// with its id.
+    fn add(&self, request: KeepRequest) -> Result<u32, String>;
+    /// Every item with its state and progress: `[{"id","key","title","label","image","state",
+    /// "size","have","progress","speed","peers","message"}]`, newest first.
+    fn list(&self) -> Value;
+    /// Pauses (`on` false) or goes on saving the item's torrent.
+    fn set_running(&self, id: u32, on: bool);
+    /// Stops saving the item and deletes its files.
+    fn remove(&self, id: u32);
+    /// The saved file that plays `key`, when it is complete and on disk.
+    fn local_file(&self, key: &str) -> Option<std::path::PathBuf>;
+    /// Bytes saved and free on the folder's volume: `{"saved","free","folder"}`.
+    fn space(&self) -> Value;
+    /// Goes up whenever an item changes state.
+    fn revision(&self) -> u64;
+}
+
+/// What to save: a catalog key with the release that plays it, and what the Saved screen
+/// shows of it (the application's words, kept so it shows offline).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct KeepRequest {
+    pub key: String,
+    /// The release's magnet or .torrent URL. Used once, never stored (a source's links carry
+    /// its API key).
+    pub source: String,
+    /// The episode to pick in a pack.
+    pub episode: Option<(u16, u16)>,
+    /// The film or the show ("Metropolis", "Flash Gordon"); also the folder's name.
+    pub title: String,
+    /// The year, for the folder's name (`Metropolis (1927)`).
+    pub year: Option<u32>,
+    /// What else the row says ("S3:E5 · The Palace of Terror"), may be empty.
+    pub label: String,
+    /// A picture of it (a still), may be empty.
+    pub image: String,
+}
+
 /// What the engine needs from the application: the catalog's decision and the progress.
 pub trait PlaybackHost: Send + Sync {
     /// The release a catalog key plays, starting what is needed to know it.
