@@ -12,7 +12,7 @@ use std::{
     },
 };
 
-use crate::{buffer, disk};
+use crate::{buffer, disk, leases};
 use reel_domain::{
     compat, episode,
     play::PlaySource,
@@ -30,7 +30,7 @@ use librqbit_dualstack_sockets::{BindOpts, TcpListener};
 use serde_json::{Value, json};
 use tokio::runtime::Runtime;
 
-struct Core {
+pub(crate) struct Core {
     rt: Runtime,
     session: Arc<Session>,
     api: Api,
@@ -51,8 +51,9 @@ enum Job {
     Searching,
     /// Fetching the metadata (magnet links need peers for it).
     Resolving,
-    /// Playing; the link reaches the torrent's ring-buffer cache.
-    Ready(Arc<librqbit::ManagedTorrent>, buffer::Link),
+    /// Playing; the link reaches the torrent's ring-buffer cache. None when the job reads a
+    /// torrent someone else added (a film being saved, on files; or another job's ring).
+    Ready(Arc<librqbit::ManagedTorrent>, Option<buffer::Link>),
     Failed(String),
 }
 
@@ -169,19 +170,27 @@ pub fn cache_dir() -> PathBuf {
     std::env::temp_dir().join("reel-cache")
 }
 
-/// Stops a job and deletes what it downloaded.
+/// Stops a job and lets go of its torrent: what it downloaded is deleted once nobody else
+/// holds it (a film being saved stays, `leases`).
 pub fn close(job: u32) {
     crate::subtitles::forget(job);
     let Some(core) = CORE.get() else { return };
     let Some(state) = core.jobs.lock().unwrap().remove(&job) else { return };
     if let Job::Ready(handle, _) = state {
-        let session = core.session.clone();
-        core.rt.spawn(async move {
-            if let Err(e) = session.delete(handle.id().into(), true).await {
-                tracing::warn!("reel engine: deleting torrent {}: {e:#}", handle.id());
-            }
-        });
+        let release = leases::with(|l| l.release_stream(handle.id()));
+        apply_release(core, handle.id(), release);
     }
+}
+
+/// Takes a torrent out of the session when its last lease is gone.
+pub(crate) fn apply_release(core: &Core, id: usize, release: leases::Release) {
+    let leases::Release::Delete { files } = release else { return };
+    let session = core.session.clone();
+    core.rt.spawn(async move {
+        if let Err(e) = session.delete(id.into(), files).await {
+            tracing::warn!("reel engine: deleting torrent {id}: {e:#}");
+        }
+    });
 }
 
 
@@ -660,25 +669,36 @@ fn add_to(core: &Core, job: u32, url: &str) {
             Err(e) => Err(e),
         };
         let state = match result {
-            Ok(response) => match response.into_handle() {
-                Some(handle) => {
-                    time_step(job, "torrent added, metadata known");
-                    if let Ok((piece, total)) = handle.with_metadata(|m| (m.lengths().default_piece_length(), m.lengths().total_length())) {
-                        time_note(job, &format!("{} KiB pieces, {} MiB torrent", piece / 1024, total / MIB));
-                    }
-                    link.attach(&handle);
-                    // Streams exist once it is initialized: size their readahead.
-                    let (h, l) = (handle.clone(), link.clone());
-                    tokio::spawn(async move {
-                        if h.wait_until_initialized().await.is_ok() {
-                            l.sync();
-                            warm(job, h);
-                        }
-                    });
-                    Job::Ready(handle, link)
+            Ok(librqbit::AddTorrentResponse::Added(id, handle)) => {
+                leases::with(|l| l.take_stream(id));
+                time_step(job, "torrent added, metadata known");
+                if let Ok((piece, total)) = handle.with_metadata(|m| (m.lengths().default_piece_length(), m.lengths().total_length())) {
+                    time_note(job, &format!("{} KiB pieces, {} MiB torrent", piece / 1024, total / MIB));
                 }
-                None => Job::Failed("the torrent was only listed".into()),
-            },
+                link.attach(&handle);
+                // Streams exist once it is initialized: size their readahead.
+                let (h, l) = (handle.clone(), link.clone());
+                tokio::spawn(async move {
+                    if h.wait_until_initialized().await.is_ok() {
+                        l.sync();
+                        warm(job, h);
+                    }
+                });
+                Job::Ready(handle, Some(link))
+            }
+            // Already in the session (a film being saved, or another job): read it as it is.
+            Ok(librqbit::AddTorrentResponse::AlreadyManaged(id, handle)) => {
+                leases::with(|l| l.take_stream(id));
+                time_step(job, "torrent already in the session");
+                let h = handle.clone();
+                tokio::spawn(async move {
+                    if h.wait_until_initialized().await.is_ok() {
+                        warm(job, h);
+                    }
+                });
+                Job::Ready(handle, None)
+            }
+            Ok(librqbit::AddTorrentResponse::ListOnly(_)) => Job::Failed("the torrent was only listed".into()),
             Err(e) => Job::Failed(redact(&format!("{e:#}"))),
         };
         // Closed while it was being added: let it go.
@@ -692,7 +712,9 @@ fn add_to(core: &Core, job: u32, url: &str) {
             }
         };
         if let Some(Job::Ready(handle, _)) = orphan {
-            let _ = session.delete(handle.id().into(), true).await;
+            if let leases::Release::Delete { files } = leases::with(|l| l.release_stream(handle.id())) {
+                let _ = session.delete(handle.id().into(), files).await;
+            }
         }
     });
 }
@@ -748,7 +770,9 @@ pub fn status(job: u32) -> Value {
                 return json!({ "phase": "unsupported", "reason": reason });
             }
             // The player polls this: keep the cache's idea of the readers fresh.
-            link.sync();
+            if let Some(link) = &link {
+                link.sync();
+            }
             let stats = handle.stats();
             let file_len = handle.with_metadata(|m| m.file_infos.get(file).map(|f| f.len)).ok().flatten();
             let cached = stats.file_progress.get(file).copied().unwrap_or(0);

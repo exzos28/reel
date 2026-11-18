@@ -14,6 +14,7 @@ mod buffer;
 mod http_client;
 mod disk;
 mod engine;
+mod leases;
 mod sources;
 mod subtitles;
 
