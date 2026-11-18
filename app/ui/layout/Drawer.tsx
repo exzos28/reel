@@ -13,6 +13,7 @@
 // bindings in a headless run, and the remote must always reach Back.
 import { Text, View, type JSX, type ViewStyle } from "nsh";
 import { Sheet } from "nsh/base";
+import { titleBar } from "nsh/desktop";
 import { t } from "nsh/i18n";
 import { Icon } from "../kit/Icon";
 import { rounded } from "../kit/shape";
@@ -38,10 +39,14 @@ function sheetStyle(): ViewStyle {
   // A desktop's: over everything, the window bar too, the full height.
   return { width: 460, backgroundColor: colors.card(), borderLeftWidth: 1, borderLeftColor: alpha(colors.snow(), 0.08) };
 }
+/** A desktop drawer runs up over the window bar: where the system's window controls sit at the
+ * bar's right end (Windows, GTK), its ✕ and title start under them instead of beneath them. */
+const controlsRoom = () => (frame.panel === "side-sheet" && titleBar().right > 0 ? titleBar().height : 0);
+const underControls = (): ViewStyle => ({ paddingTop: controlsRoom() });
 const grabberStyle = (): ViewStyle => ({ width: 36, height: 5, borderRadius: 3, alignSelf: "center", backgroundColor: "#4A4A4A", marginTop: 8 });
 const closeStyle = (): ViewStyle => ({
   position: "absolute",
-  top: frame.panel === "bottom-sheet" ? 18 : 14,
+  top: (frame.panel === "bottom-sheet" ? 18 : 14) + controlsRoom(),
   right: 14,
   width: 30,
   height: 30,
@@ -142,7 +147,7 @@ export function Drawer(props: {
         popupStyle={sheetStyle()}
         backdropStyle={{ backgroundColor: veil() }}
       >
-        <View testID={`${props.id}-panel`} style={{ flex: 1 }}>
+        <View testID={`${props.id}-panel`} style={{ flex: 1, ...underControls() }}>
           <If when={frame.panel === "bottom-sheet"}>
             <View style={grabberStyle()} />
           </If>
