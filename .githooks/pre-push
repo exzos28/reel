@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs dev/checks.sh before a push, so main does not get a commit that breaks the build or the
-# tests. Enable once per clone: git config core.hooksPath .githooks
-# Skip for one push: git push --no-verify
-exec "$(git rev-parse --show-toplevel)/dev/checks.sh"
+# Only what takes no time before a push: the UI rules (dev/ui-rules.sh). The tests, the type check
+# and the builds run on GitHub (.github/workflows/checks.yml, build.yml); dev/checks.sh runs them
+# all here when wanted. Enable once per clone: git config core.hooksPath .githooks
+exec "$(git rev-parse --show-toplevel)/dev/ui-rules.sh"

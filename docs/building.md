@@ -22,9 +22,9 @@ cargo test --workspace        # the core's crates
 ../dev/ui-rules.sh            # screens render content only
 ```
 
-All of them pass before every commit: `dev/checks.sh` runs them in turn. To run it before every
-push, enable the repo's hooks once per clone: `git config core.hooksPath .githooks`
-(`git push --no-verify` skips it).
+CI runs them on every PR before it merges (`.github/workflows/checks.yml`, `docs/ci.md`); locally
+run what the change touches, or all of them with `dev/checks.sh`. The repo's pre-push hook runs only
+the UI rules: enable it once per clone with `git config core.hooksPath .githooks`.
 
 Screenshots of every layout, with no window on screen: `dev/screens.sh` (`--targets mac,phone`,
 `--sizes`, `--screens`, `--jobs`; the matrix is `dev/screens/matrix.json`) shoots the web build in

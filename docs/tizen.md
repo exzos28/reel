@@ -160,7 +160,7 @@ Missing on this Mac (sizes measured from the download servers):
   - `rustup target add armv7-unknown-linux-gnueabi`;
   - either zig + cargo-zigbuild, or `REEL_TIZEN_CC=arm-linux-gnueabi-gcc` from `build/setup-armv7-deps.sh`.
 - With Debian's gcc, the `.so` links against that distribution's glibc version. The `core` step prints the newest `GLIBC_x.y` the library needs; it must not be newer than the TV's. zig with a pinned 2.28 avoids the question.
-- The current `build/build.sh armv7` builds `libreel_app.so` from app/ directly. That library has no C API, so the service can't use it. The `.so` for the TV is `build/tizen.sh core` (`libreel_tizen_core.so`, exports `reel_core_start`, `reel_core_set_token`, `reel_core_last_error`).
+- The `.so` for the TV is `build/tizen.sh core` (`libreel_tizen_core.so`, exports `reel_core_start`, `reel_core_set_token`, `reel_core_last_error`).
 - Release asset: `reel-tv-v<version>.wgt` (a hybrid package; Apps2Samsung installs `.wgt` and `.tpk` from GitHub Releases).
 
 ## Install on the TV (Apps2Samsung)

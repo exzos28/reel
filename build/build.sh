@@ -4,10 +4,13 @@
 #   build/build.sh <target>
 #
 # Targets:
-#   check          nsh check (cargo check of app/ + TypeScript), and app/ built without
-#                  the engine (--no-default-features)
-#   test           cargo test of the domain and engine crates, then nsh test (cargo test
-#                  of app/, then the *.test.tsx files, headless)
+#   check          typecheck + no-engine
+#   typecheck      nsh check (cargo check of app/ + TypeScript)
+#   no-engine      app/ checked without the engine (cargo check --no-default-features)
+#   test           test-crates + test-app
+#   test-crates    cargo test of the domain and engine crates (no GTK, no nsh needed)
+#   test-app       nsh test (cargo test of app/, then the *.test.tsx files, headless)
+#   ui-rules       dev/ui-rules.sh (what screens must not do)
 #   macos          .app, zipped                       (macOS)
 #   linux          directory + .tar.gz                (Linux, GTK 4.14+)
 #   windows        directory .zip (+ setup.exe when Inno Setup 6 is installed)  (Windows)
@@ -15,10 +18,8 @@
 #   ios-simulator  universal (iPhone + iPad) simulator .app, zipped  (macOS + Xcode)
 #   ios            signed .ipa; needs REEL_IOS_SIGN_IDENTITY and REEL_IOS_PROFILE (macOS + Xcode)
 #   web            static site, tarred
-#   armv7          the Rust crate as a cdylib for armv7-unknown-linux-gnueabi (Tizen core smoke test)
-#   tpk            Tizen .tpk (not implemented until platforms/tizen exists)
 #
-# Deliverables land in app/.nsh/dist/<target>/ as reel-<target>*.{zip,tar.gz,apk,ipa,so};
+# Deliverables land in app/.nsh/dist/<target>/ as reel-<target>*.{zip,tar.gz,apk,ipa};
 # nsh's raw output is in app/.nsh/dist/<target>/pkg/.
 #
 # Environment (all optional):
@@ -82,6 +83,17 @@ tmdb_note() {
   else log "REEL_TMDB_TOKEN is not set: the app will ask the user for a TMDB key"; fi
 }
 
+case "$target" in
+  # These need only cargo or bash, not nsh.
+  test-crates)
+    cargo test --locked -p reel-domain -p reel-engine
+    exit 0
+    ;;
+  ui-rules)
+    exec "$repo/dev/ui-rules.sh"
+    ;;
+esac
+
 need nsh "run build/install-nsh.sh"
 
 # No personal data in a package: the compiler writes source paths into binaries (panic messages,
@@ -98,15 +110,28 @@ package_check() { python3 -I "$repo/build/package-check.py" "$@" || die "the pac
 
 case "$target" in
   check)
+    "$0" typecheck
+    "$0" no-engine
+    ;;
+
+  typecheck)
     nsh check .
+    ;;
+
+  no-engine)
     # Builds without the torrent engine must keep compiling (docs/architecture.md).
-    cargo build --locked --no-default-features -p reel-app
+    cargo check --locked --no-default-features -p reel-app
     ;;
 
   test)
+    "$0" test-crates
+    "$0" test-app
+    ;;
+
+  test-app)
+    # nsh test runs reel-app's own tests; the workspace's other crates are test-crates.
+    out=".nsh/dist/test"
     mkdir -p "$out"
-    # nsh test runs reel-app's own tests; the workspace's other crates are tested here.
-    cargo test --locked -p reel-domain -p reel-engine
     nsh test . --junit "$out/junit.xml"
     ;;
 
@@ -232,38 +257,6 @@ case "$target" in
     package web
     site="$(one "$pkg/*/")"
     tar -C "$(dirname "$site")" -czf "$out/reel-web.tar.gz" "$(basename "$site")"
-    ;;
-
-  armv7)
-    # Smoke test of the Tizen core toolchain: the crate linked as a shared library for
-    # armv7 Linux, soft-float calling convention (Tizen's armv7l is softfp, which is
-    # ABI-compatible). app/Cargo.toml has no [lib] crate-type, so it is set here with
-    # `cargo rustc --crate-type cdylib` instead of changing the manifest.
-    triple=armv7-unknown-linux-gnueabi
-    cc=arm-linux-gnueabi-gcc
-    need "$cc" "run build/setup-armv7-deps.sh (Debian) for the cross compiler and armel OpenSSL"
-    tmdb_note
-    rust_targets "$triple"
-    fresh_out
-    export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABI_LINKER="$cc"
-    export CC_armv7_unknown_linux_gnueabi="$cc"
-    export AR_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-ar
-    # openssl-sys (librqbit's default sha1 backend) finds the armel OpenSSL through pkg-config.
-    export PKG_CONFIG_ALLOW_CROSS=1
-    export PKG_CONFIG_LIBDIR=/usr/lib/arm-linux-gnueabi/pkgconfig:/usr/share/pkgconfig
-    cargo rustc --locked --release --lib --target "$triple" --crate-type cdylib
-    so="${CARGO_TARGET_DIR:-target}/$triple/release/libreel_app.so"
-    [ -f "$so" ] || die "no $so"
-    cp "$so" "$out/reel-core-$triple.so"
-    file "$out/reel-core-$triple.so" 2> /dev/null || true
-    ;;
-
-  tpk)
-    # TODO(tizen): once platforms/tizen (the .NET Tizen shell) exists, build it with the
-    # Tizen Studio CLI here: `tz build` / `tizen build-cs`, then `tizen package -t tpk -s <profile>`
-    # with the armv7 core (.so) and the web build inside, signed with a Samsung certificate.
-    [ -d "$repo/platforms/tizen" ] || die "platforms/tizen does not exist yet; nothing to package"
-    die "tpk packaging is not implemented yet (see the TODO in build/build.sh)"
     ;;
 
   *)

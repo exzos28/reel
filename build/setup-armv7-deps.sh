@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Cross toolchain for `build/build.sh armv7` on Debian (bookworm or later): the armel
-# (soft-float, armv7-unknown-linux-gnueabi) GCC and OpenSSL, and Rust via rustup when missing.
+# Cross toolchain for the TV's core with gcc instead of zig (`REEL_TIZEN_CC=arm-linux-gnueabi-gcc
+# build/tizen.sh core`) on Debian (bookworm or later): the armel (soft-float,
+# armv7-unknown-linux-gnueabi) GCC and OpenSSL, and Rust via rustup when missing.
 # Ubuntu has no armel port, so run this in a Debian container (CI) or VM.
 set -euo pipefail
 

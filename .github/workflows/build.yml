@@ -1,5 +1,6 @@
-# Platform builds. Called by ci.yml (every push and PR) and release.yml (v* tags); every job
-# runs build/build.sh <target>, which a developer runs the same way locally.
+# Platform builds. Called by ci.yml (a PR with the `build` label, a version PR, by hand) and
+# release.yml (v* tags); every job runs build/build.sh <target>, which a developer runs the same
+# way locally.
 name: build
 
 on:
@@ -26,6 +27,7 @@ env:
 jobs:
   macos:
     runs-on: macos-15
+    timeout-minutes: 60
     env:
       # A release runs on Apple silicon and Intel Macs alike; other builds, this runner's only.
       REEL_MACOS_ARCH: ${{ inputs.version != '' && 'universal' || '' }}
@@ -54,6 +56,7 @@ jobs:
 
   linux:
     runs-on: ubuntu-24.04 # GTK 4.14
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7.0.1
       - run: build/setup-linux-deps.sh
@@ -69,6 +72,7 @@ jobs:
 
   windows:
     runs-on: windows-2025
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
@@ -87,9 +91,7 @@ jobs:
   android:
     # NSH documents Android packaging from the prebuilt distribution on macOS and Windows.
     runs-on: macos-15
-    # Expected to fail until app/Cargo.toml switches librqbit off its default openssl-backed
-    # sha1 (openssl-sys has no OpenSSL to link for Android); see docs/ci.md.
-    continue-on-error: true
+    timeout-minutes: 60
     env:
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       REEL_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -119,6 +121,7 @@ jobs:
 
   ios-simulator:
     runs-on: macos-15
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/setup-nsh
@@ -139,9 +142,12 @@ jobs:
           if-no-files-found: error
 
   ios-device:
-    # Optional: a signed .ipa, only when the signing secrets exist. Sideloading/TestFlight
-    # only; the App Store does not accept a torrent client.
+    # Optional: a signed .ipa, only when the repository variable REEL_IOS_DEVICE is "true" and
+    # the signing secrets exist (a job's `if` cannot read secrets, so without the variable the job
+    # takes no macOS runner). Sideloading/TestFlight only; the App Store does not accept a torrent client.
+    if: vars.REEL_IOS_DEVICE == 'true'
     runs-on: macos-15
+    timeout-minutes: 60
     env:
       APPLE_CERT_P12_BASE64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
       APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
@@ -175,12 +181,10 @@ jobs:
           path: app/.nsh/dist/ios/reel-*
           if-no-files-found: error
 
-  # Tizen, step 1 of the plan: the NSH web build the Tizen shell's WebView shows.
+  # The NSH web build (the static site; the TV's UI is built the same way by tizen.yml).
   web:
     runs-on: ubuntu-24.04
-    # Expected to fail for now: the crate does not build for wasm32-unknown-unknown
-    # (tokio's net feature pulls in mio, which has no wasm32-unknown-unknown support); see docs/ci.md.
-    continue-on-error: true
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7.0.1
       # The crate is built for this Linux host too (its modules), which pulls in GTK.
@@ -188,35 +192,16 @@ jobs:
       - uses: ./.github/actions/setup-nsh
         with:
           rust-cache-key: web
+      # NSH's web runtime compiles C (zstd-sys) for wasm32: a clang with that backend and its llvm-ar.
+      - name: Install clang for wasm32
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q clang-18 llvm-18
+          echo "CC_wasm32_unknown_unknown=/usr/lib/llvm-18/bin/clang" >> "$GITHUB_ENV"
+          echo "AR_wasm32_unknown_unknown=/usr/lib/llvm-18/bin/llvm-ar" >> "$GITHUB_ENV"
       - run: build/build.sh web
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: reel-web
           path: app/.nsh/dist/web/reel-*
           if-no-files-found: error
-
-  # Tizen, step 2: the Rust core as an armv7 soft-float shared library (toolchain smoke test).
-  tizen-core-armv7:
-    runs-on: ubuntu-24.04
-    # Ubuntu has no armel port; Debian has the armel cross compiler and OpenSSL.
-    container: debian:bookworm
-    # A smoke test: linked against Debian's glibc, not the Tizen rootstrap yet; see docs/ci.md.
-    continue-on-error: true
-    steps:
-      - name: Install git and zstd (checkout, caches)
-        run: apt-get update && apt-get install -y --no-install-recommends git zstd ca-certificates
-      - uses: actions/checkout@v7.0.1
-      - run: build/setup-armv7-deps.sh
-      - uses: Swatinem/rust-cache@v2.9.3
-        with:
-          workspaces: app -> target
-          key: armv7
-      - run: build/build.sh armv7
-      - uses: actions/upload-artifact@v7.0.2
-        with:
-          name: reel-tizen-core-armv7
-          path: app/.nsh/dist/armv7/reel-*
-          if-no-files-found: error
-      - name: "TODO: package the Tizen .tpk with Tizen Studio CLI (needs platforms/tizen)"
-        if: hashFiles('platforms/tizen/**') != ''
-        run: build/build.sh tpk
