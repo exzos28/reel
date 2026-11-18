@@ -10,7 +10,9 @@ Looks through every file (and every file inside .zip, .apk, .tpk, .wgt and .ipa 
 nested ones included) for what identifies whoever built it, read from this machine at run time
 so that none of it is written in the repo:
 
-- the home directory ($HOME) and the user name ($USER, when it is 4 characters or longer);
+- the home directory ($HOME) and the user name ($USER, when it is 4 characters or longer), except
+  a GitHub Actions runner's own (runner, runneradmin): not anyone's, and "runner" is an ordinary
+  word in the binaries (NSH's "release runner"), as /Users/runner is in the prebuilt libmpv;
 - git's user.name and user.email;
 - REEL_PRIVATE_WORDS: more words to look for, comma-separated (e.g. in the git-ignored .env).
 
@@ -54,12 +56,21 @@ def git(key):
         return ""
 
 
+CI_USERS = ("runner", "runneradmin")
+
+
 def needles():
     name = git("user.name")
-    words = {os.environ.get("HOME", ""), name, git("user.email")}
+    home = os.environ.get("HOME", "")
+    user = os.environ.get("USER", "")
+    on_ci = os.environ.get("GITHUB_ACTIONS") == "true"
+    if on_ci and os.path.basename(home.rstrip("/\\")) in CI_USERS:
+        home = ""
+    if on_ci and user in CI_USERS:
+        user = ""
+    words = {home, name, git("user.email")}
     # Each part of the name on its own too (a first name in a certificate's subject).
     words.update(part for part in name.split() if len(part) >= 5)
-    user = os.environ.get("USER", "")
     if len(user) >= 4:
         words.add(user)
     words.update(w.strip() for w in os.environ.get("REEL_PRIVATE_WORDS", "").split(","))
