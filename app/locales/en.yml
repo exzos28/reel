@@ -394,6 +394,19 @@ settings:
       key: "%{host} refused the API key. Check the key."
       not_torznab: "%{host} answered, but not as a Torznab source. Check the address: it usually ends in /torznab/api."
       error: "%{host} said: %{message}"
+  # Where the menu (the nav's tabs and buttons) sits in the bar at the top (TV, desktop).
+  nav_position:
+    title: Menu position
+    about: Where the menu sits in the bar at the top of the screen.
+    left: Left
+    center: Center
+    right: Right
+  # What shows while a film loads or waits for more of the stream.
+  loader:
+    title: Loading animation
+    about: What shows while a film waits for more of the stream.
+    dinosaur: Dinosaur
+    logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not
   # answer (failed), from Settings (edit).
   source_drawer:
@@ -521,3 +534,7 @@ saved:
 
 confirm:
   cancel: Cancel
+
+home:
+  # The round ⓘ beside Play on Home: the title's page.
+  details: Details

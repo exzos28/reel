@@ -249,6 +249,18 @@ impl Settings {
         settings::set_stream_details(on)
     }
 
+    /// Saves where the top nav sits on a TV and a desktop ("left", "center" or "right"; another
+    /// value is refused); the position in effect.
+    pub fn set_nav_position(position: String) -> String {
+        settings::set_nav_position(&position)
+    }
+
+    /// Saves the loading animation ("dinosaur" or "logo"; another value is refused); the one in
+    /// effect.
+    pub fn set_loader(loader: String) -> String {
+        settings::set_loader(&loader)
+    }
+
     /// Saves the search source (a Torznab endpoint and its key; empty URL
     /// removes it). JSON `{"ok":true,"source":{"url","hasKey"}}` or
     /// `{"ok":false,"message"}` for an address that is not one.

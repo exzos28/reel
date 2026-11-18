@@ -39,6 +39,14 @@ pub fn recommended_buffer() -> u32 {
     recommended_mb(playback().check_space()["free"].as_u64())
 }
 pub const DEFAULT_LANGUAGE: &str = "en";
+
+/// Where the top nav's group (the pills and the round buttons after them) sits in its bar on a
+/// TV and a desktop: after the logo, in the middle, or at the right edge.
+pub const NAV_POSITIONS: [&str; 3] = ["left", "center", "right"];
+pub const DEFAULT_NAV_POSITION: &str = "right";
+/// What shows while something loads: the running dinosaur, or the blinking "reel" logotype.
+pub const LOADERS: [&str; 2] = ["dinosaur", "logo"];
+pub const DEFAULT_LOADER: &str = "dinosaur";
 pub const DEFAULT_CONTENT_LANGUAGE: &str = "en-US";
 
 /// Languages titles, descriptions and episode names can be shown in (TMDB
@@ -70,6 +78,10 @@ struct Saved {
     source_key: String,
     /// The player shows the stream's speed, people and what is ready ahead.
     stream_details: bool,
+    /// Where the top nav sits (one of `NAV_POSITIONS`).
+    nav_position: String,
+    /// The loading animation (one of `LOADERS`).
+    loader: String,
     /// The build's default source (`DEFAULT_SOURCE`) was put in once; clearing it later keeps it out.
     default_source_used: bool,
     /// The first-run setup (language, buffer, source) was gone through. None in a file written
@@ -106,6 +118,8 @@ impl Default for Saved {
             source_url: String::new(),
             source_key: String::new(),
             stream_details: false,
+            nav_position: DEFAULT_NAV_POSITION.to_owned(),
+            loader: DEFAULT_LOADER.to_owned(),
             default_source_used: false,
             setup_done: None,
         }
@@ -120,6 +134,12 @@ impl Saved {
         }
         if !CONTENT_LANGUAGES.iter().any(|(tag, _)| *tag == self.content_language) {
             self.content_language = DEFAULT_CONTENT_LANGUAGE.to_owned();
+        }
+        if !NAV_POSITIONS.contains(&self.nav_position.as_str()) {
+            self.nav_position = DEFAULT_NAV_POSITION.to_owned();
+        }
+        if !LOADERS.contains(&self.loader.as_str()) {
+            self.loader = DEFAULT_LOADER.to_owned();
         }
         if self.language.is_empty() {
             self.language = DEFAULT_LANGUAGE.to_owned();
@@ -261,7 +281,7 @@ pub fn load(data_dir: Option<&Path>) -> Value {
 
 /// The settings as the UI shows them, from memory:
 /// `{"language","contentLanguage","contentLanguages":[{"tag","name"}],"bufferMB",
-/// "streamDetails","setupDone","source":{"url","hasKey"},"bufferChoices":[{"mb","default"}]}`.
+/// "streamDetails","navPosition","loader","setupDone","source":{"url","hasKey"},"bufferChoices":[{"mb","default"}]}`.
 pub fn current() -> Value {
     let saved = with(|s| s.saved.clone());
     let recommended = recommended_buffer();
@@ -275,6 +295,8 @@ pub fn current() -> Value {
             .collect::<Vec<_>>(),
         "bufferMB": saved.buffer_mb,
         "streamDetails": saved.stream_details,
+        "navPosition": saved.nav_position,
+        "loader": saved.loader,
         "setupDone": saved.setup_done.unwrap_or(false),
         "source": source_json(&saved),
         "bufferChoices": choices,
@@ -323,6 +345,32 @@ pub fn set_stream_details(on: bool) -> bool {
     });
     bump();
     on
+}
+
+/// Saves where the top nav sits if it is one of `NAV_POSITIONS`; the position in effect.
+pub fn set_nav_position(position: &str) -> String {
+    let now = with(|s| {
+        if NAV_POSITIONS.contains(&position) {
+            s.saved.nav_position = position.to_owned();
+            save(s);
+        }
+        s.saved.nav_position.clone()
+    });
+    bump();
+    now
+}
+
+/// Saves the loading animation if it is one of `LOADERS`; the one in effect.
+pub fn set_loader(loader: &str) -> String {
+    let now = with(|s| {
+        if LOADERS.contains(&loader) {
+            s.saved.loader = loader.to_owned();
+            save(s);
+        }
+        s.saved.loader.clone()
+    });
+    bump();
+    now
 }
 
 /// The search source as the UI may show it: the address, and whether a key is
@@ -501,6 +549,20 @@ mod tests {
         assert_eq!(set_content_language("xx-XX"), "ru-RU", "an unknown tag is refused");
         assert_eq!(load(Some(&dir))["contentLanguage"], "ru-RU");
         set_content_language(DEFAULT_CONTENT_LANGUAGE);
+
+        // Nav position and loader: one of their lists, kept across loads; missing or unknown
+        // in the file: the defaults.
+        assert_eq!(load(Some(&dir))["navPosition"], DEFAULT_NAV_POSITION);
+        assert_eq!(current()["loader"], DEFAULT_LOADER);
+        assert_eq!(set_nav_position("center"), "center");
+        assert_eq!(set_nav_position("top"), "center", "an unknown position is refused");
+        assert_eq!(set_loader("logo"), "logo");
+        assert_eq!(set_loader("spinner"), "logo", "an unknown loader is refused");
+        let again = load(Some(&dir));
+        assert_eq!((again["navPosition"].as_str(), again["loader"].as_str()), (Some("center"), Some("logo")));
+        std::fs::write(dir.join("settings.json"), r#"{"navPosition":"top","loader":"spinner"}"#).unwrap();
+        let unknown = load(Some(&dir));
+        assert_eq!((unknown["navPosition"].as_str(), unknown["loader"].as_str()), (Some(DEFAULT_NAV_POSITION), Some(DEFAULT_LOADER)));
 
         std::fs::remove_dir_all(&dir).unwrap();
         playback().set_buffer_mb(DEFAULT_BUFFER_MB as u64);

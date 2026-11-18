@@ -4,6 +4,9 @@
 // (a title's Add to list), the nav pills, search and settings, the room of
 // the system's caption buttons (Windows, GNOME). Its empty parts drag the
 // window. Clear over a hero, solid once content is under it.
+// The nav (pills and round buttons, one group) sits where Settings says: at the right edge
+// (the default), right after the logo, or in the middle of the window. Away from the right
+// edge the page's action goes there instead, so the nav stays put from page to page.
 import { Text, View, type JSX, type TextStyle, type ViewStyle } from "nsh";
 import { titleBar } from "nsh/desktop";
 import { t } from "nsh/i18n";
@@ -18,7 +21,7 @@ import { frameSolid as barSolid } from "./frameState";
 import { BAR_HEIGHT } from "./metrics";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
-import { setupDone } from "../preferences";
+import { navPosition, setupDone } from "../preferences";
 
 /** The bar's height, points (`metrics`); the system's window controls are centred in it. */
 export { BAR_HEIGHT };
@@ -79,6 +82,14 @@ const backStyle = (enabled: boolean, background?: string): ViewStyle => ({
   // Nowhere to go back to: not shown, but its slot stays (the logo does not move).
   opacity: enabled ? 1 : 0,
 });
+/** The logo's strip (it drags the window): it takes the rest of the left part, or with the nav
+ * right after it keeps a gap before the nav. */
+const logoRoom = (afterBack: boolean, grow: boolean): ViewStyle => ({
+  ...row(0),
+  alignSelf: "stretch",
+  paddingLeft: afterBack ? (chrome === "mac" ? 12 : 14) : 8,
+  ...(grow ? { flex: 1 } : { paddingRight: 20 }),
+});
 const tipStyle = (): ViewStyle => ({ ...row(6), paddingHorizontal: 9, paddingVertical: 5, ...rounded(6), backgroundColor: colors.raise() });
 const tipText = (color: string): TextStyle => ({ fontFamily: font, fontSize: 12, fontWeight: 500, color });
 const logoStyle = (): TextStyle => ({ fontFamily: font, fontSize: 20, fontWeight: 700, letterSpacing: -0.3, color: colors.red() });
@@ -106,6 +117,10 @@ const roundStyle = (selected: boolean, solid: boolean): ViewStyle => ({
 });
 /** Points as TV pixels, for `Icon`'s size. */
 const pt = iconPt;
+/** The bar's left part (the system's room, Back, the logo) and its right part (the system's
+ * room): with the nav in the middle both take half of what is left, so it is centred in the
+ * window; elsewhere the one away from the nav takes it all. */
+const sideStyle = (grow: boolean): ViewStyle => ({ ...row(0), alignSelf: "stretch", ...(grow ? { flex: 1 } : {}) });
 
 /** Back in the bar's slot: the page it goes to and the shortcut as a tooltip.
  * Hidden on a root on a Mac (it keeps its slot, so the logo stays put); none there elsewhere. */
@@ -188,15 +203,19 @@ export function WindowBar() {
   return (
     <If when={!inSetup()} else={<View desktop={{ windowDrag: true }} style={barStyle(false)} />}>
     <View style={barStyle(barSolid())}>
-      <View desktop={{ windowDrag: true }} style={{ width: backLeft(), alignSelf: "stretch" }} />
-      <If when={showBack()}>
-        <BarBack onPress={handleBack} enabled={canGoBack} tip={tip} />
-      </If>
-      <View desktop={{ windowDrag: true }} style={{ ...row(0), flex: 1, alignSelf: "stretch", paddingLeft: showBack() ? (chrome === "mac" ? 12 : 14) : 8 }}>
-        <Text style={logoStyle()}>{t("app.name")}</Text>
+      <View style={sideStyle(navPosition() !== "left")}>
+        <View desktop={{ windowDrag: true }} style={{ width: backLeft(), alignSelf: "stretch" }} />
+        <If when={showBack()}>
+          <BarBack onPress={handleBack} enabled={canGoBack} tip={tip} />
+        </If>
+        <View desktop={{ windowDrag: true }} style={logoRoom(showBack(), navPosition() !== "left")}>
+          <Text style={logoStyle()}>{t("app.name")}</Text>
+        </View>
+        <If when={navPosition() === "right"}>
+          <PageAction />
+        </If>
       </View>
-      <PageAction />
-      <View style={row(6)}>
+      <View testID={`window-nav-${navPosition()}`} style={row(6)}>
         <Pills solid={barSolid} />
         <Each of={buttons} key={(n) => n.id}>
           {(n) => (
@@ -212,7 +231,15 @@ export function WindowBar() {
           )}
         </Each>
       </View>
-      <View desktop={{ windowDrag: true }} style={{ width: titleBar().right + (chrome === "mac" ? 16 : 10), alignSelf: "stretch" }} />
+      <View style={sideStyle(navPosition() !== "right")}>
+        <View desktop={{ windowDrag: true }} style={{ flex: 1, alignSelf: "stretch" }} />
+        <If when={navPosition() !== "right"}>
+          <View style={{ marginLeft: 10 }}>
+            <PageAction />
+          </View>
+        </If>
+        <View desktop={{ windowDrag: true }} style={{ width: titleBar().right + (chrome === "mac" ? 16 : 10), alignSelf: "stretch" }} />
+      </View>
     </View>
     </If>
   );

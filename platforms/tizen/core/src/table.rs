@@ -105,6 +105,14 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         let (on,): (bool,) = args(a)?;
         ret(Settings::set_stream_details(on))
     })
+    .sync("Settings", "setNavPosition", |a| {
+        let (position,): (String,) = args(a)?;
+        ret(Settings::set_nav_position(position))
+    })
+    .sync("Settings", "setLoader", |a| {
+        let (loader,): (String,) = args(a)?;
+        ret(Settings::set_loader(loader))
+    })
     .sync("Settings", "current", |a| {
         no_args(&a)?;
         ret(Settings::current())

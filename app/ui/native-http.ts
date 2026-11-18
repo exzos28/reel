@@ -167,6 +167,8 @@ export const Settings: SettingsModule = {
   device: s("Settings", "device"),
   setBufferMb: s("Settings", "setBufferMb"),
   setStreamDetails: s("Settings", "setStreamDetails"),
+  setNavPosition: s("Settings", "setNavPosition"),
+  setLoader: s("Settings", "setLoader"),
   setSource: s("Settings", "setSource"),
   setContentLanguage: s("Settings", "setContentLanguage"),
   setLanguage: s("Settings", "setLanguage"),

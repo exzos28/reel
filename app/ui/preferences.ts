@@ -22,12 +22,22 @@ export interface ContentLanguage {
   name: string;
 }
 
+/** Where the top nav's group sits in its bar (a TV's, a desktop's): after the logo, in the
+ * middle, at the right edge. */
+export type NavPosition = "left" | "center" | "right";
+export const NAV_POSITIONS: NavPosition[] = ["left", "center", "right"];
+/** What shows while something loads: the running dinosaur or the blinking logotype. */
+export type Loader = "dinosaur" | "logo";
+export const LOADERS: Loader[] = ["dinosaur", "logo"];
+
 /** The settings as the core answers them (`Settings.load`, `Settings.current`). */
 export interface SettingsJson {
   language: string;
   bufferMB: number;
   bufferChoices: BufferChoice[];
   streamDetails?: boolean;
+  navPosition?: NavPosition;
+  loader?: Loader;
   contentLanguage?: string;
   contentLanguages?: ContentLanguage[];
   source?: SourceInfo;
@@ -41,6 +51,8 @@ export const contentLanguages = signal<ContentLanguage[]>([]);
 export const bufferMB = signal(0);
 /** The player shows the stream's speed, people and what is ready ahead. */
 export const streamDetails = signal(false);
+export const navPosition = signal<NavPosition>("right");
+export const loader = signal<Loader>("dinosaur");
 export const source = signal<SourceInfo>({ url: "", hasKey: false });
 export const bufferChoices = signal<BufferChoice[]>([]);
 /** Whether the first-run setup was gone through; null until the settings are loaded. */
@@ -63,6 +75,8 @@ export function applySettings(s: SettingsJson) {
   bufferMB.set(s.bufferMB);
   bufferChoices.set(s.bufferChoices);
   streamDetails.set(!!s.streamDetails);
+  if (s.navPosition) navPosition.set(s.navPosition);
+  if (s.loader) loader.set(s.loader);
   if (s.contentLanguage) contentLanguage.set(s.contentLanguage);
   if (s.contentLanguages) contentLanguages.set(s.contentLanguages);
   if (s.source) source.set(s.source);
@@ -72,6 +86,15 @@ export function applySettings(s: SettingsJson) {
 
 export async function toggleStreamDetails() {
   streamDetails.set(await Settings.setStreamDetails(!streamDetails()));
+}
+
+/** Moves the top nav; the core keeps it and answers with the position in effect. */
+export async function chooseNavPosition(p: NavPosition) {
+  navPosition.set((await Settings.setNavPosition(p)) as NavPosition);
+}
+
+export async function chooseLoader(l: Loader) {
+  loader.set((await Settings.setLoader(l)) as Loader);
 }
 
 export async function chooseBuffer(mb: number) {

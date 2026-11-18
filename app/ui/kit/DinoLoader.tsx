@@ -21,7 +21,7 @@ export function DinoLoader(props: { size?: number; label?: string }) {
     cleanup(() => clearInterval(timer));
   }
   return (
-    <View accessibilityLabel={props.label} style={{ alignItems: "center" }}>
+    <View testID="loader-dinosaur" accessibilityLabel={props.label} style={{ alignItems: "center" }}>
       <View style={frameStyle(size)}>
         <Image src={bodyIcon} style={layer} />
         <Image src={step() % 2 === 0 ? legsA : legsB} style={layer} />

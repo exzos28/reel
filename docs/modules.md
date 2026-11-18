@@ -233,6 +233,10 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/preferences.ts`.
 - `setLanguage(tag: String)` (`set_language`): Saves the UI language (a BCP 47 tag).
   Called from: nothing in the UI.
+- `setLoader(loader: String) -> String` (`set_loader`): Saves the loading animation ("dinosaur" or "logo"; another value is refused); the one in effect.
+  Called from: `ui/preferences.ts`.
+- `setNavPosition(position: String) -> String` (`set_nav_position`): Saves where the top nav sits on a TV and a desktop ("left", "center" or "right"; another value is refused); the position in effect.
+  Called from: `ui/preferences.ts`.
 - `setSource(url: String, key: String) -> String` (`set_source`): Saves the search source (a Torznab endpoint and its key; empty URL removes it). JSON `{"ok":true,"source":{"url","hasKey"}}` or `{"ok":false,"message"}` for an address that is not one.
   JSON: `{"ok":true,"source":{"url","hasKey"}}`, `{"ok":false,"message"}`
   Called from: `ui/preferences.ts`.

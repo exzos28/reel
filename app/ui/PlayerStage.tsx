@@ -7,7 +7,7 @@
 import { Image, reduceMotion, Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { titleText, type Summary } from "./catalog";
-import { DinoLoader } from "./kit/DinoLoader";
+import { Loader } from "./kit/Loader";
 import { cover, rounded } from "./kit/shape";
 import { alpha, colors, density, font, safe, ts, type, u } from "./theme";
 
@@ -103,12 +103,12 @@ const noteStyle = (): ViewStyle => ({
   flexDirection: "row", alignItems: "center", gap: u(16),
   paddingHorizontal: u(28), paddingVertical: u(18), ...rounded(999), backgroundColor: alpha(colors.ink(), 0.72),
 });
-/** A stall while the film plays: the running dinosaur in the middle, the picture kept;
+/** A stall while the film plays: the loader (Settings) in the middle, the picture kept;
  * with the stream's details on (Settings), how much is ready and how fast. */
 export function BufferingNote(props: { text: () => string }) {
   return (
     <View testID="buffering" style={{ ...cover(), pointerEvents: "none", alignItems: "center", justifyContent: "center", gap: u(20) }}>
-      <DinoLoader label={t("player.buffering")} />
+      <Loader label={t("player.buffering")} />
       <If when={props.text() !== ""}>
         <View style={noteStyle()}>
           <Text style={{ ...type.label(), fontWeight: 400, color: colors.soft() }}>{props.text()}</Text>

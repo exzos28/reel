@@ -1,5 +1,62 @@
 import { expect, test } from "nsh/test";
-import { ENGINE, openApp } from "./testEngine";
+import { ENGINE, NATIVE, openApp } from "./testEngine";
+
+/** The core's settings with the menu and the loader where a test puts them. */
+const appearance = (navPosition: string, loader = "dinosaur") => ({
+  "Settings.load": JSON.stringify({
+    language: "en", bufferMB: 256, bufferChoices: [{ mb: 256, default: true }], streamDetails: false, navPosition, loader,
+  }),
+});
+
+test("Settings: Menu position, reached with the remote, opens its choices; Center moves the nav to the middle", async () => {
+  const chosen: string[] = [];
+  const app = await openApp({
+    modules: { "app/native": { ...NATIVE, "Settings.setNavPosition": (p: string) => (chosen.push(p), p) } },
+  });
+  await app.press("label:Settings");
+  expect(app.shows("nav-right")).toBe(true); // the default
+  expect(app.texts()).toContain("Menu position");
+  for (let i = 0; i < 4; i++) await app.keyboard.press("down"); // language, buffer, source, stream details
+  await app.keyboard.press("enter");
+  expect(app.shows("choice-panel")).toBe(true);
+  expect(app.texts()).toContain("Where the menu sits in the bar at the top of the screen.");
+  for (const c of ["Left", "Center", "Right"]) expect(app.texts()).toContain(c);
+  await app.keyboard.press("up"); // from Right, the one in effect, to Center
+  await app.keyboard.press("enter");
+  expect(chosen).toEqual(["center"]);
+  expect(app.shows("choice-panel")).toBe(false);
+  expect(app.shows("nav-center")).toBe(true);
+  expect(app.shows("nav-right")).toBe(false);
+  expect(app.texts()).toContain("Center"); // the row's value
+});
+
+test("Settings: on a desktop the window bar's nav sits where the settings say", async () => {
+  const app = await openApp({ platform: "macos", width: 1440, height: 900, modules: { "app/native": { ...NATIVE, ...appearance("left") } } });
+  await app.waitFor("window-nav-left");
+  expect(app.shows("window-nav-right")).toBe(false);
+});
+
+test("Settings: a phone has no Menu position (its tab bar stays), but has Loading animation", async () => {
+  const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": NATIVE } });
+  await app.press("label:Settings");
+  expect(app.texts()).toContain("Loading animation");
+  expect(app.texts()).not.toContain("Menu position");
+});
+
+test("Settings: Loading animation offers the dinosaur and reel; picking reel asks the core", async () => {
+  const chosen: string[] = [];
+  const app = await openApp({
+    modules: { "app/native": { ...NATIVE, "Settings.setLoader": (l: string) => (chosen.push(l), l) } },
+  });
+  await app.press("label:Settings");
+  await app.press("label:Loading animation");
+  expect(app.shows("choice-panel")).toBe(true);
+  expect(app.texts()).toContain("Dinosaur");
+  await app.keyboard.press("down"); // from Dinosaur to reel
+  await app.keyboard.press("enter");
+  expect(chosen).toEqual(["logo"]);
+  expect(app.texts()).toContain("reel"); // the row's value
+});
 
 const SOURCE = {
   ...ENGINE,

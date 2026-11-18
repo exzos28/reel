@@ -42,7 +42,7 @@ function menu(audio: 1 | 2) {
   });
 }
 
-async function tv() {
+async function tv(settings: Record<string, unknown> = DETAILS) {
   /** What the page gave the core as the view's tracks. */
   const embedded: string[] = [];
   const posts: { op: string }[] = [];
@@ -53,7 +53,7 @@ async function tv() {
       "nsh": { "host.post": (_name: string, op: { op: string }) => { posts.push(op); } },
       "app/native": {
         ...NATIVE,
-        ...DETAILS,
+        ...settings,
         "VideoEngine.kind": "avplay",
         "Engine.status": status,
         "Engine.tracks": (_job: number, _id: string, e: string) => {
@@ -73,8 +73,8 @@ async function tv() {
 }
 
 /** Plays from the start: AVPlay loaded the stream and plays its first second. */
-async function playing() {
-  const t = await tv();
+async function playing(settings: Record<string, unknown> = DETAILS) {
+  const t = await tv(settings);
   await t.event({ type: "loaded", duration: 600, tracks: TRACKS });
   await t.event({ type: "time", position: 1 });
   return t;
@@ -120,6 +120,22 @@ test("a stall shows the buffering note until AVPlay has enough again", async () 
   expect(note()).toBe(true);
   await event({ type: "buffering", buffering: false });
   expect(note()).toBe(false);
+});
+
+test("a stall shows the loader Settings picked: the dinosaur by default, the blinking reel instead", async () => {
+  const dino = await playing();
+  await dino.event({ type: "buffering", buffering: true });
+  await dino.app.wait(400);
+  expect(dino.app.shows("loader-dinosaur")).toBe(true);
+  expect(dino.app.shows("loader-logo")).toBe(false);
+
+  const logo = await playing({
+    "Settings.load": JSON.stringify({ language: "en", bufferMB: 256, bufferChoices: [{ mb: 256, default: true }], streamDetails: true, loader: "logo" }),
+  });
+  await logo.event({ type: "buffering", buffering: true });
+  await logo.app.wait(400);
+  expect(logo.app.shows("loader-logo")).toBe(true);
+  expect(logo.app.shows("loader-dinosaur")).toBe(false);
 });
 
 test("at the end the film stands paused with the controls up", async () => {
