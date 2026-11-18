@@ -311,7 +311,6 @@ export function TitleScreen(props: { id: string }) {
           onTrailer={run.trailer}
           onSave={run.save}
           onReleases={() => openPanel()}
-          onList={toggle}
         />
       </View>
       <If when={isShow()}>

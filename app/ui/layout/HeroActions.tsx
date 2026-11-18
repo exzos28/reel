@@ -13,7 +13,6 @@ import trailerIcon from "../icons/trailer.svg";
 import savedIcon from "../icons/saved.svg";
 import type { SaveState } from "../library";
 import { Icon } from "../kit/Icon";
-import { frame } from "./chrome";
 import { rounded } from "../kit/shape";
 import { alpha, colors, focusRing } from "../theme";
 
@@ -26,32 +25,15 @@ export function PlayButton(props: { label: () => string; focused: () => boolean;
 }
 
 /** "My list" / "Add to list" (`addKey`), "In my list" with a check once added. */
-export function ListButton(props: { inList: () => boolean; addKey: string; focused: () => boolean; onPress: () => void; spoken?: () => string }) {
+export function ListButton(props: { inList: () => boolean; addKey: string; focused: () => boolean; onPress: () => void }) {
   return (
     <Button
       kind="secondary"
       icon={() => (props.inList() ? checkIcon : plusIcon)}
       label={() => (props.inList() ? t("title.in_list") : t(props.addKey))}
-      spoken={props.spoken}
       focused={props.focused}
       onPress={props.onPress}
     />
-  );
-}
-
-/** The Watchlist beside Play on a desktop, whose window bar has no room for it (the others carry it in
- * their bar or page); nothing elsewhere. */
-export function ListBesidePlay(props: { inList: () => boolean; onPress: () => void }) {
-  return (
-    <If when={frame.nav === "window-bar"}>
-      <ListButton
-        inList={props.inList}
-        addKey="title.add_to_list"
-        spoken={() => (props.inList() ? t("title.remove_from_list_spoken") : t("title.add_to_list_spoken"))}
-        focused={() => false}
-        onPress={props.onPress}
-      />
-    </If>
   );
 }
 

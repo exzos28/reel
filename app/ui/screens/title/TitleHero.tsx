@@ -4,9 +4,9 @@ import { t } from "nsh/i18n";
 import { StateLine } from "../../kit/StateLine";
 import { openSettings } from "../../nav";
 import { openSourceDrawer } from "../source/SourceDrawer";
-import { Hero, heroSplit } from "../../layout/Hero";
+import { Hero } from "../../layout/Hero";
 import { heroTop } from "../../layout/metrics";
-import { actionsRow, ListBesidePlay, PlayButton, ReleaseButton, SaveButton, TrailerButton } from "../../layout/HeroActions";
+import { actionsRow, PlayButton, ReleaseButton, SaveButton, TrailerButton } from "../../layout/HeroActions";
 import { librarySupported, titleSaveState } from "../../library";
 import { rounded } from "../../kit/shape";
 import { alpha, colors, cs, ts, type, u } from "../../theme";
@@ -66,8 +66,6 @@ export function TitleHero(props: {
   onTrailer: () => void;
   onSave: () => void;
   onReleases: () => void;
-  /** Add to list / In my list: a desktop has it beside Play (the others carry it in their bar or page). */
-  onList: () => void;
 }) {
   const show = () => props.data().kind === "show";
   /** Asked once per second (and per change), not once per place that shows it. */
@@ -82,14 +80,12 @@ export function TitleHero(props: {
       item={props.data}
       height={show() ? 640 : 700}
       backdropLeft={show() ? 520 : 560}
-      titleSize={heroSplit() ? 56 : show() ? 76 : 88}
-      top={heroTop("title", heroSplit() ? 190 : show() ? 150 : 176)}
+      titleSize={show() ? 76 : 88}
+      top={heroTop("title", show() ? 150 : 176)}
       fit
-      split
     >
       <View style={actionsRow(false)}>
         <PlayButton label={() => playLabel(props.data())} focused={focused("play")} onPress={props.onPlay} />
-        <ListBesidePlay inList={() => props.data().inList} onPress={props.onList} />
         <If when={librarySupported}>
           <SaveButton
             state={saveState}

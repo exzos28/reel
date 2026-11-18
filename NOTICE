@@ -9,6 +9,4 @@ Third-party code and assets in this repository keep their own licences:
   (vendor/librqbit/LICENSE). reel's changes to it are listed in vendor/librqbit/REEL_PATCH.md.
 - app/fonts/Geist.ttf, site/fonts/Geist.ttf: Geist by Vercel, SIL Open Font License 1.1
   (app/fonts/Geist-OFL.txt).
-- app/fonts/Cormorant.ttf: Cormorant by the Cormorant Project Authors, SIL Open Font License 1.1
-  (app/fonts/Cormorant-OFL.txt).
 - Rust crates and other dependencies are under their own licences (see each crate).

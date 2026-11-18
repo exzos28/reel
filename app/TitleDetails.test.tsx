@@ -222,13 +222,3 @@ test("with a source that did not answer, Play opens the drawer to fix it", async
   expect(app.shows("source-panel")).toBe(true);
   expect(app.texts()).toContain("Your search source did not answer");
 });
-
-test("desktop: the Watchlist sits beside Play on the title (once, not also in the window bar)", async () => {
-  const calls: string[] = [];
-  const native = { ...NATIVE, "Catalog.toggleList": (id: string) => (calls.push(id), true) };
-  const app = await openApp({ platform: "macos", width: 1440, height: 900, modules: { "app/native": native } });
-  await app.press("label:Inception >> nth=0");
-  expect(app.count("label:Add to Watchlist")).toBe(1);
-  await app.press("label:Add to Watchlist");
-  expect(calls.length).toBe(1);
-});
