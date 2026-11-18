@@ -6,10 +6,10 @@ logs/
 # Every build's packages (build/: out/linux, out/windows, out/tizen…).
 /out/
 
-# Local only: the coding agent's skills and internal research notes; its shared project settings
-# are committed.
+# Local only: the coding agent's skills; its shared project settings are committed.
 /.claude/*
 !/.claude/settings.json
 
-# Local only: this machine's files for the project (secrets is a link to ~/Documents/secrets/reel).
+# Local only: this machine's files for the project: research notes (research/), secrets (a link to
+# ~/Documents/secrets/reel).
 /.local/
