@@ -141,7 +141,8 @@ case "$target" in
     # libmpv for the mpv video view, beside the runner (where the app looks first); the
     # archive is made again with it.
     app_dir="$(dirname "$(one "$pkg/*/*.desktop")")"
-    cp "$("$repo/build/libmpv.sh" fetch linux)" "$app_dir/libmpv.so.2"
+    mpv="$("$repo/build/libmpv.sh" fetch linux)"
+    cp "$mpv" "$app_dir/libmpv.so.2"
     rm -f "$pkg"/*.tar.gz
     # Without this machine's metadata: root as the owner, the last commit's time on every file.
     tar --owner=0 --group=0 --numeric-owner --sort=name --mtime="@${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct)}" \
@@ -162,7 +163,8 @@ case "$target" in
     # libmpv for the mpv video view, beside reel.exe (where the app looks first); the archive
     # is made again with it.
     app_dir="$(dirname "$(one "$pkg/*/*.exe")")"
-    cp "$("$repo/build/libmpv.sh" fetch windows)" "$app_dir/libmpv-2.dll"
+    mpv="$("$repo/build/libmpv.sh" fetch windows)"
+    cp "$mpv" "$app_dir/libmpv-2.dll"
     rm -f "$pkg"/*.zip
     zip_out="$(cd "$pkg" && pwd)/$(basename "$app_dir").zip"
     # Without this machine's metadata (owners, file times).

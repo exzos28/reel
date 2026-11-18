@@ -22,13 +22,18 @@ SHA_WINDOWS_X86_64="81c991359f08c9cabf1a256d3f47ca6ed92c5b30037420c474e76fa5ed2f
 SHA_LINUX_AARCH64="dbe51a1b0a59a5de1b8916d236c617f0184bc9e827627aa56dca2fe2cc006044"
 CACHE="${REEL_LIBMPV_CACHE:-$HOME/Library/Caches/reel/libmpv/$TAG}"
 
+# Checks "<sha256>  <file>" lines on stdin: sha256sum where there is no shasum (Git Bash on Windows).
+sha256_check() {
+  if command -v shasum > /dev/null 2>&1; then shasum -a 256 -c -; else sha256sum -c -; fi
+}
+
 # Downloads a release file once and checks it.
 get() {
   local name="$1" sha="$2" file="$CACHE/$1"
-  if [ ! -f "$file" ] || ! echo "$sha  $file" | shasum -a 256 -c - >/dev/null 2>&1; then
+  if [ ! -f "$file" ] || ! echo "$sha  $file" | sha256_check >/dev/null 2>&1; then
     mkdir -p "$CACHE"
     curl -fsSL "https://github.com/$REPO/releases/download/$TAG/$name" -o "$file.part"
-    echo "$sha  $file.part" | shasum -a 256 -c - >/dev/null || { rm -f "$file.part"; echo "libmpv: $name does not match its checksum" >&2; exit 1; }
+    echo "$sha  $file.part" | sha256_check >/dev/null || { rm -f "$file.part"; echo "libmpv: $name does not match its checksum" >&2; exit 1; }
     mv "$file.part" "$file"
   fi
   echo "$file"
