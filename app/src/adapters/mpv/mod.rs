@@ -116,8 +116,8 @@ mod tests {
         let gate = p.hold_until_drawn();
         p.set_prop("src", Some(&json!("file:///nowhere/held.mkv")));
         assert!(events.lock().unwrap().is_empty(), "held until the view draws");
-        gate.fail(super::player::FAILED_VIEW);
-        let errors = |e: &[(String, Value)]| e.iter().filter(|(n, _)| n == "error").count();
+        gate.fail();
+        let errors = |e: &[(String, Value)]| e.iter().filter(|(n, d)| n == "error" && d["code"] == "view").count();
         assert_eq!(errors(&events.lock().unwrap()), 1, "{:?}", events.lock().unwrap());
         p.set_prop("src", Some(&json!("file:///nowhere/next.mkv")));
         assert_eq!(errors(&events.lock().unwrap()), 2, "a later file fails too");

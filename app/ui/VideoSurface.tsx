@@ -45,7 +45,8 @@ export interface VideoSurfaceProps {
   onProgress?: (e: { currentTime: number; duration: number; cached?: number; readAt?: number; readTime?: number }) => void;
   onBuffer?: (e: { isBuffering: boolean }) => void;
   onEnd?: () => void;
-  onError?: (e: { message: string }) => void;
+  /** `code`: what went wrong, for the UI to word (`view`: the video view could not start); `message`: the player's own words. */
+  onError?: (e: { message: string; code?: string }) => void;
   /** mpv's tracks, as JSON for the core (`Engine.tracks`). */
   onTracks?: (json: string) => void;
 }

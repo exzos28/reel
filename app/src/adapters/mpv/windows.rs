@@ -13,6 +13,7 @@ use std::{
         Arc,
         atomic::{AtomicBool, Ordering},
     },
+    time::{Duration, Instant},
 };
 
 use nsh_platform_windows::{ComponentContext, NativeComponent};
@@ -31,7 +32,7 @@ use windows::{
 
 use super::{
     ffi::{self, Lib},
-    player::{FAILED_VIEW, LoadGate, Player, Raw},
+    player::{LoadGate, Player, Raw},
 };
 
 /// What mpv drew into and the bitmap Direct2D draws it with, at a size in pixels.
@@ -49,7 +50,16 @@ struct Drawing {
     failed: bool,
     /// The player's file waits for the render context (made on the first draw).
     gate: Option<Arc<LoadGate>>,
+    /// Since when draws find no Direct3D device, while the view has never drawn: a frame
+    /// drawn into a command list may find none, but one that never does means the file waits
+    /// for ever (`NO_DEVICE_FOR`).
+    no_device_since: Option<Instant>,
 }
+
+/// How long a view that has never drawn may find no Direct3D device before its file fails
+/// instead of waiting: NSH draws a view into a command list for a transition's frames, never
+/// this long.
+const NO_DEVICE_FOR: Duration = Duration::from_secs(3);
 
 /// mpv's thread: a frame is ready; NSH draws the view again.
 unsafe extern "C" fn on_update(arg: *mut c_void) {
@@ -92,7 +102,7 @@ impl MpvComponent {
             lib,
             raw: player.as_ref().map(Player::raw).unwrap_or(Raw(std::ptr::null_mut())),
             shared: Box::new(Shared { cx, dirty: AtomicBool::new(true) }),
-            drawing: RefCell::new(Drawing { render: None, target: None, failed: player.is_none(), gate }),
+            drawing: RefCell::new(Drawing { render: None, target: None, failed: player.is_none(), gate, no_device_since: None }),
             player,
         }
     }
@@ -175,19 +185,31 @@ impl NativeComponent for MpvComponent {
         let device = match Self::device(dc) {
             Ok(device) => device,
             Err(e) => {
-                // Not for good: the next frame may draw where the device is found. Until the
-                // view has drawn once, the file waits.
-                tracing::warn!("reel mpv: no Direct3D device to draw the video with: {e}");
+                // Not for good: the next frame may draw where the device is found. A view that
+                // drew skips this frame; one that never did gives up after a while.
+                if d.render.is_none() {
+                    let since = *d.no_device_since.get_or_insert_with(|| {
+                        tracing::warn!("reel mpv: no Direct3D device to draw the video with: {e}");
+                        Instant::now()
+                    });
+                    if since.elapsed() >= NO_DEVICE_FOR {
+                        d.failed = true;
+                        if let Some(gate) = d.gate.take() {
+                            gate.fail();
+                        }
+                    }
+                }
                 return;
             }
         };
+        d.no_device_since = None;
         if d.render.is_none() {
             d.render = self.make_render(&device);
             if d.render.is_none() {
                 // The file would wait for a picture that never comes: the player says so.
                 d.failed = true;
                 if let Some(gate) = d.gate.take() {
-                    gate.fail(FAILED_VIEW);
+                    gate.fail();
                 }
                 return;
             }

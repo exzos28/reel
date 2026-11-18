@@ -16,7 +16,7 @@ use serde_json::Value;
 
 use super::{
     ffi::{self, Lib},
-    player::{FAILED_VIEW, LoadGate, Player, Raw},
+    player::{LoadGate, Player, Raw},
 };
 
 /// GL's functions for mpv: EGL's lookup (GTK 4 draws with EGL on X11 and Wayland), else GLX's.
@@ -86,7 +86,7 @@ impl State {
         if area.error().is_some() {
             tracing::warn!("reel mpv: no GL context for the video");
             if let Some(gate) = self.gate.borrow_mut().take() {
-                gate.fail(FAILED_VIEW);
+                gate.fail();
             }
             return;
         }
@@ -102,7 +102,7 @@ impl State {
         if r < 0 {
             tracing::warn!("reel mpv: render context: {}", ffi::error_text(self.lib, r));
             if let Some(gate) = self.gate.borrow_mut().take() {
-                gate.fail(FAILED_VIEW);
+                gate.fail();
             }
             return;
         }
