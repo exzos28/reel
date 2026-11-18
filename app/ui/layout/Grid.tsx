@@ -15,10 +15,13 @@ export interface GridRow<T> {
   items: T[];
 }
 
-/** Columns that fit `cell`-wide cards `gap` apart (at least two). */
+/** The most cards in a row: more make them small and the page heavy to look at. */
+export const MAX_COLUMNS = 5;
+
+/** Columns that fit `cell`-wide cards `gap` apart (at least two, at most `MAX_COLUMNS`). */
 export function gridColumns(cell: number, gap: number) {
   const width = windowSize().width - 2 * safe().x;
-  return Math.max(2, Math.floor((width + u(gap)) / (u(cell) + u(gap))));
+  return Math.min(MAX_COLUMNS, Math.max(2, Math.floor((width + u(gap)) / (u(cell) + u(gap)))));
 }
 
 /** The width of a card in `columns` columns `gap` apart. */

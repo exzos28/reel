@@ -10,11 +10,13 @@ import { stopAll, type ScrollCtl } from "./scrollCtl";
 export { scroller, type Follow, type Placement, type ScrollCtl } from "./scrollCtl";
 
 /** Windows and Linux: reel scrolls with the wheel itself, faster than the system's 48 px a notch
- * and gliding (notches in a row add up, so it coasts); a Mac's trackpad and wheel keep the
+ * (1.3 times) and with inertia (notches in a row add up, and it coasts to a stop); a Mac's trackpad and wheel keep the
  * system's, which already coast. */
 const OWN_WHEEL = chrome === "windows" || chrome === "linux";
 /** Points a wheel notch moves (it reports lines: three a notch). */
 const POINTS_PER_LINE = 40;
+/** How much faster than the base the wheel scrolls. */
+const WHEEL_SPEED = 1.3;
 
 /** How long the bar stays after the last scroll or pointer move, ms. */
 const BAR_IDLE = 1000;
@@ -79,15 +81,20 @@ export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; onScroll?: 
   return (
     <View
       style={props.style}
-      onMouseMove={poke}
+      onMouseMove={() => {
+        poke();
+        if (OWN_WHEEL) c.warm();
+      }}
       onWheel={(e) => {
-        stopAll();
-        if (!OWN_WHEEL) return; // a Mac turns Shift + wheel sideways on its own
+        // The system's wheel moves the view itself: whatever reel glides is over. Where reel moves it,
+        // the next notch goes on from the coast (the view takes over a key's glide itself): stopping
+        // it here would stall it between notches.
+        if (!OWN_WHEEL) return stopAll();
         const scale = e.deltaMode === "lines" ? POINTS_PER_LINE : 1;
         // A row moves with a sideways wheel, or the wheel with Shift; a page with
         // the wheel, not with Shift (that one is the row's under the pointer).
         const delta = c.horizontal ? (e.delta.x || (e.modifiers.shift ? e.delta.y : 0)) : e.modifiers.shift ? 0 : e.delta.y;
-        if (delta !== 0) c.nudge(delta * scale);
+        if (delta !== 0) c.nudge(delta * scale * WHEEL_SPEED);
       }}
     >
       <Scroll

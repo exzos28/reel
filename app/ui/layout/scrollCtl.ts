@@ -21,6 +21,9 @@ export type Placement = "anchor" | "nearest" | "start";
 export type Follow = (when: () => boolean) => (r: ViewRef) => void;
 
 const running = new Set<() => void>();
+/** Counts every move of any scroll view: what is anchored to a view that scrolled away (a preview
+ * card) reads it to close, as the pointer under a wheel does not move and says nothing. */
+export const scrolled = signal(0);
 /** Where each remembered page was left (`scroller({ memory })`). */
 const offsets = new Map<string, number>();
 /** The page remembered as `memory` opens at its top next time. */
@@ -38,14 +41,17 @@ export interface ScrollCtl {
   offset: ReturnType<typeof signal<number>>;
   /** @internal Where the view is now, from `Scroller`'s scroll events. */
   remember(offset: number): void;
+  /** Measures the view ahead (the pointer moved over it), so its first wheel notch needs no measure. */
+  warm(): void;
   /** @internal The scroll view and its content, set by `Scroller`. */
   scroll: ReturnType<typeof signal<ScrollRef | undefined>>;
   content?: ViewRef;
   /** @internal The scroll view's `testID`: a TV's web build finds its element by it (platform/scroll.slide). */
   domId: string;
   /** Moves the view by `delta` points, gliding, within its content: the wheel where reel
-   * scrolls it itself (Windows, Linux) and the arrows. Moves in a row add up. */
-  nudge(delta: number): void;
+   * scrolls it itself (Windows, Linux) and the arrows. Moves in a row add up, and it coasts to a
+   * stop (inertia) instead of stopping at once. */
+  nudge(delta: number): void | Promise<void>;
   /** Moves the view by most of its length, `dir` 1 forward, -1 back (a row's arrows); by
    * whole cards where the row says how far apart they are (`step`). */
   page(dir: 1 | -1): void;
@@ -65,6 +71,7 @@ let scrollers = 0;
 export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number) => number; memory?: string; step?: () => number }): ScrollCtl {
   const horizontal = !!opts.horizontal;
   const remember = (offset: number) => {
+    scrolled.set(scrolled() + 1);
     // The row's arrows: back is off at the start; on is off only where a move found the end,
     // until the view moves back from it.
     if ((ctl.offset() ?? 0) > offset) ctl.atEnd.set(false);
@@ -78,10 +85,11 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     driver.stop();
     running.delete(stop);
   };
-  const go = (target: number, animate: boolean) => {
+  const go = (target: number, animate: boolean, coast = false) => {
+    if (!coast) heading = null;
     const glide = animate && !reduceMotion() && Math.abs(target - driver.at()) >= 1;
     if (glide) running.add(stop);
-    driver.to(target, glide);
+    driver.to(target, glide, coast);
   };
   const place = async (block: ViewRef, placement: Placement, first: boolean) => {
     if (first && !horizontal) {
@@ -118,14 +126,19 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     }
     go(target, !first);
   };
-  /** The view's and its content's lengths, measured now. */
+  /** The view's and its content's lengths, measured now (and kept a moment: a wheel notch must not
+   * wait for a measure, or its first notches lag behind the hand). */
+  let measured: { viewport: number; content: number; at: number } | null = null;
+  const EXTENT_FRESH = 300;
   const extent = async () => {
     const scroll = ctl.scroll();
     if (!scroll || !ctl.content) return null;
     const [s, c] = await Promise.all([scroll.measure(), ctl.content.measure()]);
     if (!s || !c) return null;
     const length = horizontal ? "width" : "height";
-    return { viewport: s.bounds.size[length], content: c.bounds.size[length] };
+    const e = { viewport: s.bounds.size[length], content: c.bounds.size[length] };
+    measured = { ...e, at: performance.now() };
+    return e;
   };
   /** How far a row's arrow moves it: by the cards it shows whole (`step`), from the card at
    * its anchor, so the next card lands there; without a step, by most of the view. */
@@ -138,24 +151,33 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     const at = dir > 0 ? Math.floor(from / step + 0.01) : Math.ceil(from / step - 0.01);
     return (at + dir * cards) * step - from;
   };
+  const fresh = () => (measured && performance.now() - measured.at < EXTENT_FRESH ? measured : null);
   /** Where a glide of `nudge` is heading (several wheel notches add up to it). */
   let heading: number | null = null;
-  const nudge = async (delta: number) => {
-    const e = await extent();
-    if (!e) return;
+  const apply = (e: { viewport: number; content: number }, delta: number) => {
     const end = Math.max(0, e.content - e.viewport);
-    const from = heading ?? driver.at();
+    // Notches in a row add up to where the coast is heading; a view at rest starts from where it is.
+    const from = driver.moving() && heading !== null ? heading : driver.at();
     const target = Math.min(end, Math.max(0, from + delta));
     heading = target;
     ctl.atStart.set(target <= 1);
     ctl.atEnd.set(target >= end - 1);
-    go(target, true);
-    setTimeout(() => heading === target && (heading = null), 400);
+    go(target, true, true);
+    setTimeout(() => heading === target && (heading = null), 700);
+  };
+  /** From a measure taken a moment ago it moves at once, with no round trip between the hand and the view. */
+  const nudge = (delta: number) => {
+    const e = fresh();
+    if (e) return apply(e, delta);
+    return extent().then((m) => (m ? apply(m, delta) : undefined));
   };
   const ctl: ScrollCtl = {
     horizontal,
     domId,
     nudge,
+    warm() {
+      if (!fresh()) void extent();
+    },
     page(dir) {
       extent().then((e) => e && nudge(pageDelta(dir, e.viewport)));
     },
