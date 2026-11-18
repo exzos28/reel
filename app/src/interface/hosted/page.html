@@ -57,6 +57,16 @@ button:disabled{opacity:.5}
 .free{font-size:13px;color:var(--ash);margin-top:10px}
 .free:empty{display:none}
 .foot{color:var(--ash);font-size:12px;text-align:center;margin-top:16px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:24px;z-index:10}
+.sheet{width:100%;max-width:400px;background:var(--card);border-radius:20px;padding:28px 22px;text-align:center}
+.sheet h2{font-size:22px;margin-top:14px}.sheet p{color:var(--soft);margin:8px 0 0;font-size:15px;line-height:1.45}
+.sheet button{width:100%;margin-top:22px}
+.dino{width:96px;height:78px}
+.dino .la{animation:la .28s steps(1) infinite}.dino .lb{animation:lb .28s steps(1) infinite}
+@keyframes la{0%{opacity:1}50%{opacity:0}}@keyframes lb{0%{opacity:0}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.dino .la,.dino .lb{animation:none}.dino .lb{opacity:0}}
+.big{width:64px;height:64px;margin:0 auto;border-radius:50%;display:grid;place-items:center;font-size:30px;font-weight:700}
+.big.ok{background:rgba(61,220,132,.18);color:var(--ok)}.big.bad{background:rgba(229,56,59,.2);color:var(--red)}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -115,6 +125,17 @@ button:disabled{opacity:.5}
 </div>
 
 <p class="foot">Works on your home Wi-Fi only.</p>
+<!-- A source offered from a partner's link waits for Use on the TV: over everything, so it is seen. -->
+<div class="modal" id="offerModal" hidden>
+  <div class="sheet" role="alertdialog" aria-labelledby="offerTitle" aria-describedby="offerText">
+    <svg class="dino" id="offerDino" viewBox="0 0 64 52" aria-hidden="true"><path d="M4 32 Q16 22 26 24 L26 36 Z" fill="#F5F5F5"/><ellipse cx="34" cy="32" rx="15" ry="11" fill="#F5F5F5"/><rect x="40" y="12" width="9" height="18" rx="4" fill="#F5F5F5"/><rect x="38" y="4" width="22" height="14" rx="6" fill="#F5F5F5"/><circle cx="52" cy="9" r="1.8" fill="#0F0F0F"/><circle cx="55" cy="14" r="1.4" fill="#E5383B"/><g class="la"><rect x="30" y="40" width="5" height="10" rx="2" fill="#F5F5F5"/><rect x="33" y="40" width="5" height="10" rx="2" fill="#F5F5F5"/></g><g class="lb"><rect x="22" y="40" width="5" height="10" rx="2" fill="#F5F5F5"/><rect x="41" y="40" width="5" height="10" rx="2" fill="#F5F5F5"/></g></svg>
+    <div class="big" id="offerIcon" hidden></div>
+    <h2 id="offerTitle">Confirm on your TV</h2>
+    <p id="offerText">Choose <b>Use</b> on the TV screen to save this source.</p>
+    <button type="button" id="offerDone" hidden>Done</button>
+  </div>
+</div>
+
 </main>
 <script>
 (function () {
@@ -193,6 +214,20 @@ button:disabled{opacity:.5}
     if (text && !bad) el._t = setTimeout(function () { el.textContent = ''; }, 2500);
   }
 
+  // The offer's window: waiting for Use on the TV, then how it went.
+  function modal(kind, title, text) {
+    $('offerModal').hidden = false;
+    $('offerDino').style.display = kind === 'wait' ? '' : 'none';
+    $('offerIcon').hidden = kind === 'wait';
+    $('offerIcon').className = 'big ' + kind;
+    $('offerIcon').textContent = kind === 'ok' ? '✓' : '!';
+    $('offerTitle').textContent = title;
+    $('offerText').textContent = text;
+    $('offerDone').hidden = kind === 'wait';
+    $('offerDone').textContent = kind === 'ok' ? 'Done' : 'Close';
+  }
+  $('offerDone').addEventListener('click', function () { $('offerModal').hidden = true; });
+
   // Offers the linked source to the TV, where the viewer says yes; then says how it went.
   function offer() {
     var o = offered;
@@ -207,6 +242,7 @@ button:disabled{opacity:.5}
         return status('bad', r.body.error === 'address' ? 'The link has no address reel can use.' : problem(r));
       }
       status('wait', 'Confirm on the TV: choose Use there.');
+      modal('wait', 'Confirm on your TV', 'Choose Use on the TV screen to save this source.');
       watchOffer(r.body.offer);
     });
   }
@@ -216,16 +252,17 @@ button:disabled{opacity:.5}
       var s = r.body.state;
       if (r.status === 200 && s === 'pending') return setTimeout(function () { watchOffer(id); }, 1000);
       $('save').disabled = false;
-      if (s === 'declined') return status('bad', 'Not saved: it was declined on the TV.');
-      if (s === 'expired') return status('bad', 'Not saved: the TV got no answer in time. Open the link again.');
+      if (s === 'declined') return status('bad', 'Not saved: it was declined on the TV.'), modal('bad', 'Not saved', 'It was declined on the TV.');
+      if (s === 'expired') return status('bad', 'Not saved: the TV got no answer in time. Open the link again.'), modal('bad', 'Not saved', 'The TV got no answer in time. Open the link from the bot again.');
       if (s !== 'accepted') return status('bad', problem(r));
       $('key').value = '';
       hasSource = true;
       layout();
       var c = r.body.result;
-      if (!c || c.state === 'pending') { status('wait', 'Saved on the TV. Checking…'); return setTimeout(function () { watchOffer(id); }, 600); }
-      if (c.state === 'done') return connected(c.caps);
+      if (!c || c.state === 'pending') { status('wait', 'Saved on the TV. Checking…'); modal('wait', 'Saved on the TV', 'Checking the source…'); return setTimeout(function () { watchOffer(id); }, 600); }
+      if (c.state === 'done') return connected(c.caps), modal('ok', 'Saved on the TV', $('statusText').textContent + '. Pick a film on the TV.');
       failed(c);
+      modal('bad', 'Saved, but it did not answer', $('statusText').textContent);
     });
   }
 
