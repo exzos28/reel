@@ -39,10 +39,24 @@ export interface SavedSpace {
   folder: string | null;
 }
 
+/** One title on the Saved screen: a film with its one item, a show with its episodes. */
+export interface SavedGroup {
+  /** The title's id (a catalog key without the episode). */
+  id: string;
+  title: string;
+  image: string;
+  show: boolean;
+  count: number;
+  size: number;
+  have: number;
+  progress: number;
+  items: SavedItem[];
+}
+
 export interface SavedList {
-  saving: SavedItem[];
-  ready: SavedItem[];
-  failed: SavedItem[];
+  saving: SavedGroup[];
+  ready: SavedGroup[];
+  failed: SavedGroup[];
   space: SavedSpace;
 }
 

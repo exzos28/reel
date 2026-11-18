@@ -1,6 +1,7 @@
 // A saved film or episode as a row (design/concept/mac-saved.html): its still, the title and
 // what else it is (the episode), the state with a progress bar while it saves, then round
-// Pause / Resume and Remove buttons. The row itself opens its title.
+// buttons: Play once it is saved, Pause / Resume while it saves, and Remove. A saved row plays
+// when pressed; one still saving opens its title.
 import { Image, Text, View, type ViewRef, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { IconButton } from "../../kit/IconButton";
@@ -15,8 +16,14 @@ import pauseIcon from "../../icons/pause.svg";
 import playIcon from "../../icons/play.svg";
 import closeIcon from "../../icons/plus.svg";
 
-const itemStyle = (focused: boolean): ViewStyle => ({ ...rowStyle(false, focused, u(24)), height: cs(108), paddingLeft: cs(10), paddingRight: cs(22) });
-const thumbStyle = (): ViewStyle => ({ width: cs(160), height: cs(90), ...rounded(u(8)), overflow: "hidden", backgroundColor: colors.raise() });
+const itemStyle = (focused: boolean, nested: boolean): ViewStyle => ({
+  ...rowStyle(false, focused, u(24)),
+  height: cs(nested ? 92 : 108),
+  paddingLeft: cs(10),
+  paddingRight: cs(22),
+  marginLeft: nested ? cs(56) : 0,
+});
+const thumbStyle = (): ViewStyle => ({ width: cs(128), height: cs(72), ...rounded(u(8)), overflow: "hidden", backgroundColor: colors.raise() });
 const imageStyle = () => ({ ...cover(), objectFit: "cover" }) as ViewStyle;
 const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", marginTop: u(8), width: cs(300) });
 /** What is on the device: the player's "ready" tone, not the watched one. */
@@ -52,10 +59,13 @@ const speedLine = (i: SavedItem) => (i.state === "saving" && i.speed != null ? t
 
 export function SavedRow(props: {
   item: () => SavedItem;
-  /** Which part has the focus: 0 the row, 1 pause or resume, 2 remove; null: none. */
+  /** Under its show's row: the episode is its title, indented. */
+  nested?: boolean;
+  /** Which part has the focus: 0 the row, 1 play, pause or resume, 2 remove; null: none. */
   focusedPart: () => number | null;
   viewRef: (r: ViewRef) => void;
   onOpen: () => void;
+  onPlay: () => void;
   onPause: () => void;
   onRemove: () => void;
 }) {
@@ -67,9 +77,9 @@ export function SavedRow(props: {
       role="button"
       accessibilityLabel={i().title}
       hitSlop={targetSlop(cs(108))}
-      onPress={props.onOpen}
+      onPress={() => (i().state === "saved" ? props.onPlay() : props.onOpen())}
       hoverStyle={{ backgroundColor: colors.raise() }}
-      style={itemStyle(props.focusedPart() === 0)}
+      style={itemStyle(props.focusedPart() === 0, props.nested ?? false)}
     >
       <View style={{ ...thumbStyle(), opacity: i().state === "unavailable" ? 0.4 : 1 }}>
         <If when={i().image}>
@@ -77,8 +87,8 @@ export function SavedRow(props: {
         </If>
       </View>
       <View style={{ flex: 1, gap: u(4) }}>
-        <Text style={{ ...labelText(), ...oneLine }}>{i().title}</Text>
-        <If when={episodeLine(i())}>
+        <Text style={{ ...labelText(), ...oneLine }}>{props.nested ? episodeLine(i()) || i().title : i().title}</Text>
+        <If when={!props.nested && episodeLine(i())}>
           <Text style={{ ...metaText(), ...oneLine }}>{episodeLine(i())}</Text>
         </If>
       </View>
@@ -94,6 +104,9 @@ export function SavedRow(props: {
         </If>
       </View>
       <View style={row(u(12))}>
+        <If when={i().state === "saved"}>
+          <IconButton size={44} icon={() => playIcon} label={() => t("title.play")} focused={() => props.focusedPart() === 1} background={() => colors.snow()} onPress={props.onPlay} />
+        </If>
         <If when={i().state === "saving" || i().state === "paused"}>
           <IconButton
             size={44}

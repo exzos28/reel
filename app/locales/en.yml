@@ -469,7 +469,12 @@ saved:
   pause: Pause
   resume: Go on saving
   remove: Remove
+  remove_all: Remove all episodes
+  remove_title: "Remove “%{name}”?"
+  remove_about: "%{size} is deleted from this device. You can save it again later."
   open_folder: Open folder
+  group_line: "%{count} episodes · %{size}"
+  group_saving: "%{percent}% saved"
   speed: "%{speed} from %{peers} people"
   space:
     saved: "%{size} saved"
@@ -501,3 +506,6 @@ saved:
     choose: Choose episodes
     more: "%{size} more"
     new: new
+
+confirm:
+  cancel: Cancel

@@ -1,27 +1,32 @@
 // Saved, a nav destination (a round button after Settings; design/offline-downloads.md and
 // design/concept/mac-saved.html): what is saved on this device and plays without the
-// internet. Over the rows, the space saved and free and the folder; then what is saving
-// (Pause / Resume, Remove), what is ready to watch, and what could not be saved. A row opens
-// its title, whose Play plays the saved file. Up and Down move through the rows (Up from the
-// first: the nav), Left and Right to a row's buttons; OK acts.
+// internet. Over the rows, the space saved and free, the folder and Open folder; then what is
+// saving, what is ready to watch, and what could not be saved, each grouped by title: a film is
+// one row, a show one row whose episodes open under it. A saved film or episode plays when
+// pressed (its Play button too); one still saving has Pause / Resume. Remove asks first. Up
+// and Down move through the rows (Up from the first: the nav), Left and Right to a row's
+// buttons; OK acts.
 import { keymap, signal, Text, View, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { byKeys } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
 import { useRootBack } from "../../focus/rootBack";
 import { caps } from "../../platform";
+import { ConfirmDialog, type Confirm } from "../../layout/ConfirmDialog";
 import { NAV } from "../../layout/navItems";
 import { showNav } from "../../layout/navState";
 import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { goFromNav, openTitle } from "../../nav";
+import { episodeCode, title as catalogTitle } from "../../catalog";
+import { play } from "../../playback";
 import { metaText, sectionTitle } from "../../kit/text";
 import { Fmt } from "../../native";
-import { openSavedFolder, pauseSaved, removeSaved, savedList, titleOf, watchSaved, type SavedItem } from "../../library";
+import { openSavedFolder, pauseSaved, removeSaved, savedList, titleOf, watchSaved, type SavedGroup, type SavedItem } from "../../library";
 import { Button } from "../../kit/Button";
-import { row } from "../../kit/shape";
+import { rounded, row } from "../../kit/shape";
 import { alpha, colors, cs, safe, u } from "../../theme";
-import { rounded } from "../../kit/shape";
+import { SavedGroupRow } from "./SavedGroupRow";
 import { SavedRow } from "./SavedRow";
 
 const pageStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(24), gap: u(12) });
@@ -29,7 +34,15 @@ const sectionStyle = (): ViewStyle => ({ marginTop: u(28), marginBottom: u(4) })
 const spaceTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", flexDirection: "row", marginTop: u(8), maxWidth: cs(520) });
 const SAVED_AT = NAV.findIndex((n) => n.id === "saved");
 
-/** "21.6 GB saved · 212 GB free in ~/Movies/reel". */
+type Section = "saving" | "ready" | "failed";
+const SECTIONS: Section[] = ["saving", "ready", "failed"];
+
+/** A row the focus walks: a show's row, or a film or an episode. */
+type Entry =
+  | { kind: "group"; section: Section; group: SavedGroup; key: string }
+  | { kind: "item"; section: Section; item: SavedItem; nested: boolean; key: string };
+
+/** "21.6 GB saved · 212 GB free · ~/Movies/reel". */
 function spaceLine(saved: number, free: number | null, folder: string | null) {
   const parts = [t("saved.space.saved", { size: Fmt.size(saved) })];
   if (free != null) parts.push(t("saved.space.free", { size: Fmt.size(free) }));
@@ -37,13 +50,37 @@ function spaceLine(saved: number, free: number | null, folder: string | null) {
   return parts.join(" · ");
 }
 
+/** An item's name in the question before it is removed: "The Mentalist S1:E1" or the film. */
+const itemName = (i: SavedItem) => (i.season != null && i.number != null ? `${i.title} ${episodeCode(i.season, i.number)}` : i.title);
+
 export function SavedScreen() {
   watchSaved();
   const list = () => savedList();
-  /** Every row the focus walks, in order: saving, ready, failed. */
-  const rows = (): SavedItem[] => [...list().saving, ...list().ready, ...list().failed];
+  /** Shows opened (or, while they save, closed) by the viewer: "<section>:<title id>". */
+  const toggled = signal<Set<string>>(new Set());
+  /** A show's episodes show under it: while saving unless closed, when ready once opened. */
+  const isOpen = (section: Section, g: SavedGroup) => (section === "saving") !== toggled().has(`${section}:${g.id}`);
+  const toggle = (section: Section, g: SavedGroup) => {
+    const next = new Set(toggled());
+    const k = `${section}:${g.id}`;
+    next.has(k) ? next.delete(k) : next.add(k);
+    toggled.set(next);
+  };
+  const entriesOf = (section: Section): Entry[] =>
+    list()[section].flatMap((g): Entry[] =>
+      g.show
+        ? [
+            { kind: "group", section, group: g, key: `g:${section}:${g.id}` },
+            ...(isOpen(section, g) ? g.items.map((i): Entry => ({ kind: "item", section, item: i, nested: true, key: `i:${i.id}` })) : []),
+          ]
+        : g.items.map((i): Entry => ({ kind: "item", section, item: i, nested: false, key: `i:${i.id}` })),
+    );
+  /** Every row the focus walks, in order. */
+  const rows = (): Entry[] => SECTIONS.flatMap(entriesOf);
+  const offset = (section: Section) => SECTIONS.slice(0, SECTIONS.indexOf(section)).reduce((n, s) => n + entriesOf(s).length, 0);
+
   const focus = signal(0);
-  /** The part of the focused row: 0 the row, 1 pause / resume, 2 remove. */
+  /** The part of the focused row: 0 the row, 1 play or pause / resume, 2 remove. */
   const part = signal(0);
   const onNav = signal(false);
   const navAt = signal(SAVED_AT);
@@ -52,29 +89,53 @@ export function SavedScreen() {
     onNav.set(true);
   };
   const at = () => (onNav() ? -1 : clamp(focus(), rows().length - 1));
-  const hasPause = (i: SavedItem | undefined) => i?.state === "saving" || i?.state === "paused";
+
+  /** The question before files go. */
+  const ask = signal<Confirm | null>(null);
+  const askRemove = (ids: number[], name: string, size: number) =>
+    ask.set({
+      title: t("saved.remove_title", { name }),
+      about: t("saved.remove_about", { size: Fmt.size(size) }),
+      action: t("saved.remove"),
+      onConfirm: () => ids.forEach(removeSaved),
+    });
+  const removeItem = (i: SavedItem) => askRemove([i.id], itemName(i), i.have || i.size);
+  const removeGroup = (g: SavedGroup) => askRemove(g.items.map((i) => i.id), g.title, g.have || g.size);
+
   const open = (i: SavedItem) => openTitle(titleOf(i.key));
-  const act = (i: SavedItem, p: number) => {
-    if (p === 0) open(i);
-    else if (p === 1) pauseSaved(i.id, i.state === "saving");
-    else removeSaved(i.id);
+  /** Plays the saved file (the core opens it, no network), titled from the catalog's cache;
+   * while that is not known, its page. */
+  const playItem = (i: SavedItem) => {
+    const tt = catalogTitle(titleOf(i.key));
+    if (!tt || tt.notice) return open(i);
+    play({ id: i.key, season: i.season ?? undefined, episode: i.number ?? undefined, title: tt });
+  };
+  /** Its middle button: Play once saved, Pause / Resume while saving. */
+  const hasMiddle = (e: Entry | undefined) => e?.kind === "item" && ["saving", "paused", "saved"].includes(e.item.state);
+  const act = (e: Entry, p: number) => {
+    if (e.kind === "group") return p === 2 ? removeGroup(e.group) : toggle(e.section, e.group);
+    const i = e.item;
+    if (p === 2) return removeItem(i);
+    if (i.state === "saved") return playItem(i);
+    if (p === 1) return pauseSaved(i.id, i.state === "saving");
+    open(i);
   };
 
   keymap.bind(
     byKeys({
       up: () => (onNav() ? undefined : at() <= 0 ? toNav() : (focus.set(at() - 1), part.set(0))),
       down: () => (onNav() ? onNav.set(false) : (focus.set(clamp(at() + 1, rows().length - 1)), part.set(0))),
-      left: () => (onNav() ? navAt.set(clamp(navAt() - 1, NAV.length - 1)) : part.set(part() === 2 && !hasPause(rows()[at()]) ? 0 : Math.max(part() - 1, 0))),
+      left: () => (onNav() ? navAt.set(clamp(navAt() - 1, NAV.length - 1)) : part.set(part() === 2 && !hasMiddle(rows()[at()]) ? 0 : Math.max(part() - 1, 0))),
       right: () =>
-        onNav() ? navAt.set(clamp(navAt() + 1, NAV.length - 1)) : part.set(part() === 0 && !hasPause(rows()[at()]) ? 2 : Math.min(part() + 1, 2)),
+        onNav() ? navAt.set(clamp(navAt() + 1, NAV.length - 1)) : part.set(part() === 0 && !hasMiddle(rows()[at()]) ? 2 : Math.min(part() + 1, 2)),
     }),
     { repeat: true },
   );
   keymap.bind({
     enter: () => {
       if (onNav()) return goFromNav(NAV[navAt()].id);
-      const i = rows()[at()];
-      if (i) act(i, part());
+      const e = rows()[at()];
+      if (e) act(e, part());
     },
   });
 
@@ -82,18 +143,38 @@ export function SavedScreen() {
   showNav(() => (onNav() ? navAt() : null));
   useRootBack({ ctl: page, onNav, toNav });
 
-  const rowsOf = (items: () => SavedItem[], offset: () => number) => (
-    <Each of={items()} key={(i) => String(i.id)}>
-      {(i, n) => (
-        <SavedRow
-          item={i}
-          focusedPart={() => (at() === offset() + n() ? part() : null)}
-          viewRef={page.follow(() => at() === offset() + n())}
-          onOpen={() => open(i())}
-          onPause={() => pauseSaved(i().id, i().state === "saving")}
-          onRemove={() => removeSaved(i().id)}
-        />
-      )}
+  const sectionRows = (section: Section) => (
+    <Each of={entriesOf(section)} key={(e) => e.key}>
+      {(e, n) => {
+        const here = () => at() === offset(section) + n();
+        return (
+          <If
+            when={e().kind === "group"}
+            else={
+              <SavedRow
+                item={() => (e() as Extract<Entry, { kind: "item" }>).item}
+                nested={(e() as Extract<Entry, { kind: "item" }>).nested}
+                focusedPart={() => (here() ? part() : null)}
+                viewRef={page.follow(here)}
+                onOpen={() => act(e(), 0)}
+                onPlay={() => act(e(), 1)}
+                onPause={() => act(e(), 1)}
+                onRemove={() => act(e(), 2)}
+              />
+            }
+          >
+            <SavedGroupRow
+              group={() => (e() as Extract<Entry, { kind: "group" }>).group}
+              open={() => isOpen(section, (e() as Extract<Entry, { kind: "group" }>).group)}
+              saving={section === "saving"}
+              focusedPart={() => (here() ? part() : null)}
+              viewRef={page.follow(here)}
+              onToggle={() => act(e(), 0)}
+              onRemove={() => act(e(), 2)}
+            />
+          </If>
+        );
+      }}
     </Each>
   );
 
@@ -101,41 +182,44 @@ export function SavedScreen() {
   const free = () => list().space.free;
   const share = () => (free() != null && used() + free()! > 0 ? used() / (used() + free()!) : 0);
   return (
-    <PageFrame ctl={page} kind={caps.touch ? "deep" : "root"} title={() => t("saved.title")}>
-      <View style={pageStyle()}>
-        <View style={row(u(20))}>
-          <Text style={{ ...metaText(), flexShrink: 1 }}>{spaceLine(used(), free(), list().space.folder)}</Text>
-          {/* The folder in Finder / File Explorer: a desktop has a file manager. */}
-          <If when={!caps.touch && !caps.remote}>
-            <Button kind="secondary" height={44} label={() => t("saved.open_folder")} focused={() => false} onPress={openSavedFolder} />
+    <View style={{ flex: 1 }}>
+      <PageFrame ctl={page} kind={caps.touch ? "deep" : "root"} title={() => t("saved.title")}>
+        <View style={pageStyle()}>
+          <View style={row(u(20))}>
+            <Text style={{ ...metaText(), flexShrink: 1 }}>{spaceLine(used(), free(), list().space.folder)}</Text>
+            {/* The folder in Finder / File Explorer: a desktop has a file manager. */}
+            <If when={!caps.touch && !caps.remote}>
+              <Button kind="secondary" height={44} label={() => t("saved.open_folder")} focused={() => false} onPress={openSavedFolder} />
+            </If>
+          </View>
+          <View style={spaceTrack()}>
+            <View style={{ width: `${Math.max(1, Math.round(share() * 100))}%`, height: "100%", backgroundColor: colors.snow() }} />
+          </View>
+          <If when={rows().length === 0}>
+            <Text style={{ ...metaText(colors.soft()), marginTop: u(32) }}>{t("saved.empty")}</Text>
+          </If>
+          <If when={list().saving.length > 0}>
+            <View style={sectionStyle()}>
+              <Text style={sectionTitle()}>{t("saved.saving")}</Text>
+              <Text style={metaText()}>{t("saved.while_open")}</Text>
+            </View>
+            {sectionRows("saving")}
+          </If>
+          <If when={list().ready.length > 0}>
+            <View style={sectionStyle()}>
+              <Text style={sectionTitle()}>{t("saved.ready")}</Text>
+            </View>
+            {sectionRows("ready")}
+          </If>
+          <If when={list().failed.length > 0}>
+            <View style={sectionStyle()}>
+              <Text style={{ ...sectionTitle(), color: alpha(colors.snow(), 0.8) }}>{t("saved.not_saved")}</Text>
+            </View>
+            {sectionRows("failed")}
           </If>
         </View>
-        <View style={spaceTrack()}>
-          <View style={{ width: `${Math.max(1, Math.round(share() * 100))}%`, height: "100%", backgroundColor: colors.snow() }} />
-        </View>
-        <If when={rows().length === 0}>
-          <Text style={{ ...metaText(colors.soft()), marginTop: u(32) }}>{t("saved.empty")}</Text>
-        </If>
-        <If when={list().saving.length > 0}>
-          <View style={sectionStyle()}>
-            <Text style={sectionTitle()}>{t("saved.saving")}</Text>
-            <Text style={metaText()}>{t("saved.while_open")}</Text>
-          </View>
-          {rowsOf(() => list().saving, () => 0)}
-        </If>
-        <If when={list().ready.length > 0}>
-          <View style={sectionStyle()}>
-            <Text style={sectionTitle()}>{t("saved.ready")}</Text>
-          </View>
-          {rowsOf(() => list().ready, () => list().saving.length)}
-        </If>
-        <If when={list().failed.length > 0}>
-          <View style={sectionStyle()}>
-            <Text style={{ ...sectionTitle(), color: alpha(colors.snow(), 0.8) }}>{t("saved.not_saved")}</Text>
-          </View>
-          {rowsOf(() => list().failed, () => list().saving.length + list().ready.length)}
-        </If>
-      </View>
-    </PageFrame>
+      </PageFrame>
+      <ConfirmDialog ask={ask} onClose={() => ask.set(null)} />
+    </View>
   );
 }

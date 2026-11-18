@@ -183,17 +183,57 @@ pub fn plan(show: &str, season: u32) -> Value {
     json!({ "episodes": episodes, "saved": saved, "total": episodes.len(), "size": size })
 }
 
-/// The Saved screen: `{"saving":[item…],"ready":[item…],"failed":[item…],"space"}`, items
-/// as `Keep::list` gives them, newest first.
+/// The Saved screen: `{"saving":[group…],"ready":[group…],"failed":[group…],"space"}`.
+/// A group is one title, `{"id","title","image","show","count","size","have","progress",
+/// "items":[item…]}`: a film's holds its one item, a show's its episodes (by season and
+/// number); groups newest first. Items as `Keep::list` gives them.
 pub fn list() -> Value {
     let all = items();
-    let of = |states: &[&str]| -> Vec<Value> { all.iter().filter(|i| states.contains(&i["state"].as_str().unwrap_or(""))).cloned().collect() };
+    let of = |states: &[&str]| -> Value {
+        let mine: Vec<Value> = all.iter().filter(|i| states.contains(&i["state"].as_str().unwrap_or(""))).cloned().collect();
+        Value::from(groups(mine))
+    };
     json!({
         "saving": of(&UNFINISHED),
         "ready": of(&["saved", "unavailable"]),
         "failed": of(&["failed"]),
         "space": keep().space(),
     })
+}
+
+/// Items grouped by title (`keys::parse_key`'s title), in the order their newest item comes.
+fn groups(items: Vec<Value>) -> Vec<Value> {
+    let mut order: Vec<String> = Vec::new();
+    let mut by: HashMap<String, Vec<Value>> = HashMap::new();
+    for i in items {
+        let id = reel_domain::keys::parse_key(i["key"].as_str().unwrap_or("")).0.to_owned();
+        if !by.contains_key(&id) {
+            order.push(id.clone());
+        }
+        by.entry(id).or_default().push(i);
+    }
+    order
+        .into_iter()
+        .map(|id| {
+            let mut items = by.remove(&id).unwrap_or_default();
+            items.sort_by_key(|i| (i["season"].as_u64().unwrap_or(0), i["number"].as_u64().unwrap_or(0)));
+            let show = items.iter().any(|i| i["season"].is_u64());
+            let size: u64 = items.iter().map(|i| i["size"].as_u64().unwrap_or(0)).sum();
+            let have: u64 = items.iter().map(|i| i["have"].as_u64().unwrap_or(0)).sum();
+            let first = items.first().cloned().unwrap_or(Value::Null);
+            json!({
+                "id": id,
+                "title": first["title"],
+                "image": first["image"],
+                "show": show,
+                "count": items.len(),
+                "size": size,
+                "have": have,
+                "progress": if size > 0 { have as f64 / size as f64 } else { 0.0 },
+                "items": items,
+            })
+        })
+        .collect()
 }
 
 pub fn set_running(id: u32, on: bool) {
@@ -234,4 +274,23 @@ pub fn open_folder() -> bool {
 /// Goes up when anything the screens show changed.
 pub fn revision() -> u64 {
     keep().revision() + REVISION.load(Ordering::Relaxed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_shows_episodes_are_one_group_a_film_its_own() {
+        let ep = |n: u64| json!({ "key": format!("tmdb:tv:1:s1e{n}"), "title": "Show", "image": "", "season": 1, "number": n, "size": 100, "have": 50 });
+        let film = json!({ "key": "tmdb:movie:7", "title": "Film", "image": "", "season": null, "number": null, "size": 10, "have": 10 });
+        let g = groups(vec![ep(3), film, ep(1)]);
+        assert_eq!(g.len(), 2);
+        assert_eq!(g[0]["id"], "tmdb:tv:1");
+        assert_eq!(g[0]["show"], true);
+        assert_eq!(g[0]["count"], 2);
+        assert_eq!(g[0]["items"][0]["number"], 1, "episodes in order");
+        assert_eq!(g[0]["progress"], 0.5);
+        assert_eq!(g[1]["show"], false);
+    }
 }

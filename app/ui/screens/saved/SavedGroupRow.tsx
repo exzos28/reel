@@ -1,0 +1,73 @@
+// A show on the Saved screen: one row for its saved episodes ("The Mentalist · 4 episodes ·
+// 6.6 GB"), a chevron that opens and closes them under it, and Remove for them all.
+import { Image, Text, View, type ViewRef, type ViewStyle } from "nsh";
+import { t } from "nsh/i18n";
+import { Icon } from "../../kit/Icon";
+import { IconButton } from "../../kit/IconButton";
+import { rowStyle } from "../../kit/Row";
+import { cover, rounded, row } from "../../kit/shape";
+import { labelText, metaText, oneLine } from "../../kit/text";
+import { Fmt } from "../../native";
+import type { SavedGroup } from "../../library";
+import { alpha, colors, cs, targetSlop, u } from "../../theme";
+import chevronIcon from "../../icons/chevron.svg";
+import closeIcon from "../../icons/plus.svg";
+
+const groupStyle = (focused: boolean): ViewStyle => ({ ...rowStyle(false, focused, u(24)), height: cs(108), paddingLeft: cs(10), paddingRight: cs(22) });
+const thumbStyle = (): ViewStyle => ({ width: cs(160), height: cs(90), ...rounded(u(8)), overflow: "hidden", backgroundColor: colors.raise() });
+const imageStyle = () => ({ ...cover(), objectFit: "cover" }) as ViewStyle;
+const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", marginTop: u(8), width: cs(300) });
+const progressFill = (p: number): ViewStyle => ({ height: "100%", width: `${Math.round(p * 100)}%`, backgroundColor: alpha(colors.snow(), 0.45) });
+
+export function SavedGroupRow(props: {
+  group: () => SavedGroup;
+  open: () => boolean;
+  /** Whether its episodes are still saving (a progress bar for them all). */
+  saving: boolean;
+  /** 0 the row, 2 remove; null: none. */
+  focusedPart: () => number | null;
+  viewRef: (r: ViewRef) => void;
+  onToggle: () => void;
+  onRemove: () => void;
+}) {
+  const g = props.group;
+  const line = () => t("saved.group_line", { count: g().count, size: Fmt.size(g().size) });
+  return (
+    <View
+      ref={props.viewRef}
+      role="button"
+      accessibilityLabel={g().title}
+      accessibilityState={{ expanded: props.open() }}
+      hitSlop={targetSlop(cs(108))}
+      onPress={props.onToggle}
+      hoverStyle={{ backgroundColor: colors.raise() }}
+      style={groupStyle(props.focusedPart() === 0)}
+    >
+      <View style={thumbStyle()}>
+        <If when={g().image}>
+          <Image src={g().image} style={imageStyle()} />
+        </If>
+      </View>
+      <View style={{ flex: 1, gap: u(4) }}>
+        <Text style={{ ...labelText(), ...oneLine }}>{g().title}</Text>
+        <Text style={{ ...metaText(), ...oneLine }}>{line()}</Text>
+      </View>
+      <If when={props.saving}>
+        <View style={{ width: cs(340) }}>
+          <Text style={metaText()}>{t("saved.group_saving", { percent: Math.floor(g().progress * 100) })}</Text>
+          <View style={progressTrack()}>
+            <View style={progressFill(g().progress)} />
+          </View>
+        </View>
+      </If>
+      <View style={row(u(12))}>
+        <View style={{ transform: [{ rotate: props.open() ? "180deg" : "0deg" }] }}>
+          <Icon src={() => chevronIcon} size={22} color={() => colors.snow()} />
+        </View>
+        <View style={{ transform: [{ rotate: "45deg" }] }}>
+          <IconButton size={44} icon={() => closeIcon} label={() => t("saved.remove_all")} focused={() => props.focusedPart() === 2} background={() => colors.raise()} onPress={props.onRemove} />
+        </View>
+      </View>
+    </View>
+  );
+}
