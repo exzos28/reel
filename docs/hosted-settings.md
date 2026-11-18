@@ -73,10 +73,10 @@ red `#E5383B`). Steps:
    session is kept in `localStorage`; a `401` brings this step back.
 2. **Settings**, from `GET /settings/api/state` (the core's own JSON, the same fields as
    `Settings.load`):
-   - Search source: address, API key (empty field keeps the saved key; "Remove the key" clears
-     it), **Save and check**. The answer carries a check job; the page polls
+   - Search source: its state as the page opens (the saved source is checked), getting a ready
+     one from the partner's bot (first while there is none), address, API key (an empty field
+     keeps the saved key), **Check** and **Remove source**. The answer carries a check job; the page polls
      `GET /settings/api/check/<id>`, which is `Sources.result`, and says "Connected. It searches
-- `POST /settings/api/source/check`: checks the saved source again; `{check}` for `GET /check/<id>` (the page says whether it answers as it opens).
      by IMDb id / by title" or the core's message, as the TV's Settings does.
    - Language (of titles and descriptions): the core's `contentLanguages`.
    - Playback buffer: only the core's `bufferChoices` (the sizes this TV has room for); the core
@@ -144,6 +144,7 @@ GET  /settings/api/state             S  → {"source":{"url","hasKey"},"contentL
                                            "bufferMB","bufferChoices":[{"mb","default"}]}
 POST /settings/api/source            S  {"url","key"?,"removeKey"?} → {"ok":true,"source":{"url","hasKey"},"check":<id>|0}
                                           400 {"ok":false,"message"}       (not an address)
+POST /settings/api/source/check      S  → {"check":<id>|0}                (the saved source checked again)
 GET  /settings/api/check/<id>        S  → Sources.result: {"state":"pending"|"done"|"failed",…}
 POST /settings/api/language          S  {"tag"} → {"contentLanguage"}     400 unknown tag
 POST /settings/api/buffer            S  {"mb"}  → {"bufferMB"}            400 not offered
