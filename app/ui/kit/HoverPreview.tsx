@@ -68,7 +68,7 @@ export function PreviewBody(props: { item: () => Summary; width: number; onOpen:
   const s = props.item;
   const still = (props.width * 9) / 16;
   return (
-    <View style={{ width: props.width, overflow: "hidden", ...rounded(cardRadius() + u(6)) }}>
+    <View testID="preview" style={{ width: props.width, overflow: "hidden", ...rounded(cardRadius() + u(6)) }}>
       <View onPress={props.onOpen} style={{ height: still }}>
         <Picture item={s} src={() => s().card ?? s().still} titleSize={30} style={{ height: still }} />
         <View style={shadeStyle()} />
