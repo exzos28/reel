@@ -997,6 +997,23 @@ pub fn save_request(key: &str) -> SaveAsk {
     })
 }
 
+/// How many episodes of a show have aired, from what the catalog has now (never asking the
+/// network): a season it has the episodes of counts those aired, another its episode count.
+pub fn aired_episodes(show: &str) -> Option<usize> {
+    let t = peek(&Call::Title(show.to_owned()))?;
+    let info = from_title(&t);
+    let now = today();
+    Some(
+        info.seasons
+            .iter()
+            .map(|(n, _, count, _)| match peek(&Call::Season(show.to_owned(), *n)) {
+                Some(s) => s["episodes"].as_array().map_or(0, |e| e.iter().filter(|x| !upcoming(ymd(&x["airDate"]), now)).count()),
+                None => *count as usize,
+            })
+            .sum(),
+    )
+}
+
 /// A title's still as the catalog has it now (never asking the network), for the Saved row
 /// of a show's episodes.
 pub fn known_still(id: &str) -> Option<String> {

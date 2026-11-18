@@ -115,7 +115,8 @@ const UNFINISHED: [&str; 4] = ["resolving", "saving", "paused", "waiting"];
 
 /// The hero button of a title. A film: its item. A show: what is saved of it,
 /// `{"state","saved","saving","progress"}`, state "none", "saving" while anything is
-/// unfinished ("paused" when all of that is paused), else "saved".
+/// unfinished ("paused" when all of that is paused), "saved" once every aired episode is,
+/// "some" while only some are.
 pub fn title(id: &str, show: bool) -> Value {
     if !show {
         return item(id);
@@ -130,10 +131,14 @@ pub fn title(id: &str, show: bool) -> Value {
     let saved = mine.iter().filter(|i| i["state"] == "saved").count();
     let unfinished: Vec<&Value> = mine.iter().filter(|i| UNFINISHED.contains(&i["state"].as_str().unwrap_or(""))).collect();
     let (have, size) = unfinished.iter().fold((0u64, 0u64), |(h, s), i| (h + i["have"].as_u64().unwrap_or(0), s + i["size"].as_u64().unwrap_or(0)));
+    // "Saved" once every aired episode is; some of them: "some" (the button counts them).
+    let aired = catalog::aired_episodes(id);
     let state = if !unfinished.is_empty() || searching > 0 {
         if searching == 0 && unfinished.iter().all(|i| i["state"] == "paused") { "paused" } else { "saving" }
-    } else if saved > 0 {
+    } else if saved > 0 && aired.is_some_and(|a| saved >= a) {
         "saved"
+    } else if saved > 0 {
+        "some"
     } else {
         "none"
     };

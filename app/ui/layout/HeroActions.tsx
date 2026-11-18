@@ -83,6 +83,8 @@ export function SaveButton(props: { state: () => SaveState; show: () => boolean;
         return t("title.save_paused");
       case "saved":
         return t("title.saved");
+      case "some":
+        return t(s().saved === 1 ? "title.saved_one" : "title.saved_some", { count: s().saved ?? 0 });
       default:
         return t("title.save");
     }

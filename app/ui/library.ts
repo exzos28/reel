@@ -161,6 +161,14 @@ export function removeSaved(id: number) {
   refresh();
 }
 
+/** A film's or an episode's state for its mark (`SaveMark`): none, searching, resolving, saving,
+ * paused, waiting, saved, unavailable, failed; read again every second while watched. */
+export function itemState(key: string): SaveState {
+  tick();
+  if (!librarySupported) return { state: "none", progress: 0 };
+  return parsed<SaveState>(`item:${key}`, Library.item(key));
+}
+
 /** Whether `key` (a film or an episode) is saved whole on this device: it plays from its file,
  * with no search source and no network. */
 export function isSaved(key: string): boolean {

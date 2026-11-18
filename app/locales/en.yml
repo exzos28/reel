@@ -69,6 +69,8 @@ title:
   saving_some: "Saving %{count} of %{total}"
   save_paused: Paused
   saved: Saved
+  saved_one: 1 episode saved
+  saved_some: "%{count} episodes saved"
 
 card:
   left: "%{time} left"

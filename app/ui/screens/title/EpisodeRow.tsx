@@ -1,4 +1,4 @@
-import { Text, View, type TextStyle, type ViewRef, type ViewStyle } from "nsh";
+import { computed, Text, View, type TextStyle, type ViewRef, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { dateText, runtime, shortDate, type Episode } from "../../catalog";
 import { Icon } from "../../kit/Icon";
@@ -7,6 +7,8 @@ import { row } from "../../kit/shape";
 import { fontText, oneLine } from "../../kit/text";
 import { colors, cs, u } from "../../theme";
 import { EpisodeThumb } from "./EpisodeThumb";
+import { itemState } from "../../library";
+import { SaveMark } from "../../kit/SaveMark";
 import checkIcon from "../../icons/check.svg";
 
 const episodeRowStyle = (focused: boolean): ViewStyle => ({
@@ -44,6 +46,9 @@ const statusOf = (e: Episode) => {
  * on the right only what differs from the season's release. */
 export function EpisodeRow(props: { episode: () => Episode; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
   const e = props.episode;
+  /** Saved or being saved on this device: its round mark at the right. */
+  const saved = computed(() => itemState(e().id));
+  const marked = () => !["none", "failed"].includes(saved().state);
   return (
     <View
       ref={props.viewRef}
@@ -65,6 +70,9 @@ export function EpisodeRow(props: { episode: () => Episode; focused: () => boole
           <Icon src={() => checkIcon} size={20} color={colors.ash} />
         </If>
         <Text style={fontText(21, colors.ash())}>{statusOf(e())}</Text>
+        <If when={marked()}>
+          <SaveMark state={() => saved().state} progress={() => saved().progress} background={() => (props.focused() ? colors.raise() : colors.card())} />
+        </If>
       </View>
     </View>
   );
