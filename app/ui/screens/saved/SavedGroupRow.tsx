@@ -12,6 +12,7 @@ import type { SavedGroup } from "../../library";
 import { alpha, colors, cs, targetSlop, u } from "../../theme";
 import chevronIcon from "../../icons/chevron.svg";
 import { SpeedLine } from "../../kit/SpeedLine";
+import { actionsBlock, stateColumn } from "./SavedRow";
 import pauseIcon from "../../icons/pause.svg";
 import playIcon from "../../icons/play.svg";
 import trashIcon from "../../icons/trash.svg";
@@ -59,8 +60,9 @@ export function SavedGroupRow(props: {
         <Text style={{ ...labelText(), ...oneLine }}>{g().title}</Text>
         <Text style={{ ...metaText(), ...oneLine }}>{line()}</Text>
       </View>
+      <View style={stateColumn()}>
       <If when={props.saving}>
-        <View style={{ width: cs(340) }}>
+        <View>
           <Text style={metaText()}>{t("saved.state.saving", { percent: Math.floor(g().progress * 100), have: Fmt.size(g().have), size: Fmt.size(g().size) })}</Text>
           <View style={progressTrack()}>
             <View style={progressFill(g().progress)} />
@@ -70,7 +72,8 @@ export function SavedGroupRow(props: {
           </If>
         </View>
       </If>
-      <View style={row(u(12))}>
+      </View>
+      <View style={actionsBlock()}>
         <If when={props.onPause}>
           <IconButton
             size={44}

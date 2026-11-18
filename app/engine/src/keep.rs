@@ -517,7 +517,16 @@ async fn resolve(id: u32, source: String) {
         output_folder: Some(dir.to_string_lossy().into_owned()),
         ..Default::default()
     };
-    let added = match tokio::time::timeout(FIND_FOR, core.session.add_torrent(add, Some(options))).await {
+    // Another episode of the same pack saves it already: take that torrent as it is. Adding a
+    // magnet again would fetch its metadata from peers first (seconds each, episode after
+    // episode) before librqbit says it has it.
+    let saving = known.as_deref().and_then(|h| with(|lib| lib.live.get(h).cloned()).flatten());
+    let added = if let Some((tid, handle)) = saving {
+        Ok(Ok(AddTorrentResponse::AlreadyManaged(tid, handle)))
+    } else {
+        tokio::time::timeout(FIND_FOR, core.session.add_torrent(add, Some(options))).await
+    };
+    let added = match added {
         Ok(r) => r,
         // Nobody gave the torrent's metadata in time: no one shares it now.
         Err(_) => {

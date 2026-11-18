@@ -30,6 +30,13 @@ const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgr
 /** What is on the device: the player's "ready" tone, not the watched one. */
 const progressFill = (p: number): ViewStyle => ({ height: "100%", width: `${Math.round(p * 100)}%`, backgroundColor: alpha(colors.snow(), 0.45) });
 
+/** The state and the buttons line up down the page, a show's row and its episodes' alike: the
+ * state is a column this wide, the buttons a block this wide, at the row's right edge. */
+export const STATE_W = 340;
+export const ACTIONS_W = 44 * 3 + 12 * 2;
+export const stateColumn = (): ViewStyle => ({ width: cs(STATE_W) });
+export const actionsBlock = (): ViewStyle => ({ ...row(u(12)), width: cs(ACTIONS_W), justifyContent: "flex-end" });
+
 /** "S3:E5 · The Palace of Terror", or nothing for a film. */
 function episodeLine(i: SavedItem) {
   if (i.season == null || i.number == null) return "";
@@ -89,7 +96,7 @@ export function SavedRow(props: {
           <Text style={{ ...metaText(), ...oneLine }}>{episodeLine(i())}</Text>
         </If>
       </View>
-      <View style={{ width: cs(340) }}>
+      <View style={stateColumn()}>
         <Text style={metaText(i().state === "failed" ? colors.soft() : colors.ash())}>{stateLine(i())}</Text>
         <If when={unfinished()}>
           <View style={progressTrack()}>
@@ -101,7 +108,7 @@ export function SavedRow(props: {
           <SpeedLine speed={() => i().speed!} peers={() => i().peers ?? 0} />
         </If>
       </View>
-      <View style={row(u(12))}>
+      <View style={actionsBlock()}>
         <If when={i().state === "saved"}>
           <IconButton size={44} icon={() => playIcon} label={() => t("title.play")} focused={() => props.focusedPart() === 1} background={() => colors.raise()} onPress={props.onPlay} />
         </If>
