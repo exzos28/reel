@@ -4,10 +4,15 @@
 //!
 //! - Items are what the user saved: a film or an episode, by catalog key. Several items can
 //!   share a torrent (episodes of a season pack): its selected files are their union.
+//! - Each torrent has a folder of its own (`<folder>/<Title (year)>`, `… (2)` for a second
+//!   release of the same title): librqbit opens every file of a torrent and writes the edge
+//!   pieces of the chosen ones into their neighbours, so two torrents must never share paths.
 //! - The library (`<data>/saved/library.json`) keeps the items, the folder and the .torrent of
 //!   each infohash (`<data>/saved/torrents/`), never the source's link (it carries an API key).
+//!   An entry it cannot read is kept as it is, never dropped.
 //! - A torrent being saved is leased (`leases`): a stream of it reads the same files, and
 //!   closing the player never deletes them. Complete, it leaves the session with its files.
+//! - Files are deleted only when no other item uses the same path.
 //! - Unfinished items go on when the app starts again, from their .torrent.
 
 use std::{
@@ -58,7 +63,8 @@ pub struct Item {
     pub image: String,
     #[serde(default)]
     pub episode: Option<(u16, u16)>,
-    /// Where its torrent's files go (`<folder>/<Title (year)>`).
+    /// Its torrent's folder (`<folder>/<Title (year)>`; before the torrent is known, the one it
+    /// would take).
     pub dir: PathBuf,
     #[serde(default)]
     pub infohash: Option<String>,
@@ -91,6 +97,11 @@ impl Item {
         self.files.iter().find(|f| f.0 == v).map(|f| self.dir.join(&f.1))
     }
 
+    /// Its files on disk.
+    fn paths(&self) -> impl Iterator<Item = PathBuf> + '_ {
+        self.files.iter().map(|f| self.dir.join(&f.1))
+    }
+
     fn unfinished(&self) -> bool {
         matches!(self.state, State::Resolving | State::Saving | State::Paused | State::Waiting)
     }
@@ -104,6 +115,44 @@ struct Stored {
     next_id: u32,
     #[serde(default)]
     items: Vec<Item>,
+    /// Entries this build could not read (a newer build's, a damaged one): written back as
+    /// they were, so going back to that build loses nothing.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    unread: Vec<Value>,
+}
+
+/// Reads the library: an entry that does not parse is kept aside (`unread`), and a file that
+/// is not JSON at all is moved aside (`library.json.unreadable-<time>`), never overwritten.
+fn load(file: &Path) -> Stored {
+    let Ok(bytes) = std::fs::read(file) else { return Stored::default() };
+    let v: Value = match serde_json::from_slice(&bytes) {
+        Ok(v) => v,
+        Err(e) => {
+            let aside = file.with_extension(format!("json.unreadable-{}", now()));
+            tracing::warn!("reel saved: {} is not JSON ({e}): kept as {}", file.display(), aside.display());
+            let _ = std::fs::rename(file, aside);
+            return Stored::default();
+        }
+    };
+    let mut stored = Stored {
+        folder: v["folder"].as_str().map(PathBuf::from),
+        next_id: v["next_id"].as_u64().unwrap_or(0) as u32,
+        items: Vec::new(),
+        unread: v["unread"].as_array().cloned().unwrap_or_default(),
+    };
+    for entry in v["items"].as_array().cloned().unwrap_or_default() {
+        match serde_json::from_value::<Item>(entry.clone()) {
+            Ok(i) => stored.items.push(i),
+            Err(e) => {
+                tracing::warn!("reel saved: an entry of the library is not read ({e}): kept as it is");
+                stored.unread.push(entry);
+            }
+        }
+    }
+    // Ids of unread entries are never handed out again.
+    let top = stored.unread.iter().filter_map(|e| e["id"].as_u64()).max().unwrap_or(0) as u32;
+    stored.next_id = stored.next_id.max(top);
+    stored
 }
 
 struct Library {
@@ -160,14 +209,36 @@ impl Library {
         self.stored.items.iter_mut().find(|i| i.id == id)
     }
 
+    fn of<'a>(&'a self, infohash: &'a str) -> impl Iterator<Item = &'a Item> + 'a {
+        self.stored.items.iter().filter(move |i| i.infohash.as_deref() == Some(infohash))
+    }
+
     /// The files every item of `infohash` needs (what librqbit downloads of it).
     fn wanted(&self, infohash: &str) -> HashSet<usize> {
-        self.stored
-            .items
-            .iter()
-            .filter(|i| i.infohash.as_deref() == Some(infohash) && i.state != State::Failed)
-            .flat_map(|i| i.indexes().collect::<Vec<_>>())
-            .collect()
+        self.of(infohash).filter(|i| i.state != State::Failed).flat_map(|i| i.indexes().collect::<Vec<_>>()).collect()
+    }
+
+    /// Every file some item uses, on disk.
+    fn used_paths(&self) -> HashSet<PathBuf> {
+        self.stored.items.iter().flat_map(|i| i.paths().collect::<Vec<_>>()).collect()
+    }
+
+    /// The folder for torrent `infohash`: the one its items have, else `base` or the first of
+    /// `base (2)`, `base (3)`… that no other torrent uses and that is not a folder with files
+    /// in it already.
+    fn dir_for(&self, infohash: &str, base: &Path) -> PathBuf {
+        if let Some(i) = self.of(infohash).find(|i| !i.files.is_empty()) {
+            return i.dir.clone();
+        }
+        for n in 1.. {
+            let dir = if n == 1 { base.to_owned() } else { PathBuf::from(format!("{} ({n})", base.display())) };
+            let taken = self.stored.items.iter().any(|i| i.dir == dir && i.infohash.is_some() && i.infohash.as_deref() != Some(infohash) && !i.files.is_empty());
+            let full = std::fs::read_dir(&dir).is_ok_and(|mut d| d.next().is_some());
+            if !taken && !full {
+                return dir;
+            }
+        }
+        unreachable!()
     }
 }
 
@@ -186,6 +257,27 @@ pub fn folder_name(title: &str, year: Option<u32>) -> String {
     }
 }
 
+/// Deletes the files at `paths` (each under `dir`) and the folders above them, up to `dir`,
+/// left empty; a path outside `dir`, or an empty `dir`, is never touched.
+fn delete_files(dir: &Path, paths: impl IntoIterator<Item = PathBuf>) {
+    if dir.as_os_str().is_empty() || !dir.is_absolute() {
+        return;
+    }
+    for path in paths {
+        if !path.starts_with(dir) || path.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+            continue;
+        }
+        let _ = std::fs::remove_file(&path);
+        let mut parent = path.parent();
+        while let Some(p) = parent {
+            if !p.starts_with(dir) || std::fs::remove_dir(p).is_err() {
+                break;
+            }
+            parent = p.parent();
+        }
+    }
+}
+
 // ---- Opening the library ---------------------------------------------------------------
 
 /// Opens the library in `data_dir/saved` and goes on saving what was unfinished. Once.
@@ -196,41 +288,33 @@ pub fn init(data_dir: &Path) {
         return;
     }
     let _ = std::fs::create_dir_all(home.join("torrents"));
-    let stored: Stored = std::fs::read(home.join("library.json"))
-        .ok()
-        .and_then(|b| serde_json::from_slice(&b).ok())
-        .unwrap_or_default();
+    let stored = load(&home.join("library.json"));
     let mut lib = Library { home, stored, live: HashMap::new(), revision: 1 };
     // Without its link (never stored) an item that had no torrent yet cannot go on.
     for item in lib.stored.items.iter_mut() {
-        if matches!(item.state, State::Resolving | State::Waiting) {
+        if item.infohash.is_none() && item.unfinished() || item.state == State::Waiting {
             item.state = State::Failed;
             item.message = Some("interrupted".into());
         }
     }
-    let resume: Vec<(String, PathBuf, bool)> = {
-        let mut seen = HashSet::new();
-        lib.stored
-            .items
-            .iter()
-            .filter(|i| i.unfinished())
-            .filter_map(|i| {
-                let hash = i.infohash.clone()?;
-                seen.insert(hash.clone()).then(|| {
-                    let paused = lib.stored.items.iter().filter(|o| o.infohash.as_deref() == Some(&hash) && o.unfinished()).all(|o| o.state == State::Paused);
-                    (hash, i.dir.clone(), paused)
-                })
-            })
-            .collect()
-    };
-    let resume: Vec<_> = resume.into_iter().map(|(h, d, p)| (lib.torrent_file(&h), lib.wanted(&h), h, d, p)).collect();
+    let mut hashes: Vec<String> = lib.stored.items.iter().filter(|i| i.unfinished()).filter_map(|i| i.infohash.clone()).collect();
+    hashes.sort();
+    hashes.dedup();
+    let resume: Vec<_> = hashes
+        .into_iter()
+        .map(|h| {
+            let paused = lib.of(&h).filter(|i| i.unfinished()).all(|i| i.state == State::Paused);
+            let dir = lib.of(&h).find(|i| i.unfinished()).map(|i| i.dir.clone()).unwrap_or_default();
+            (lib.torrent_file(&h), lib.wanted(&h), h, dir, paused)
+        })
+        .collect();
     *guard = Some(lib);
     drop(guard);
     if !resume.is_empty() {
         let Ok(core) = engine::core() else { return };
         for (file, wanted, hash, dir, paused) in resume {
             let Ok(bytes) = std::fs::read(&file) else {
-                fail_torrent(&hash, "the torrent file is gone");
+                fail_torrent(&hash, "interrupted");
                 continue;
             };
             core.rt.spawn(async move {
@@ -292,6 +376,8 @@ pub fn set_folder(folder: &Path) -> Result<(), String> {
 // ---- Saving ----------------------------------------------------------------------------
 
 pub fn add(req: KeepRequest) -> Result<u32, String> {
+    // The engine first: an item is only written down once something can save it.
+    let core = engine::core().map_err(|e| format!("{e:#}"))?;
     let id = with(|lib| {
         if let Some(i) = lib.stored.items.iter().find(|i| i.key == req.key && i.state != State::Failed) {
             return i.id;
@@ -319,7 +405,6 @@ pub fn add(req: KeepRequest) -> Result<u32, String> {
         id
     })
     .ok_or_else(|| "the library is not open".to_owned())?;
-    let core = engine::core().map_err(|e| format!("{e:#}"))?;
     let source = req.source;
     core.rt.spawn(async move { resolve(id, source).await });
     Ok(id)
@@ -335,18 +420,70 @@ fn set_failed(id: u32, message: &str) {
     });
 }
 
-/// Adds the item's torrent (or finds it in the session) and selects its files.
-async fn resolve(id: u32, source: String) {
-    let Some((dir, ep)) = with(|lib| lib.item_mut(id).map(|i| (i.dir.clone(), i.episode))).flatten() else { return };
-    let Ok(core) = engine::core() else { return };
-    let add = if source.starts_with("http://") || source.starts_with("https://") {
-        match engine::fetch_once(&source).await {
-            Ok(Fetched::Torrent(bytes)) => AddTorrent::from_bytes(bytes),
-            Ok(Fetched::Magnet(m)) => AddTorrent::from_url(engine::with_open_trackers(&m)),
-            Err(e) => return set_failed(id, &redact(&e)),
+/// The torrent `tid` (`infohash`) was added for an item that will not save it (it failed, or
+/// was removed meanwhile): unless another item saves it, it leaves the session, and what it
+/// wrote goes (its folder is its own; files other items use stay).
+fn let_go(tid: usize, infohash: &str, handle: &ManagedTorrent) {
+    let Some(Some((dir, paths))) = with(|lib| {
+        if lib.live.contains_key(infohash) || lib.of(infohash).any(|i| i.state != State::Failed) {
+            return None;
+        }
+        let dir = lib.of(infohash).map(|i| i.dir.clone()).next()?;
+        let used = lib.used_paths();
+        let all: Vec<PathBuf> = handle
+            .with_metadata(|m| m.file_infos.iter().map(|f| dir.join(&f.relative_filename)).collect())
+            .unwrap_or_default();
+        Some((dir, all.into_iter().filter(|p| !used.contains(p)).collect::<Vec<_>>()))
+    }) else {
+        return;
+    };
+    let release = leases::with(|l| l.release_keep(tid, true));
+    if let Ok(core) = engine::core() {
+        engine::apply_release(core, tid, release);
+    }
+    delete_files(&dir, paths);
+}
+
+/// What the item's source is, as librqbit takes it, and its infohash when it can be read
+/// before the torrent is added (a .torrent's, a magnet's).
+async fn open_source(source: &str) -> Result<(AddTorrent<'static>, Option<String>), String> {
+    let magnet = |m: &str| {
+        let hash = librqbit_core::magnet::Magnet::parse(m).ok().and_then(|x| x.as_id20()).map(|h| h.as_string());
+        (AddTorrent::from_url(engine::with_open_trackers(m)), hash)
+    };
+    if source.starts_with("http://") || source.starts_with("https://") {
+        match engine::fetch_once(source).await {
+            Ok(Fetched::Torrent(bytes)) => {
+                let hash = librqbit_core::torrent_metainfo::torrent_from_bytes(&bytes).ok().map(|t| t.info_hash.as_string());
+                Ok((AddTorrent::from_bytes(bytes), hash))
+            }
+            Ok(Fetched::Magnet(m)) => Ok(magnet(&m)),
+            Err(e) => Err(redact(&e)),
         }
     } else {
-        AddTorrent::from_url(engine::with_open_trackers(&source))
+        Ok(magnet(source))
+    }
+}
+
+/// Adds the item's torrent (or finds it in the session) into the torrent's own folder, and
+/// selects its files.
+async fn resolve(id: u32, source: String) {
+    let Some((base, ep)) = with(|lib| lib.item_mut(id).map(|i| (i.dir.clone(), i.episode))).flatten() else { return };
+    let Ok(core) = engine::core() else { return };
+    let (add, known) = match open_source(&source).await {
+        Ok(x) => x,
+        Err(e) => return set_failed(id, &e),
+    };
+    // The torrent's folder, from its infohash when known now (a torrent saved already keeps
+    // its own); a magnet that does not say gets one by its title.
+    let Some(dir) = with(|lib| {
+        let dir = known.as_deref().map_or_else(|| base.clone(), |h| lib.dir_for(h, &base));
+        if let Some(i) = lib.item_mut(id) {
+            i.dir = dir.clone();
+        }
+        dir
+    }) else {
+        return;
     };
     let options = AddTorrentOptions {
         overwrite: true,
@@ -383,18 +520,23 @@ async fn resolve(id: u32, source: String) {
         Ok(AddTorrentResponse::ListOnly(_)) => return set_failed(id, "the torrent was only listed"),
         Err(e) => return set_failed(id, &redact(&format!("{e:#}"))),
     };
+    let hash = handle.info_hash().as_string();
+    // Whatever goes wrong from here: the item fails and the torrent is let go of.
+    let fail = |message: &str| {
+        set_failed(id, message);
+        let_go(tid, &hash, &handle);
+    };
     let all: Vec<(usize, String, u64)> = match handle.with_metadata(|m| {
         m.file_infos.iter().enumerate().map(|(i, f)| (i, f.relative_filename.to_string_lossy().into_owned(), f.len)).collect()
     }) {
         Ok(all) => all,
-        Err(e) => return set_failed(id, &format!("{e:#}")),
+        Err(e) => return fail(&format!("{e:#}")),
     };
     let Some(video) = episode::pick(&all, ep) else {
-        return set_failed(id, if ep.is_some() { "not_in_release" } else { "no_video" });
+        return fail(if ep.is_some() { "not_in_release" } else { "no_video" });
     };
-    let video_name = &all[video].1;
-    if compat::file_ok(video_name, compat::profile()).is_err() {
-        return set_failed(id, "unsupported");
+    if compat::file_ok(&all[video].1, compat::profile()).is_err() {
+        return fail("unsupported");
     }
     let mut mine = vec![all[video].clone()];
     for sub in files::find(&all, video) {
@@ -402,31 +544,43 @@ async fn resolve(id: u32, source: String) {
             mine.push(f.clone());
         }
     }
-    let hash = handle.info_hash().as_string();
     let torrent_bytes = handle.with_metadata(|m| m.torrent_bytes.clone()).ok();
+    // The torrent's folder is where librqbit writes it (a magnet's, or one added earlier).
+    let written_to = handle.output_folder().to_owned();
     let wanted = with(|lib| {
+        // Removed while its torrent was being found.
+        lib.item_mut(id)?;
         if let Some(bytes) = &torrent_bytes {
             let file = lib.torrent_file(&hash);
             if !file.exists() {
                 let _ = std::fs::write(&file, bytes);
             }
         }
-        if let Some(i) = lib.item_mut(id) {
-            i.infohash = Some(hash.clone());
-            i.video = Some(video);
-            i.files = mine;
-            i.state = State::Saving;
-            i.message = None;
+        let i = lib.item_mut(id)?;
+        i.infohash = Some(hash.clone());
+        i.dir = written_to.clone();
+        i.video = Some(video);
+        i.files = mine;
+        i.state = State::Saving;
+        i.message = None;
+        // Its torrent saves again: the other items of it no longer show as paused.
+        for o in lib.stored.items.iter_mut().filter(|o| o.infohash.as_deref() == Some(&hash) && o.state == State::Paused) {
+            o.state = State::Saving;
         }
         lib.live.insert(hash.clone(), (tid, handle.clone()));
         let wanted = lib.wanted(&hash);
         lib.save();
-        wanted
-    });
-    let Some(wanted) = wanted else { return };
+        Some(wanted)
+    })
+    .flatten();
+    let Some(wanted) = wanted else {
+        return let_go(tid, &hash, &handle);
+    };
     if handle.is_paused() {
         let _ = core.session.unpause(&handle).await;
     }
+    // librqbit changes the files of a torrent only once it has checked them.
+    let _ = handle.wait_until_initialized().await;
     if let Err(e) = core.session.update_only_files(&handle, &wanted).await {
         set_failed(id, &format!("{e:#}"));
     }
@@ -441,34 +595,52 @@ fn have(lib: &Library, item: &Item) -> Option<u64> {
     Some(item.files.iter().map(|f| stats.file_progress.get(f.0).copied().unwrap_or(0).min(f.2)).sum())
 }
 
-/// Marks complete items saved; a torrent whose items are all saved leaves the session with
-/// its files, and the files of it nobody saved (written by edge pieces) are deleted.
+/// Why a torrent stopped with an error, as the app words it.
+fn error_message(e: &str) -> &'static str {
+    let e = e.to_ascii_lowercase();
+    if e.contains("no space") || e.contains("os error 28") || e.contains("os error 112") { "no_space" } else { "write" }
+}
+
+/// Marks complete items saved and stopped ones failed; a torrent whose items are all done
+/// leaves the session with its files, and the files of it nobody saved (written by edge
+/// pieces) are deleted.
 pub fn tick() {
-    let finished: Vec<(String, usize, PathBuf, Vec<String>, HashSet<String>)> = with(|lib| {
+    let finished: Vec<(usize, PathBuf, Vec<PathBuf>)> = with(|lib| {
         let mut changed = false;
+        // A torrent librqbit stopped with an error (the disk is full, the drive gone).
+        let broken: Vec<(String, String)> = lib.live.iter().filter_map(|(h, (_, t))| Some((h.clone(), t.stats().error?))).collect();
+        for (hash, e) in broken {
+            tracing::warn!("reel saved: {hash} stopped: {e}");
+            for i in lib.stored.items.iter_mut().filter(|i| i.infohash.as_deref() == Some(&hash) && i.unfinished()) {
+                i.state = State::Failed;
+                i.message = Some(error_message(&e).to_owned());
+            }
+            changed = true;
+        }
         let ids: Vec<u32> = lib.stored.items.iter().filter(|i| i.state == State::Saving).map(|i| i.id).collect();
         for id in ids {
             let Some(item) = lib.stored.items.iter().find(|i| i.id == id) else { continue };
             if have(lib, item).is_some_and(|h| h >= item.size()) {
-                let item = lib.item_mut(id).unwrap();
-                item.state = State::Saved;
+                lib.item_mut(id).unwrap().state = State::Saved;
                 changed = true;
             }
         }
         let mut done = Vec::new();
         let hashes: Vec<String> = lib.live.keys().cloned().collect();
         for hash in hashes {
-            let mine = lib.stored.items.iter().filter(|i| i.infohash.as_deref() == Some(&hash));
-            if mine.clone().any(Item::unfinished) {
+            if lib.of(&hash).any(Item::unfinished) {
                 continue;
             }
-            let keep: HashSet<String> = mine.flat_map(|i| i.files.iter().map(|f| f.1.clone()).collect::<Vec<_>>()).collect();
+            let Some(dir) = lib.of(&hash).map(|i| i.dir.clone()).next() else { continue };
             let (tid, handle) = lib.live.remove(&hash).unwrap();
-            let all: Vec<String> = handle
-                .with_metadata(|m| m.file_infos.iter().map(|f| f.relative_filename.to_string_lossy().into_owned()).collect())
-                .unwrap_or_default();
-            let dir = lib.stored.items.iter().find(|i| i.infohash.as_deref() == Some(&hash)).map(|i| i.dir.clone()).unwrap_or_default();
-            done.push((hash, tid, dir, all, keep));
+            let used = lib.used_paths();
+            let unused: Vec<PathBuf> = handle
+                .with_metadata(|m| m.file_infos.iter().map(|f| dir.join(&f.relative_filename)).collect::<Vec<_>>())
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|p| !used.contains(p))
+                .collect();
+            done.push((tid, dir, unused));
         }
         if changed || !done.is_empty() {
             lib.save();
@@ -476,27 +648,12 @@ pub fn tick() {
         done
     })
     .unwrap_or_default();
-    for (_, tid, dir, all, keep) in finished {
+    for (tid, dir, unused) in finished {
         let release = leases::with(|l| l.release_keep(tid, true));
         if let Ok(core) = engine::core() {
             engine::apply_release(core, tid, release);
         }
-        for path in all.iter().filter(|p| !keep.contains(*p)) {
-            remove_file_and_empty_dirs(&dir, path);
-        }
-    }
-}
-
-/// Deletes `dir/rel` and the folders above it (up to `dir`) left empty.
-fn remove_file_and_empty_dirs(dir: &Path, rel: &str) {
-    let path = dir.join(rel);
-    let _ = std::fs::remove_file(&path);
-    let mut parent = path.parent();
-    while let Some(p) = parent {
-        if !p.starts_with(dir) || std::fs::remove_dir(p).is_err() {
-            break;
-        }
-        parent = p.parent();
+        delete_files(&dir, unused);
     }
 }
 
@@ -579,6 +736,12 @@ pub fn local_files(key: &str) -> Option<(PathBuf, usize, Vec<(usize, String, u64
     .flatten()
 }
 
+/// Whether the torrent with librqbit id `tid` is one being saved now and paused by the user:
+/// a stream of it unpauses it while it plays (`engine`), and pauses it again after.
+pub(crate) fn paused_by_user(tid: usize) -> bool {
+    with(|lib| lib.live.iter().any(|(h, (id, _))| *id == tid && lib.of(h).filter(|i| i.unfinished()).all(|i| i.state == State::Paused))).unwrap_or(false)
+}
+
 // ---- Pausing and removing --------------------------------------------------------------
 
 pub fn set_running(id: u32, on: bool) {
@@ -606,54 +769,67 @@ pub fn set_running(id: u32, on: bool) {
     });
 }
 
+/// What removing an item does to its torrent.
+enum Rest {
+    /// Not in the session (complete, or never added): only files go.
+    Idle,
+    /// Other items of it still save: it downloads only their files from now on.
+    Narrow(Arc<ManagedTorrent>, HashSet<usize>),
+    /// Nothing of it saves any more: it leaves the session.
+    Release(usize),
+}
+
 pub fn remove(id: u32) {
-    let Some(Some((item, rest))) = with(|lib| {
+    let Some(Some((dir, gone, rest))) = with(|lib| {
         let at = lib.stored.items.iter().position(|i| i.id == id)?;
         let item = lib.stored.items.remove(at);
-        let rest = item.infohash.as_ref().map(|h| {
-            let wanted = lib.wanted(h);
-            let still = lib.stored.items.iter().any(|i| i.infohash.as_ref() == Some(h));
-            let live = lib.live.get(h).cloned();
-            if !still {
+        let used = lib.used_paths();
+        let mut rest = Rest::Idle;
+        let mut gone: Vec<PathBuf> = item.paths().collect();
+        if let Some(h) = &item.infohash {
+            if lib.of(h).next().is_none() {
                 let _ = std::fs::remove_file(lib.torrent_file(h));
             }
-            let unfinished = lib.stored.items.iter().any(|i| i.infohash.as_ref() == Some(h) && i.unfinished());
-            if !unfinished {
-                lib.live.remove(h);
+            if let Some((tid, handle)) = lib.live.get(h).cloned() {
+                if lib.of(h).any(Item::unfinished) {
+                    rest = Rest::Narrow(handle, lib.wanted(h));
+                } else {
+                    lib.live.remove(h);
+                    rest = Rest::Release(tid);
+                    // What it wrote and no one uses goes too (edge pieces of its other files).
+                    gone.extend(handle.with_metadata(|m| m.file_infos.iter().map(|f| item.dir.join(&f.relative_filename)).collect::<Vec<_>>()).unwrap_or_default());
+                }
             }
-            (wanted, live, unfinished)
-        });
+        }
         lib.save();
-        Some((item, rest))
+        // Never a file another item uses (one path, two keys; subtitles of a pack).
+        let gone: Vec<PathBuf> = gone.into_iter().filter(|p| !used.contains(p)).collect();
+        Some((item.dir, gone, rest))
     }) else {
         return;
     };
-    let files: Vec<String> = item.files.iter().map(|f| f.1.clone()).collect();
-    let dir = item.dir.clone();
-    let Some((wanted, live, unfinished)) = rest else {
-        return;
+    let Ok(core) = engine::core() else {
+        return delete_files(&dir, gone);
     };
-    match (live, engine::core()) {
-        (Some((tid, handle)), Ok(core)) => core.rt.spawn(async move {
-            if unfinished {
+    match rest {
+        Rest::Idle => delete_files(&dir, gone),
+        Rest::Narrow(handle, wanted) => {
+            core.rt.spawn(async move {
+                let _ = handle.wait_until_initialized().await;
                 let _ = core.session.update_only_files(&handle, &wanted).await;
-            } else {
-                let release = leases::with(|l| l.release_keep(tid, true));
-                engine::apply_release(core, tid, release);
+                delete_files(&dir, gone);
+            });
+        }
+        Rest::Release(tid) => {
+            let release = leases::with(|l| l.release_keep(tid, true));
+            engine::apply_release(core, tid, release);
+            core.rt.spawn(async move {
                 // Let librqbit close the files before they go.
                 tokio::time::sleep(Duration::from_millis(500)).await;
-            }
-            for f in &files {
-                remove_file_and_empty_dirs(&dir, f);
-            }
-        }),
-        _ => {
-            for f in &files {
-                remove_file_and_empty_dirs(&dir, f);
-            }
-            return;
+                delete_files(&dir, gone);
+            });
         }
-    };
+    }
 }
 
 #[cfg(test)]
@@ -730,15 +906,145 @@ mod tests {
         let _ = std::fs::remove_dir_all(&data);
     }
 
+    /// Needs the network: `cargo test -p reel-engine -- --ignored removing --nocapture`.
+    /// Removing while the torrent is found deletes nothing outside its folder; removing
+    /// mid-save leaves no file of it behind.
+    #[test]
+    #[ignore]
+    fn removing_early_or_mid_save_leaves_nothing_and_touches_nothing_else() {
+        let data = std::env::temp_dir().join(format!("reel-keep-remove-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&data);
+        init(&data);
+        // Files named as Sintel's in the working directory: an item with no folder once
+        // deleted these.
+        let decoy = PathBuf::from("Sintel.mp4");
+        std::fs::write(&decoy, b"keep me").unwrap();
+        let sintel = || KeepRequest { key: "test:sintel".into(), source: crate::engine::tests::SINTEL.into(), title: "Sintel".into(), year: Some(2010), ..Default::default() };
+        let early = add(sintel()).unwrap();
+        remove(early);
+        std::thread::sleep(Duration::from_secs(8));
+        tick();
+        assert!(decoy.exists(), "a file outside the folder was deleted");
+        let _ = std::fs::remove_file(&decoy);
+        // Mid-save.
+        let id = add(sintel()).unwrap();
+        let started = std::time::Instant::now();
+        let dir = loop {
+            std::thread::sleep(Duration::from_millis(300));
+            let items = list();
+            let it = items.as_array().unwrap().iter().find(|i| i["id"] == id).unwrap().clone();
+            if it["have"].as_u64().unwrap_or(0) > 0 {
+                break PathBuf::from(it["folder"].as_str().unwrap());
+            }
+            assert!(started.elapsed() < Duration::from_secs(300), "never started");
+        };
+        remove(id);
+        std::thread::sleep(Duration::from_secs(3));
+        assert!(!dir.exists() || std::fs::read_dir(&dir).unwrap().next().is_none(), "files of it stayed in {}", dir.display());
+        let _ = std::fs::remove_dir_all(&data);
+    }
+
     #[test]
     fn empty_folders_go_with_the_last_file() {
         let dir = std::env::temp_dir().join(format!("reel-keep-test-{}", std::process::id()));
         std::fs::create_dir_all(dir.join("a/b")).unwrap();
         std::fs::write(dir.join("a/b/x.mkv"), b"1").unwrap();
         std::fs::write(dir.join("a/y.srt"), b"1").unwrap();
-        remove_file_and_empty_dirs(&dir, "a/b/x.mkv");
+        delete_files(&dir, [dir.join("a/b/x.mkv")]);
         assert!(!dir.join("a/b").exists());
         assert!(dir.join("a/y.srt").exists());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn nothing_outside_the_folder_or_without_one_is_deleted() {
+        let dir = std::env::temp_dir().join(format!("reel-keep-guard-{}", std::process::id()));
+        let outside = std::env::temp_dir().join(format!("reel-keep-outside-{}.txt", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(&outside, b"1").unwrap();
+        std::fs::write("reel-keep-relative-probe.txt", b"1").unwrap();
+        // An empty folder (an item that never got one) deletes nothing, not even relative paths.
+        delete_files(Path::new(""), [PathBuf::from("reel-keep-relative-probe.txt")]);
+        assert!(Path::new("reel-keep-relative-probe.txt").exists());
+        delete_files(&dir, [outside.clone(), dir.join("../x")]);
+        assert!(outside.exists());
+        let _ = std::fs::remove_file("reel-keep-relative-probe.txt");
+        let _ = std::fs::remove_file(&outside);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    fn item(id: u32, key: &str, hash: &str, dir: &str, files: &[&str]) -> Item {
+        Item {
+            id,
+            key: key.into(),
+            title: "T".into(),
+            label: String::new(),
+            image: String::new(),
+            episode: None,
+            dir: PathBuf::from(dir),
+            infohash: Some(hash.into()),
+            video: Some(0),
+            files: files.iter().enumerate().map(|(i, f)| (i, (*f).to_owned(), 1)).collect(),
+            state: State::Saved,
+            message: None,
+            added: 0,
+        }
+    }
+
+    #[test]
+    fn a_second_release_of_a_title_gets_a_folder_of_its_own() {
+        let home = std::env::temp_dir().join(format!("reel-keep-dirs-{}", std::process::id()));
+        let base = home.join("Film (1999)");
+        let lib = Library {
+            home: home.clone(),
+            stored: Stored { items: vec![item(1, "k", "aa", &base.to_string_lossy(), &["f.mkv"])], ..Default::default() },
+            live: HashMap::new(),
+            revision: 0,
+        };
+        assert_eq!(lib.dir_for("aa", &base), base, "the same torrent keeps its folder");
+        assert_eq!(lib.dir_for("bb", &base), PathBuf::from(format!("{} (2)", base.display())));
+        // A folder with files in it that the library does not know is not written into either.
+        let other = home.join("Other (2001)");
+        std::fs::create_dir_all(&other).unwrap();
+        std::fs::write(other.join("x.mkv"), b"1").unwrap();
+        assert_eq!(lib.dir_for("cc", &other), PathBuf::from(format!("{} (2)", other.display())));
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn an_entry_that_does_not_read_is_kept_not_dropped() {
+        let dir = std::env::temp_dir().join(format!("reel-keep-load-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("library.json");
+        let good = serde_json::to_value(item(3, "k", "aa", "/x", &["a.mkv"])).unwrap();
+        let mut odd = good.clone();
+        odd["id"] = json!(9);
+        odd["state"] = json!("saved_v2");
+        std::fs::write(&file, serde_json::to_vec(&json!({ "next_id": 3, "items": [good, odd] })).unwrap()).unwrap();
+        let s = load(&file);
+        assert_eq!(s.items.len(), 1);
+        assert_eq!(s.unread.len(), 1);
+        assert_eq!(s.next_id, 9, "an unread entry's id is not handed out again");
+        // Written back, the unread entry is still there.
+        assert!(serde_json::to_value(&s).unwrap()["unread"][0]["state"] == "saved_v2");
+        // Not JSON at all: moved aside, not overwritten.
+        std::fs::write(&file, b"{ not json").unwrap();
+        assert!(load(&file).items.is_empty());
+        assert!(!file.exists());
+        assert!(std::fs::read_dir(&dir).unwrap().any(|e| e.unwrap().file_name().to_string_lossy().contains("unreadable")));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_path_two_items_use_is_never_deleted_with_one() {
+        let lib = Library {
+            home: PathBuf::from("/h"),
+            stored: Stored { items: vec![item(1, "a", "aa", "/f/T", &["x.mkv", "x.srt"]), item(2, "b", "aa", "/f/T", &["y.mkv", "x.srt"])], ..Default::default() },
+            live: HashMap::new(),
+            revision: 0,
+        };
+        let used = lib.used_paths();
+        assert!(used.contains(Path::new("/f/T/x.srt")));
+        assert_eq!(used.len(), 3);
     }
 }

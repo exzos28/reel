@@ -19,7 +19,7 @@ import { scroller } from "../../layout/Scroller";
 import { caps } from "../../platform";
 import { ListToggle } from "../../layout/ListToggle";
 import { go, openTitle } from "../../nav";
-import { save as saveKeys, seasonPlan, titleSaveState, watchSaved } from "../../library";
+import { isSaved, save as saveKeys, seasonPlan, titleSaveState, watchSaved, type SeasonPlan } from "../../library";
 import { SaveDrawer } from "./SaveDrawer";
 import { openSourceDrawer } from "../source/SourceDrawer";
 import { playGate } from "../source/playGate";
@@ -72,7 +72,9 @@ export function TitleScreen(props: { id: string }) {
   const saveSeason = signal(1);
   const picked = signal<Set<string>>(new Set());
   const saveAt = signal(0);
-  const plan = () => seasonPlan(props.id, saveSeason());
+  const NO_PLAN: SeasonPlan = { episodes: [], saved: 0, total: 0, size: null };
+  /** Asked only while the drawer is open (the plan reads the season's release and its files). */
+  const plan = () => (zone() === "save" ? seasonPlan(props.id, saveSeason()) : NO_PLAN);
   const saveRows = () => plan().episodes.length + 2;
   const openSave = () => {
     if (!isShow()) {
@@ -112,8 +114,9 @@ export function TitleScreen(props: { id: string }) {
     zone.set("actions");
   };
   const seasonsForSave = () => (data().seasonList ?? []).map((s) => ({ number: s.number, episodes: s.episodes }));
-  /** Play; with no search source the drawer that adds one (the player would only fail). */
-  const play = (p: Parameters<typeof startPlay>[0]) => (data().playable ? startPlay(p) : openSourceDrawer());
+  /** Play; with no search source the drawer that adds one (the player would only fail). A
+   * saved film or episode plays from its file: no source, no network needed. */
+  const play = (p: Parameters<typeof startPlay>[0]) => (data().playable || isSaved(p.id) ? startPlay(p) : openSourceDrawer());
   const closePanel = () => {
     const e = panelEpisode();
     panelEpisode.set(null);
@@ -172,7 +175,8 @@ export function TitleScreen(props: { id: string }) {
   };
   const run: Record<HeroAction, () => void> = {
     // Play waits for the source's answer: the release plays once known, the drawer opens if there is none.
-    play: gate.press,
+    // A saved film plays at once, offline too; else Play waits for the source's answer.
+    play: () => (isSaved(data().play.id) ? startPlay({ ...data().play, title: data() }) : gate.press()),
     save: openSave,
     trailer: openTrailer,
   };

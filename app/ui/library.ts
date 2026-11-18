@@ -147,6 +147,17 @@ export function removeSaved(id: number) {
   refresh();
 }
 
+/** Whether `key` (a film or an episode) is saved whole on this device: it plays from its file,
+ * with no search source and no network. */
+export function isSaved(key: string): boolean {
+  if (!librarySupported) return false;
+  try {
+    return JSON.parse(Library.item(key)).state === "saved";
+  } catch {
+    return false;
+  }
+}
+
 /** Shows the folder of saved films in the file manager (desktops). */
 export const openSavedFolder = () => librarySupported && Library.openFolder();
 

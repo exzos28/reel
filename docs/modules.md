@@ -150,7 +150,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 
 - `item(key: String) -> String`: One key's state for its button: `{"state","progress","id","message"}` (see `library::item`).
   JSON: `{"state","progress","id","message"}`
-  Called from: nothing in the UI.
+  Called from: `ui/library.ts`.
 - `list() -> String`: The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, each item `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`.
   JSON: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`
   Called from: `ui/library.ts`.

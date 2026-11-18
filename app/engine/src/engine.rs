@@ -180,9 +180,20 @@ pub fn close(job: u32) {
     let Some(state) = core.jobs.lock().unwrap().remove(&job) else { return };
     if let Job::Ready(handle, _) = state {
         let release = leases::with(|l| l.release_stream(handle.id()));
+        // Paused by the user before it played: paused again.
+        if REPAUSE.lock().unwrap().remove(&job) && release == leases::Release::Held && crate::keep::paused_by_user(handle.id()) {
+            let session = core.session.clone();
+            core.rt.spawn(async move {
+                let _ = session.pause(&handle).await;
+            });
+            return;
+        }
         apply_release(core, handle.id(), release);
     }
 }
+
+/// Jobs that unpaused a saved film the user had paused (`add_to`): paused again on close.
+static REPAUSE: Mutex<std::collections::BTreeSet<u32>> = Mutex::new(std::collections::BTreeSet::new());
 
 /// Takes a torrent out of the session when its last lease is gone.
 pub(crate) fn apply_release(core: &Core, id: usize, release: leases::Release) {
@@ -699,6 +710,14 @@ fn add_to(core: &Core, job: u32, url: &str) {
             Ok(librqbit::AddTorrentResponse::AlreadyManaged(id, handle)) => {
                 leases::with(|l| l.take_stream(id));
                 time_step(job, "torrent already in the session");
+                // A saved film the user paused: it downloads while it plays, and pauses again
+                // when the player closes (`close`).
+                if handle.is_paused() && crate::keep::paused_by_user(id) {
+                    if let Err(e) = session.unpause(&handle).await {
+                        tracing::warn!("reel engine: unpausing {id} to play it: {e:#}");
+                    }
+                    REPAUSE.lock().unwrap().insert(job);
+                }
                 let h = handle.clone();
                 tokio::spawn(async move {
                     if h.wait_until_initialized().await.is_ok() {
