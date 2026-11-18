@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Builds every package this machine can make into out/<target>/, with .env's build settings, in two
-# groups side by side: here (macOS, then Android: they share Cargo's build) and in Docker (Linux,
-# Windows, then the Samsung TV: one at a time, as Docker's memory holds one heavy build). Then
-# build/publish-release.sh publishes them.
+# groups side by side: here (macOS, Android, then the iOS simulator: they share Cargo's build) and
+# in Docker (Linux, Windows, then the Samsung TV: one at a time, as Docker's memory holds one heavy
+# build). Then build/publish-release.sh publishes them (not the iOS simulator's: it is built so
+# that an iOS break shows here, as it does in CI).
 #
-# Usage: build/build-all.sh [target...]     default: macos android linux windows tizen
+# Usage: build/build-all.sh [target...]     default: macos android ios-simulator linux windows tizen
 #
 # Each group stops at its first failure; the script fails if either did, and says how long each
 # build took. The groups' output goes to out/logs/<group>.log.
@@ -13,14 +14,14 @@ set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 [ -f "$repo/.env" ] && { set -a; . "$repo/.env"; set +a; }
 targets=("$@")
-[ "${#targets[@]}" -gt 0 ] || targets=(macos android linux windows tizen)
+[ "${#targets[@]}" -gt 0 ] || targets=(macos android ios-simulator linux windows tizen)
 
 one() {
   local t="$1" start
   start=$(date +%s)
   printf '==> %s\n' "$t"
   case "$t" in
-    macos | android) "$repo/build/build.sh" "$t" ;;
+    macos | android | ios-simulator) "$repo/build/build.sh" "$t" ;;
     linux) "$repo/build/linux-docker.sh" build "$repo/out/linux" ;;
     windows) "$repo/build/linux-docker.sh" windows "$repo/out/windows" ;;
     tizen) "$repo/build/tizen-docker.sh" package "$repo/out/tizen" ;;
@@ -31,7 +32,7 @@ one() {
 
 host=() docker=()
 for t in "${targets[@]}"; do
-  case "$t" in macos | android) host+=("$t") ;; *) docker+=("$t") ;; esac
+  case "$t" in macos | android | ios-simulator) host+=("$t") ;; *) docker+=("$t") ;; esac
 done
 
 mkdir -p "$repo/out/logs"
