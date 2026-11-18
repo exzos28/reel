@@ -181,6 +181,8 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v7.0.1
+      # The crate is built for this Linux host too (its modules), which pulls in GTK.
+      - run: build/setup-linux-deps.sh
       - uses: ./.github/actions/setup-nsh
         with:
           rust-cache-key: web

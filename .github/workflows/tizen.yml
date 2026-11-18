@@ -98,6 +98,11 @@ jobs:
         with:
           rust-cache-key: tizen-web
 
+      # The NSH web build also builds the crate for this Linux host, which pulls in GTK.
+      - name: Install the Linux development packages
+        if: env.SHELL_ONLY != 'true'
+        run: build/setup-linux-deps.sh
+
       # NSH's web runtime compiles C (zstd-sys) for wasm32: a clang with that backend and its
       # llvm-ar (build.sh takes llvm-ar from the clang's directory).
       - name: Install clang for wasm32
