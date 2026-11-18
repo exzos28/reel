@@ -260,7 +260,7 @@ button:disabled{opacity:.5}
       layout();
       var c = r.body.result;
       if (!c || c.state === 'pending') { status('wait', 'Saved on the TV. Checking…'); modal('wait', 'Saved on the TV', 'Checking the source…'); return setTimeout(function () { watchOffer(id); }, 600); }
-      if (c.state === 'done') return connected(c.caps), modal('ok', 'Saved on the TV', $('statusText').textContent + '. Pick a film on the TV.');
+      if (c.state === 'done') return connected(c.caps), modal('ok', 'Search source added', 'Enjoy watching!');
       failed(c);
       modal('bad', 'Saved, but it did not answer', $('statusText').textContent);
     });
