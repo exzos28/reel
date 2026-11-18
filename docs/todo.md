@@ -55,3 +55,19 @@ Needs: the remote engine (stage 2 above), a keep API on the server, the native b
 session on iOS (Swift/ObjC beside NSH), the server reachable from where the phone is (home Wi-Fi
 only at first). Webseeds (BEP 19) could go the same way, but releases from Torznab sources
 rarely have them.
+
+## Screenshots of every layout in CI
+
+Run `dev/screens.sh` in a workflow (by hand, `workflow_dispatch`, or a PR label; not every push)
+and keep `out/screens/` (the pictures and `index.html`) as an artifact, to look at every layout
+of a change without building it.
+
+- `ubuntu-latest`: Chrome and Node are there, its clang builds wasm (no Homebrew LLVM); the
+  script takes Chrome from `CHROME` or finds `google-chrome`.
+- `REEL_TMDB_TOKEN` from the secret, as `build.yml`; no search source (a title shows "Add a search
+  source").
+- 1× pixels past about 2560 pt wide: a 2× picture of an ultra-wide window is about 30 MP.
+- The rule "no screenshots of commercial films": a public repo's artifacts are published, and
+  TMDB's trending is commercial. In CI the core should send no picture URLs (grey stand-ins in
+  their place: the layout still shows), or only free films' (a stand-in catalog). Locally
+  `out/screens/` is never shared and keeps the real pictures.
