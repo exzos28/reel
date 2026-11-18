@@ -131,7 +131,7 @@ button:disabled{opacity:.5}
     <svg class="dino" id="offerDino" viewBox="0 0 64 52" aria-hidden="true"><path d="M4 32 Q16 22 26 24 L26 36 Z" fill="#F5F5F5"/><ellipse cx="34" cy="32" rx="15" ry="11" fill="#F5F5F5"/><rect x="40" y="12" width="9" height="18" rx="4" fill="#F5F5F5"/><rect x="38" y="4" width="22" height="14" rx="6" fill="#F5F5F5"/><circle cx="52" cy="9" r="1.8" fill="#0F0F0F"/><circle cx="55" cy="14" r="1.4" fill="#E5383B"/><g class="la"><rect x="30" y="40" width="5" height="10" rx="2" fill="#F5F5F5"/><rect x="33" y="40" width="5" height="10" rx="2" fill="#F5F5F5"/></g><g class="lb"><rect x="22" y="40" width="5" height="10" rx="2" fill="#F5F5F5"/><rect x="41" y="40" width="5" height="10" rx="2" fill="#F5F5F5"/></g></svg>
     <div class="big" id="offerIcon" hidden></div>
     <h2 id="offerTitle">Confirm on your TV</h2>
-    <p id="offerText">Choose <b>Use</b> on the TV screen to save this source.</p>
+    <p id="offerText">Choose <b>“Use”</b> on the TV screen to save this source.</p>
     <button type="button" id="offerDone" hidden>Done</button>
   </div>
 </div>
@@ -241,8 +241,8 @@ button:disabled{opacity:.5}
         $('save').disabled = false;
         return status('bad', r.body.error === 'address' ? 'The link has no address reel can use.' : problem(r));
       }
-      status('wait', 'Confirm on the TV: choose Use there.');
-      modal('wait', 'Confirm on your TV', 'Choose Use on the TV screen to save this source.');
+      status('wait', 'Confirm on the TV: choose “Use” there.');
+      modal('wait', 'Confirm on your TV', 'Choose “Use” on the TV screen to save this source.');
       watchOffer(r.body.offer);
     });
   }
