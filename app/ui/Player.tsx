@@ -174,7 +174,9 @@ export function Player() {
   // Up next: the core says when and what (near the end of an episode).
   const next = computed<Episode | null>(() => {
     const w = what();
-    return w ? JSON.parse(Catalog.upNext(w.id, position(), duration())) : null;
+    // Only once this episode plays: until then position and duration may still be the last
+    // one's, near its end, and the card offered the episode after this one at once.
+    return w && started() ? JSON.parse(Catalog.upNext(w.id, position(), duration())) : null;
   });
   const dismissed = signal(false);
   const card = computed(() => next() != null && !dismissed());
@@ -437,6 +439,8 @@ export function Player() {
             if (startAt() > 0) { resumeTo = startAt(); seekTo(startAt()); startAt.set(0); }
           }}
           onProgress={(e) => {
+            // The last file's progress, still coming after the new one was asked for: not this one's.
+            if (!loaded()) return;
             position.set(e.currentTime);
             cachedAhead.set(e.cached ?? 0);
             readAt.set({ byte: e.readAt ?? 0, time: e.readTime ?? 0 });
