@@ -2,10 +2,11 @@
 # Publishes the packages as a release of this repository (exzos28/reel),
 # where the site's download links point (releases/latest/download/<name>). The code stays here.
 #
-# Usage: build/publish-release.sh <version> [--dry-run]     e.g. 0.1.0
+# Usage: build/publish-release.sh <version> [--dry-run] [--from <dir>]     e.g. 0.1.0
 #
-# Takes the newest package of each kind that build/build.sh (and build/tizen.sh) wrote,
-# under the names the site links to:
+# Takes the newest package of each kind that build/build.sh (and build/tizen.sh) wrote, from out/
+# (or from anywhere under <dir>: CI's downloaded artifacts, .github/workflows/release.yml), under
+# the names the site links to:
 #   reel-macos.zip         out/macos/reel-macos-*.zip
 #   reel-android.apk       out/android/reel-android-*.apk
 #   reel-samsung-tv.wgt            out/tizen/reel-tv-v*.wgt
@@ -18,10 +19,19 @@ set -euo pipefail
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 releases="${REEL_RELEASES_REPO:-exzos28/reel}"
-version="${1:?usage: $0 <version> [--dry-run]}"
+version="${1:?usage: $0 <version> [--dry-run] [--from <dir>]}"
 version="${version#v}"
+shift
 dry=0
-[ "${2:-}" = "--dry-run" ] && dry=1
+from=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run) dry=1 ;;
+    --from) from="${2:?--from needs a directory}"; shift ;;
+    *) printf 'publish-release.sh: unknown option %s\n' "$1" >&2; exit 2 ;;
+  esac
+  shift
+done
 
 log() { printf '==> %s\n' "$*" >&2; }
 die() { printf 'publish-release.sh: %s\n' "$*" >&2; exit 1; }
@@ -52,11 +62,26 @@ take() {
   cp "$f" "$stage/$name"
 }
 
-take reel-macos.zip "$repo"/out/macos/reel-macos-*.zip
-take reel-android.apk "$repo"/out/android/reel-android-*.apk
-take reel-samsung-tv.wgt "$repo"/out/tizen/reel-tv-v*.wgt
-take reel-linux.tar.gz "$repo"/out/linux/reel-linux-*.tar.gz
-take reel-windows.zip "$repo"/out/windows/reel-windows-*.zip
+# The files of a kind: out/<target>/ here, anywhere under --from's directory in CI.
+of() {
+  local target="$1" pattern="$2"
+  if [ -n "$from" ]; then
+    find "$from" -type f -name "$pattern" -print0 | xargs -0 -n1 printf '%s\n'
+  else
+    printf '%s\n' "$repo"/out/"$target"/$pattern
+  fi
+}
+files() {
+  local list=() f
+  while IFS= read -r f; do [ -n "$f" ] && list+=("$f"); done < <(of "$2" "$3")
+  take "$1" ${list[@]+"${list[@]}"}
+}
+
+files reel-macos.zip macos 'reel-macos-*.zip'
+files reel-android.apk android 'reel-android-*.apk'
+files reel-samsung-tv.wgt tizen 'reel-tv-v*.wgt'
+files reel-linux.tar.gz linux 'reel-linux-*.tar.gz'
+files reel-windows.zip windows 'reel-windows-*.zip'
 
 ls "$stage"/* > /dev/null 2>&1 || die "no package to publish"
 (cd "$stage" && shasum -a 256 -- * > SHA256SUMS.txt)
@@ -74,7 +99,9 @@ fi
 command -v gh > /dev/null || die "gh not found"
 # The release first, then its files one by one with a few tries each: a large upload can time
 # out (HTTP 408), and gh drops the whole release when one fails during create.
-gh release create "v$version" --repo "$releases" --title "reel $version" --notes "$notes" --latest
+# A re-run (CI's) finds the release there and only replaces its files.
+gh release view "v$version" --repo "$releases" > /dev/null 2>&1 \
+  || gh release create "v$version" --repo "$releases" --title "reel $version" --notes "$notes" --latest
 for f in "$stage"/*; do
   for try in 1 2 3; do
     gh release upload "v$version" "$f" --repo "$releases" --clobber && break

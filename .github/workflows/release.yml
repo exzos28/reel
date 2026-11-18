@@ -1,5 +1,7 @@
-# On a v* tag: build every platform and attach the packages to a draft GitHub Release
-# (for users and for Apps2Samsung). Publishing the draft stays manual.
+# On a v* tag (git tag v0.1.4 && git push origin v0.1.4): build every platform, the Samsung TV
+# package too, and publish them as the tag's GitHub Release under the names the site and the
+# README link to (build/publish-release.sh: each package checked by build/package-check.py).
+# The version in app/nsh.json should match the tag.
 name: release
 
 on:
@@ -16,18 +18,24 @@ jobs:
       version: ${{ github.ref_name }}
     secrets: inherit
 
+  tv:
+    uses: ./.github/workflows/tizen.yml
+    secrets: inherit
+
   release:
-    needs: build
+    needs: [build, tv]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v7.0.1
+      # Every package the builds uploaded (reel-macos, reel-linux, reel-windows, reel-android,
+      # reel-tv, and the ones the release leaves out), each in its own folder.
       - uses: actions/download-artifact@v8.0.2
         with:
           pattern: reel-*
           path: dist
-          merge-multiple: true
-      - run: build/release.sh "$GITHUB_REF_NAME" dist
+      - run: build/publish-release.sh "$GITHUB_REF_NAME" --from dist
         env:
           GH_TOKEN: ${{ github.token }}
+          REEL_RELEASES_REPO: ${{ github.repository }}

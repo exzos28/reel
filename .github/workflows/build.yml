@@ -27,6 +27,8 @@ jobs:
   macos:
     runs-on: macos-15
     env:
+      # A release runs on Apple silicon and Intel Macs alike; other builds, this runner's only.
+      REEL_MACOS_ARCH: ${{ inputs.version != '' && 'universal' || '' }}
       APPLE_CERT_P12_BASE64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
       APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
       MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}

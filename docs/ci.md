@@ -26,8 +26,10 @@ Packages land in `app/.nsh/dist/<target>/reel-*` (git-ignored); nsh's raw output
   - iOS device: `.ipa`, only with signing secrets
   - Web: the static site
   - Tizen core: armv7 `.so`
-- `release.yml`: on a `v*` tag it runs `build.yml` with the tag as the version and attaches every
-  `reel-*` file to a draft GitHub Release. I publish the draft by hand.
+- `release.yml`: on a `v*` tag it runs `build.yml` with the tag as the version and `tizen.yml`,
+  then `build/publish-release.sh --from` publishes the tag's GitHub Release under the names the
+  site links to (`reel-macos.zip`, `reel-android.apk`, `reel-samsung-tv.wgt`, `reel-linux.tar.gz`,
+  `reel-windows.zip`), each checked by `build/package-check.py`.
 
 ## Secrets
 

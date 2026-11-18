@@ -46,6 +46,11 @@ All of them, one after another: `build/build-all.sh` (or name the platforms).
 
 ## Release
 
+A release is a tag: bump `version` and `build` in `app/nsh.json`, commit, then
+`git tag v0.1.4 && git push origin v0.1.4`. CI (`.github/workflows/release.yml`) builds every
+platform and the Samsung TV package and publishes them as the tag's release, under the names the
+site links to. Without CI, the same from this machine:
+
 ```sh
 build/publish-release.sh <version>   # the packages in out/ as a GitHub release of this repository
 build/site-deploy.sh                 # the website on Fly.io
