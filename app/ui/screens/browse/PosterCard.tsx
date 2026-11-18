@@ -3,7 +3,7 @@ import { cardMeta, titleText, type Summary } from "../../catalog";
 import { Card, cardBox } from "../../kit/Card";
 import { Picture } from "../../kit/Picture";
 import { CardMeta } from "../../kit/Rating";
-import { cardRadius, rounded } from "../../kit/shape";
+import { rounded } from "../../kit/shape";
 import { fontText, oneLine } from "../../kit/text";
 import { colors, density, safe, type, u } from "../../theme";
 
@@ -31,10 +31,9 @@ export function PosterCard(props: {
       label={() => titleText(s())}
       focused={props.focused}
       onPress={props.onPress}
-      preview={s}
       style={cardBox(posterWidth(), 3)}
       viewRef={props.follow(props.focused)}
-      picture={<Picture item={s} src={() => s().poster} titleSize={22} style={{ height: u(290), ...rounded(cardRadius()) }} />}
+      picture={<Picture item={s} src={() => s().poster} titleSize={22} style={{ height: u(290), ...rounded() }} />}
     >
       <Text style={titleStyle()}>{titleText(s())}</Text>
       <If when={props.sub()} else={<CardMeta text={() => cardMeta(s())} rated={() => !!s().rating} size={20} />}>

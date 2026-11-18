@@ -10,9 +10,8 @@ import { slideDriver } from "./scroll.slide";
 import { stepDriver } from "./scroll.steps";
 
 export interface ScrollDriver {
-  /** Goes to `target` (points): at once, or gliding; `coast`: with inertia (the wheel's), where
-   * a move made while it goes only changes where it is heading, so the motion never restarts. */
-  to(target: number, animate: boolean, coast?: boolean): void;
+  /** Goes to `target` (points): at once, or gliding. */
+  to(target: number, animate: boolean): void;
   /** Stops a glide where it is (the viewer took over). */
   stop(): void;
   /** Gliding now (where it is comes from the driver, not from a measure). */

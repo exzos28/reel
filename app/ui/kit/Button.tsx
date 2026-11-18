@@ -1,5 +1,5 @@
 import { Text, View, type ImageAsset, type ViewStyle } from "nsh";
-import { colors, cs, focusRing, hoverRing, targetSlop, u } from "../theme";
+import { colors, cs, focusRing, targetSlop, u } from "../theme";
 import { Icon } from "./Icon";
 import { rounded, row } from "./shape";
 import { labelText } from "./text";
@@ -37,7 +37,7 @@ export function Button(props: {
       hitSlop={targetSlop(cs(props.height ?? 60))}
       accessibilityState={{ disabled: off() }}
       onPress={() => !off() && props.onPress()}
-      hoverStyle={off() ? {} : hoverRing()}
+      hoverStyle={{ opacity: off() ? 0.4 : 0.9 }}
       style={{ ...buttonStyle(props.kind, props.focused(), props.height ?? 60), opacity: off() ? 0.4 : 1 }}
     >
       <If when={props.icon}>

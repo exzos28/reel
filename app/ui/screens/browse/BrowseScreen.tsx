@@ -20,7 +20,7 @@ import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { showNav } from "../../layout/navState";
 import { go, goFromNav, openTitle } from "../../nav";
-import { density, safe, u } from "../../theme";
+import { safe, u } from "../../theme";
 import { BrowseHeader } from "./BrowseHeader";
 import { FilterBar } from "./FilterBar";
 import { FilterPanel, panelRows } from "./FilterPanel";
@@ -31,16 +31,12 @@ import { Trending } from "./Trending";
 
 /** The next page is asked for when the focus is this many rows from the grid's last. */
 const NEAR_ROWS = 2;
-/** Room between the grid's cards, TV pixels: the ring under the pointer and the preview that grows
- * from a card need space round it. */
-const GRID_GAP = density === "ten-foot" ? 24 : 36;
-const GRID_ROW_GAP = density === "ten-foot" ? 28 : 48;
 
 export function BrowseScreen(props: { page: Page }) {
   const data = computed(() => browse(props.page));
   const { zone, nav, trend, pill, row, cell, gridIds } = focusOf[props.page];
   /** Cards per grid row: as many as fit at about 330 TV pixels each. */
-  const columns = computed(() => gridColumns(326, GRID_GAP));
+  const columns = computed(() => gridColumns(326, 24));
   const rows = computed(() => gridRows<Summary>(data().all, columns()));
   const count = () => data().all.length;
   const groups = () => data().filters;
@@ -207,15 +203,15 @@ export function BrowseScreen(props: { page: Page }) {
           rows={rows}
           key={(s) => s.id}
           top={20}
-          rowGap={GRID_ROW_GAP}
-          gap={GRID_GAP}
+          rowGap={28}
+          gap={24}
           rowRef={(r) => page.follow(() => zone() === "grid" && cell() >= r().at && cell() < r().at + r().items.length)}
           page={page}
           focusRow={() => (zone() === "grid" ? Math.floor(cell() / columns()) : null)}
           cell={(item, at) => (
             <GridCard
               item={item}
-              width={() => cellWidth(columns(), GRID_GAP)}
+              width={() => cellWidth(columns(), 24)}
               focused={() => zone() === "grid" && cell() === at()}
               onPress={() => openCell(at())}
             />
@@ -225,8 +221,8 @@ export function BrowseScreen(props: { page: Page }) {
           page={page}
           state={() => (data().more ? data().moreState : "idle")}
           columns={columns}
-          width={() => cellWidth(columns(), GRID_GAP)}
-          gap={GRID_GAP}
+          width={() => cellWidth(columns(), 24)}
+          gap={24}
           grid={data}
           onNear={askMore}
         />

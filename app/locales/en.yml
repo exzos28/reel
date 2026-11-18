@@ -79,7 +79,6 @@ title:
 
 card:
   left: "%{time} left"
-  open: Open
 
 kind:
   movie: Movie

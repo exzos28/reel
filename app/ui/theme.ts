@@ -134,10 +134,6 @@ export function focusRing(shownFocus: boolean, lift: "card" | "row" | "button" =
   };
 }
 
-/** Under the pointer: the focus's white ring alone (no lift, no shadow), over a view styled with
- * `focusRing`, whose offset it keeps. An outline, so it takes no room and moves nothing. */
-export const hoverRing = (): ViewStyle => ({ outlineWidth: Math.max(2, u(3)), outlineColor: colors.snow() });
-
 /** Selected (active nav item, season tab, chosen release or track): a
  * lighter fill, never a ring. */
 export const selectedFill = (selected: boolean, fill = colors.raise()) => (selected ? fill : "transparent");

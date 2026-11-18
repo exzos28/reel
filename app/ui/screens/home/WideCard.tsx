@@ -3,7 +3,7 @@ import { cardMeta, leftText, titleText, type Summary } from "../../catalog";
 import { Card, cardBox } from "../../kit/Card";
 import { Picture, WatchedBar, watchedClip } from "../../kit/Picture";
 import { CardMeta } from "../../kit/Rating";
-import { cardRadius, rounded } from "../../kit/shape";
+import { rounded } from "../../kit/shape";
 import { labelText, metaText, oneLine } from "../../kit/text";
 import { u } from "../../theme";
 
@@ -24,11 +24,10 @@ export function WideCard(props: {
       label={() => titleText(s())}
       focused={props.focused}
       onPress={props.onPress}
-      preview={s}
       style={cardBox(u(352), 4)}
       viewRef={props.follow(props.focused)}
       picture={[
-        <Picture item={s} src={() => s().card} titleSize={26} style={{ height: u(198), ...rounded(cardRadius()) }} />,
+        <Picture item={s} src={() => s().card} titleSize={26} style={{ height: u(198), ...rounded() }} />,
         <If when={props.continuing && s().progress > 0}>
           <View style={watchedClip()}>
             <WatchedBar progress={() => s().progress} />
