@@ -5,9 +5,10 @@ import { t } from "nsh/i18n";
 import { aboutText, crewLabel, namesText, type Title } from "../../catalog";
 import { bodyText, labelText, metaText } from "../../kit/text";
 import { SectionTitle } from "../../layout/Section";
-import { colors, safe, u } from "../../theme";
+import { colors, insetMaxWidth, safe, u } from "../../theme";
 
-const blockStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, gap: u(18), maxWidth: u(1400) });
+/** At the inset, as wide as in an ordinary window (a wide window's inset moves it, not narrows it). */
+const blockStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, gap: u(18), maxWidth: insetMaxWidth(1400) });
 const overviewStyle = (): TextStyle => ({ ...bodyText(colors.soft()), maxWidth: u(1180) });
 const crewRow = (): ViewStyle => ({ flexDirection: "row", gap: u(24), alignItems: "baseline" });
 const crewLabelStyle = (): TextStyle => ({ ...metaText(), width: u(220) });

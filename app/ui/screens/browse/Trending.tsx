@@ -1,9 +1,9 @@
 import { View, type ViewRef } from "nsh";
 import { airsText, type Summary } from "../../catalog";
 import { scroller } from "../../layout/Scroller";
-import { Rail } from "../../layout/Rail";
+import { Rail, railLead } from "../../layout/Rail";
 import { RowGap, rowWindow } from "../../layout/reach";
-import { safe, u } from "../../theme";
+import { u } from "../../theme";
 import { PosterCard, posterWidth } from "./PosterCard";
 import { SectionTitle } from "../../layout/Section";
 
@@ -20,7 +20,7 @@ export function Trending(props: {
   onOpen: (i: number) => void;
 }) {
   /** The row puts the focused poster at the left edge of its inset. */
-  const line = scroller({ horizontal: true, anchor: () => safe().x });
+  const line = scroller({ horizontal: true, anchor: railLead, step: () => step() });
   const step = () => posterWidth() + u(20);
   const win = rowWindow({ line, focusedAt: props.focusedAt, step });
   return (

@@ -1,37 +1,45 @@
 // The top of home and title screens: the still filling the top of the
 // screen and fading into the background, the logotype, meta, genres,
 // about and the actions bottom-left.
-import { Image, Text, View, type JSX, type TextStyle, type ViewStyle } from "nsh";
+import { computed, Image, Text, View, type JSX, type TextStyle, type ViewStyle } from "nsh";
 import { aboutText, genresText, titleText, type Summary } from "../catalog";
 import { cover } from "../kit/shape";
 import { bodyText, metaText } from "../kit/text";
-import { alpha, colors, heroFade, safe, ts, type, u } from "../theme";
+import { alpha, colors, heroFade, insetMaxWidth, safe, ts, type, u } from "../theme";
 import { MetaLine } from "./HeroMeta";
+import { heroBoxNow, heroFollowsWindow, type HeroBox } from "./metrics";
 
-const backdropStyle = (height: number, left: number): ViewStyle => ({
-  position: "absolute", top: 0, right: 0, left: u(left), height: u(height), overflow: "hidden",
+/** The backdrop: from the window's right edge, as wide and tall as the hero's box says. */
+const backdropStyle = (box: HeroBox): ViewStyle => ({
+  position: "absolute", top: 0, right: 0, width: box.stillWidth, height: box.height, overflow: "hidden",
 });
 const paperStyle = (paper: string): ViewStyle => ({ flex: 1, backgroundColor: paper, opacity: 0.55 });
-// A backdrop is a 16:9 frame, and people's heads sit in its upper part. The
-// box keeps at least 16:9 of its width (taller only when the hero is), never
-// stretched, and anchored to the top: what does not fit is cut at the bottom,
-// where the fade into the background hides it anyway.
-const stillStyle = {
-  width: "100%", minHeight: "100%", aspectRatio: 16 / 9, objectFit: "cover", objectPosition: "center top",
-} as ViewStyle;
+// A backdrop is a 16:9 frame, and people's heads sit in its upper part. On a TV and touch the
+// box keeps at least 16:9 of its width (taller only when the hero is), never stretched, and
+// anchored to the top: what does not fit is cut at the bottom, where the fade hides it anyway.
+// A desktop's box is no wider than shows most of the frame (`heroBox`): the still covers it,
+// cut a little more at the bottom than at the top.
+const stillStyle = (heroFollowsWindow
+  ? { ...cover(), objectFit: "cover", objectPosition: "center 30%" }
+  : { width: "100%", minHeight: "100%", aspectRatio: 16 / 9, objectFit: "cover", objectPosition: "center top" }) as ViewStyle;
 const fadeStyle = (): ViewStyle => ({ ...cover(), backgroundImage: heroFade() });
 const leftFadeStyle = (): ViewStyle => ({
   position: "absolute", top: 0, left: 0, bottom: 0, width: "40%",
   backgroundImage: `linear-gradient(90deg, ${colors.ink()} 0%, ${alpha(colors.ink(), 0)} 100%)`,
 });
-const textBlockStyle = (top: number, bottom = 0): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: top, paddingBottom: bottom, gap: u(14), maxWidth: u(1300) });
-/** Steady: the text stands on the hero's bottom, so the actions keep their place whatever
- * the title's lines (it grows upwards into the room `top` leaves). */
-const steadyBlockStyle = (top: number, height: number): ViewStyle => ({
-  ...textBlockStyle(0), height: u(height), justifyContent: "flex-end", paddingBottom: u(height - HERO_TEXT_ROOM) - top,
+/** The text's column: at the inset, as wide as in an ordinary window (a wide desktop window's
+ * larger inset moves it, `insetMaxWidth`, instead of narrowing it). */
+const textBlockStyle = (top: number, bottom = 0): ViewStyle => ({
+  paddingHorizontal: safe().x, paddingTop: top, paddingBottom: bottom, gap: u(14), maxWidth: insetMaxWidth(1300),
 });
-/** The hero's own height: at least the backdrop's, or (`fit`) only what its text needs. */
-const heroStyle = (height: number, fit: boolean): ViewStyle => (fit ? {} : { minHeight: u(height) });
+/** Steady: the text stands on the hero's bottom, so the actions keep their place whatever
+ * the title's lines (it grows upwards into the room `top` leaves). The room under the actions
+ * is the design's (`design`, TV pixels), however tall the hero (`height`, points) grows. */
+const steadyBlockStyle = (top: number, design: number, height: number): ViewStyle => ({
+  ...textBlockStyle(0), height, justifyContent: "flex-end", paddingBottom: u(design - HERO_TEXT_ROOM) - top,
+});
+/** The hero's own height (points): at least the backdrop's, or (`fit`) only what its text needs. */
+const heroStyle = (height: number, fit: boolean): ViewStyle => (fit ? {} : { minHeight: height });
 const ABOUT_LINES = 3;
 /** A steady hero's text block, from `top` to its actions' bottom (TV pixels): a one-line
  * title, the meta, genres, three lines of about and the actions. */
@@ -43,17 +51,17 @@ const aboutStyle = (steady: boolean): TextStyle => {
 };
 const logotypeStyle = (size: number): TextStyle => ({ numberOfLines: 2, ...type.logotype(size), color: colors.snow(), marginBottom: u(10) });
 
-/** The still (or the title's paper colour) fading into the background;
- * moved right by `left`, it also fades in from the left edge. */
-function Backdrop(props: { item: () => Summary; height: number; left: number }) {
+/** The still (or the title's paper colour) fading into the background; where it starts
+ * after the window's left edge, it also fades in from there. */
+function Backdrop(props: { item: () => Summary; box: () => HeroBox }) {
   const s = props.item;
   return (
-    <View style={backdropStyle(props.height, props.left)}>
+    <View style={backdropStyle(props.box())}>
       <If when={s().still} else={<View style={paperStyle(s().paper)} />}>
         <Image src={s().still!} style={stillStyle} />
       </If>
       <View style={fadeStyle()} />
-      <If when={props.left > 0}>
+      <If when={props.box().stillLeft > 0.5}>
         <View style={leftFadeStyle()} />
       </If>
     </View>
@@ -62,7 +70,8 @@ function Backdrop(props: { item: () => Summary; height: number; left: number }) 
 
 export function Hero(props: {
   item: () => Summary;
-  /** Height in TV pixels, and where the backdrop starts from the left. */
+  /** The design's height in TV pixels, and where the backdrop starts from the left (a desktop
+   * window grows the one and moves the other: `metrics.heroBox`). */
   height: number;
   backdropLeft?: number;
   titleSize: number;
@@ -81,11 +90,12 @@ export function Hero(props: {
   children: JSX.Element;
 }) {
   const s = props.item;
+  const box = computed(() => heroBoxNow(props.height, props.backdropLeft ?? 0));
   return (
-    <View style={heroStyle(props.height, !!props.fit)}>
-      <Backdrop item={s} height={props.height} left={props.backdropLeft ?? 0} />
+    <View style={heroStyle(box().height, !!props.fit)}>
+      <Backdrop item={s} box={box} />
       {/* Not fit to its text: room under the actions before what follows. */}
-      <View style={props.steadyAbout ? steadyBlockStyle(props.top, props.height) : textBlockStyle(props.top, u(props.room ?? (props.fit ? 0 : 56)))}>
+      <View style={props.steadyAbout ? steadyBlockStyle(props.top, props.height, box().height) : textBlockStyle(props.top, u(props.room ?? (props.fit ? 0 : 56)))}>
         <If when={props.onOpen} else={<Text style={logotypeStyle(props.titleSize)}>{titleText(s())}</Text>}>
           {(open) => (
             <View role="link" accessibilityLabel={titleText(s())} onPress={open()} style={{ alignSelf: "flex-start" }}>

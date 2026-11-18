@@ -4,7 +4,7 @@ import { Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { pillStyle } from "../../kit/Pill";
 import { labelText, metaText } from "../../kit/text";
-import { Rail } from "../../layout/Rail";
+import { Rail, railLead } from "../../layout/Rail";
 import { scroller, type Follow } from "../../layout/Scroller";
 import { colors, safe, selectedFill, type, u } from "../../theme";
 
@@ -22,7 +22,7 @@ export function SeasonTabs(props: {
   sub: () => string;
 }) {
   /** The tabs put the focused season at the inset. */
-  const tabs = scroller({ horizontal: true, anchor: () => safe().x });
+  const tabs = scroller({ horizontal: true, anchor: railLead });
   const chosen = (s: Season) => props.season() === s.number;
   return (
     <View ref={props.follow(props.focused)}>

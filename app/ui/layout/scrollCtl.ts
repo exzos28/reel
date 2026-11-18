@@ -46,7 +46,8 @@ export interface ScrollCtl {
   /** Moves the view by `delta` points, gliding, within its content: the wheel where reel
    * scrolls it itself (Windows, Linux) and the arrows. Moves in a row add up. */
   nudge(delta: number): void;
-  /** Moves the view by most of its length, `dir` 1 forward, -1 back (a row's arrows). */
+  /** Moves the view by most of its length, `dir` 1 forward, -1 back (a row's arrows); by
+   * whole cards where the row says how far apart they are (`step`). */
   page(dir: 1 | -1): void;
   /** Whether it can move back (`atStart` false) or on (`atEnd` false), from the last measure. */
   atStart: ReturnType<typeof signal<boolean>>;
@@ -59,7 +60,9 @@ let scrollers = 0;
  * the viewport's start, given the viewport's length. A page opens where it
  * was left (`memory` names it) or at its top: opening a screen never scrolls
  * it to its focus, so switching screens does not make it jump. */
-export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number) => number; memory?: string }): ScrollCtl {
+/** `step`: a row's card width plus its gap, points, where its cards are all one width: its arrows
+ * then move it by the cards it shows whole, the next one landing at the anchor. */
+export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number) => number; memory?: string; step?: () => number }): ScrollCtl {
   const horizontal = !!opts.horizontal;
   const remember = (offset: number) => {
     // The row's arrows: back is off at the start; on is off only where a move found the end,
@@ -124,6 +127,17 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     const length = horizontal ? "width" : "height";
     return { viewport: s.bounds.size[length], content: c.bounds.size[length] };
   };
+  /** How far a row's arrow moves it: by the cards it shows whole (`step`), from the card at
+   * its anchor, so the next card lands there; without a step, by most of the view. */
+  const pageDelta = (dir: 1 | -1, viewport: number) => {
+    const step = opts.step?.() ?? 0;
+    if (step <= 0) return dir * viewport * 0.85;
+    const cards = Math.max(1, Math.floor((viewport - opts.anchor(viewport)) / step));
+    const from = heading ?? driver.at();
+    // The card at the anchor now (a trackpad may have left the row between two).
+    const at = dir > 0 ? Math.floor(from / step + 0.01) : Math.ceil(from / step - 0.01);
+    return (at + dir * cards) * step - from;
+  };
   /** Where a glide of `nudge` is heading (several wheel notches add up to it). */
   let heading: number | null = null;
   const nudge = async (delta: number) => {
@@ -143,7 +157,7 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     domId,
     nudge,
     page(dir) {
-      extent().then((e) => e && nudge(dir * e.viewport * 0.85));
+      extent().then((e) => e && nudge(pageDelta(dir, e.viewport)));
     },
     atStart: signal(true),
     atEnd: signal(false),

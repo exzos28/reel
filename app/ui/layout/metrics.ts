@@ -103,3 +103,49 @@ export function heroTop(kind: PageKind, design: number): number {
 export function heroTopFor(m: Metrics, unit: number, design: number): number {
   return Math.max(design * unit, m.headBottom + HERO_GAP * unit);
 }
+
+/** The most of the window's height a desktop hero's backdrop takes. */
+const HERO_SHARE = 0.6;
+/** The least of a still's height (a 16:9 frame) a desktop hero shows: the still is no wider
+ * than leaves that much, so a wide window does not crop it to a strip of sky. */
+const STILL_SHOWN = 0.62;
+
+export interface HeroBoxInput {
+  /** The design's height and where its backdrop starts from the left, points. */
+  height: number;
+  left: number;
+  /** The window, points. */
+  width: number;
+  windowHeight: number;
+  /** A desktop: the box follows the window. Elsewhere (a TV's ten-foot canvas, touch) it is the design's. */
+  desktop: boolean;
+}
+
+export interface HeroBox {
+  /** The hero's (and its backdrop's) height, points. */
+  height: number;
+  /** The still's width, points, from the window's right edge, and where it starts from the
+   * window's left (more than 0: it fades in from the background there). */
+  stillWidth: number;
+  stillLeft: number;
+}
+
+/** A hero's box. On a desktop it grows with the window (up to 60% of its height, never past a
+ * 16:9 frame of its width) and its still is no wider than shows 62% of the frame's height,
+ * anchored right; where it starts after the window's left edge it fades in from the background. */
+export function heroBox(i: HeroBoxInput): HeroBox {
+  const room = i.width - i.left;
+  if (!i.desktop) return { height: i.height, stillWidth: room, stillLeft: i.left };
+  const height = Math.max(i.height, Math.min(HERO_SHARE * i.windowHeight, (i.width * 9) / 16));
+  const stillWidth = Math.min(room, (height * 16) / 9 / STILL_SHOWN);
+  return { height, stillWidth, stillLeft: i.width - stillWidth };
+}
+
+/** A desktop's hero follows its window; a TV's and touch's keep their design. */
+export const heroFollowsWindow = frame.nav === "window-bar";
+
+/** This window's hero box for a design `height` and backdrop `left`, TV pixels. */
+export function heroBoxNow(height: number, left = 0): HeroBox {
+  const w = windowSize();
+  return heroBox({ height: u(height), left: u(left), width: w.width, windowHeight: w.height, desktop: heroFollowsWindow });
+}

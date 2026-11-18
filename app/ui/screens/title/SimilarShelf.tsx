@@ -4,14 +4,14 @@ import { t } from "nsh/i18n";
 import type { Summary } from "../../catalog";
 import { SectionTitle } from "../../layout/Section";
 import { scroller } from "../../layout/Scroller";
-import { Rail } from "../../layout/Rail";
+import { Rail, railLead } from "../../layout/Rail";
 import { RowGap, rowWindow } from "../../layout/reach";
-import { safe, u } from "../../theme";
+import { u } from "../../theme";
 import { WideCard } from "../home/WideCard";
 
 export function SimilarShelf(props: { items: () => Summary[]; focusedAt: () => number | null; onOpen: (i: number) => void }) {
   /** The row puts the focused card at the left edge of its inset. */
-  const line = scroller({ horizontal: true, anchor: () => safe().x });
+  const line = scroller({ horizontal: true, anchor: railLead, step: () => step() });
   const step = () => u(352 + 24);
   const win = rowWindow({ line, focusedAt: props.focusedAt, step });
   return (

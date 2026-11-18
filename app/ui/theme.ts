@@ -3,7 +3,7 @@
 // token(); sizes are written in TV pixels and scaled by density.
 import { computed, token, windowSize, type TextStyle, type ViewStyle } from "nsh";
 import geist from "../fonts/Geist.ttf";
-import { chrome, sideInset } from "./layout/chrome";
+import { centering, chrome, sideInset } from "./layout/chrome";
 import { keysInUse } from "./focus/keys";
 import { look } from "./platform/look";
 
@@ -74,6 +74,11 @@ export const targetSlop = (size: number) => Math.max(0, Math.ceil((MIN_TARGET - 
 /** Where content starts from the screen's edges: a TV picture's title-safe
  * 5%; elsewhere the system's safe area plus the family's margin (`chrome`). */
 export const safe = () => ({ x: chrome === "tv" ? u(96) : sideInset(), y: u(54) });
+
+/** The max width (`px`, TV pixels) of a block padded by `safe().x` on both sides (the hero's
+ * text, a title's about): on a wide desktop window the larger inset moves the block to the
+ * content column instead of narrowing its text (`chrome.centering`); elsewhere it is `u(px)`. */
+export const insetMaxWidth = (px: number) => u(px) + 2 * centering();
 
 /** Radius of buttons, rows, cards and posters: 10 on a TV, 8 elsewhere. */
 export const radius = () => (density === "ten-foot" ? u(10) : u(14));

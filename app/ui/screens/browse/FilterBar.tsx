@@ -9,7 +9,7 @@ import { pillSlop, pillStyle } from "../../kit/Pill";
 import { row } from "../../kit/shape";
 import { metaText, oneLine, sectionTitle } from "../../kit/text";
 import { colors, density, safe, u } from "../../theme";
-import { Rail } from "../../layout/Rail";
+import { Rail, railLead } from "../../layout/Rail";
 import { scroller } from "../../layout/Scroller";
 import chevronIcon from "../../icons/chevron.svg";
 
@@ -49,7 +49,7 @@ export function FilterBar(props: {
   blockRef: (r: ViewRef) => void;
   onOpen: (i: number) => void;
 }) {
-  const line = scroller({ horizontal: true, anchor: () => safe().x });
+  const line = scroller({ horizontal: true, anchor: railLead });
   const sortAt = () => props.groups().findIndex((g) => g.id === "sort");
   const picked = (g: FilterGroup) => g.options.some((o) => o.selected);
   const pill = (i: () => number) => ({

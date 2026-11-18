@@ -4,6 +4,7 @@
 // their places. A row of twenty keeps eight or ten in the page.
 import { computed, View, windowSize } from "nsh";
 import { u } from "../theme";
+import { railLead } from "./Rail";
 import type { ScrollCtl } from "./scrollCtl";
 
 /** Cards kept before the first in view and after the last. */
@@ -20,7 +21,9 @@ export interface RowWindow {
 export function rowWindow(o: { line: ScrollCtl; focusedAt: () => number | null; step: () => number }) {
   return computed<RowWindow>(() => {
     const step = Math.max(1, o.step());
-    const first = Math.floor((o.line.offset() ?? 0) / step);
+    // The first card stands `railLead` into the row: on a wide window the cards before it
+    // still show beside the content column.
+    const first = Math.floor(Math.max(0, (o.line.offset() ?? 0) - railLead()) / step);
     const shown = Math.ceil(windowSize().width / step) + 1;
     const focus = o.focusedAt();
     const lo = focus == null ? first : Math.min(focus, first);

@@ -16,7 +16,7 @@ import { caps } from "../platform";
 import { alpha, colors, safe, u } from "../theme";
 import { frame } from "./chrome";
 import { frameSolid, onTop } from "./frameState";
-import { metrics, type PageKind } from "./metrics";
+import { heroBoxNow, metrics, type PageKind } from "./metrics";
 import { NavBar } from "./NavBar";
 import { NAV } from "./navItems";
 import { navFocus } from "./navState";
@@ -73,7 +73,7 @@ export function PageFrame(props: {
   // hero on a page that opens with one. Only the page on top says so.
   effect(() => {
     if (!top()) return;
-    const under = props.hero == null ? 0 : u(props.hero) - m().headBottom;
+    const under = props.hero == null ? 0 : heroBoxNow(props.hero).height - m().headBottom;
     frameSolid.set((props.ctl.offset() ?? 0) > under);
   });
   // The destination chosen again in the nav: its page goes back to the top.

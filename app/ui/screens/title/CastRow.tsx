@@ -7,8 +7,8 @@ import type { CastMember } from "../../catalog";
 import { fontText, labelText, metaText } from "../../kit/text";
 import { SectionTitle } from "../../layout/Section";
 import { scroller, type Follow } from "../../layout/Scroller";
-import { Rail } from "../../layout/Rail";
-import { colors, focusRing, safe, ts, u } from "../../theme";
+import { Rail, railLead } from "../../layout/Rail";
+import { colors, focusRing, ts, u } from "../../theme";
 
 const PHOTO = 150;
 
@@ -53,7 +53,7 @@ function Person(props: { person: () => CastMember; focused: () => boolean; follo
 
 export function CastRow(props: { cast: () => CastMember[]; focusedAt: () => number | null; onFocus: (i: number) => void }) {
   /** The row puts the focused person at the left edge of its inset. */
-  const line = scroller({ horizontal: true, anchor: () => safe().x });
+  const line = scroller({ horizontal: true, anchor: railLead });
   return (
     <View style={{ gap: u(18) }}>
       <SectionTitle text={() => t("about.cast")} inset rail={line} />
