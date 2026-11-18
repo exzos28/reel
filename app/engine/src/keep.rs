@@ -690,6 +690,46 @@ mod tests {
         assert!(i.unfinished());
     }
 
+    /// Needs the network (about 130 MB): `cargo test -p reel-engine -- --ignored saves_sintel --nocapture`.
+    /// Saves Sintel whole, plays it from its file, removes it.
+    #[test]
+    #[ignore]
+    fn saves_sintel_and_plays_it_from_disk() {
+        let data = std::env::temp_dir().join(format!("reel-keep-sintel-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&data);
+        init(&data);
+        let key = "test:sintel";
+        let id = add(KeepRequest { key: key.into(), source: crate::engine::tests::SINTEL.into(), title: "Sintel".into(), year: Some(2010), ..Default::default() }).expect("added");
+        let started = std::time::Instant::now();
+        loop {
+            std::thread::sleep(Duration::from_secs(2));
+            tick();
+            let items = list();
+            let it = items.as_array().unwrap().iter().find(|i| i["id"] == id).unwrap().clone();
+            println!("{:>4}s {} {:.0}% of {} B", started.elapsed().as_secs(), it["state"], it["progress"].as_f64().unwrap_or(0.0) * 100.0, it["size"]);
+            if it["state"] == "saved" {
+                break;
+            }
+            assert_ne!(it["state"], "failed", "{it}");
+            assert!(started.elapsed() < Duration::from_secs(600), "not saved in 10 min");
+        }
+        let file = local_file(key).expect("a saved file");
+        assert!(file.starts_with(data.join("saved").join("Sintel (2010)")), "{}", file.display());
+        assert!(std::fs::metadata(&file).unwrap().len() > 100 * 1024 * 1024);
+        // Plays from the file: no torrent, a file:// URL.
+        let job = crate::engine::open(key).expect("opens");
+        let status = crate::engine::status(job);
+        assert_eq!(status["phase"], "ready");
+        assert!(status["stream_url"].as_str().unwrap().starts_with("file://"), "{status}");
+        crate::engine::close(job);
+        // The library survives as a file; removing deletes the film.
+        assert!(data.join("saved/library.json").exists());
+        remove(id);
+        std::thread::sleep(Duration::from_secs(2));
+        assert!(!file.exists());
+        let _ = std::fs::remove_dir_all(&data);
+    }
+
     #[test]
     fn empty_folders_go_with_the_last_file() {
         let dir = std::env::temp_dir().join(format!("reel-keep-test-{}", std::process::id()));
