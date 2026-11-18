@@ -6,7 +6,7 @@
 // pressed (its Play button too); one still saving has Pause / Resume. Remove asks first. Up
 // and Down move through the rows (Up from the first: the nav), Left and Right to a row's
 // buttons; OK acts.
-import { keymap, signal, Text, View, type ViewStyle } from "nsh";
+import { computed, keymap, signal, Text, View, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { byKeys } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
@@ -55,7 +55,8 @@ const itemName = (i: SavedItem) => (i.season != null && i.number != null ? `${i.
 
 export function SavedScreen() {
   watchSaved();
-  const list = () => savedList();
+  /** Asked once per second (and per change), not once per place that reads it. */
+  const list = computed(() => savedList());
   /** Shows opened (or, while they save, closed) by the viewer: "<section>:<title id>". */
   const toggled = signal<Set<string>>(new Set());
   /** A show's episodes show under it: while saving unless closed, when ready once opened. */
@@ -76,7 +77,7 @@ export function SavedScreen() {
         : g.items.map((i): Entry => ({ kind: "item", section, item: i, nested: false, key: `i:${i.id}` })),
     );
   /** Every row the focus walks, in order. */
-  const rows = (): Entry[] => SECTIONS.flatMap(entriesOf);
+  const rows = computed((): Entry[] => SECTIONS.flatMap(entriesOf));
   const offset = (section: Section) => SECTIONS.slice(0, SECTIONS.indexOf(section)).reduce((n, s) => n + entriesOf(s).length, 0);
 
   const focus = signal(0);
@@ -110,10 +111,19 @@ export function SavedScreen() {
     if (!tt || tt.notice) return open(i);
     play({ id: i.key, season: i.season ?? undefined, episode: i.number ?? undefined, title: tt });
   };
-  /** Its middle button: Play once saved, Pause / Resume while saving. */
-  const hasMiddle = (e: Entry | undefined) => e?.kind === "item" && ["saving", "paused", "saved"].includes(e.item.state);
+  /** A show's episodes that can pause or go on (their torrent is in). */
+  const pausable = (g: SavedGroup) => g.items.filter((i) => i.state === "saving" || i.state === "paused");
+  const allPaused = (g: SavedGroup) => pausable(g).length > 0 && pausable(g).every((i) => i.state === "paused");
+  /** Pauses them all, or goes on with them all when all are paused. */
+  const pauseGroup = (g: SavedGroup) => {
+    const resume = allPaused(g);
+    for (const i of pausable(g)) if ((i.state === "paused") === resume) pauseSaved(i.id, !resume);
+  };
+  /** Its middle button: Play once saved, Pause / Resume while saving (a show's, for them all). */
+  const hasMiddle = (e: Entry | undefined) =>
+    e?.kind === "item" ? ["saving", "paused", "saved"].includes(e.item.state) : e?.kind === "group" && pausable(e.group).length > 0;
   const act = (e: Entry, p: number) => {
-    if (e.kind === "group") return p === 2 ? removeGroup(e.group) : toggle(e.section, e.group);
+    if (e.kind === "group") return p === 2 ? removeGroup(e.group) : p === 1 ? pauseGroup(e.group) : toggle(e.section, e.group);
     const i = e.item;
     if (p === 2) return removeItem(i);
     if (i.state === "saved") return playItem(i);
@@ -170,6 +180,8 @@ export function SavedScreen() {
               focusedPart={() => (here() ? part() : null)}
               viewRef={page.follow(here)}
               onToggle={() => act(e(), 0)}
+              onPause={section === "saving" ? () => act(e(), 1) : undefined}
+              paused={() => allPaused((e() as Extract<Entry, { kind: "group" }>).group)}
               onRemove={() => act(e(), 2)}
             />
           </If>

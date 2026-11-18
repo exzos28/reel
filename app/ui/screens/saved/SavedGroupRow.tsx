@@ -11,6 +11,8 @@ import { Fmt } from "../../native";
 import type { SavedGroup } from "../../library";
 import { alpha, colors, cs, targetSlop, u } from "../../theme";
 import chevronIcon from "../../icons/chevron.svg";
+import pauseIcon from "../../icons/pause.svg";
+import playIcon from "../../icons/play.svg";
 import closeIcon from "../../icons/plus.svg";
 
 const groupStyle = (focused: boolean): ViewStyle => ({ ...rowStyle(false, focused, u(24)), height: cs(108), paddingLeft: cs(10), paddingRight: cs(22) });
@@ -24,10 +26,14 @@ export function SavedGroupRow(props: {
   open: () => boolean;
   /** Whether its episodes are still saving (a progress bar for them all). */
   saving: boolean;
-  /** 0 the row, 2 remove; null: none. */
+  /** 0 the row, 1 pause or resume, 2 remove; null: none. */
   focusedPart: () => number | null;
   viewRef: (r: ViewRef) => void;
   onToggle: () => void;
+  /** Pauses its episodes that save, or (all paused) goes on with them; none: nothing to pause. */
+  onPause?: () => void;
+  /** Its episodes are all paused. */
+  paused: () => boolean;
   onRemove: () => void;
 }) {
   const g = props.group;
@@ -61,6 +67,16 @@ export function SavedGroupRow(props: {
         </View>
       </If>
       <View style={row(u(12))}>
+        <If when={props.onPause}>
+          <IconButton
+            size={44}
+            icon={() => (props.paused() ? playIcon : pauseIcon)}
+            label={() => t(props.paused() ? "saved.resume_all" : "saved.pause_all")}
+            focused={() => props.focusedPart() === 1}
+            background={() => colors.raise()}
+            onPress={props.onPause!}
+          />
+        </If>
         <View style={{ transform: [{ rotate: props.open() ? "180deg" : "0deg" }] }}>
           <Icon src={() => chevronIcon} size={22} color={() => colors.snow()} />
         </View>

@@ -111,24 +111,35 @@ export function watchSaved() {
 /** Read again right away (after the viewer acted). */
 const refresh = () => tick.set(tick() + 1);
 
+/** The last answer per call: an answer the same as the last one gives the same object, so
+ * what reads it does not draw again (as `catalog.ts` does). */
+const last = new Map<string, { raw: string; value: unknown }>();
+function parsed<T>(key: string, raw: string): T {
+  const before = last.get(key);
+  if (before && before.raw === raw) return before.value as T;
+  const value = JSON.parse(raw) as T;
+  last.set(key, { raw, value });
+  return value;
+}
+
 const EMPTY_LIST: SavedList = { saving: [], ready: [], failed: [], space: { saved: 0, free: null, folder: null } };
 
 export function savedList(): SavedList {
   tick();
   if (!librarySupported) return EMPTY_LIST;
-  return JSON.parse(Library.list());
+  return parsed<SavedList>("list", Library.list());
 }
 
 export function titleSaveState(id: string, show: boolean): SaveState {
   tick();
   if (!librarySupported) return { state: "none", progress: 0 };
-  return JSON.parse(Library.title(id, show));
+  return parsed<SaveState>(`title:${id}`, Library.title(id, show));
 }
 
 export function seasonPlan(show: string, season: number): SeasonPlan {
   tick();
   if (!librarySupported) return { episodes: [], saved: 0, total: 0, size: null };
-  return JSON.parse(Library.plan(show, season));
+  return parsed<SeasonPlan>(`plan:${show}:${season}`, Library.plan(show, season));
 }
 
 export function save(keys: string[]) {

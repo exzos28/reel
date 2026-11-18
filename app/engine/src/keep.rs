@@ -37,6 +37,17 @@ use reel_domain::{compat, episode, ports::KeepRequest, redact::redact, subtitles
 const RESERVE: u64 = 512 * 1024 * 1024;
 /// How often the background checks what completed.
 const TICK: Duration = Duration::from_secs(2);
+/// How long getting a torrent may take (the source's link, a magnet's metadata from peers)
+/// before the item fails: librqbit waits for peers as long as it takes.
+const FIND_FOR: Duration = Duration::from_secs(180);
+
+/// One lock per source being opened: episodes of one pack open it one after another, so the
+/// second finds the torrent the first added instead of fetching its metadata again.
+static OPENING: Mutex<Option<HashMap<String, Arc<tokio::sync::Mutex<()>>>>> = Mutex::new(None);
+
+fn opening(source: &str) -> Arc<tokio::sync::Mutex<()>> {
+    OPENING.lock().unwrap().get_or_insert_with(HashMap::new).entry(source.to_owned()).or_default().clone()
+}
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -61,6 +72,9 @@ pub struct Item {
     pub label: String,
     #[serde(default)]
     pub image: String,
+    /// The title's picture (a show's, for its row).
+    #[serde(default)]
+    pub cover: String,
     #[serde(default)]
     pub episode: Option<(u16, u16)>,
     /// Its torrent's folder (`<folder>/<Title (year)>`; before the torrent is known, the one it
@@ -392,6 +406,7 @@ pub fn add(req: KeepRequest) -> Result<u32, String> {
             title: req.title.clone(),
             label: req.label.clone(),
             image: req.image.clone(),
+            cover: req.cover.clone(),
             episode: req.episode,
             dir,
             infohash: None,
@@ -470,6 +485,8 @@ async fn open_source(source: &str) -> Result<(AddTorrent<'static>, Option<String
 async fn resolve(id: u32, source: String) {
     let Some((base, ep)) = with(|lib| lib.item_mut(id).map(|i| (i.dir.clone(), i.episode))).flatten() else { return };
     let Ok(core) = engine::core() else { return };
+    let lock = opening(&source);
+    let _opening = lock.lock().await;
     let (add, known) = match open_source(&source).await {
         Ok(x) => x,
         Err(e) => return set_failed(id, &e),
@@ -492,7 +509,12 @@ async fn resolve(id: u32, source: String) {
         output_folder: Some(dir.to_string_lossy().into_owned()),
         ..Default::default()
     };
-    let (tid, handle) = match core.session.add_torrent(add, Some(options)).await {
+    let added = match tokio::time::timeout(FIND_FOR, core.session.add_torrent(add, Some(options))).await {
+        Ok(r) => r,
+        // Nobody gave the torrent's metadata in time: no one shares it now.
+        Err(_) => return set_failed(id, "no_peers"),
+    };
+    let (tid, handle) = match added {
         Ok(AddTorrentResponse::Added(tid, handle)) => {
             leases::with(|l| l.take_keep(tid));
             (tid, handle)
@@ -513,6 +535,7 @@ async fn resolve(id: u32, source: String) {
                         return; // removed meanwhile
                     }
                 }
+                drop(_opening);
                 return Box::pin(resolve(id, source)).await;
             }
             (tid, handle)
@@ -679,6 +702,7 @@ pub fn list() -> Value {
                     "title": i.title,
                     "label": i.label,
                     "image": i.image,
+                    "cover": if i.cover.is_empty() { &i.image } else { &i.cover },
                     "season": i.episode.map(|e| e.0),
                     "number": i.episode.map(|e| e.1),
                     "state": state,
@@ -852,6 +876,7 @@ mod tests {
             title: "Show".into(),
             label: String::new(),
             image: String::new(),
+            cover: String::new(),
             episode: Some((1, 2)),
             dir: PathBuf::from("/films/Show"),
             infohash: Some("ab".into()),
@@ -980,6 +1005,7 @@ mod tests {
             title: "T".into(),
             label: String::new(),
             image: String::new(),
+            cover: String::new(),
             episode: None,
             dir: PathBuf::from(dir),
             infohash: Some(hash.into()),

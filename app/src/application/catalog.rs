@@ -993,7 +993,15 @@ pub fn save_request(key: &str) -> SaveAsk {
         year: info.year.map(u32::from),
         label,
         image: image.unwrap_or_default(),
+        cover: info.still.clone().unwrap_or_default(),
     })
+}
+
+/// A title's still as the catalog has it now (never asking the network), for the Saved row
+/// of a show's episodes.
+pub fn known_still(id: &str) -> Option<String> {
+    let t = peek(&Call::Title(id.to_owned()))?;
+    from_title(&t).still
 }
 
 /// The release the season's episodes play from and its files, when known (sizes in the

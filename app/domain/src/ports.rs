@@ -125,8 +125,10 @@ pub struct KeepRequest {
     pub year: Option<u32>,
     /// What else the row says ("S3:E5 · The Palace of Terror"), may be empty.
     pub label: String,
-    /// A picture of it (a still), may be empty.
+    /// A picture of it (a film's still, an episode's), may be empty.
     pub image: String,
+    /// The title's own picture (a show's still, for the row of all its episodes), may be empty.
+    pub cover: String,
 }
 
 /// What the engine needs from the application: the catalog's decision and the progress.

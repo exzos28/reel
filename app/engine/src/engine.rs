@@ -382,6 +382,11 @@ fn session_options() -> SessionOptions {
             ..Default::default()
         }),
         peer_limit: Some(PEER_LIMIT),
+        // librqbit's permits for blocking work (`runtime_worker_threads` sizes only that):
+        // every open stream holds one while it is open (the player's, warming, subtitles) and
+        // adding a torrent needs one, so with its 8 a film playing kept a saved one from
+        // being added for minutes. Not threads: the runtime keeps its own.
+        runtime_worker_threads: Some(BLOCKING_PERMITS),
         // The DHT's state in reel's own file: librqbit's default asks the OS for a project
         // directory, which Android has none of ("cannot determine project directory"), and
         // the session did not start. Beside the cache, not in it (the cache is wiped).
@@ -395,6 +400,9 @@ fn session_options() -> SessionOptions {
         ..Default::default()
     }
 }
+
+/// librqbit's permits for blocking work: one per open stream, one per torrent being added.
+const BLOCKING_PERMITS: usize = 64;
 
 /// Peers connected or being connected per torrent (librqbit's default is 128).
 const PEER_LIMIT: usize = 300;

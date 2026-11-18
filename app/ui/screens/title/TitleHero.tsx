@@ -1,4 +1,4 @@
-import { Text, View, type TextStyle, type ViewStyle } from "nsh";
+import { computed, Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { playLabel, releaseLine, releasesText, type Title } from "../../catalog";
 import { t } from "nsh/i18n";
 import { StateLine } from "../../kit/StateLine";
@@ -68,6 +68,8 @@ export function TitleHero(props: {
   onReleases: () => void;
 }) {
   const show = () => props.data().kind === "show";
+  /** Asked once per second (and per change), not once per place that shows it. */
+  const saveState = computed(() => titleSaveState(props.data().id, show()));
   const line = () => releaseLine(props.data().release!, false);
   const focused = (a: HeroAction) => () => {
     const at = props.focusedAt();
@@ -85,7 +87,7 @@ export function TitleHero(props: {
       <View style={actionsRow(false)}>
         <PlayButton label={() => playLabel(props.data())} focused={focused("play")} onPress={props.onPlay} />
         <If when={librarySupported}>
-          <SaveButton state={() => titleSaveState(props.data().id, show())} show={show} focused={focused("save")} onPress={props.onSave} />
+          <SaveButton state={saveState} show={show} focused={focused("save")} onPress={props.onSave} />
         </If>
         <If when={props.data().trailer}>
           <TrailerButton focused={focused("trailer")} onPress={props.onTrailer} />

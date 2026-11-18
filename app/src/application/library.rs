@@ -224,7 +224,9 @@ fn groups(items: Vec<Value>) -> Vec<Value> {
             json!({
                 "id": id,
                 "title": first["title"],
-                "image": first["image"],
+                // A show's own picture: the catalog's when it has it (items saved before they
+                // kept one), else the one kept with them.
+                "image": if show { catalog::known_still(&id).map(Value::from).unwrap_or_else(|| first["cover"].clone()) } else { first["cover"].clone() },
                 "show": show,
                 "count": items.len(),
                 "size": size,
@@ -282,8 +284,8 @@ mod tests {
 
     #[test]
     fn a_shows_episodes_are_one_group_a_film_its_own() {
-        let ep = |n: u64| json!({ "key": format!("tmdb:tv:1:s1e{n}"), "title": "Show", "image": "", "season": 1, "number": n, "size": 100, "have": 50 });
-        let film = json!({ "key": "tmdb:movie:7", "title": "Film", "image": "", "season": null, "number": null, "size": 10, "have": 10 });
+        let ep = |n: u64| json!({ "key": format!("tmdb:tv:1:s1e{n}"), "title": "Show", "image": "", "cover": "", "season": 1, "number": n, "size": 100, "have": 50 });
+        let film = json!({ "key": "tmdb:movie:7", "title": "Film", "image": "", "cover": "", "season": null, "number": null, "size": 10, "have": 10 });
         let g = groups(vec![ep(3), film, ep(1)]);
         assert_eq!(g.len(), 2);
         assert_eq!(g[0]["id"], "tmdb:tv:1");

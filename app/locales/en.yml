@@ -470,6 +470,8 @@ saved:
   resume: Go on saving
   remove: Remove
   remove_all: Remove all episodes
+  pause_all: Pause all episodes
+  resume_all: Go on saving all episodes
   remove_title: "Remove “%{name}”?"
   remove_about: "%{size} is deleted from this device. You can save it again later."
   open_folder: Open folder
@@ -481,7 +483,7 @@ saved:
     free: "%{size} free"
   state:
     searching: Finding a release…
-    resolving: Getting the torrent…
+    resolving: Finding people who share it…
     saving: "%{percent}% · %{have} of %{size}"
     paused: "Paused · %{have} of %{size}"
     waiting: Starts when the film you watch stops
@@ -493,6 +495,9 @@ saved:
     unsupported: This release does not play on this device
     no_video: No video in this release
     interrupted: Stopped before it started. Save it again.
+    no_peers: No one shares this release now. Save it again later, or pick another release.
+    no_space: The disk is full. Free some space and save it again.
+    write: Could not write to the folder. Save it again.
     other: Could not be saved. Save it again.
   drawer:
     title: Save to this device

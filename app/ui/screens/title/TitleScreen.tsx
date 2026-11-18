@@ -74,7 +74,7 @@ export function TitleScreen(props: { id: string }) {
   const saveAt = signal(0);
   const NO_PLAN: SeasonPlan = { episodes: [], saved: 0, total: 0, size: null };
   /** Asked only while the drawer is open (the plan reads the season's release and its files). */
-  const plan = () => (zone() === "save" ? seasonPlan(props.id, saveSeason()) : NO_PLAN);
+  const plan = computed(() => (zone() === "save" ? seasonPlan(props.id, saveSeason()) : NO_PLAN));
   const saveRows = () => plan().episodes.length + 2;
   const openSave = () => {
     if (!isShow()) {

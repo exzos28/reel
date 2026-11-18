@@ -27,8 +27,10 @@ function ConfirmCard(props: { ask: Confirm; onClose: () => void }) {
   /** 0: Cancel, 1: the action. */
   const at = signal(0);
   const choose = (i: number) => {
+    // Taken before closing: closing clears the question this card was given.
+    const confirm = props.ask.onConfirm;
     props.onClose();
-    if (i === 1) props.ask.onConfirm();
+    if (i === 1) confirm();
   };
   // Newer than the page's bindings, so the page under it does not move.
   keymap.bind({ left: () => at.set(0), right: () => at.set(1), up: () => {}, down: () => {}, enter: () => choose(at()) });
