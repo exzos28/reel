@@ -28,7 +28,7 @@ export function HomeHero(props: {
   return (
     // Steady where the focus moves the hero from card to card (keys); on touch it stays on one
     // title, its text right under the head, as tall as its text (the still fades under what follows).
-    <Hero item={props.item} height={HOME_HERO.height} titleSize={96} top={heroTop("root", caps.touch ? 0 : HOME_HERO.top)} steadyAbout={!caps.touch} wholeTitle={heroFollowsWindow} fit={caps.touch} room={56} onOpen={props.onOpen}>
+    <Hero item={props.item} height={HOME_HERO.height} titleSize={88} top={heroTop("root", caps.touch ? 0 : HOME_HERO.top)} steadyAbout={!caps.touch} wholeTitle={heroFollowsWindow} fit={caps.touch} room={56} onOpen={props.onOpen}>
       <ReleaseText item={props.item} />
       <View style={actionsRow(false)}>
         <PlayButton label={() => playLabel(props.item())} focused={() => props.focusedAt() === 0} onPress={props.onPlay} />

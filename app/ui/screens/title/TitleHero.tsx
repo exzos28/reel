@@ -81,7 +81,8 @@ export function TitleHero(props: {
       item={props.data}
       height={show() ? 640 : 700}
       backdropLeft={show() ? 520 : 560}
-      titleSize={show() ? 76 : 88}
+      // The same size as Home's hero: the title's own page never shows it smaller.
+      titleSize={88}
       top={heroTop("title", show() ? 150 : 176)}
       fit
       wholeAbout={wholeAboutInHero}

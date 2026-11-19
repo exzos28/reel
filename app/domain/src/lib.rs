@@ -16,3 +16,4 @@ pub mod release;
 pub mod search;
 pub mod subtitles;
 pub mod timeline;
+pub mod typo;

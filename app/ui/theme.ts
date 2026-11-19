@@ -92,9 +92,13 @@ const text = (size: number, weight: number, extra: TextStyle = {}): TextStyle =>
 
 /** The type scale (TV pixels; nothing below 20 on a TV). */
 export const type = {
-  /** The film's title as a thin, wide-tracked logotype. */
-  logotype: (size: number): TextStyle =>
-    text(size, 200, { textTransform: "uppercase", fontSize: u(size), letterSpacing: u(size) * 0.22, lineHeight: u(size) * 1.05 }),
+  /** The film's title as a light, wide-tracked logotype. `chars`: the title's length: a long
+   * one is tracked tighter (0.22em for 12 characters or fewer, down to 0.10em from 28), so its
+   * words stay apart and it keeps to fewer lines; 300, not 200: thin strokes blur over a still. */
+  logotype: (size: number, chars = 0): TextStyle => {
+    const tracking = 0.22 - 0.12 * Math.min(1, Math.max(0, (chars - 12) / 16));
+    return text(size, 300, { textTransform: "uppercase", fontSize: u(size), letterSpacing: u(size) * tracking, lineHeight: u(size) * 1.12 });
+  },
   page: () => text(60, 600, { letterSpacing: -u(1) }),
   section: () => text(30, 600),
   body: () => text(26, 400, { lineHeight: ts(36) }),
