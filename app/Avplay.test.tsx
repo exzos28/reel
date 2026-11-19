@@ -123,7 +123,9 @@ test("a run of presses is one seek, sent once the arrows rest; the scrubber keep
   expect(ops().filter((o) => o.op === "seek")).toEqual([]); // AVPlay not asked yet
   await app.waitUntil(() => ops().some((o) => o.op === "seek"));
   expect(ops().filter((o) => o.op === "seek")).toEqual([{ op: "seek", position: 51 }]);
-  // The loader shows from the seek on (AVPlay holds the page while it seeks).
+  // The loader shows once the seek takes a moment (not for one into what is downloaded).
+  expect(app.shows("buffering")).toBe(false);
+  await app.wait(400);
   expect(app.shows("buffering")).toBe(true);
   // AVPlay still reports the old place while it seeks: the scrubber stays on the target.
   await event({ type: "time", position: 2 });
@@ -139,6 +141,7 @@ test("AVPlay's seeked ends the seek's loader, landed on a keyframe before the ta
   await app.keyboard.press("right");
   await app.keyboard.press("right"); // 0:21
   await app.waitUntil(() => ops().some((o) => o.op === "seek"));
+  await app.wait(400);
   expect(app.shows("buffering")).toBe(true);
   await event({ type: "seeked" });
   await event({ type: "time", position: 16 }); // the keyframe, 5 s before
@@ -177,6 +180,15 @@ test("a seek holds the picture still while its place comes, and plays on once it
   expect(shown().slice(before)).toEqual(["pause", "seek", "play"]);
   await event({ type: "seeked" });
   expect(shown().slice(before).length).toBe(3); // nothing more
+});
+
+test("a seek that arrives at once shows no loader", async () => {
+  const { app, ops, event } = await playing();
+  await app.keyboard.press("right"); // 0:11
+  await app.waitUntil(() => ops().some((o) => o.op === "seek"));
+  await event({ type: "seeked" }); // into what is downloaded: there at once
+  await app.wait(400);
+  expect(app.shows("buffering")).toBe(false);
 });
 
 test("a seek the core replaced (the job closed) never goes to AVPlay, and its loader goes", async () => {
