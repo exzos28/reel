@@ -8,62 +8,121 @@ pub fn is_video(name: &str) -> bool {
     name.rsplit_once('.').is_some_and(|(_, ext)| VIDEO.iter().any(|v| ext.eq_ignore_ascii_case(v)))
 }
 
-/// The file (index into the torrent) to play: for an episode, the video whose
-/// name says that season and episode; failing that, in a season pack whose
-/// names carry no numbers we can read, the `episode`-th video in name order;
-/// for a film, the largest video. `files` are (index, path, length).
+/// The file (index into the torrent) to play: for a film, the largest video; for an episode,
+/// one way of numbering decided once for the whole pack (not one tried after another, which
+/// would play a wrong episode when the right one is missing):
+/// - names that say the season and episode ("S01E03", the season maybe only in a folder);
+/// - else the number that changes from file to file ("Title - 03 [1080p]", "Title 03.mkv",
+///   "Shippuuden 362 RAW"): the episode's own number;
+/// - else, when no name carries a number at all, the `episode`-th video in name order.
+///
+/// Extras beside the episodes (openings, endings, specials, trailers, samples) are never an
+/// episode. `files` are (index, path, length).
 pub fn pick(files: &[(usize, String, u64)], episode: Option<(u16, u16)>) -> Option<usize> {
     let videos: Vec<&(usize, String, u64)> = files.iter().filter(|(_, n, _)| is_video(n)).collect();
     let Some((season, ep)) = episode else {
         return videos.iter().max_by_key(|(_, _, len)| *len).map(|(i, _, _)| *i);
     };
+    let episodes: Vec<&(usize, String, u64)> = videos.into_iter().filter(|(_, p, _)| !is_extra(p)).collect();
 
-    // A file named for exactly this episode (the season may only be in a folder name).
-    let named = videos.iter().find(|(_, path, _)| {
-        let file = path.rsplit(['/', '\\']).next().unwrap_or(path);
-        let info = release::parse(file);
-        let folder = release::parse(path);
-        let season_ok = info.season.or(folder.season).is_none_or(|s| s == season);
-        season_ok && info.episodes.contains(&ep)
-    });
-    if let Some((i, _, _)) = named {
-        return Some(*i);
+    // Names with the season and episode.
+    let said: Vec<(&(usize, String, u64), crate::release::ReleaseInfo, Option<u16>)> = episodes
+        .iter()
+        .map(|f| {
+            let file = file_name(&f.1);
+            (*f, release::parse(file), release::parse(&f.1).season)
+        })
+        .filter(|(_, info, _)| !info.episodes.is_empty())
+        .collect();
+    if !said.is_empty() {
+        return said
+            .iter()
+            .find(|(_, info, folder)| info.season.or(*folder).is_none_or(|s| s == season) && info.episodes.contains(&ep))
+            .map(|(f, _, _)| f.0);
     }
 
-    // Episodes numbered without SxxEyy: "03 - Title.mkv", "[03].mkv", "E03.mkv".
-    let by_number = videos.iter().find(|(_, path, _)| {
-        let file = path.rsplit(['/', '\\']).next().unwrap_or(path);
-        leading_number(file) == Some(ep)
-    });
-    if let Some((i, _, _)) = by_number {
-        return Some(*i);
+    // The number that changes from file to file.
+    if let Some(numbers) = varying_numbers(&episodes) {
+        return episodes.iter().zip(numbers).find(|(_, n)| *n == ep).map(|(f, _)| f.0);
     }
 
-    // Last resort: the n-th video in name order, only when no name carries
-    // episode numbers (otherwise a missing episode would pick a wrong one).
-    let numbered = videos.iter().any(|(_, path, _)| !release::parse(path).episodes.is_empty());
-    if numbered {
-        return None;
-    }
-    let mut sorted: Vec<_> = videos.into_iter().collect();
+    // No number anywhere: the n-th video in name order.
+    let mut sorted = episodes;
     sorted.sort_by(|a, b| a.1.cmp(&b.1));
     sorted.get(ep.checked_sub(1)? as usize).map(|(i, _, _)| *i)
 }
 
-/// A number the file name starts with, after brackets or an E: "03 - …", "[03] …", "E03 …".
-fn leading_number(file: &str) -> Option<u16> {
-    let s = file.trim_start_matches(['[', '(', ' ', '_', '-']);
-    let s = s.strip_prefix(['E', 'e']).unwrap_or(s);
-    let digits: String = s.chars().take_while(|c| c.is_ascii_digit()).collect();
-    if digits.is_empty() || digits.len() > 3 {
+fn file_name(path: &str) -> &str {
+    path.rsplit(['/', '\\']).next().unwrap_or(path)
+}
+
+/// Folder names that hold extras, whole words in any case ("OP-ED [Creditless]", "Extras",
+/// "Special", "Bonus").
+const EXTRA_FOLDERS: [&str; 16] =
+    ["op", "ed", "ncop", "nced", "creditless", "opening", "openings", "ending", "endings", "extra", "extras", "bonus", "special", "specials", "trailers", "samples"];
+/// The same in a file's own name, only as tags release groups write in capitals ("Naruto ED - 01",
+/// "NCOP1", "Creditless"): a word like "Ending" or "Special" may be an episode's title.
+const EXTRA_TAGS: [&str; 9] = ["OP", "ED", "NCOP", "NCED", "Creditless", "CREDITLESS", "PV", "Trailer", "Sample"];
+
+/// Whether the file is an extra beside the episodes: in a folder named so, or tagged so.
+pub fn is_extra(path: &str) -> bool {
+    let mut parts: Vec<&str> = path.split(['/', '\\']).collect();
+    let file = parts.pop().unwrap_or("");
+    let words = |s: &str| s.split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).map(str::to_owned).collect::<Vec<_>>();
+    let in_folder = parts.iter().any(|folder| words(folder).iter().any(|w| EXTRA_FOLDERS.contains(&w.to_lowercase().as_str())));
+    let tagged = words(file).iter().any(|w| {
+        let bare = w.trim_end_matches(|c: char| c.is_ascii_digit());
+        EXTRA_TAGS.contains(&bare) && (bare.len() > 2 || bare.chars().all(|c| c.is_ascii_uppercase()))
+    });
+    in_folder || tagged
+}
+
+/// The numbers in a file's name, in order, except those of tags around them: a resolution
+/// ("1080p", "768x576"), a codec's ("H.264", "x265", "10bit", "DDP2.0"), a hash ("[A1B2C3D4]").
+fn numbers(file: &str) -> Vec<u16> {
+    let stem = file.rsplit_once('.').map_or(file, |(s, _)| s);
+    let mut out = Vec::new();
+    let chars: Vec<char> = stem.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i].is_ascii_digit() {
+            let start = i;
+            while i < chars.len() && chars[i].is_ascii_digit() {
+                i += 1;
+            }
+            // Glued to a letter on either side ("x264", "10bit", "1080p", "S3", "P1"): a tag, not an episode.
+            let before = start.checked_sub(1).map(|j| chars[j]);
+            let after = chars.get(i).copied();
+            // An episode's own E ("E01", "- E12") is no tag.
+            let episode_e = matches!(before, Some('E' | 'e')) && (start < 2 || !chars[start - 2].is_alphabetic());
+            let glued = (before.is_some_and(char::is_alphabetic) && !episode_e) || after.is_some_and(char::is_alphabetic);
+            // A decimal ("2.0", "5.1", "H.264"): part of an audio or codec tag.
+            let decimal = before == Some('.') && start >= 2 && chars[start - 2].is_ascii_digit()
+                || after == Some('.') && chars.get(i + 1).is_some_and(char::is_ascii_digit)
+                || before == Some('.') && start >= 2 && chars[start - 2].is_alphabetic();
+            let digits: String = chars[start..i].iter().collect();
+            if !glued && !decimal && digits.len() <= 4 {
+                if let Ok(n) = digits.parse() {
+                    out.push(n);
+                }
+            }
+        } else {
+            i += 1;
+        }
+    }
+    out
+}
+
+/// Each file's episode number, when the pack numbers its files: the first position where the
+/// files' numbers differ (and every file has a number there). None when they do not.
+fn varying_numbers(files: &[&(usize, String, u64)]) -> Option<Vec<u16>> {
+    if files.len() < 2 {
         return None;
     }
-    // Not a year or a resolution.
-    let next = s[digits.len()..].chars().next();
-    if matches!(next, Some('p' | 'P' | 'i')) {
-        return None;
-    }
-    digits.parse().ok()
+    let all: Vec<Vec<u16>> = files.iter().map(|f| numbers(file_name(&f.1))).collect();
+    let shortest = all.iter().map(Vec::len).min()?;
+    let at = (0..shortest).find(|&k| all.iter().any(|n| n[k] != all[0][k]))?;
+    Some(all.iter().map(|n| n[at]).collect())
 }
 
 #[cfg(test)]
@@ -108,9 +167,57 @@ mod tests {
 
     #[test]
     fn numbers_that_are_not_episodes() {
-        assert_eq!(leading_number("1080p.mkv"), None);
-        assert_eq!(leading_number("1936 Flash.mkv"), None);
-        assert_eq!(leading_number("[07] Title.mkv"), Some(7));
-        assert_eq!(leading_number("E12.mkv"), Some(12));
+        assert_eq!(numbers("[SOFCJ-Raws] Naruto - 096 (DVDRip 768x576 HEVC VFR 10bit FLAC).mkv"), vec![96]);
+        assert_eq!(numbers("Frieren.S02.WEB-DL.JPN.DDP2.0.H.264.mkv"), Vec::<u16>::new());
+        assert_eq!(numbers("[SOFCJ-Raws] Shingeki no Kyojin - S3 - P1 - E05 [WEB-DL KP 1080p].mkv"), vec![5]);
+        assert_eq!(numbers("Доктор кто 02 - 01 - Новая Земля.mkv"), vec![2, 1]);
+        assert_eq!(numbers("E12.mkv"), vec![12]);
+    }
+
+    // Packs as they are on a tracker (docs/release-names.md).
+    #[test]
+    fn extras_are_never_an_episode() {
+        let naruto = files(&[
+            "OP-ED [Creditless]/Endings/[SOFCJ-Raws] Naruto ED - 01 (DVDRip 768x576 HEVC VFR 10bit FLAC).mkv",
+            "OP-ED [Creditless]/Openings/[SOFCJ-Raws] Naruto OP - 07 (DVDRip 768x576 HEVC VFR 10bit FLAC).mkv",
+            "[SOFCJ-Raws] Naruto - 001 (DVDRip 768x576 HEVC VFR 10bit FLAC).mkv",
+            "[SOFCJ-Raws] Naruto - 002 (DVDRip 768x576 HEVC VFR 10bit FLAC).mkv",
+            "[SOFCJ-Raws] Naruto - 023 (DVDRip 768x576 HEVC VFR 10bit FLAC).mkv",
+        ]);
+        assert_eq!(pick(&naruto, Some((1, 1))), Some(2));
+        assert_eq!(pick(&naruto, Some((1, 23))), Some(4));
+        assert_eq!(pick(&naruto, Some((1, 7))), None, "an opening's number is not an episode");
+        let frieren = files(&[
+            "Special/[Beatrice-Raws] Sousou no Frieren - 01 [BDRip 1080p x265 Dolby TrueHD].mkv",
+            "[Beatrice-Raws] Sousou no Frieren - 01 [BDRip 1080p x265 Dolby TrueHD].mkv",
+            "[Beatrice-Raws] Sousou no Frieren - 02 [BDRip 1080p x265 Dolby TrueHD].mkv",
+        ]);
+        assert_eq!(pick(&frieren, Some((1, 1))), Some(1));
+        let shippuuden = files(&[
+            "Creditless OP-ED/[SOFCJ-Raws] Naruto Shippuuden - ED 01 Creditless (DVDRip 768x576 x264 10bit FLAC).mkv",
+            "Extras/Naruto Super Hits 2006-2008 Promo [DVDRip].mkv",
+            "[SOFCJ-Raws] Naruto Shippuuden - 001 (DVDRip 768x576 x264 VFR 10bit AC3).mkv",
+            "[SOFCJ-Raws] Naruto Shippuuden - 002 (DVDRip 768x576 x264 VFR 10bit AC3).mkv",
+        ]);
+        assert_eq!(pick(&shippuuden, Some((1, 1))), Some(2));
+        // A word like "Ending" in an episode's own title is no extra.
+        assert!(!is_extra("Show.S01E10.The.Ending.mkv"));
+        assert!(!is_extra("Criminal.Minds.S01E01.mkv"));
+    }
+
+    #[test]
+    fn the_number_that_changes_is_the_episode() {
+        let raw = files(&["17# War [362-372]/NARUTO Shippuuden 362 RAW.mp4", "17# War [362-372]/NARUTO Shippuuden 363 RAW.mp4"]);
+        assert_eq!(pick(&raw, Some((1, 363))), Some(1));
+        let aot = files(&["[SOFCJ-Raws] Shingeki no Kyojin - S3 - P1 - E01 [WEB-DL KP 1080p].mkv", "[SOFCJ-Raws] Shingeki no Kyojin - S3 - P1 - E02 [WEB-DL KP 1080p].mkv"]);
+        assert_eq!(pick(&aot, Some((3, 2))), Some(1));
+        let who = files(&["Доктор кто 02 - 00 - Рождественское вторжение.mkv", "Доктор кто 02 - 01 - Новая Земля.mkv", "Доктор кто 02 - 02 - Зуб и коготь.mkv"]);
+        assert_eq!(pick(&who, Some((2, 1))), Some(1), "02 - 01 is the first episode, not the special 00");
+        let jjk = files(&["[BudLightSubs] Jujutsu Kaisen S3 - 01 [1080p].mkv", "[BudLightSubs] Jujutsu Kaisen S3 - 02 [1080p].mkv"]);
+        assert_eq!(pick(&jjk, Some((3, 2))), Some(1));
+        // A missing episode is not another one by order.
+        let gap = files(&["Show - 01.mkv", "Show - 02.mkv", "Show - 04.mkv"]);
+        assert_eq!(pick(&gap, Some((1, 3))), None);
     }
 }
+
