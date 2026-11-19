@@ -7,6 +7,7 @@ import { computed, Image, keymap, signal, Text, View, type TextStyle, type ViewS
 import { t } from "nsh/i18n";
 import { episodeCode, episodes, runtime, shortDate, title, type Episode, type Summary } from "./catalog";
 import { Scroller, scroller } from "./layout/Scroller";
+import { byKeys } from "./focus/keys";
 import { onBack } from "./nav";
 import { alpha, colors, focusRing, font, radius, ringRoom, safe, showFocus, ts, type, u } from "./theme";
 
@@ -57,12 +58,18 @@ export function PlayerEpisodes(props: {
       at.set(-1);
     }
   };
-  // Newer than the player's bindings: the picture under the panel does not move.
+  // Newer than the player's bindings: the picture under the panel does not move. The arrows
+  // through `byKeys`: the moves count as the keys', which the lists' scroll views follow.
+  keymap.bind(
+    byKeys({
+      up: () => at.set(Math.max(-1, at() - 1)),
+      down: () => at.set(Math.min(list().length - 1, at() + 1)),
+      left: () => moveSeason(-1),
+      right: () => moveSeason(1),
+    }),
+    { repeat: true },
+  );
   keymap.bind({
-    up: () => at.set(Math.max(-1, at() - 1)),
-    down: () => at.set(Math.min(list().length - 1, at() + 1)),
-    left: () => moveSeason(-1),
-    right: () => moveSeason(1),
     enter: () => {
       const e = list()[at()];
       if (e) pick(e);

@@ -45,6 +45,10 @@ export const OVERLAY_MS = 5000;
 /** How long the Up next card counts down before the next episode plays. */
 export const UP_NEXT_MS = 6000;
 const SEEK_S = 10;
+/** A seek has arrived when the player's time is this near its target, s… */
+const SEEK_NEAR_S = 3;
+/** …or after this long anyway (it may land elsewhere, on a keyframe), ms. */
+const SEEK_WAIT_MS = 12000;
 /** How long a wait lasts before the buffering note shows, ms. */
 const STALL_MS = 300;
 
@@ -229,10 +233,15 @@ export function Player() {
   effect(() => { if (mayHide()) scheduleHide(); });
   cleanup(() => clearTimeout(hideTimer));
 
+  /** A seek on its way: where to and when it was asked. Until the player reports a time near
+   * it, its times are the old place's (a TV's AVPlay takes seconds to get there), so the
+   * scrubber keeps the target and the next press counts from it. */
+  let seeking: { to: number; at: number } | null = null;
   const seekTo = (seconds: number) => {
     const d = duration();
     const to = Math.max(0, d > 0 ? Math.min(seconds, d) : seconds);
     position.set(to);
+    seeking = { to, at: performance.now() };
     surface?.seek(to);
   };
   const seekBy = (d: number) => seekTo(position() + d);
@@ -446,7 +455,9 @@ export function Player() {
           onProgress={(e) => {
             // The last file's progress, still coming after the new one was asked for: not this one's.
             if (!loaded()) return;
-            position.set(e.currentTime);
+            // Still the old place's time while a seek is on its way: the scrubber keeps the target.
+            if (seeking && (Math.abs(e.currentTime - seeking.to) <= SEEK_NEAR_S || performance.now() - seeking.at > SEEK_WAIT_MS)) seeking = null;
+            if (!seeking) position.set(e.currentTime);
             cachedAhead.set(e.cached ?? 0);
             readAt.set({ byte: e.readAt ?? 0, time: e.readTime ?? 0 });
             if (e.duration > 0) duration.set(e.duration);
