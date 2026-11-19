@@ -38,8 +38,8 @@ const centreStyle = (): ViewStyle => ({
   ...cover(), alignItems: "center", justifyContent: "center", paddingHorizontal: safe().x,
 });
 const logotypeSize = () => (density === "compact" ? 64 : 88);
-const logotypeStyle = (): TextStyle => ({
-  numberOfLines: 2, ...type.logotype(logotypeSize()), color: colors.snow(), textAlign: "center", maxWidth: u(1400),
+const logotypeStyle = (title: string): TextStyle => ({
+  numberOfLines: 2, ...type.logotype(logotypeSize(), title.length), color: colors.snow(), textAlign: "center", maxWidth: u(1400),
 });
 const subtitleStyle = (): TextStyle => ({ ...type.meta(), color: colors.ash(), textAlign: "center", marginTop: u(14) });
 const lineStyle = (error: boolean): TextStyle => ({
@@ -77,7 +77,7 @@ export function PlayerStage(props: {
       <View style={veilStyle()} />
       <View style={centreStyle()}>
         <View style={{ alignItems: "center", ...breathe(!error()) }}>
-          <Text style={logotypeStyle()}>{titleText(s())}</Text>
+          <Text style={logotypeStyle(titleText(s()))}>{titleText(s())}</Text>
           <If when={props.subtitle() !== ""}>
             <Text style={subtitleStyle()}>{props.subtitle()}</Text>
           </If>

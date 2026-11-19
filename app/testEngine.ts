@@ -35,6 +35,7 @@ function summary(over: Record<string, unknown>) {
     ink: "#F5F5F5", paper: "#1A1A1A", stoppedAt: null, progress: 0, left: null, resume: null,
     seasons: 0, airs: null, tag: null, playable: true, inList: false, release: null,
     play: { id, start: 0 },
+    aboutShort: (over.aboutShort ?? over.about ?? "") as string,
     ...over,
   };
 }

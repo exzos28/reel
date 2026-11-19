@@ -44,6 +44,8 @@ export interface Summary {
   /** The title and its overview, in the app's language when the source has it. */
   title: string;
   about: string;
+  /** The about cut at a sentence's end for a hero's few lines (the core's). */
+  aboutShort: string;
   /** A stand-in card that says something instead (key under `empty.*`):
    * "no_tmdb", "loading", "offline", "unavailable". */
   notice: string | null;
@@ -313,6 +315,8 @@ type Named = Pick<Summary, "title" | "about" | "notice">;
 /** The title's name (a notice card: what it says). */
 export const titleText = (s: Named) => (s.notice ? t(`empty.${s.notice}.title`) : s.title);
 export const aboutText = (s: Named) => (s.notice ? t(`empty.${s.notice}.about`) : s.about);
+/** A hero's few lines of the about: whole sentences, not a cut mid-word. */
+export const shortAboutText = (s: Summary) => (s.notice ? t(`empty.${s.notice}.about`) : s.aboutShort);
 export const genresText = (s: Summary) => s.genres.join(", ");
 export const badgeText = (b: string) => t(`badge.${b}`);
 

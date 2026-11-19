@@ -28,7 +28,7 @@ use serde_json::{Value, json};
 use super::{progress, settings};
 use crate::wiring::{metadata, playback};
 use reel_domain::discover::{DiscoverKind, Filter};
-use reel_domain::{compat, episode};
+use reel_domain::{compat, episode, typo};
 
 mod details;
 mod filters;
@@ -341,11 +341,13 @@ fn rating(ratings: &Value) -> (String, String) {
 
 /// 950, 6.4K, 82K, 1.2M
 fn votes(n: u64) -> String {
+    // One decimal where it says something: "6.4K", but "1K", not "1.0K".
+    let one = |x: f64| format!("{x:.1}").trim_end_matches(".0").to_owned();
     match n {
         0..1_000 => n.to_string(),
-        1_000..10_000 => format!("{:.1}K", n as f64 / 1_000.0),
+        1_000..10_000 => format!("{}K", one(n as f64 / 1_000.0)),
         10_000..1_000_000 => format!("{}K", (n as f64 / 1_000.0).round()),
-        _ => format!("{:.1}M", n as f64 / 1_000_000.0),
+        _ => format!("{}M", one(n as f64 / 1_000_000.0)),
     }
 }
 
@@ -534,6 +536,8 @@ fn from_title(t: &Value) -> Info {
             .map(Vec::as_slice)
             .unwrap_or_default()
             .iter()
+            // "Animation" says nothing more of an anime.
+            .filter(|g| t["anime"].is_null() || g["id"] != "tmdb:16")
             .filter_map(|g| text(&g["name"]))
             .collect(),
         season_count: t["seasonCount"].as_u64().map(|n| n as u32).unwrap_or(seasons.len() as u32),
@@ -1138,8 +1142,8 @@ fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
         "show": show,
         "season": season,
         "number": number,
-        "title": text(&ep["name"]).unwrap_or_default(),
-        "about": text(&ep["overview"]).unwrap_or_default(),
+        "title": typo::tidy(&text(&ep["name"]).unwrap_or_default(), &settings::content_language()),
+        "about": typo::tidy(&text(&ep["overview"]).unwrap_or_default(), &settings::content_language()),
         "minutes": minutes,
         "date": ymd(&ep["airDate"]),
         "rating": rating(&ep["ratings"]).0,
@@ -1257,6 +1261,9 @@ fn where_in(info: &Info) -> Where {
     }
 }
 
+/// The most characters of a hero's short description (about three lines on a TV).
+const ABOUT_SHORT: usize = 220;
+
 /// What a card, a shelf and a hero show of a title.
 fn summary(info: &Info) -> Value {
     let w = where_in(info);
@@ -1264,11 +1271,14 @@ fn summary(info: &Info) -> Value {
         Some((s, e)) => json!({ "id": w.key, "season": s, "episode": e, "start": w.start }),
         None => json!({ "id": w.key, "start": w.start }),
     };
+    let lang = settings::content_language();
     json!({
         "id": info.id,
         "kind": if info.show { "show" } else { "movie" },
-        "title": info.title,
-        "about": info.about,
+        "title": typo::tidy(&info.title, &lang),
+        "about": typo::tidy(&info.about, &lang),
+        // A hero's few lines: whole sentences, so its cut never lands mid-thought.
+        "aboutShort": typo::tidy(&typo::short_about(&info.about, ABOUT_SHORT), &lang),
         "notice": null,
         "anime": info.anime,
         "year": info.year,
@@ -1279,7 +1289,7 @@ fn summary(info: &Info) -> Value {
         "ratings": details::ratings(&info.ratings),
         "certification": details::certification(&info.certifications, &settings::content_language()),
         "badges": [],
-        "genres": info.genres,
+        "genres": info.genres.iter().map(|g| typo::genre(g)).collect::<Vec<_>>(),
         "still": info.still,
         "card": info.card.as_ref().or(info.still.as_ref()),
         "poster": info.poster,

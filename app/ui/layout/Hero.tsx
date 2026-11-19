@@ -2,7 +2,7 @@
 // screen and fading into the background, the logotype, meta, genres,
 // about and the actions bottom-left.
 import { computed, Image, Text, View, windowSize, type ImageStyle, type JSX, type TextStyle, type ViewStyle } from "nsh";
-import { aboutText, genresText, titleText, type Summary } from "../catalog";
+import { aboutText, genresText, shortAboutText, titleText, type Summary } from "../catalog";
 import { cover } from "../kit/shape";
 import { bodyText, metaText } from "../kit/text";
 import { alpha, colors, heroFade, insetMaxWidth, safe, ts, type, u } from "../theme";
@@ -85,9 +85,9 @@ const aboutStyle = (steady: boolean, whole: boolean): TextStyle => {
 };
 /** The title: two lines on a TV and touch; a desktop's whole, however many lines (its hero grows
  * with its text, Home's too). */
-const logotypeStyle = (size: number, whole: boolean): TextStyle => ({
+const logotypeStyle = (size: number, whole: boolean, title: string): TextStyle => ({
   ...(!heroFollowsWindow || !whole ? { numberOfLines: 2 } : {}),
-  ...type.logotype(size),
+  ...type.logotype(size, title.length),
   color: colors.snow(),
   marginBottom: u(10),
 });
@@ -147,16 +147,16 @@ export function Hero(props: {
       </If>
       {/* Not fit to its text: room under the actions before what follows. */}
       <View style={props.steadyAbout ? steadyBlockStyle(props.top, props.height, box().height) : textBlockStyle(props.top, u(props.room ?? (props.fit ? 0 : 56)))}>
-        <If when={props.onOpen} else={<Text style={logotypeStyle(props.titleSize, !!props.wholeTitle)}>{titleText(s())}</Text>}>
+        <If when={props.onOpen} else={<Text style={logotypeStyle(props.titleSize, !!props.wholeTitle, titleText(s()))}>{titleText(s())}</Text>}>
           {(open) => (
             <View role="link" accessibilityLabel={titleText(s())} onPress={open()} style={{ alignSelf: "flex-start" }}>
-              <Text style={logotypeStyle(props.titleSize, !!props.wholeTitle)}>{titleText(s())}</Text>
+              <Text style={logotypeStyle(props.titleSize, !!props.wholeTitle, titleText(s()))}>{titleText(s())}</Text>
             </View>
           )}
         </If>
         <MetaLine item={s} />
         <Text style={{ ...metaText(), fontSize: ts(24) }}>{genresText(s())}</Text>
-        <Text style={aboutStyle(!!props.steadyAbout, !!props.wholeAbout)}>{aboutText(s())}</Text>
+        <Text style={aboutStyle(!!props.steadyAbout, !!props.wholeAbout)}>{props.wholeAbout ? aboutText(s()) : shortAboutText(s())}</Text>
         {props.children}
       </View>
     </View>
