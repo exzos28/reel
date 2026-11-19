@@ -149,7 +149,8 @@ test("left and right seek 10 seconds on the scrubber", async () => {
 test("down moves to the buttons; left and right pick one, enter runs it", async () => {
   const app = await playing();
   await app.keyboard.press("down"); // on play/pause
-  expect(app.texts()).toContain("Pause"); // the focused button's label shows
+  expect(app.shows("label:Pause")).toBe(true);
+  expect(app.texts()).not.toContain("Pause"); // no caption over the buttons, the icon only
   await app.keyboard.press("right"); // → forward 10 s
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("0:10");

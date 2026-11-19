@@ -719,7 +719,7 @@ function Scrubber(props: {
   );
 }
 
-/** A round player button: no visible label; the focused one shows it above. */
+/** A round player button: its icon only (the label is for screen readers). */
 function RoundButton(props: {
   icon: () => ImageAsset;
   label: () => string;
@@ -729,16 +729,6 @@ function RoundButton(props: {
 }) {
   return (
     <View style={{ alignItems: "center" }}>
-      <If when={props.focused()}>
-        <View
-          style={{
-            position: "absolute", bottom: u(86), paddingHorizontal: u(14), paddingVertical: u(8),
-            borderRadius: u(8), borderCurve: "continuous", backgroundColor: colors.card(), minWidth: u(68), alignItems: "center",
-          }}
-        >
-          <Text style={{ numberOfLines: 1, ...type.small(), color: colors.snow() }}>{props.label()}</Text>
-        </View>
-      </If>
       <View
         role="button"
         accessibilityLabel={props.label()}
