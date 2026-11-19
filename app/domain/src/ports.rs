@@ -44,6 +44,14 @@ pub trait Playback: Send + Sync {
     fn timeline(&self, job: u32, position: f64, duration: f64, cached: f64, read_byte: f64, read_time: f64) -> Value;
     /// The player shows the job's first frame (warming stops; the timing log notes it).
     fn first_frame(&self, job: u32);
+    /// Gets the film's place at `seconds` (of `duration`) ready before the player seeks
+    /// there (its pieces fetched first and held); an id for `seek_state`, 0 when nothing
+    /// needs to come (a saved film).
+    fn prepare_seek(&self, job: u32, seconds: f64, duration: f64) -> u32;
+    /// `{"state":"pending"|"ready"|"failed"}` of a `prepare_seek`; ready for 0 or an unknown id.
+    fn seek_state(&self, id: u32) -> Value;
+    /// The player is at the seek's place (or gave it up): it is held no longer.
+    fn seeked(&self, job: u32);
     /// Stops the job and deletes what it downloaded.
     fn close(&self, job: u32);
 

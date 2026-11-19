@@ -330,6 +330,7 @@ player:
     fetching: "Fetching the start, %{percent}%"
     starting: Starting
   buffering: Buffering
+  seek_not_ready: That part has not downloaded yet. Try again in a moment.
   ahead_seconds: "%{seconds} s ready ahead"
   rate_from: "%{speed} from %{count} people"
   ready_ahead: "%{minutes} min ready ahead"

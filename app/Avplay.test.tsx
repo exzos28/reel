@@ -42,7 +42,7 @@ function menu(audio: 1 | 2) {
   });
 }
 
-async function tv(settings: Record<string, unknown> = DETAILS) {
+async function tv(settings: Record<string, unknown> = DETAILS, engine: Record<string, unknown> = {}) {
   /** What the page gave the core as the view's tracks. */
   const embedded: string[] = [];
   const posts: { op: string }[] = [];
@@ -61,6 +61,7 @@ async function tv(settings: Record<string, unknown> = DETAILS) {
           return menu(1);
         },
         "Engine.chooseTrack": (_job: number, _id: string, _e: string, choice: string) => menu(choice === "a:2" ? 2 : 1),
+        ...engine,
       },
     },
   });
@@ -73,8 +74,8 @@ async function tv(settings: Record<string, unknown> = DETAILS) {
 }
 
 /** Plays from the start: AVPlay loaded the stream and plays its first second. */
-async function playing(settings: Record<string, unknown> = DETAILS) {
-  const t = await tv(settings);
+async function playing(settings: Record<string, unknown> = DETAILS, engine: Record<string, unknown> = {}) {
+  const t = await tv(settings, engine);
   await t.event({ type: "loaded", duration: 600, tracks: TRACKS });
   await t.event({ type: "time", position: 1 });
   return t;
@@ -142,6 +143,34 @@ test("AVPlay's seeked ends the seek's loader, landed on a keyframe before the ta
   await event({ type: "time", position: 16 }); // the keyframe, 5 s before
   expect(app.shows("buffering")).toBe(false);
   expect(app.texts()).toContain("0:16");
+});
+
+test("a seek waits for the core to have the place, then goes to AVPlay", async () => {
+  const { app, ops } = await playing(DETAILS, {
+    "Engine.prepareSeek": 7,
+    // The place comes 3 s after it is asked for.
+    "Engine.seekReady": () => new Promise<string>((r) => setTimeout(() => r(JSON.stringify({ state: "ready" })), 3000)),
+  });
+  await app.keyboard.press("right"); // 0:11
+  await app.wait(1500); // the arrows rested, the place asked for
+  expect(ops().filter((o) => o.op === "seek")).toEqual([]); // not before the place is in
+  expect(app.shows("buffering")).toBe(true);
+  await app.wait(3000);
+  expect(ops().filter((o) => o.op === "seek")).toEqual([{ op: "seek", position: 11 }]);
+});
+
+test("a seek whose place does not come stays where it plays and says so", async () => {
+  const { app, ops, event } = await playing(DETAILS, {
+    "Engine.prepareSeek": 7,
+    "Engine.seekReady": async () => JSON.stringify({ state: "failed" }),
+  });
+  await app.keyboard.press("right");
+  await app.waitFor("player-note");
+  expect(app.texts()).toContain("That part has not downloaded yet. Try again in a moment.");
+  expect(ops().filter((o) => o.op === "seek")).toEqual([]);
+  expect(app.shows("buffering")).toBe(false);
+  await event({ type: "time", position: 2 });
+  expect(app.texts()).toContain("0:02"); // the scrubber back where it plays
 });
 
 test("a stall shows the buffering note until AVPlay has enough again", async () => {

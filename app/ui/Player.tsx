@@ -10,15 +10,15 @@
 // panel, then hides the overlay, then leaves. Near the end of an episode
 // the Up next card (tv-player-end.html) takes the remote instead.
 import { cleanup, computed, effect, Image, keymap, safeArea, Scroll, signal, Text, untracked, View, windowSize, type ImageAsset, type ViewStyle } from "nsh";
-import { BufferingNote, PlayerStage, type StageLine } from "./PlayerStage";
+import { BufferingNote, PlayerNote, PlayerStage, type StageLine } from "./PlayerStage";
 import { t } from "nsh/i18n";
-import { Catalog, Fmt } from "./native";
+import { Catalog, Engine, Fmt } from "./native";
 import { episodeCode, episodeText, runtime, titleText, type Episode, type Release } from "./catalog";
 import { Icon } from "./components";
 import { rounded } from "./kit/shape";
 import plusIcon from "./icons/plus.svg";
 import { streamDetails } from "./preferences";
-import { cachedAhead, duration, firstFrame, readAt, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
+import { cachedAhead, currentJob, duration, firstFrame, readAt, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
 import { alpha, colors, focusRing, font, iconPt, radius, safe, showFocus, targetSlop, ts, type, u } from "./theme";
 import { chrome } from "./layout/chrome";
 import { caps } from "./platform";
@@ -51,6 +51,8 @@ const SCRUB_FASTER = [8, 20];
 const SCRUB_HOLD_MS = 300;
 /** The player seeks once the arrows have rested this long, ms: one seek for a run of presses. */
 const SCRUB_IDLE_MS = 600;
+/** How long "not downloaded yet" stays after a seek gave up, ms. */
+const SEEK_NOTE_MS = 4000;
 /** A seek has arrived when the player's time is this near its target, s… */
 const SEEK_NEAR_S = 3;
 /** …or after this long anyway (it may land elsewhere, on a keyframe), ms. */
@@ -248,21 +250,60 @@ export function Player() {
   const seekPending = signal(false);
   let seekPendingTimer: ReturnType<typeof setTimeout> | undefined;
   cleanup(() => clearTimeout(seekPendingTimer));
+  /** Counts the seeks: a place still coming for an older one is not sent any more. */
+  let seekGen = 0;
+  /** The job whose place the core holds for the seek on its way (0: none). */
+  let preparedFor = 0;
+  /** "That place has not downloaded yet": shown a moment after a seek gave up. */
+  const seekNote = signal(false);
+  let seekNoteTimer: ReturnType<typeof setTimeout> | undefined;
+  cleanup(() => clearTimeout(seekNoteTimer));
   const seekArrived = () => {
     seeking = null;
     clearTimeout(seekPendingTimer);
     seekPending.set(false);
+    if (preparedFor) Engine.seeked(preparedFor);
+    preparedFor = 0;
+  };
+  /** The view seeks to `to`: the loader stays until it says it is there, or a while (paused,
+   * a player may report no time after a seek). */
+  const sendSeek = (to: number) => {
+    clearTimeout(seekPendingTimer);
+    seekPendingTimer = setTimeout(seekArrived, SEEK_WAIT_MS);
+    surface?.seek(to);
   };
   const seekTo = (seconds: number) => {
     const d = duration();
     const to = Math.max(0, d > 0 ? Math.min(seconds, d) : seconds);
+    const gen = ++seekGen;
     position.set(to);
     seeking = { to, at: performance.now() };
     seekPending.set(true);
-    // Paused, a player may report no time after the seek: the loader goes after a while anyway.
+    seekNote.set(false);
     clearTimeout(seekPendingTimer);
-    seekPendingTimer = setTimeout(seekArrived, SEEK_WAIT_MS);
-    surface?.seek(to);
+    const job = currentJob();
+    // Every view seeks once the core has the data at the place: a view that seeks into pieces
+    // not downloaded waits in them (AVPlay holds the page meanwhile); the app answers in between.
+    const id = job ? Engine.prepareSeek(job, to, d) : 0;
+    if (!id) return sendSeek(to);
+    preparedFor = job;
+    void (async () => {
+      for (;;) {
+        const r = JSON.parse(await Engine.seekReady(id)) as { state: "pending" | "ready" | "failed" };
+        if (gen !== seekGen) return; // a newer seek
+        if (r.state === "pending") continue;
+        if (r.state === "ready") return sendSeek(to);
+        // The place did not come: the picture stays where it plays, and the scrubber goes back to it.
+        seekArrived();
+        seekNote.set(true);
+        clearTimeout(seekNoteTimer);
+        seekNoteTimer = setTimeout(() => seekNote.set(false), SEEK_NOTE_MS);
+        return;
+      }
+    })().catch((e) => {
+      console.warn("seek: the place could not be made ready", e);
+      if (gen === seekGen) sendSeek(to);
+    });
   };
   /** Where the arrows have moved the scrubber, not sent yet (null: none). Presses and a held
    * key's repeats only move it; the player seeks once they rest (`SCRUB_IDLE_MS`): a TV's
@@ -560,6 +601,9 @@ export function Player() {
 
       <If when={started() && !failed() && (buffering() || seekPending())}>
         <BufferingNote text={bufferingText} />
+      </If>
+      <If when={seekNote()}>
+        <PlayerNote text={() => t("player.seek_not_ready")} />
       </If>
 
       <If when={staged() ? what() : null}>

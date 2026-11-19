@@ -64,6 +64,16 @@ impl Playback for NoEngine {
 
     fn first_frame(&self, _job: u32) {}
 
+    fn prepare_seek(&self, _job: u32, _seconds: f64, _duration: f64) -> u32 {
+        0
+    }
+
+    fn seek_state(&self, _id: u32) -> Value {
+        json!({ "state": "ready" })
+    }
+
+    fn seeked(&self, _job: u32) {}
+
     fn close(&self, _job: u32) {}
 
     /// Nothing is cached here, so nothing is needed: Play goes on to `status`, which says why.

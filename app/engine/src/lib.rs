@@ -77,6 +77,18 @@ impl Playback for Local {
         engine::first_frame_shown(job);
     }
 
+    fn prepare_seek(&self, job: u32, seconds: f64, duration: f64) -> u32 {
+        engine::prepare_seek(job, seconds, duration)
+    }
+
+    fn seek_state(&self, id: u32) -> Value {
+        engine::seek_state(id)
+    }
+
+    fn seeked(&self, job: u32) {
+        engine::seeked(job)
+    }
+
     fn close(&self, job: u32) {
         engine::close(job);
     }

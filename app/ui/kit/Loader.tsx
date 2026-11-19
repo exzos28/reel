@@ -18,20 +18,21 @@ const blinkStyle = (): ViewStyle =>
 const logoStyle = (size: number): TextStyle => ({ fontFamily: font, fontSize: ts(size * 0.6), fontWeight: 700, letterSpacing: -u(0.8), color: colors.red() });
 
 /** The blinking "reel"; `size`: about its width, TV pixels. */
-function LogoLoader(props: { size: number; label?: string }) {
+function LogoLoader(props: { size: number; label?: string; steady?: boolean }) {
   return (
-    <View testID="loader-logo" accessibilityLabel={props.label} style={{ alignItems: "center", ...blinkStyle() }}>
+    <View testID="loader-logo" accessibilityLabel={props.label} style={{ alignItems: "center", ...(props.steady ? {} : blinkStyle()) }}>
       <Text style={logoStyle(props.size)}>{t("app.name")}</Text>
     </View>
   );
 }
 
-/** `size`: its width, TV pixels (96 by default); `label`: what a screen reader says. */
-export function Loader(props: { size?: number; label?: string }) {
+/** `size`: its width, TV pixels (96 by default); `label`: what a screen reader says; `steady`:
+ * the logotype does not blink of its own (a parent breathes it). */
+export function Loader(props: { size?: number; label?: string; steady?: boolean }) {
   const size = props.size ?? 96;
   return (
     <If when={loader() === "logo"} else={<DinoLoader size={size} label={props.label} />}>
-      <LogoLoader size={size} label={props.label} />
+      <LogoLoader size={size} label={props.label} steady={props.steady} />
     </If>
   );
 }

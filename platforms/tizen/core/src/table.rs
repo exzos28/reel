@@ -53,6 +53,18 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         let (job,): (u32,) = args(a)?;
         ret(Engine::first_frame(job))
     })
+    .sync("Engine", "prepareSeek", |a| {
+        let (job, seconds, duration): (u32, f64, f64) = args(a)?;
+        ret(Engine::prepare_seek(job, seconds, duration))
+    })
+    .r#async("Engine", "seekReady", |a| async move {
+        let (id,): (u32,) = args(a)?;
+        ret(Engine::seek_ready(id).await)
+    })
+    .sync("Engine", "seeked", |a| {
+        let (job,): (u32,) = args(a)?;
+        ret(Engine::seeked(job))
+    })
     .sync("Engine", "subtitles", |a| {
         let (job,): (u32,) = args(a)?;
         ret(Engine::subtitles(job))
