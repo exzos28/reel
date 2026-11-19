@@ -93,3 +93,7 @@ Also seen on the TV:
 rutracker's anime releases are named "[01-28 из 28]", "[TV] [1-12 из 12]" or "E28 of 28", not `S01E03`, and Jackett often passes them through unchanged. Two parts:
 - **Search and parsing:** an episode asks by the title alone too (the other names already do since the multi-name search), and `release.rs` reads those ranges as episodes of season 1. See also PR #19 (season packs of an episode).
 - **Long anime with absolute numbering** (One Piece's episode 1050 vs TMDB's S21E58): map S/E to the absolute number with the Fribb lists / AniList entries' episode counts. Harder; a step of its own.
+
+## Releases of a whole show, anime numbering, extras
+
+Survey and plan in `docs/release-names.md`. In short: whole-show packs (Supernatural 327, Game of Thrones 73) are never offered for seasons 2+, anime packs numbered through or with OP/ED/specials pick the wrong file, and a tracker's anime season can differ from TMDB's (Bleach TYBW). Steps there: leave extras out, read anime numbers, map S/E to the absolute number with TMDB's season sizes, let the files' season win over the title's.
