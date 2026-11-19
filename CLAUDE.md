@@ -82,8 +82,9 @@ releases: `docs/releasing.md`.
 
 - Nothing is pushed to main directly. Work on a branch, in your own worktree (never switch
   branches or pull in the main checkout another agent may use), commit after every working step,
-  push the branch, open a PR and let it merge itself when the checks pass:
-  `gh pr merge --auto --merge`. A red check is fixed on the branch.
+  push the branch and open a PR. Never turn on auto-merge (`gh pr merge --auto`): a PR merges
+  only when the user says so, after they have checked it by hand where it needs that. A red
+  check is fixed on the branch.
 - A PR that changes what the viewer sees adds an entry to `.changes/` (`.changes/README.md`);
   otherwise label it `no-changeset`. Versions and releases come from those entries
   (`build/release.sh`, `docs/releasing.md`); never bump `app/nsh.json` by hand.
