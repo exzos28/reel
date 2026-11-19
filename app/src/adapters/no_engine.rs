@@ -68,8 +68,6 @@ impl Playback for NoEngine {
 
     fn first_frame(&self, _job: u32) {}
 
-    fn opened(&self, _job: u32, _duration: f64) {}
-
     /// Nothing streams here: nothing to wait for.
     fn seek(&self, _job: u32, _seconds: f64) -> Pin<Box<dyn Future<Output = SeekReady> + Send>> {
         Box::pin(async { SeekReady::Unknown })

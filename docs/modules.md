@@ -91,9 +91,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/playback.ts`.
 - `openRelease(source: String, season: u32, episode: u32) -> u32` (`open_release`): Starts playing a release a search found: `source` is its magnet or .torrent URL; `season`/`episode` (0 for a film) pick the episode's file in a pack. A job id for `status`, 0 when the engine could not start.
   Called from: nothing in the UI.
-- `opened(job: u32, duration: f64)`: The video view has the job's film open, `duration` seconds long (where a seek's place is in the file follows from it).
-  Called from: `ui/VideoSurface.tsx`.
-- `async seek(job: u32, seconds: f64) -> String`: Gets the place at `seconds` ready before the view seeks there (no player waits in pieces still to come: a TV's AVPlay holds the page meanwhile). `{"state":…}`: `ready` once it is in (at once when it was), `replaced` when a newer seek or `close` came first, `unknown` when the engine cannot tell (seek as it is).
+- `async seek(job: u32, seconds: f64) -> String`: Gets the place at `seconds` ready before the view seeks there (no player waits in pieces still to come: a TV's AVPlay holds the page meanwhile). `{"state":…}`: `ready` once it is in (at once when it was), `replaced` when a newer seek or `close` came first, `unknown` when the film has no index to tell (seek as it is).
   JSON: `{"state":…}`
   Called from: `ui/VideoSurface.tsx`.
 - `status(job: u32) -> String`: What the player shows for the job, JSON with a `phase` (see `Playback::status`).

@@ -114,16 +114,10 @@ impl Engine {
         playback().first_frame(job);
     }
 
-    /// The video view has the job's film open, `duration` seconds long (where a seek's place
-    /// is in the file follows from it).
-    pub fn opened(job: u32, duration: f64) {
-        playback().opened(job, duration);
-    }
-
     /// Gets the place at `seconds` ready before the view seeks there (no player waits in
     /// pieces still to come: a TV's AVPlay holds the page meanwhile). `{"state":…}`:
     /// `ready` once it is in (at once when it was), `replaced` when a newer seek or `close`
-    /// came first, `unknown` when the engine cannot tell (seek as it is).
+    /// came first, `unknown` when the film has no index to tell (seek as it is).
     pub async fn seek(job: u32, seconds: f64) -> String {
         serde_json::json!({ "state": playback().seek(job, seconds).await.as_str() }).to_string()
     }

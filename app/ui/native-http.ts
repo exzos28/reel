@@ -134,7 +134,6 @@ export const Engine: EngineModule = {
   checkSpace: s("Engine", "checkSpace"),
   openRelease: s("Engine", "openRelease"),
   firstFrame: s("Engine", "firstFrame"),
-  opened: s("Engine", "opened"),
   seek: a("Engine", "seek"),
   close: s("Engine", "close"),
   subtitles: s("Engine", "subtitles"),

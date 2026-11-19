@@ -15,6 +15,7 @@ use std::{
 use crate::{buffer, disk, leases};
 use reel_domain::{
     compat, episode,
+    container::{Index, NoIndex},
     play::{PlaySource, SeekReady},
     ports::PlaybackHost,
     timeline,
@@ -177,9 +178,7 @@ pub fn cache_dir() -> PathBuf {
 pub fn close(job: u32) {
     crate::subtitles::forget(job);
     drop_seek(job);
-    if let Some(plays) = PLAYS.lock().unwrap().as_mut() {
-        plays.remove(&job);
-    }
+    drop_index(job);
     let Some(core) = CORE.get() else { return };
     let Some(state) = core.jobs.lock().unwrap().remove(&job) else { return };
     if let Job::Ready(handle, _) = state {
@@ -498,39 +497,34 @@ fn warm(job: u32, handle: Arc<librqbit::ManagedTorrent>) {
     let Some(file) = video_file(&handle, job) else { return };
     let Some(layout) = file_layout(&handle, file) else { return };
     let len = layout.file_length;
-    let mut spots: Vec<(u64, &'static str)> = vec![(len.saturating_sub(TAIL_BYTES), "end of the file in")];
-    let key = JOB_KEYS.lock().unwrap().as_ref().and_then(|k| k.get(&job).cloned());
-    if let Some(e) = key.and_then(|k| host()?.resume(&k)).filter(|e| !e.watched && e.position > 0.0 && e.duration > 0.0) {
-        // Nothing read yet to anchor bytes to: in proportion to time.
-        spots.push((layout.byte_at(e.position, e.duration, None), "resume point in"));
+    let h = handle.clone();
+    tokio::spawn(async move { hold_spot(job, h, file, len.saturating_sub(TAIL_BYTES), "end of the file in").await });
+    // The index, and from it the resume point's keyframe (`read_index`).
+    read_index(job, handle, file, len);
+}
+
+/// Asks for the piece at byte `at` of the file now and keeps it (a stream held there) until the
+/// first frame is on screen.
+async fn hold_spot(job: u32, h: Arc<librqbit::ManagedTorrent>, file: usize, at: u64, step: &'static str) {
+    use tokio::io::{AsyncReadExt, AsyncSeekExt};
+    let Ok(mut stream) = h.stream(file).await else { return };
+    if stream.seek(std::io::SeekFrom::Start(at)).await.is_err() {
+        return;
     }
-    for (at, step) in spots {
-        let h = handle.clone();
-        tokio::spawn(async move {
-            use tokio::io::{AsyncReadExt, AsyncSeekExt};
-            let Ok(mut stream) = h.stream(file).await else { return };
-            if stream.seek(std::io::SeekFrom::Start(at)).await.is_err() {
-                return;
-            }
-            let started = std::time::Instant::now();
-            let mut byte = [0u8; 1];
-            if tokio::time::timeout(WARM_FOR, stream.read(&mut byte)).await.is_ok_and(|r| r.is_ok()) {
-                time_step(job, step);
-            }
-            // Held, so the buffer keeps those pieces until the player has read them.
-            while !first_frame_seen(job) && started.elapsed() < WARM_FOR {
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-            }
-        });
+    let started = std::time::Instant::now();
+    let mut byte = [0u8; 1];
+    if tokio::time::timeout(WARM_FOR, stream.read(&mut byte)).await.is_ok_and(|r| r.is_ok()) {
+        time_step(job, step);
+    }
+    // Held, so the buffer keeps those pieces until the player has read them.
+    while !first_frame_seen(job) && started.elapsed() < WARM_FOR {
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     }
 }
 
-// ---- A seek's place, ready before the player goes there --------------------------
+// ---- The film's index, and a seek's place ready before the player goes there --------
 
-/// How far before the target a seek's place starts, seconds of the film: the player lands on
-/// the keyframe before the target.
-const SEEK_LEAD_S: f64 = 8.0;
-/// How far past the target the place goes, seconds: what the player reads before it shows
+/// How far past the target a seek's place goes, seconds: what the player reads before it shows
 /// the picture there.
 const SEEK_AFTER_S: f64 = 4.0;
 /// How often a waiting seek looks at the pieces (librqbit does not say when one comes).
@@ -538,15 +532,70 @@ const SEEK_LOOK_EVERY: std::time::Duration = std::time::Duration::from_millis(10
 /// The longest a ready place is kept for a player that does not read it.
 const SEEK_KEEP_FOR: std::time::Duration = std::time::Duration::from_secs(30);
 
-/// What the player said about a job's film: how long it is, and the byte it has read to with
-/// the moment of the film there (the anchor that places bytes in time).
-#[derive(Clone, Copy, Default)]
-struct Play {
-    duration: f64,
-    anchor: Option<Anchor>,
+/// A job's film index: None while it is read; then the index, or why there is none.
+type IndexState = Option<Result<Arc<Index>, NoIndex>>;
+
+/// The index of each job's film, read once in the background when the torrent is ready
+/// (`read_index`), and the task reading it (stopped by `close`).
+static INDEXES: Mutex<Option<HashMap<u32, (tokio::sync::watch::Receiver<IndexState>, tokio::task::JoinHandle<()>)>>> = Mutex::new(None);
+
+/// The torrent's file as the index reader's `Source`: one stream, moved to each read.
+struct StreamSource<S> {
+    stream: S,
+    len: u64,
 }
 
-static PLAYS: Mutex<Option<HashMap<u32, Play>>> = Mutex::new(None);
+impl<S: tokio::io::AsyncRead + tokio::io::AsyncSeek + Unpin + Send> reel_domain::container::Source for StreamSource<S> {
+    fn read(&mut self, at: u64, len: u64) -> impl std::future::Future<Output = std::io::Result<Vec<u8>>> + Send {
+        use tokio::io::{AsyncReadExt, AsyncSeekExt};
+        let n = len.min(self.len.saturating_sub(at));
+        async move {
+            self.stream.seek(std::io::SeekFrom::Start(at)).await?;
+            let mut out = vec![0u8; n as usize];
+            self.stream.read_exact(&mut out).await?;
+            Ok(out)
+        }
+    }
+}
+
+/// Reads the film's index (its keyframes) in the background: its pieces come first, as the
+/// player's own reads of it would. Then warms the resume point at its keyframe.
+fn read_index(job: u32, handle: Arc<librqbit::ManagedTorrent>, file: usize, len: u64) {
+    let (tx, rx) = tokio::sync::watch::channel::<IndexState>(None);
+    let h = handle.clone();
+    let task = tokio::spawn(async move {
+        let started = std::time::Instant::now();
+        let state = match h.clone().stream(file).await {
+            Ok(stream) => reel_domain::container::read_index(&mut StreamSource { stream, len }, len).await,
+            Err(e) => Err(NoIndex::Read(format!("{e:#}"))),
+        };
+        match &state {
+            Ok(i) => log_line(&format!("job {job}: index of {} keyframes read in {} ms", i.keyframes.len(), started.elapsed().as_millis())),
+            Err(e) => log_line(&format!("job {job}: no index ({e:?}): seeks are not prepared")),
+        }
+        let index = state.as_ref().ok().cloned();
+        tx.send_replace(Some(state.map(Arc::new)));
+        // Where the viewer stopped, at its keyframe: asked for now, kept until the first frame.
+        let key = JOB_KEYS.lock().unwrap().as_ref().and_then(|k| k.get(&job).cloned());
+        let resume = key.and_then(|k| host()?.resume(&k)).filter(|e| !e.watched && e.position > 0.0);
+        if let (Some(index), Some(e)) = (index, resume)
+            && let Some((at, _)) = index.place(e.position, 0.0, len)
+        {
+            hold_spot(job, h, file, at, "resume point in").await;
+        }
+    });
+    INDEXES.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, (rx, task));
+}
+
+fn index_of(job: u32) -> Option<tokio::sync::watch::Receiver<IndexState>> {
+    INDEXES.lock().unwrap().as_ref()?.get(&job).map(|(rx, _)| rx.clone())
+}
+
+fn drop_index(job: u32) {
+    if let Some((_, task)) = INDEXES.lock().unwrap().as_mut().and_then(|i| i.remove(&job)) {
+        task.abort();
+    }
+}
 
 /// The seek on its way per job: a newer one, or `close`, replaces it (the task stops, its
 /// stream and its pin go, its waiter hears `Replaced`).
@@ -574,31 +623,6 @@ impl SeekPrep {
 
 static SEEKS: Mutex<Option<HashMap<u32, SeekPrep>>> = Mutex::new(None);
 static NEXT_SEEK: AtomicU64 = AtomicU64::new(1);
-
-/// The player has the job's film open, `duration` seconds long: from now on the engine knows
-/// where its seeks are (`seek`).
-pub fn opened(job: u32, duration: f64) {
-    if duration > 0.0 {
-        PLAYS.lock().unwrap().get_or_insert_with(HashMap::new).entry(job).or_default().duration = duration;
-    }
-}
-
-/// What the player reported last (timeline), for where a seek's bytes are; only for a job
-/// the player has `opened` (a report coming in after `close` adds nothing).
-fn played(job: u32, duration: f64, anchor: Option<Anchor>) {
-    let mut plays = PLAYS.lock().unwrap();
-    let Some(play) = plays.as_mut().and_then(|p| p.get_mut(&job)) else { return };
-    if duration > 0.0 {
-        play.duration = duration;
-    }
-    if anchor.is_some() {
-        play.anchor = anchor;
-    }
-}
-
-fn play_of(job: u32) -> Option<Play> {
-    PLAYS.lock().unwrap().as_ref()?.get(&job).copied()
-}
 
 /// Makes `next` the job's seek on its way, unless a newer one is there already (then `next`
 /// is the one replaced).
@@ -635,11 +659,13 @@ impl Drop for Pinned {
     }
 }
 
-/// Gets the place at `seconds` ready before the player seeks there: the pieces from the
-/// keyframe before it to a little after it are pinned in the buffer and fetched first, and
-/// stay until the player has read into them. Ready at once when they are in; else when they
-/// come. A newer seek of the job, or `close`, replaces it. Never gives up on its own: the
-/// viewer decides (another seek, Back).
+/// Gets the place at `seconds` ready before the player seeks there. The film's index says
+/// where it is: from the keyframe at or before `seconds` (where every player starts reading)
+/// to the first keyframe `SEEK_AFTER_S` past it. Its pieces are pinned in the buffer and
+/// fetched first, and stay until a stream reads inside them. Ready at once when they are in;
+/// else when they come. Unknown when the film has no index (the player seeks as it is). A
+/// newer seek of the job, or `close`, replaces it. Never gives up on its own: the viewer
+/// decides (another seek, Back).
 pub async fn seek(job: u32, seconds: f64) -> SeekReady {
     let seq = NEXT_SEEK.fetch_add(1, Ordering::Relaxed);
     let Some(core) = CORE.get() else { return SeekReady::Unknown };
@@ -650,50 +676,61 @@ pub async fn seek(job: u32, seconds: f64) -> SeekReady {
         Some(Job::Ready(handle, link)) => (handle, link),
         _ => return SeekReady::Unknown,
     };
-    let Some(play) = play_of(job).filter(|p| p.duration > 0.0) else { return SeekReady::Unknown };
+    let Some(mut index) = index_of(job) else { return SeekReady::Unknown };
     let Some(file) = video_file(&handle, job) else { return SeekReady::Unknown };
     let Some(layout) = file_layout(&handle, file) else { return SeekReady::Unknown };
-    let Some(place) = layout.seek_place(seconds, play.duration, play.anchor, SEEK_LEAD_S, SEEK_AFTER_S) else {
-        return SeekReady::Unknown;
-    };
-    // Pinned first, so nothing of it is evicted from here on; the buffer may pin less than
-    // the place (a part of its budget at most), and that part is what is waited for.
-    let (pin, first, last) = match link.as_ref().and_then(|l| l.pin(*place.pieces.start(), *place.pieces.end())) {
-        Some((id, last)) => (Pinned(link.clone(), Some(id)), *place.pieces.start(), last),
-        None => (Pinned(None, None), *place.pieces.start(), *place.pieces.end()),
-    };
     let api = core.api.clone();
-    let torrent = handle.id();
-    let ring = link.clone();
-    let have_all = move || match ring.as_ref().and_then(|l| l.has_all(first, last)) {
-        Some(all) => all,
-        // A torrent not in the ring (a film being saved, on disk): librqbit's own record.
-        None => api
-            .api_dump_haves(torrent.into())
-            .map(|(have, _)| (first..=last).all(|p| have.get(p as usize).is_some_and(|b| *b)))
-            .unwrap_or(false),
-    };
-    let in_already = have_all();
-    const MB: f64 = 1024.0 * 1024.0;
-    log_line(&format!(
-        "seek job {job} to {seconds:.0} s: place {:.1}..{:.1} MB (target {:.1} MB), pieces {first}..={last}{}, {}",
-        place.from as f64 / MB,
-        place.end as f64 / MB,
-        place.target as f64 / MB,
-        if last < *place.pieces.end() { " (pin cut)" } else { "" },
-        if in_already { "in already" } else { "fetching" },
-    ));
-    let asked = std::time::Instant::now();
-    let (done, mut waiting) = tokio::sync::watch::channel(in_already.then_some(SeekReady::Ready));
+    let (done, mut waiting) = tokio::sync::watch::channel(None);
     let ready = done.clone();
     let task = core.rt.spawn(async move {
         use tokio::io::{AsyncReadExt, AsyncSeekExt};
+        const MB: f64 = 1024.0 * 1024.0;
+        // The index first (read at the start; a seek before it is in waits for it).
+        let place = match index.wait_for(|s| s.is_some()).await {
+            Ok(s) => match &*s {
+                Some(Ok(i)) => i.place(seconds, SEEK_AFTER_S, layout.file_length),
+                // No index: nothing says where the place is.
+                _ => None,
+            },
+            // The index's reader is gone (the job closed).
+            Err(_) => None,
+        };
+        let Some((from, end)) = place else {
+            ready.send_replace(Some(SeekReady::Unknown));
+            return;
+        };
+        let piece = |b: u64| ((layout.file_offset + b) / layout.piece_length) as u32;
+        let (first, last) = (piece(from), piece(end - 1));
+        // Pinned first, so nothing of it is evicted from here on; the buffer may pin less than
+        // the place (a part of its budget at most), and that part is what is waited for.
+        let (pin, last) = match link.as_ref().and_then(|l| l.pin(first, last)) {
+            Some((id, cut)) => (Pinned(link.clone(), Some(id)), cut),
+            None => (Pinned(None, None), last),
+        };
         let _pin = pin;
+        let ring = link.clone();
+        let torrent = handle.id();
+        let have_all = move || match ring.as_ref().and_then(|l| l.has_all(first, last)) {
+            Some(all) => all,
+            // A torrent not in the ring (a film being saved, on disk): librqbit's own record.
+            None => api
+                .api_dump_haves(torrent.into())
+                .map(|(have, _)| (first..=last).all(|p| have.get(p as usize).is_some_and(|b| *b)))
+                .unwrap_or(false),
+        };
+        let in_already = have_all();
+        log_line(&format!(
+            "seek job {job} to {seconds:.0} s: place {:.1}..{:.1} MiB (keyframe and {SEEK_AFTER_S} s on), pieces {first}..={last}, {}",
+            from as f64 / MB,
+            end as f64 / MB,
+            if in_already { "in already" } else { "fetching" },
+        ));
+        let asked = std::time::Instant::now();
         let mut stream = None;
         if !in_already {
             // A stream at the place: librqbit fetches its pieces first, then its readahead.
             let opened = match handle.clone().stream(file).await {
-                Ok(mut s) => s.seek(std::io::SeekFrom::Start(place.from)).await.ok().map(|_| s),
+                Ok(mut s) => s.seek(std::io::SeekFrom::Start(from)).await.ok().map(|_| s),
                 Err(_) => None,
             };
             let Some(mut s) = opened else {
@@ -715,20 +752,18 @@ pub async fn seek(job: u32, seconds: f64) -> SeekReady {
                 }
             }
             log_line(&format!("seek job {job}: place in after {} ms", asked.elapsed().as_millis()));
-            ready.send_replace(Some(SeekReady::Ready));
             stream = Some(s);
         }
+        ready.send_replace(Some(SeekReady::Ready));
         // Kept (pinned, the stream open) until a stream of the player reads inside the place
         // (the streams' positions, as librqbit serves them: every view reads over HTTP).
-        let kept = std::time::Instant::now();
-        let reads = || -> Vec<u64> {
-            handle.stream_positions().into_iter().filter(|(f, _)| *f == file).map(|(_, at)| at).collect()
-        };
         // (Where the player reads after the seek shows in the timing log: the status poll notes
         // every stream's new position.)
+        let kept = std::time::Instant::now();
+        let ours = from + 1;
         while kept.elapsed() < SEEK_KEEP_FOR {
-            let now = reads();
-            if now.iter().any(|at| (place.target..=place.end).contains(at)) {
+            let reads = handle.stream_positions();
+            if reads.iter().any(|&(f, at)| f == file && at != ours && (from..end).contains(&at)) {
                 break;
             }
             tokio::time::sleep(std::time::Duration::from_millis(250)).await;
@@ -1206,7 +1241,6 @@ pub fn timeline(job: u32, position: f64, duration: f64, cached: f64, read_byte: 
     // Bytes are not proportional to time (the bitrate varies): anchor them where the player
     // says it has read to, so the stretch around the picture is drawn where it is.
     let anchor = (read_byte > 0.0).then_some(Anchor { byte: read_byte, time: read_time });
-    played(job, duration, anchor);
     let on_disk = timeline::shifted(on_disk, layout.shift(duration, anchor));
     // What the player holds in memory ahead of the picture plays as well.
     let ready = timeline::with_player_cache(on_disk, position, cached, duration);
@@ -1242,19 +1276,6 @@ fn file_layout(handle: &Arc<librqbit::ManagedTorrent>, file: usize) -> Option<La
 struct Anchor {
     byte: f64,
     time: f64,
-}
-
-/// A seek's place in the file (`Layout::seek_place`).
-#[derive(Debug, PartialEq)]
-struct SeekPlace {
-    /// The byte to fetch from.
-    from: u64,
-    /// The target's byte, and the place's last: the player has read the place once it reads
-    /// between them.
-    target: u64,
-    end: u64,
-    /// The torrent's pieces of the place.
-    pieces: std::ops::RangeInclusive<u32>,
 }
 
 /// Where a file lies in its torrent's pieces.
@@ -1294,31 +1315,6 @@ impl Layout {
         }
     }
 
-    /// The byte of the file at `seconds` of `duration`: in proportion to time, shifted to
-    /// where the player read (`anchor`). The one mapping of time to bytes (the scrubber's
-    /// stretches, a resume, a seek).
-    fn byte_at(&self, seconds: f64, duration: f64, anchor: Option<Anchor>) -> u64 {
-        if self.file_length == 0 || !(duration > 0.0) {
-            return 0;
-        }
-        let share = (seconds / duration - self.shift(duration, anchor)).clamp(0.0, 1.0);
-        ((self.file_length as f64 * share).round() as u64).min(self.file_length - 1)
-    }
-
-    /// The place a seek to `seconds` of `duration` needs: from `lead` seconds before (the
-    /// keyframe before the target) to `after` seconds past it. None for an empty file or no
-    /// duration.
-    fn seek_place(&self, seconds: f64, duration: f64, anchor: Option<Anchor>, lead: f64, after: f64) -> Option<SeekPlace> {
-        if self.file_length == 0 || self.piece_length == 0 || !(duration > 0.0) {
-            return None;
-        }
-        let seconds = seconds.clamp(0.0, duration);
-        let at = move |s: f64| self.byte_at(s, duration, anchor);
-        let piece = |b: u64| ((self.file_offset + b) / self.piece_length) as u32;
-        let (from, target, to) = (at(seconds - lead), at(seconds), at(seconds + after));
-        Some(SeekPlace { from, target, end: to, pieces: piece(from)..=piece(to) })
-    }
-
     /// The stretches of the file whose pieces are all in, as `(from, to)` in 0..1 of the
     /// file, neighbours merged: exact, piece by piece.
     fn ranges(&self, have: impl Fn(u32) -> bool) -> Vec<(f64, f64)> {
@@ -1354,7 +1350,7 @@ pub(crate) mod tests {
     };
     use std::time::{Duration, Instant};
 
-    use super::{Anchor, Layout, SeekPlace, with_open_trackers};
+    use super::{Layout, with_open_trackers};
 
     #[test]
     fn file_urls_are_encoded() {
@@ -1410,38 +1406,6 @@ pub(crate) mod tests {
         // A short last piece of the torrent.
         let short = Layout { piece_length: 100, total_length: 250, file_offset: 0, file_length: 250 };
         assert_eq!(short.ranges(|p| p == 2), vec![(0.8, 1.0)]);
-    }
-
-    #[test]
-    fn time_maps_to_bytes_shifted_where_the_player_read() {
-        // A 1000-byte file of a 100 s film.
-        let l = Layout { piece_length: 100, total_length: 1100, file_offset: 50, file_length: 1000 };
-        assert_eq!(l.byte_at(50.0, 100.0, None), 500);
-        // The player read to byte 300 at 40 s: time runs 0.1 of the film ahead of bytes.
-        let read = Some(Anchor { byte: 300.0, time: 40.0 });
-        assert_eq!(l.byte_at(50.0, 100.0, read), 400);
-        assert_eq!(l.byte_at(5.0, 100.0, read), 0);
-        // Never past the last byte; nothing without a duration.
-        assert_eq!(l.byte_at(500.0, 100.0, None), 999);
-        assert_eq!(l.byte_at(10.0, 0.0, None), 0);
-    }
-
-    #[test]
-    fn a_seeks_place_runs_from_a_lead_before_the_target_to_a_little_after() {
-        // Pieces of 100 bytes; the file is bytes 50..1050 (1000 bytes) of a 100 s film: 10 bytes a second.
-        let l = Layout { piece_length: 100, total_length: 1100, file_offset: 50, file_length: 1000 };
-        // 50 s: byte 500; from 42 s (file 420, torrent 470, piece 4) to 54 s (file 540, torrent 590, piece 5).
-        assert_eq!(l.seek_place(50.0, 100.0, None, 8.0, 4.0), Some(SeekPlace { from: 420, target: 500, end: 540, pieces: 4..=5 }));
-        // Anchored where the player read: the same place 100 bytes earlier.
-        let read = Some(Anchor { byte: 300.0, time: 40.0 });
-        assert_eq!(l.seek_place(50.0, 100.0, read, 8.0, 4.0), Some(SeekPlace { from: 320, target: 400, end: 440, pieces: 3..=4 }));
-        // At the start the lead stops at the file's first byte; past the end, the last byte.
-        assert_eq!(l.seek_place(2.0, 100.0, None, 8.0, 4.0), Some(SeekPlace { from: 0, target: 20, end: 60, pieces: 0..=1 }));
-        assert_eq!(l.seek_place(500.0, 100.0, None, 8.0, 4.0), Some(SeekPlace { from: 920, target: 999, end: 999, pieces: 9..=10 }));
-        // No duration, no file: no place.
-        assert_eq!(l.seek_place(10.0, 0.0, None, 8.0, 4.0), None);
-        let empty = Layout { piece_length: 100, total_length: 100, file_offset: 0, file_length: 0 };
-        assert_eq!(empty.seek_place(10.0, 100.0, None, 8.0, 4.0), None);
     }
 
     #[test]

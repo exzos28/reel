@@ -44,12 +44,10 @@ pub trait Playback: Send + Sync {
     fn timeline(&self, job: u32, position: f64, duration: f64, cached: f64, read_byte: f64, read_time: f64) -> Value;
     /// The player shows the job's first frame (warming stops; the timing log notes it).
     fn first_frame(&self, job: u32);
-    /// The player has the job's film open and says how long it is (seconds): where a seek's
-    /// place is in the file follows from it.
-    fn opened(&self, job: u32, duration: f64);
-    /// Gets the place at `seconds` ready before the player seeks there: its pieces fetched
-    /// first and kept in the buffer until the player has read past it. Answers once they are
-    /// in (at once when they were), or when a newer seek or `close` replaces it; it never
+    /// Gets the place at `seconds` ready before the player seeks there (where the film's own
+    /// index says the player reads): its pieces fetched first and kept in the buffer until the
+    /// player reads inside them. Answers once they are in (at once when they were), when a
+    /// newer seek or `close` replaces it, or `Unknown` for a film without an index; it never
     /// gives up on its own.
     fn seek(&self, job: u32, seconds: f64) -> Pin<Box<dyn Future<Output = SeekReady> + Send>>;
     /// Stops the job and deletes what it downloaded.

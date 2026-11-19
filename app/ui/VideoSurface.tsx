@@ -142,11 +142,7 @@ export function VideoSurface(props: VideoSurfaceProps) {
     <PlayerView
       {...props}
       surfaceRef={(r) => (view = r)}
-      onLoad={(e) => {
-        const job = currentJob();
-        if (job && e.duration > 0) Engine.opened(job, e.duration);
-        props.onLoad?.(e);
-      }}
+      onLoad={(e) => props.onLoad?.(e)}
       onProgress={(e) => {
         if (sent != null && Math.abs(e.currentTime - sent) <= SEEK_NEAR_S) over();
         props.onProgress?.(e);

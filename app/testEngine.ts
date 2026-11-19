@@ -9,7 +9,6 @@ export const ENGINE = {
   "Engine.open": 1,
   "Engine.close": null,
   // The place of a seek is in at once: it goes to the view.
-  "Engine.opened": null,
   "Engine.seek": async () => JSON.stringify({ state: "ready" }),
   "Engine.checkSpace": JSON.stringify({ ok: true, free: 10 * 1024 ** 3, needed: 306 * 1024 ** 2, buffer: 256 }),
   "Engine.timeline": JSON.stringify({ ranges: [], ahead: 0 }),

@@ -77,10 +77,6 @@ impl Playback for Local {
         engine::first_frame_shown(job);
     }
 
-    fn opened(&self, job: u32, duration: f64) {
-        engine::opened(job, duration);
-    }
-
     fn seek(&self, job: u32, seconds: f64) -> Pin<Box<dyn Future<Output = SeekReady> + Send>> {
         Box::pin(engine::seek(job, seconds))
     }
