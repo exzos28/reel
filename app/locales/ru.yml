@@ -1,0 +1,531 @@
+# Russian. The keys are en.yml's (a test checks it). Counts: rust-i18n has no plural forms, so
+# a number that a noun would have to agree with stands after a colon ("Серий: 5") or with
+# "чел.", which reads right for any count.
+app:
+  name: reel
+
+nav:
+  row_back: Назад в этом ряду
+  row_on: Дальше в этом ряду
+  home: Главная
+  movies: Фильмы
+  shows: Сериалы
+  cartoons: Мультфильмы
+  anime: Аниме
+  search: Поиск
+  settings: Настройки
+  saved: Сохранённое
+  more: Ещё
+  back: Назад
+  back_to: "Назад: %{page}"
+
+exit:
+  title: Выйти из reel?
+  about: Воспроизведение остановится. Просмотренное сохранится.
+  stay: Остаться
+  exit: Выйти
+
+hosted:
+  pair_title: Подключите телефон
+  pair_about: Введите этот код на странице настроек reel на телефоне или компьютере.
+  cancel: Отмена
+  offer_title: Взять источник с телефона?
+  offer_about: reel будет искать раздачи в нём. Его можно сменить в настройках.
+  offer_use: Взять
+  offer_not_now: Не сейчас
+
+shelf:
+  continue: Продолжить просмотр
+  watchlist: Буду смотреть
+  trending_movies: Популярные фильмы
+  trending_shows: Популярные сериалы
+  popular: Популярное
+  anime: Популярное аниме
+  no_tmdb: Фильмы и сериалы
+  loading: Загрузка
+  offline: Здесь пока пусто
+
+empty:
+  no_tmdb:
+    title: Для фильмов и сериалов нужен ключ TMDB
+    about: В этой сборке reel нет ключа TMDB, поэтому показано только аниме из AniList. Добавьте свой ключ, чтобы видеть фильмы и сериалы.
+  loading:
+    title: Загрузка…
+    about: Получаем список из TMDB и AniList.
+  offline:
+    title: Не удалось загрузить список
+    about: TMDB и AniList не отвечают. Проверьте подключение; reel попробует снова сам.
+  unavailable:
+    title: Этот фильм недоступен
+    about: Не удалось загрузить сведения о нём. Попробуйте позже.
+
+title:
+  play: Смотреть
+  resume: "Продолжить с %{at}"
+  my_list: Буду смотреть
+  add_to_list: Буду смотреть
+  in_list: В списке
+  add_to_list_spoken: Добавить в «Буду смотреть»
+  remove_from_list_spoken: Убрать из «Буду смотреть»
+  trailer: Трейлер
+  save: Сохранить
+  saving: "Сохраняется %{percent}%"
+  saving_some: "Сохраняется %{count} из %{total}"
+  save_paused: На паузе
+  saved: Сохранено
+  saved_one: Сохранена 1 серия
+  saved_some: "Сохранено серий: %{count}"
+
+card:
+  left: "Осталось %{time}"
+  open: Открыть
+
+kind:
+  movie: Фильм
+  short: Короткометражка
+  show: Сериал
+  season_one: 1 сезон
+  seasons: "Сезонов: %{count}"
+
+fmt:
+  minutes: "%{m} мин"
+  hours: "%{h} ч"
+  hours_minutes: "%{h} ч %{m} мин"
+  episode: "S%{season}:E%{episode}"
+  years: "%{from}–%{to}"
+  day: "%{day} %{month}"
+  date: "%{day} %{month} %{year}"
+  month_day: "%{day} %{month}"
+
+# In dates, after the day: "19 нояб."
+month:
+  "1": янв.
+  "2": февр.
+  "3": марта
+  "4": апр.
+  "5": мая
+  "6": июня
+  "7": июля
+  "8": авг.
+  "9": сент.
+  "10": окт.
+  "11": нояб.
+  "12": дек.
+
+
+badge:
+  sd: SD
+  hd: 1080p
+  uhd: 4K
+  cc: CC
+  silent: Без звука
+  tv_pg: TV-PG
+
+tag:
+  new_season: Новый сезон
+  new_episode: Новая серия
+
+release:
+  sharing: "Раздают %{count} чел."
+  sharing_short: "%{count} чел."
+  pack: "весь сезон, %{size}"
+  fast: запустится за секунды
+  note:
+    starts_fast: Запустится быстро
+    needs: "Нужен интернет %{mbit} Мбит/с"
+    slow_start: Может долго запускаться
+    few_sharing: Мало раздающих, может не запуститься
+
+releases:
+  title: Раздачи
+  title_episode: "Раздачи для %{episode}"
+  title_season: "Раздачи сезона %{season}"
+  not_in: "%{episode} нет в раздаче %{release}. Выберите раздачу для этой серии."
+  found: "Найдено: %{count}, сначала лучшие в каждом качестве"
+  more: "Показать ещё %{count}"
+  state:
+    no_source: Добавьте источник поиска в настройках, чтобы находить раздачи.
+    no_source_hosted: "Добавьте источник поиска в настройках или откройте %{url} на телефоне."
+    searching: Ищем в вашем источнике…
+    failed: Источник поиска не ответил. Проверьте его в настройках.
+    none: В вашем источнике ничего не нашлось.
+  open_settings: Открыть настройки
+
+score:
+  tmdb: TMDB
+  anilist: AniList
+  mal: MAL
+  votes: "Голосов: %{votes}"
+
+about:
+  title: О фильме
+  cast: В ролях
+  details: Подробности
+  similar: Похожее
+
+crew:
+  director:
+    one: Режиссёр
+    other: Режиссёры
+  writer:
+    one: Сценарист
+    other: Сценаристы
+  novel:
+    one: По книге
+    other: По книге
+  music:
+    one: Музыка
+    other: Музыка
+  creator:
+    one: Создатель
+    other: Создатели
+
+detail:
+  tagline: Слоган
+  original_title: Оригинальное название
+  release_date: Дата выхода
+  first_aired: Премьера
+  runtime: Длительность
+  status: Статус
+  countries: Страна
+  studios: Студия
+  networks: Канал и студии
+
+status:
+  announced: Анонсирован
+  inProduction: В производстве
+  airing: Продолжается
+  ended: Завершён
+  canceled: Закрыт
+  released: Вышел
+
+tracks:
+  audio:
+    original: Оригинал
+  subtitles:
+    "off": Выкл.
+    en: Английские
+  number: "Дорожка %{number}"
+  forced: Форсированные
+  from_torrent: Файл из раздачи
+  loading: Ищем субтитры…
+
+languages:
+  en: Английский
+  ru: Русский
+  uk: Украинский
+  be: Белорусский
+  de: Немецкий
+  fr: Французский
+  es: Испанский
+  it: Итальянский
+  pt: Португальский
+  pl: Польский
+  cs: Чешский
+  nl: Нидерландский
+  sv: Шведский
+  "no": Норвежский
+  da: Датский
+  fi: Финский
+  hu: Венгерский
+  ro: Румынский
+  el: Греческий
+  tr: Турецкий
+  ar: Арабский
+  he: Иврит
+  ja: Японский
+  zh: Китайский
+  ko: Корейский
+
+series:
+  season: "Сезон %{number}"
+  episodes: "Серий: %{count}"
+  no_episodes: Серии этого сериала пока не известны.
+  watched: Просмотрено
+  not_in_release: Нет в этой раздаче
+  airs: "Выйдет %{date}"
+
+browse:
+  movies:
+    title: Фильмы
+    lead: Новинки и лучшее в кино
+    trending: Популярное
+    all: Все фильмы
+  shows:
+    title: Сериалы
+    lead: Сериалы, от которых не оторваться
+    trending: Идут и скоро выйдут
+    all: Все сериалы
+  cartoons:
+    title: Мультфильмы
+    lead: Мультсериалы для любого возраста
+    trending: Лучшие по оценкам
+    all: Все мультфильмы
+  anime:
+    title: Аниме
+    lead: Хиты сезона и любимое всех времён
+    trending: Популярное в этом сезоне
+    all: Всё аниме
+  filter:
+    genres: Жанры
+    years: Годы
+    countries: Страны
+    sort: Сортировка
+    picked: "%{filter}: %{picked}"
+  sort: "Сортировка:"
+  option:
+    decade: "%{n}-е"
+    older: "До %{n}"
+    popular: Самые популярные
+    top_rated: Лучшие по оценкам
+    newest: Новые
+    any: Любые
+  state:
+    loading: Загрузка…
+    empty: Под эти фильтры ничего не подходит.
+    offline: Не удалось загрузить список. Проверьте подключение.
+    more_failed: Не удалось загрузить ещё. Спуститесь ниже, чтобы попробовать снова.
+
+search:
+  title: Поиск
+  placeholder: Фильмы, сериалы и аниме по названию
+  hint: Введите название фильма, сериала или аниме.
+  recent: Недавние запросы
+  clear: Очистить историю
+  searching: Ищем…
+  none: "По запросу «%{query}» ничего не нашлось."
+  failed: TMDB и AniList не отвечают. Проверьте подключение и попробуйте снова.
+  no_tmdb: В этой сборке нет ключа TMDB, поэтому ищется только аниме.
+  section:
+    movies: Фильмы
+    shows: Сериалы
+    anime: Аниме
+
+compat:
+  audio_dts: В этой раздаче звук только в DTS, а это устройство его не воспроизводит. Выберите другую раздачу.
+  audio_truehd: В этой раздаче звук только в TrueHD, а это устройство его не воспроизводит. Выберите другую раздачу.
+  dolby_vision_only: Эта раздача в Dolby Vision без слоя HDR10, и на этом устройстве цвета будут неправильными. Выберите другую раздачу.
+  container: Формат этого файла не воспроизводится на этом устройстве. Выберите другую раздачу.
+
+player:
+  back: Назад
+  close: Закрыть
+  close_tracks: Закрыть звук и субтитры
+  episodes: Серии
+  close_episodes: Закрыть серии
+  now_playing: Сейчас идёт
+  fullscreen: Во весь экран
+  mute: Выключить звук
+  unmute: Включить звук
+  volume: Громкость
+  exit_fullscreen: Выйти из полноэкранного режима
+  stage:
+    searching: Ищем раздачу
+    finding: Ищем, кто её раздаёт
+    connecting: Подключаемся к раздающим
+    found:
+      one: Найден 1 раздающий, подключаемся
+      other: "Найдено раздающих: %{count}, подключаемся"
+    fetching: "Загружаем начало, %{percent}%"
+    starting: Запускаем
+  buffering: Загрузка
+  ahead_seconds: "В запасе %{seconds} с"
+  rate_from: "%{speed} от %{count} чел."
+  ready_ahead: "В запасе %{minutes} мин"
+  ready_ahead_short: В запасе меньше минуты
+  streaming: "поток %{speed}"
+  streaming_from: "поток %{speed} от %{count} чел."
+  left: "−%{time}"
+  play: Смотреть
+  pause: Пауза
+  back_10: Назад на 10 секунд
+  forward_10: Вперёд на 10 секунд
+  tracks: Звук и субтитры
+  position: Позиция
+  audio: Звук
+  subtitles: Субтитры
+  release: Раздача
+  next_episode: "Следующая серия · %{code}"
+  play_now: Смотреть сейчас
+  in_seconds: "через %{seconds} с"
+  watch_credits: Смотреть титры
+  no_source: Нет раздачи для просмотра.
+  no_source_hint: Добавьте источник поиска в настройках или выберите другую раздачу.
+  not_in_release: Этой серии нет в раздаче.
+  not_in_release_hint: Вернитесь и выберите для неё раздачу.
+  failed: "Не удалось воспроизвести: %{message}"
+  failed_hint: Вернитесь и выберите другую раздачу.
+  view_failed: Видео не запустилось на этом устройстве.
+  view_failed_hint: Вернитесь и попробуйте снова; может помочь перезапуск reel.
+  no_space: "Не хватает места: нужно %{needed}, свободно %{free}."
+  no_space_unknown: "Не хватает места: нужно %{needed}."
+  no_space_hint: Освободите место на устройстве или уменьшите буфер в настройках.
+  low_space: На устройстве закончилось место, поэтому просмотр на паузе. Освободите место или уменьшите буфер в настройках.
+
+settings:
+  title: Настройки
+  selected: Выбрано
+  language:
+    title: Язык
+    about: Названия, описания и названия серий; по ним reel ещё и ищет раздачи.
+  source:
+    title: Источник поиска
+    about: Где reel ищет раздачи фильма или серии. Адрес Torznab и его API-ключ.
+    phone: "Отсканируйте код телефоном или откройте %{url}"
+    url: Адрес Torznab (обязательно)
+    url_placeholder: "http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api"
+    key: API-ключ (необязательно)
+    key_placeholder: Только если он есть у источника
+    key_saved: Ключ сохранён. Введите новый, чтобы заменить
+    save: Сохранить и проверить
+    remove: Удалить источник
+    partner_tv_title: Готовый источник
+    partner_tv_text: "Отсканируйте код телефоном и оплатите в Telegram (@%{bot}). Источник придёт сюда: подтвердите его на этом экране."
+    partner_app: Готовый источник в Telegram
+    partner_app_note: "@%{bot} пришлёт ссылку: откройте её, и источник заполнится здесь."
+    saving: Сохраняем…
+    checking: Проверяем источник…
+    removed: Источник поиска удалён.
+    ok_imdb: Подключено. Ищет по IMDb id.
+    ok_text: Подключено. Ищет по названию.
+    failed: "Не удалось связаться с источником: %{message}"
+    reason:
+      unreachable: "%{host} недоступен. Проверьте адрес и что источник включён."
+      key: "%{host} не принял API-ключ. Проверьте ключ."
+      not_torznab: "%{host} ответил, но не как источник Torznab. Проверьте адрес: обычно он заканчивается на /torznab/api."
+      error: "%{host}: %{message}"
+  nav_position:
+    title: Положение меню
+    about: Где стоит меню в верхней панели экрана.
+    left: Слева
+    center: По центру
+    right: Справа
+  loader:
+    title: Анимация загрузки
+    about: Что видно, пока фильм ждёт продолжения потока.
+    dinosaur: Динозавр
+    logo: reel
+  source_drawer:
+    missing_title: Добавьте источник поиска
+    missing_about: reel воспроизводит раздачи, которые находит в вашем источнике поиска, а его пока нет. Введите адрес Torznab и его API-ключ; «Смотреть» заработает после подключения.
+    failed_title: Источник поиска не ответил
+    failed_about: reel не смог найти в нём раздачи. Проверьте адрес и API-ключ, затем нажмите «Сохранить и проверить»; «Смотреть» заработает после подключения.
+    edit_title: Источник поиска
+    edit_about: Адрес Torznab и его API-ключ.
+    link_title: Взять этот источник?
+    link_about: Источник заполнен по ссылке. Нажмите «Сохранить и проверить», чтобы взять его, или «Назад», чтобы оставить свой.
+  rows:
+    connected: Подключён
+    not_set: Не задан
+    buffer_value: "%{size} · свободно %{free}"
+  phone:
+    title: Это можно поменять с телефона
+    text: "Отсканируйте код или откройте %{url}."
+  about:
+    title: О reel
+    open: О reel и источниках данных
+    data: Источники данных
+    tmdb_logo: The Movie Database (TMDB)
+    version: "Версия %{version} (%{build})"
+  details:
+    title: Сведения о потоке
+    about: Пока фильм идёт или ждёт, показывать скорость, сколько людей раздаёт и сколько загружено впрок.
+    show: Показывать сведения о потоке
+  buffer:
+    title: Буфер воспроизведения
+    about: Сколько фильма reel держит во время просмотра. Чем больше, тем лучше при медленных раздающих и дальних перемотках.
+    free: "Свободно на устройстве: %{free}"
+    default: (по умолчанию)
+
+
+setup:
+  step: "Шаг %{n} из 3"
+  next: Далее
+  language:
+    title: На каком языке показывать названия?
+    help: По этим названиям reel ещё и ищет раздачи.
+    more: Другие языки
+  buffer:
+    title: Сколько места reel может занять при просмотре?
+    help: Чем больше буфер, тем лучше при медленных раздающих и дальних перемотках.
+    recommended: Рекомендуется
+  source:
+    title: Где reel искать фильмы?
+    help: Укажите свой источник или возьмите готовый.
+    own_title: Свой источник
+    rent_title: Или готовый
+    check: Проверить
+    finish: Готово
+    skip: Пропустить
+    footnote: "Torznab — распространённый способ, которым поисковые сервисы отдают списки торрент-раздач. reel сам видео не ищет: это каталог и плеер, а что смотреть, он находит только через указанный вами источник."
+  phone:
+    title: Или настройте с телефона
+    text: "Отсканируйте код камерой телефона или откройте %{url} в его браузере. Этот экран обновится сам."
+    source_title: С телефона проще
+    source_text: "Вводить адрес пультом долго. Отсканируйте код или откройте %{url} и вставьте адрес там. Этот экран завершит настройку сам."
+
+menu:
+  settings: Настройки…
+  edit: Правка
+  go: Переход
+  back: Назад
+  window: Окно
+
+saved:
+  title: Сохранённое
+  empty: Пока ничего не сохранено. Сохраните фильм или сезон на его странице, чтобы смотреть без интернета.
+  saving: Сохраняется
+  while_open: пока reel открыт
+  ready: Можно смотреть
+  not_saved: Не сохранено
+  pause: Пауза
+  resume: Продолжить сохранение
+  remove: Удалить
+  remove_all: Удалить все серии
+  pause_all: Приостановить все серии
+  resume_all: Продолжить сохранение всех серий
+  remove_title: "Удалить «%{name}»?"
+  remove_about: "С устройства будет удалено %{size}. Позже можно сохранить снова."
+  open_folder: Открыть папку
+  group_line: "Серий: %{count} · %{size}"
+  group_line_one: "1 серия · %{size}"
+  space:
+    saved: "Сохранено %{size}"
+    free: "Свободно %{size}"
+  state:
+    searching: Ищем раздачу…
+    resolving: Ищем, кто её раздаёт…
+    saving: "%{percent}% · %{have} из %{size}"
+    paused: "На паузе · %{have} из %{size}"
+    waiting: Начнётся, когда закончится текущий просмотр
+    saved: "Сохранено · %{size}"
+    unavailable: Его диск не подключён
+  failed:
+    no_source: Не нашлось раздачи для сохранения
+    not_in_release: Этой серии нет в раздаче её сезона
+    unsupported: Эта раздача не воспроизводится на этом устройстве
+    no_video: В этой раздаче нет видео
+    interrupted: Остановилось, не начавшись. Сохраните снова.
+    no_peers: Сейчас эту раздачу никто не раздаёт. Сохраните позже или выберите другую раздачу.
+    no_space: Диск заполнен. Освободите место и сохраните снова.
+    write: Не удалось записать в папку. Сохраните снова.
+    path_too_long: Имена файлов слишком длинные для этого устройства. Выберите другую раздачу.
+    other: Не удалось сохранить. Сохраните снова.
+  drawer:
+    title: Сохранить на устройство
+    note: Можно смотреть без интернета
+    whole_season: Весь сезон
+    episodes: "Серий: %{count}"
+    season_state: "Сохранено %{saved} из %{total}"
+    release_locked: Сохранённые серии взяты из этой раздачи, поэтому новые тоже будут из неё.
+    save_n: "Сохранить серии: %{count}"
+    save_one: Сохранить 1 серию
+    choose: Выберите серии
+    more: "Ещё %{size}"
+    new: новая
+
+confirm:
+  cancel: Отмена
+
+home:
+  details: Подробнее
