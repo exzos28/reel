@@ -7,8 +7,9 @@
 //! piece is written the ring makes room: it evicts the stored pieces farthest
 //! behind the readers first, then the farthest ahead of them, and tells the
 //! torrent to forget them (vendored librqbit's `forget_pieces`), so a seek
-//! back downloads them again. Pieces in a live reader's window and pieces
-//! being written are never evicted.
+//! back downloads them again. Pieces in a live reader's window, pieces being
+//! written and pinned pieces (a seek's place, until the player has read it) are
+//! never evicted.
 //!
 //! Only the pieces readers want are downloaded: the engine adds torrents with
 //! no files selected, so librqbit fetches just the streams' readahead, which
@@ -35,6 +36,8 @@ use librqbit_core::lengths::ValidPieceIndex;
 
 /// Share of the budget kept behind a reader, for short seeks back.
 pub const BEHIND_PERCENT: u64 = 12;
+/// The most of the budget a pin keeps (a seek's place): the readers keep the rest.
+const PIN_PERCENT: u64 = 40;
 pub use reel_domain::play::PLAYER_CACHE;
 /// A reader not seen for this long is forgotten (unless it is the last one).
 const FORGET_READER_AFTER: Duration = Duration::from_secs(60);
@@ -109,6 +112,10 @@ pub struct Policy {
     /// Bytes of the stored pieces (not counting those being evicted).
     stored: u64,
     readers: Vec<Reader>,
+    /// Pieces kept whatever the readers do, `(id, from, to)`: a seek's place until the
+    /// player reads it (`pin`).
+    pins: Vec<(u64, u32, u32)>,
+    next_pin: u64,
 }
 
 impl Policy {
@@ -127,7 +134,33 @@ impl Policy {
             pieces: BTreeMap::new(),
             stored: 0,
             readers: Vec::new(),
+            pins: Vec::new(),
+            next_pin: 1,
         }
+    }
+
+    /// Keeps pieces `from..=to` until `unpin`, at most `PIN_PERCENT` of the budget from
+    /// `from` (the readers must keep room): an id for it and the last piece pinned.
+    pub fn pin(&mut self, from: u32, to: u32) -> (u64, u32) {
+        let most = (self.budget * PIN_PERCENT / 100 / self.piece_len.max(1)).max(1) as u32;
+        let to = to.min(from.saturating_add(most - 1));
+        let id = self.next_pin;
+        self.next_pin += 1;
+        self.pins.push((id, from, to));
+        (id, to)
+    }
+
+    /// Whether pieces `from..=to` are all downloaded and verified.
+    pub fn has_all(&self, from: u32, to: u32) -> bool {
+        (from..=to).all(|p| self.pieces.get(&p).is_some_and(|s| s.state == State::Complete))
+    }
+
+    pub fn unpin(&mut self, id: u64) {
+        self.pins.retain(|p| p.0 != id);
+    }
+
+    fn pinned(&self, piece: u32) -> bool {
+        self.pins.iter().any(|&(_, from, to)| (from..=to).contains(&piece))
     }
 
     #[cfg(test)]
@@ -225,7 +258,7 @@ impl Policy {
                 (from..=to).contains(&piece)
             })
         };
-        if in_window(live) {
+        if in_window(live) || self.pinned(piece) {
             return None;
         }
         let class = if in_window(&self.readers) { 0 } else { 1 };
@@ -410,6 +443,24 @@ impl Link {
     pub fn sync(&self) {
         if let Some(ring) = self.ring() {
             ring.sync();
+        }
+    }
+
+    /// Keeps pieces `from..=to` of the torrent until `unpin`, as much as the budget allows
+    /// (`Policy::pin`): its id and the last piece kept. None before the torrent has metadata
+    /// (nothing is stored yet to keep).
+    pub fn pin(&self, from: u32, to: u32) -> Option<(u64, u32)> {
+        self.ring().map(|r| r.policy.lock().unwrap().pin(from, to))
+    }
+
+    /// Whether pieces `from..=to` are in the ring, downloaded and verified (None: no ring).
+    pub fn has_all(&self, from: u32, to: u32) -> Option<bool> {
+        self.ring().map(|r| r.policy.lock().unwrap().has_all(from, to))
+    }
+
+    pub fn unpin(&self, id: u64) {
+        if let Some(r) = self.ring() {
+            r.policy.lock().unwrap().unpin(id);
         }
     }
 
@@ -792,6 +843,43 @@ mod tests {
         assert!(p.admit(53, now).is_empty());
         assert!(p.over_budget());
         assert!((9..=11).all(|k| p.has(k)));
+    }
+
+    #[test]
+    fn pinned_pieces_stay_until_unpinned() {
+        let now = Instant::now();
+        // Pieces of 100 bytes, a budget of 500: pieces 0..3 stored, 0..=1 pinned.
+        let mut p = Policy::new(100, 10_000, 500);
+        p.see(&[0], now);
+        for piece in 0..3 {
+            complete(&mut p, piece, now);
+        }
+        let (pin, last) = p.pin(0, 1);
+        assert_eq!(last, 1);
+        assert!(p.has_all(0, 2) && !p.has_all(0, 3));
+        // The reader moves far on and fills the budget: what is behind it goes, the pin stays.
+        p.see(&[5000], now);
+        for piece in 50..55 {
+            complete(&mut p, piece, now);
+        }
+        assert!(p.has(0) && p.has(1), "a pinned piece was evicted");
+        assert!(!p.has(2), "an unpinned piece far behind stays");
+        p.unpin(pin);
+        // Unpinned, they go like any other once the reader that was there is forgotten.
+        let later = now + FORGET_READER_AFTER + Duration::from_secs(1);
+        p.see(&[5000], later);
+        for piece in 55..60 {
+            complete(&mut p, piece, later);
+        }
+        assert!(!p.has(0) && !p.has(1), "unpinned pieces far behind stay");
+    }
+
+    #[test]
+    fn a_pin_keeps_at_most_a_part_of_the_budget() {
+        // Pieces of 100 bytes, a budget of 1000: at most 400 bytes pinned.
+        let mut p = Policy::new(100, 10_000, 1000);
+        assert_eq!(p.pin(10, 30).1, 13);
+        assert_eq!(p.pin(10, 11).1, 11);
     }
 
     #[test]

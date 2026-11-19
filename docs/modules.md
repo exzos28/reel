@@ -91,13 +91,9 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/playback.ts`.
 - `openRelease(source: String, season: u32, episode: u32) -> u32` (`open_release`): Starts playing a release a search found: `source` is its magnet or .torrent URL; `season`/`episode` (0 for a film) pick the episode's file in a pack. A job id for `status`, 0 when the engine could not start.
   Called from: nothing in the UI.
-- `prepareSeek(job: u32, seconds: f64, duration: f64) -> u32` (`prepare_seek`): Gets the film's place at `seconds` (of `duration`) ready before the player seeks there: a TV's AVPlay holds the page while a seek waits for data, so it seeks only once the place is in (`seek_ready`). An id for `seek_ready`; 0 when nothing needs to come.
-  Called from: `ui/Player.tsx`.
-- `async seekReady(id: u32) -> String` (`seek_ready`): `{"state":"ready"|"failed"}` once the place of `prepare_seek` is, or `{"state":"pending"}` after a while (ask again): what the player waits on.
-  JSON: `{"state":"ready"|"failed"}`, `{"state":"pending"}`
-  Called from: `ui/Player.tsx`.
-- `seeked(job: u32)`: The player is at the seek's place (or gave it up): it is held no longer.
-  Called from: `ui/Player.tsx`.
+- `async seek(job: u32, seconds: f64) -> String`: Gets the place at `seconds` ready before the view seeks there (no player waits in pieces still to come: a TV's AVPlay holds the page meanwhile). `{"state":…}`: `ready` once it is in (at once when it was), `replaced` when a newer seek or `close` came first, `unknown` when the film has no index to tell (seek as it is).
+  JSON: `{"state":…}`
+  Called from: `ui/VideoSurface.tsx`.
 - `status(job: u32) -> String`: What the player shows for the job, JSON with a `phase` (see `Playback::status`).
   Called from: `ui/playback.ts`.
 - `subtitles(job: u32) -> String`: The subtitle files of what the job plays (fetching them starts with the first ready answer): `{"state":"pending"|"ready","files":[{"id", "language","label","format"}]}` (see `Playback::subtitles`).

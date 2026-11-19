@@ -8,8 +8,8 @@ import { open, type OpenOptions } from "nsh/test";
 export const ENGINE = {
   "Engine.open": 1,
   "Engine.close": null,
-  // No place to get ready: a seek goes to the view at once.
-  "Engine.prepareSeek": 0,
+  // The place of a seek is in at once: it goes to the view.
+  "Engine.seek": async () => JSON.stringify({ state: "ready" }),
   "Engine.checkSpace": JSON.stringify({ ok: true, free: 10 * 1024 ** 3, needed: 306 * 1024 ** 2, buffer: 256 }),
   "Engine.timeline": JSON.stringify({ ranges: [], ahead: 0 }),
   /** The sources About names, as the core lists them. */

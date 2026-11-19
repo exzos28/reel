@@ -57,10 +57,6 @@ fn linux_components(components: &nsh_platform_linux::Components) {
     mpv::register_linux(components);
 }
 
-/// The longest `Engine::seek_ready` waits before it answers "pending" (the UI asks again).
-#[cfg(not(target_arch = "wasm32"))]
-const SEEK_READY_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
-
 /// The built-in torrent server (librqbit). Results are JSON strings.
 #[cfg(not(target_arch = "wasm32"))]
 #[module]
@@ -118,33 +114,12 @@ impl Engine {
         playback().first_frame(job);
     }
 
-    /// Gets the film's place at `seconds` (of `duration`) ready before the player seeks
-    /// there: a TV's AVPlay holds the page while a seek waits for data, so it seeks only
-    /// once the place is in (`seek_ready`). An id for `seek_ready`; 0 when nothing needs
-    /// to come.
-    pub fn prepare_seek(job: u32, seconds: f64, duration: f64) -> u32 {
-        playback().prepare_seek(job, seconds, duration)
-    }
-
-    /// `{"state":"ready"|"failed"}` once the place of `prepare_seek` is, or
-    /// `{"state":"pending"}` after a while (ask again): what the player waits on.
-    pub async fn seek_ready(id: u32) -> String {
-        let waiting = catalog::runtime().spawn(async move {
-            let deadline = tokio::time::Instant::now() + SEEK_READY_WAIT;
-            loop {
-                let state = playback().seek_state(id);
-                if state["state"] != "pending" || tokio::time::Instant::now() >= deadline {
-                    return state.to_string();
-                }
-                tokio::time::sleep(std::time::Duration::from_millis(150)).await;
-            }
-        });
-        waiting.await.unwrap_or_else(|_| r#"{"state":"pending"}"#.to_owned())
-    }
-
-    /// The player is at the seek's place (or gave it up): it is held no longer.
-    pub fn seeked(job: u32) {
-        playback().seeked(job);
+    /// Gets the place at `seconds` ready before the view seeks there (no player waits in
+    /// pieces still to come: a TV's AVPlay holds the page meanwhile). `{"state":…}`:
+    /// `ready` once it is in (at once when it was), `replaced` when a newer seek or `close`
+    /// came first, `unknown` when the film has no index to tell (seek as it is).
+    pub async fn seek(job: u32, seconds: f64) -> String {
+        serde_json::json!({ "state": playback().seek(job, seconds).await.as_str() }).to_string()
     }
 
     /// Stops the job and deletes what it downloaded (the cache is per film).
