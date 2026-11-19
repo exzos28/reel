@@ -103,12 +103,15 @@ const noteStyle = (): ViewStyle => ({
   flexDirection: "row", alignItems: "center", gap: u(16),
   paddingHorizontal: u(28), paddingVertical: u(18), ...rounded(999), backgroundColor: alpha(colors.ink(), 0.72),
 });
-/** A stall while the film plays: the loader (Settings) in the middle, the picture kept;
- * with the stream's details on (Settings), how much is ready and how fast. */
+/** A stall or a seek while the film plays: the picture darkened, the loader (Settings) in the
+ * middle breathing as the title does on the stage; with the stream's details on (Settings), how
+ * much is ready and how fast. */
 export function BufferingNote(props: { text: () => string }) {
   return (
-    <View testID="buffering" style={{ ...cover(), pointerEvents: "none", alignItems: "center", justifyContent: "center", gap: u(20) }}>
-      <Loader label={t("player.buffering")} />
+    <View testID="buffering" style={{ ...cover(), pointerEvents: "none", alignItems: "center", justifyContent: "center", gap: u(20), backgroundColor: alpha(colors.ink(), 0.6) }}>
+      <View style={breathe(true)}>
+        <Loader label={t("player.buffering")} steady />
+      </View>
       <If when={props.text() !== ""}>
         <View style={noteStyle()}>
           <Text style={{ ...type.label(), fontWeight: 400, color: colors.soft() }}>{props.text()}</Text>
