@@ -1238,10 +1238,21 @@ pub fn timeline(job: u32, position: f64, duration: f64, cached: f64, read_byte: 
     // shows a stretch as ready that is not.
     let Ok((have, _)) = core.api.api_dump_haves(handle.id().into()) else { return empty };
     let on_disk = layout.ranges(|piece| have.get(piece as usize).is_some_and(|b| *b));
-    // Bytes are not proportional to time (the bitrate varies): anchor them where the player
-    // says it has read to, so the stretch around the picture is drawn where it is.
-    let anchor = (read_byte > 0.0).then_some(Anchor { byte: read_byte, time: read_time });
-    let on_disk = timeline::shifted(on_disk, layout.shift(duration, anchor));
+    // Bytes are not proportional to time (the bitrate varies, the end credits weigh little):
+    // the film's index places them; a film without one is drawn anchored where the player
+    // says it has read to.
+    let index = index_of(job).and_then(|rx| rx.borrow().as_ref().and_then(|s| s.as_ref().ok().cloned()));
+    let on_disk = match index {
+        Some(index) if duration > 0.0 => {
+            let len = layout.file_length;
+            let at = |share: f64| index.time_at((share * len as f64) as u64, duration, len) / duration;
+            on_disk.into_iter().map(|(a, b)| (at(a), at(b))).filter(|(a, b)| b > a).collect()
+        }
+        _ => {
+            let anchor = (read_byte > 0.0).then_some(Anchor { byte: read_byte, time: read_time });
+            timeline::shifted(on_disk, layout.shift(duration, anchor))
+        }
+    };
     // What the player holds in memory ahead of the picture plays as well.
     let ready = timeline::with_player_cache(on_disk, position, cached, duration);
     let ranges: Vec<[f64; 2]> = ready.iter().map(|&(a, b)| [a, b]).collect();

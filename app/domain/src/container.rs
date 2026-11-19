@@ -36,6 +36,20 @@ impl Index {
     }
 }
 
+impl Index {
+    /// The moment of the film at byte `byte` of the file (`len` bytes, `duration` seconds):
+    /// between the keyframes around it, in proportion (from the file's start to the first one,
+    /// from the last one to the end). For drawing what is downloaded on the scrubber.
+    pub fn time_at(&self, byte: u64, duration: f64, len: u64) -> f64 {
+        let k = &self.keyframes;
+        let i = k.partition_point(|&(_, b)| b <= byte);
+        let (t0, b0) = if i == 0 { (0.0, 0) } else { k[i - 1] };
+        let (t1, b1) = if i < k.len() { k[i] } else { (duration.max(t0), len.max(b0)) };
+        let t = if b1 > b0 { t0 + (t1 - t0) * (byte.saturating_sub(b0)) as f64 / (b1 - b0) as f64 } else { t0 };
+        t.clamp(0.0, duration.max(0.0))
+    }
+}
+
 /// Why a file has no index here.
 #[derive(Debug, Clone, PartialEq)]
 pub enum NoIndex {
@@ -437,6 +451,17 @@ mod tests {
         for (t, b) in &index.keyframes {
             println!("{t:.3},{b}");
         }
+    }
+
+    #[test]
+    fn a_byte_maps_to_the_time_between_its_keyframes() {
+        let index = Index { keyframes: vec![(0.0, 100), (10.0, 500), (20.0, 1300)] };
+        assert_eq!(index.time_at(500, 40.0, 2100), 10.0);
+        assert_eq!(index.time_at(900, 40.0, 2100), 15.0);
+        // Before the first keyframe, from the start; after the last, to the end.
+        assert_eq!(index.time_at(50, 40.0, 2100), 0.0);
+        assert_eq!(index.time_at(1700, 40.0, 2100), 30.0);
+        assert_eq!(index.time_at(5000, 40.0, 2100), 40.0);
     }
 
     #[test]
