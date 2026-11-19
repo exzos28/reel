@@ -175,3 +175,29 @@ test("setup, source step: one button, Check until the source answers, then Finis
   await working.press("label:Finish");
   expect(finished).toBe(1);
 });
+
+test("setup, language step: More languages opens them all, and the remote moves in the drawer and picks", async () => {
+  const chosen: string[] = [];
+  const tags = ["en-US", "ru-RU", "de-DE", "fr-FR", "es-ES", "it-IT", "ja-JP", "pt-BR"];
+  const names = ["English", "Русский", "Deutsch", "Français", "Español", "Italiano", "日本語", "Português"];
+  const app = await openApp({
+    modules: {
+      "app/native": {
+        ...firstRun({ state: "done" }),
+        "Settings.load": JSON.stringify({
+          language: "en", contentLanguage: "en-US", setupDone: false, bufferMB: 256, streamDetails: false,
+          contentLanguages: tags.map((tag, i) => ({ tag, name: names[i] })), source: { url: "", hasKey: false },
+          bufferChoices: [{ mb: 256, default: true }],
+        }),
+        "Settings.setContentLanguage": (tag: string) => (chosen.push(tag), tag),
+      },
+    },
+  });
+  await app.waitFor("label:More languages  ›");
+  await app.press("label:More languages  ›");
+  expect(app.shows("choice-panel")).toBe(true);
+  for (let i = 0; i < 7; i++) await app.keyboard.press("down"); // from English to the last
+  await app.keyboard.press("enter");
+  expect(chosen).toEqual(["pt-BR"]);
+  expect(app.shows("choice-panel")).toBe(false);
+});
