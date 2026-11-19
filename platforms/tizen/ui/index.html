@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=1920, height=1080">
+  <!-- The same color scheme as the NSH page in the iframe: where the two differ, Chromium paints
+       the iframe an opaque backdrop (not in its computed style), which hides AVPlay's video plane:
+       sound, a running clock, no picture. -->
+  <meta name="color-scheme" content="dark">
   <title>reel</title>
   <script src="$WEBAPIS/webapis/webapis.js"></script>
   <style>
@@ -21,7 +25,7 @@
     @keyframes run { from { left: -40%; } to { left: 100%; } }
     /* AVPlay draws on the video plane under the page: everything above it must be transparent. */
     #av { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
-    #app { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; background: transparent; }
+    #app { color-scheme: dark; position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; background: transparent; }
     #diag { position: absolute; left: 96px; top: 72px; right: 96px; padding: 32px 40px; background: rgba(15, 15, 15, 0.86); border-radius: 20px; }
     #diag h1 { margin: 0 0 16px; font-size: 44px; }
     #diag li { list-style: none; margin: 4px 0; }
