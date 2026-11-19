@@ -23,6 +23,10 @@ export const videoCaps = () => ({ tracks: videoKind() === "mpv" || videoKind() =
  * player's screen and the app around it must leave their backgrounds clear. */
 export const videoUnderUi = () => videoKind() === "avplay";
 
+/** A seek waits in the view for the data at the place and holds the page meanwhile (a TV's
+ * AVPlay): the player has the core get the place ready first (`Engine.prepareSeek`). */
+export const seeksWaitForData = () => videoKind() === "avplay";
+
 export interface SurfaceRef {
   seek(seconds: number): void;
 }

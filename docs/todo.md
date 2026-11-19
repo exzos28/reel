@@ -79,8 +79,9 @@ On the TV, AVPlay's `seekTo` holds the page's thread until it has data at the ta
 AVPlay cannot run on another thread in a web app. Only a native TV app (C#, `Tizen.Multimedia.Player`, the UI in a WebView) would move it, which rewrites the TV app.
 
 Within the web app:
-- **Get the place ready, then seek.** When the arrows rest, the UI asks the core (asynchronously) to fetch the pieces around the target: the byte from the time (file size × position / duration) and a window around it. The UI stays live meanwhile (the loader, Back, more seeks). Once the pieces are in, the shell calls `seekTo`, which then returns quickly.
-- **A guard in the core.** A read of a piece that does not come ends the stream's response after a few seconds instead of waiting for ever: `seekTo` fails, the thread is free, the UI says the seek failed.
+- **Done: get the place ready, then seek.** When the arrows rest, the player asks the core for the place (`Engine.prepareSeek`: the pieces from 8 s before the target at the file's average bitrate, fetched first and held) and waits asynchronously (`Engine.seekReady`); the app answers meanwhile. Only then does AVPlay seek. A place that does not come in 30 s: the picture stays, "not downloaded yet".
+- **To measure on the TV:** how long `seekTo` takes into a place that is in (if it still holds the thread for seconds, AVPlay itself is slow and only a native player helps), and how far AVPlay's first read after a seek lands from the proportional guess (a VBR film may miss by tens of MB: then read the container's index, MKV Cues or MP4 `stco`/`stss`).
+- **Maybe later: a guard in the core.** A read of a piece that does not come could end the stream's response after a while. Careful: a 4K start legitimately waits 12 s and more for its first 8 MB, and a body cut short may look like the end of the file to AVPlay. In the engine, not in the librqbit patch.
 
 Also seen on the TV:
 - The UI calls the core's synchronous methods over a synchronous XHR (`app/ui/native-http.ts`): a slow answer stops the UI the same way (0.1–0.5 s for `Engine.status`, `Catalog.saveProgress`).

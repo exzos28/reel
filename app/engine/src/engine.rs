@@ -521,6 +521,126 @@ fn warm(job: u32, handle: Arc<librqbit::ManagedTorrent>) {
     }
 }
 
+// ---- A seek's place, ready before the player goes there --------------------------
+
+/// How far before the target a seek's place starts, seconds of the film at its average
+/// bitrate: the player lands on the keyframe before the target.
+const SEEK_LEAD_S: f64 = 8.0;
+/// How long a place may take to come before the seek is given up.
+const SEEK_READY_FOR: std::time::Duration = std::time::Duration::from_secs(30);
+/// How long a ready place is held for the player (then the buffer may drop it again).
+const SEEK_HOLD_FOR: std::time::Duration = std::time::Duration::from_secs(60);
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum SeekState {
+    Pending,
+    Ready,
+    Failed,
+}
+
+struct SeekPrep {
+    id: u32,
+    state: Arc<Mutex<SeekState>>,
+    task: tokio::task::JoinHandle<()>,
+}
+
+/// The place being made ready per job (one at a time: a newer seek replaces it).
+static SEEKS: Mutex<Option<HashMap<u32, SeekPrep>>> = Mutex::new(None);
+/// Every seek's state by its id, for `seek_state` (the last few kept).
+static SEEK_STATES: Mutex<Option<HashMap<u32, Arc<Mutex<SeekState>>>>> = Mutex::new(None);
+static NEXT_SEEK: AtomicU32 = AtomicU32::new(1);
+
+/// Gets the film's place at `seconds` (of `duration`) ready before the player seeks there:
+/// the pieces from a little before it are fetched first and held while it waits. A TV's
+/// AVPlay holds the page's thread for as long as a seek waits for data; seeking only into
+/// data that is there keeps the app answering. An id for `seek_state`; 0 when the job
+/// plays nothing the engine streams (a saved film: everything is there).
+pub fn prepare_seek(job: u32, seconds: f64, duration: f64) -> u32 {
+    let Some(core) = CORE.get() else { return 0 };
+    let Some(Job::Ready(handle, _)) = core.jobs.lock().unwrap().get(&job).cloned() else { return 0 };
+    let Some(file) = video_file(&handle, job) else { return 0 };
+    let Some(layout) = file_layout(&handle, file) else { return 0 };
+    let Some((from, pieces)) = layout.seek_place(seconds, duration, SEEK_LEAD_S) else { return 0 };
+    let id = NEXT_SEEK.fetch_add(1, Ordering::Relaxed);
+    let state = Arc::new(Mutex::new(SeekState::Pending));
+    {
+        let mut states = SEEK_STATES.lock().unwrap();
+        let states = states.get_or_insert_with(HashMap::new);
+        states.retain(|&k, _| k + 16 > id);
+        states.insert(id, state.clone());
+    }
+    let api = core.api.clone();
+    let done = state.clone();
+    let task = core.rt.spawn(async move {
+        use tokio::io::{AsyncReadExt, AsyncSeekExt};
+        let torrent = handle.id();
+        let have_all = || {
+            api.api_dump_haves(torrent.into())
+                .map(|(have, _)| pieces.clone().all(|p| have.get(p as usize).is_some_and(|b| *b)))
+                .unwrap_or(false)
+        };
+        // A stream at the place: its pieces come first, its readahead after them, and the
+        // buffer keeps them while it is open (until the player seeked, or a newer seek).
+        let stream = match handle.clone().stream(file).await {
+            Ok(mut s) => s.seek(std::io::SeekFrom::Start(from)).await.ok().map(|_| s),
+            Err(_) => None,
+        };
+        let Some(mut stream) = stream else {
+            *done.lock().unwrap() = SeekState::Failed;
+            return;
+        };
+        let started = std::time::Instant::now();
+        {
+            // One byte read at the place asks for its piece; the loop watches all of them.
+            let mut byte = [0u8; 1];
+            let read = stream.read(&mut byte);
+            tokio::pin!(read);
+            let mut read_done = false;
+            while !have_all() {
+                if started.elapsed() > SEEK_READY_FOR {
+                    *done.lock().unwrap() = SeekState::Failed;
+                    time_step(job, "seek's place did not come");
+                    return;
+                }
+                tokio::select! {
+                    _ = &mut read, if !read_done => read_done = true,
+                    _ = tokio::time::sleep(std::time::Duration::from_millis(200)) => {}
+                }
+            }
+        }
+        *done.lock().unwrap() = SeekState::Ready;
+        time_step(job, "seek's place in");
+        // Held (the stream open) for the player, which seeks now.
+        tokio::time::sleep(SEEK_HOLD_FOR).await;
+        drop(stream);
+    });
+    let old = SEEKS.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, SeekPrep { id, state, task });
+    if let Some(old) = old {
+        old.task.abort();
+        let mut s = old.state.lock().unwrap();
+        if *s == SeekState::Pending {
+            *s = SeekState::Failed;
+        }
+    }
+    id
+}
+
+/// `{"state":"pending"|"ready"|"failed"}` for a `prepare_seek` id; an unknown one (0, or
+/// long gone) is ready: nothing to wait for.
+pub fn seek_state(id: u32) -> Value {
+    let state = SEEK_STATES.lock().unwrap().as_ref().and_then(|s| s.get(&id).cloned());
+    let state = state.map(|s| *s.lock().unwrap()).unwrap_or(SeekState::Ready);
+    json!({ "state": match state { SeekState::Pending => "pending", SeekState::Ready => "ready", SeekState::Failed => "failed" } })
+}
+
+/// The player is at the seek's place (or gave it up): the place is held no longer.
+pub fn seeked(job: u32) {
+    if let Some(prep) = SEEKS.lock().unwrap().as_mut().and_then(|s| s.remove(&job)) {
+        prep.task.abort();
+        let _ = prep.id;
+    }
+}
+
 // ---- A release's files, read before it plays --------------------------------
 
 type Files = Vec<(usize, String, u64)>;
@@ -1045,6 +1165,23 @@ impl Layout {
     }
 
 
+    /// Where a seek to `seconds` of `duration` reads first: the byte in the file from which
+    /// to fetch (`lead` seconds before, at the file's average bitrate: the keyframe before
+    /// the target) and the torrent's pieces from there to the target's own. None for an
+    /// empty file or no duration.
+    fn seek_place(&self, seconds: f64, duration: f64, lead: f64) -> Option<(u64, std::ops::RangeInclusive<u32>)> {
+        if self.file_length == 0 || self.piece_length == 0 || !(duration > 0.0) {
+            return None;
+        }
+        let seconds = seconds.clamp(0.0, duration);
+        let byte_at = |s: f64| ((self.file_length as f64) * (s / duration).clamp(0.0, 1.0)) as u64;
+        let last = self.file_length - 1;
+        let target = byte_at(seconds).min(last);
+        let from = byte_at(seconds - lead).min(target);
+        let piece = |b: u64| ((self.file_offset + b) / self.piece_length) as u32;
+        Some((from, piece(from)..=piece(target)))
+    }
+
     /// The stretches of the file whose pieces are all in, as `(from, to)` in 0..1 of the
     /// file, neighbours merged: exact, piece by piece.
     fn ranges(&self, have: impl Fn(u32) -> bool) -> Vec<(f64, f64)> {
@@ -1136,6 +1273,22 @@ pub(crate) mod tests {
         // A short last piece of the torrent.
         let short = Layout { piece_length: 100, total_length: 250, file_offset: 0, file_length: 250 };
         assert_eq!(short.ranges(|p| p == 2), vec![(0.8, 1.0)]);
+    }
+
+    #[test]
+    fn a_seeks_place_starts_a_lead_before_the_target() {
+        // Pieces of 100 bytes; the file is bytes 50..1050 (1000 bytes) of a 100 s film: 10 bytes a second.
+        let l = Layout { piece_length: 100, total_length: 1100, file_offset: 50, file_length: 1000 };
+        // 50 s: byte 500 of the file (torrent 550, piece 5); 8 s before: file 420 (torrent 470, piece 4).
+        assert_eq!(l.seek_place(50.0, 100.0, 8.0), Some((420, 4..=5)));
+        // At the start the lead stops at the file's first byte.
+        assert_eq!(l.seek_place(2.0, 100.0, 8.0), Some((0, 0..=0)));
+        // Past the end: the last byte.
+        assert_eq!(l.seek_place(500.0, 100.0, 8.0), Some((920, 9..=10)));
+        // No duration, no file: nothing to fetch.
+        assert_eq!(l.seek_place(10.0, 0.0, 8.0), None);
+        let empty = Layout { piece_length: 100, total_length: 100, file_offset: 0, file_length: 0 };
+        assert_eq!(empty.seek_place(10.0, 100.0, 8.0), None);
     }
 
     #[test]
