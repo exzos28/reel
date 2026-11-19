@@ -2,12 +2,16 @@
 //! Every call answers at once, in the shapes the UI already reads for a failure, with
 //! `NO_ENGINE` as the message.
 
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+use std::{
+    future::Future,
+    pin::Pin,
+    sync::atomic::{AtomicU32, AtomicU64, Ordering},
+};
 
 use serde_json::{Value, json};
 
 use reel_domain::{
-    play::Files,
+    play::{Files, SeekReady},
     ports::Playback,
     search::{Request, Source},
     subtitles::files::SubFile,
@@ -64,15 +68,12 @@ impl Playback for NoEngine {
 
     fn first_frame(&self, _job: u32) {}
 
-    fn prepare_seek(&self, _job: u32, _seconds: f64, _duration: f64) -> u32 {
-        0
-    }
+    fn opened(&self, _job: u32, _duration: f64) {}
 
-    fn seek_state(&self, _id: u32) -> Value {
-        json!({ "state": "ready" })
+    /// Nothing streams here: nothing to wait for.
+    fn seek(&self, _job: u32, _seconds: f64) -> Pin<Box<dyn Future<Output = SeekReady> + Send>> {
+        Box::pin(async { SeekReady::Unknown })
     }
-
-    fn seeked(&self, _job: u32) {}
 
     fn close(&self, _job: u32) {}
 

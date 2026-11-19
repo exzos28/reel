@@ -120,14 +120,3 @@ export function BufferingNote(props: { text: () => string }) {
     </View>
   );
 }
-
-/** A line over the picture for a moment, in the middle (a seek that gave up). */
-export function PlayerNote(props: { text: () => string }) {
-  return (
-    <View testID="player-note" style={{ ...cover(), pointerEvents: "none", alignItems: "center", justifyContent: "center" }}>
-      <View style={noteStyle()}>
-        <Text style={{ ...type.label(), fontWeight: 400, color: colors.soft() }}>{props.text()}</Text>
-      </View>
-    </View>
-  );
-}

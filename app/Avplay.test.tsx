@@ -146,27 +146,38 @@ test("AVPlay's seeked ends the seek's loader, landed on a keyframe before the ta
 });
 
 test("a seek waits for the core to have the place, then goes to AVPlay", async () => {
+  const asked: unknown[][] = [];
   const { app, ops } = await playing(DETAILS, {
-    "Engine.prepareSeek": 7,
     // The place comes 3 s after it is asked for.
-    "Engine.seekReady": () => new Promise<string>((r) => setTimeout(() => r(JSON.stringify({ state: "ready" })), 3000)),
+    "Engine.seek": (...args: unknown[]) => {
+      asked.push(args);
+      return new Promise<string>((r) => setTimeout(() => r(JSON.stringify({ state: "ready" })), 3000));
+    },
   });
   await app.keyboard.press("right"); // 0:11
   await app.wait(1500); // the arrows rested, the place asked for
+  expect(asked).toEqual([[1, 11]]);
   expect(ops().filter((o) => o.op === "seek")).toEqual([]); // not before the place is in
   expect(app.shows("buffering")).toBe(true);
   await app.wait(3000);
   expect(ops().filter((o) => o.op === "seek")).toEqual([{ op: "seek", position: 11 }]);
 });
 
-test("a seek whose place does not come stays where it plays and says so", async () => {
-  const { app, ops, event } = await playing(DETAILS, {
-    "Engine.prepareSeek": 7,
-    "Engine.seekReady": async () => JSON.stringify({ state: "failed" }),
+test("a seek a newer one replaced never goes to AVPlay", async () => {
+  const { app, ops } = await playing(DETAILS, {
+    "Engine.seek": async () => JSON.stringify({ state: "replaced" }),
   });
   await app.keyboard.press("right");
-  await app.waitFor("player-note");
-  expect(app.texts()).toContain("That part has not downloaded yet. Try again in a moment.");
+  await app.wait(1500);
+  expect(ops().filter((o) => o.op === "seek")).toEqual([]);
+});
+
+test("a seek the core could not get ready stays where it plays", async () => {
+  const { app, ops, event } = await playing(DETAILS, {
+    "Engine.seek": async () => { throw new Error("the core is gone"); },
+  });
+  await app.keyboard.press("right");
+  await app.wait(1500);
   expect(ops().filter((o) => o.op === "seek")).toEqual([]);
   expect(app.shows("buffering")).toBe(false);
   await event({ type: "time", position: 2 });

@@ -3,8 +3,13 @@
 // the web UI (AvplaySurface) on the TV, else NSH's `<Video>` (the
 // platform's player). All take the same props and give the same events;
 // mpv and AVPlay report and switch tracks (`videoCaps().tracks`).
+//
+// A seek goes to the view only once the core has the place on disk (`Engine.seek`): no
+// player ever waits in pieces still to come (a TV's AVPlay holds the whole page while it
+// does). The player's screen just asks for the seek and hears when it is there.
 import { cleanup, nativeComponent, signal, Video, View, type NativeComponentRef, type VideoRef, type ViewStyle } from "nsh";
-import { VideoEngine } from "./native";
+import { Engine, VideoEngine } from "./native";
+import { currentJob } from "./playback";
 import { AvplaySurface } from "./AvplaySurface";
 
 /** Which view plays here, as the core decides (`VideoEngine.kind`). */
@@ -27,6 +32,13 @@ export interface SurfaceRef {
   seek(seconds: number): void;
 }
 
+/** How near the target a view's time must be for a seek to be there, seconds (a TV's AVPlay
+ * lands on the keyframe before it). */
+const SEEK_NEAR_S = 3;
+/** How long a seek sent to the view may go without a time near its target before it counts as
+ * there (paused, a view may report no time after a seek), ms. */
+const SEEK_WAIT_MS = 12000;
+
 export interface VideoSurfaceProps {
   src: string;
   paused: boolean;
@@ -45,7 +57,11 @@ export interface VideoSurfaceProps {
   onProgress?: (e: { currentTime: number; duration: number; cached?: number; readAt?: number; readTime?: number }) => void;
   onBuffer?: (e: { isBuffering: boolean }) => void;
   onEnd?: () => void;
-  /** A seek has arrived (where the view says so: a TV's AVPlay); its times are the new place's. */
+  /** A seek is on its way to `seconds`: its place is being fetched, then the view goes there.
+   * Until `onSeeked`, the view's times are still the old place's. */
+  onSeeking?: (seconds: number) => void;
+  /** The seek is over: the view is at the place (or the seek could not be made); its times
+   * stand. */
   onSeeked?: () => void;
   /** `code`: what went wrong, for the UI to word (`view`: the video view could not start); `message`: the player's own words. */
   onError?: (e: { message: string; code?: string }) => void;
@@ -79,6 +95,72 @@ const MpvView = nativeComponent<MpvProps, MpvEvents>("reel/mpv", {
 });
 
 export function VideoSurface(props: VideoSurfaceProps) {
+  let view: SurfaceRef | undefined;
+  /** Counts the seeks: an answer for an older one is dropped. */
+  let gen = 0;
+  /** A seek sent to the view and not there yet. */
+  let sent: number | null = null;
+  let sentTimer: ReturnType<typeof setTimeout> | undefined;
+  cleanup(() => { gen++; clearTimeout(sentTimer); });
+  const over = () => {
+    sent = null;
+    clearTimeout(sentTimer);
+    props.onSeeked?.();
+  };
+  const arrived = () => { if (sent != null) over(); };
+  const send = (to: number) => {
+    sent = to;
+    clearTimeout(sentTimer);
+    sentTimer = setTimeout(arrived, SEEK_WAIT_MS);
+    view?.seek(to);
+  };
+  props.surfaceRef?.({
+    seek: (to) => {
+      const g = ++gen;
+      sent = null;
+      clearTimeout(sentTimer);
+      props.onSeeking?.(to);
+      const job = currentJob();
+      if (!job) return send(to);
+      Engine.seek(job, to).then(
+        (r) => {
+          if (g !== gen) return;
+          const { state } = JSON.parse(r) as { state: "ready" | "replaced" | "unknown" };
+          if (state !== "replaced") send(to);
+        },
+        (e) => {
+          console.warn("seek: the core could not get the place ready", e);
+          if (g === gen) over();
+        },
+      );
+    },
+  });
+  return (
+    <PlayerView
+      {...props}
+      surfaceRef={(r) => (view = r)}
+      onLoad={(e) => {
+        const job = currentJob();
+        if (job && e.duration > 0) Engine.opened(job, e.duration);
+        props.onLoad?.(e);
+      }}
+      onProgress={(e) => {
+        if (sent != null && Math.abs(e.currentTime - sent) <= SEEK_NEAR_S) over();
+        props.onProgress?.(e);
+      }}
+      onSeeked={arrived}
+      onError={(e) => {
+        gen++;
+        sent = null;
+        clearTimeout(sentTimer);
+        props.onError?.(e);
+      }}
+    />
+  );
+}
+
+/** The view that plays here, as `videoKind` says. */
+function PlayerView(props: VideoSurfaceProps) {
   return (
     <If when={videoKind() === "mpv"} else={<OtherSurface {...props} />}>
       <MpvView

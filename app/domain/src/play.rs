@@ -28,3 +28,26 @@ pub type Files = Vec<(usize, String, u64)>;
 /// screen, so at least this much is kept behind it (what is being watched stays
 /// on disk, and the scrubber shows it as ready). The engine's cache and the video view agree on it.
 pub const PLAYER_CACHE: u64 = 64 * 1024 * 1024;
+
+/// What a seek waits for before the player goes there (`Playback::seek`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SeekReady {
+    /// The place is on disk (it was, or it came): the player can seek without waiting in it.
+    Ready,
+    /// A newer seek of the same job, or the job closed: this one is not wanted any more.
+    Replaced,
+    /// The engine does not know where the place is (the player has not said how long the
+    /// film is, or the job does not stream): the player seeks as it is.
+    Unknown,
+}
+
+impl SeekReady {
+    /// The word the UI reads.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            SeekReady::Ready => "ready",
+            SeekReady::Replaced => "replaced",
+            SeekReady::Unknown => "unknown",
+        }
+    }
+}

@@ -19,12 +19,12 @@ mod leases;
 mod sources;
 mod subtitles;
 
-use std::sync::Arc;
+use std::{future::Future, pin::Pin, sync::Arc};
 
 use serde_json::Value;
 
 use reel_domain::{
-    play::Files,
+    play::{Files, SeekReady},
     ports::{Keep, KeepRequest, Playback, PlaybackHost},
     search::{Request, Source},
     subtitles::files::SubFile,
@@ -77,16 +77,12 @@ impl Playback for Local {
         engine::first_frame_shown(job);
     }
 
-    fn prepare_seek(&self, job: u32, seconds: f64, duration: f64) -> u32 {
-        engine::prepare_seek(job, seconds, duration)
+    fn opened(&self, job: u32, duration: f64) {
+        engine::opened(job, duration);
     }
 
-    fn seek_state(&self, id: u32) -> Value {
-        engine::seek_state(id)
-    }
-
-    fn seeked(&self, job: u32) {
-        engine::seeked(job)
+    fn seek(&self, job: u32, seconds: f64) -> Pin<Box<dyn Future<Output = SeekReady> + Send>> {
+        Box::pin(engine::seek(job, seconds))
     }
 
     fn close(&self, job: u32) {
