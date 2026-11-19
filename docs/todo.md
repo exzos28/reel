@@ -71,3 +71,17 @@ of a change without building it.
   TMDB's trending is commercial. In CI the core should send no picture URLs (grey stand-ins in
   their place: the layout still shows), or only free films' (a stand-in catalog). Locally
   `out/screens/` is never shared and keeps the real pictures.
+
+## TV: a seek must not hold the app
+
+On the TV, AVPlay's `seekTo` holds the page's thread until it has data at the target: 3–7 s on a stream still downloading (measured 2026-11-19). The shell and the NSH UI share that thread (`webapis.avplay` exists only on the page's main thread, and the TV's browser keeps the iframe in the same renderer), so the whole app stops: no keys, no Back, the loader frozen. If the pieces never come (no peers), it stops for good.
+
+AVPlay cannot run on another thread in a web app. Only a native TV app (C#, `Tizen.Multimedia.Player`, the UI in a WebView) would move it, which rewrites the TV app.
+
+Within the web app:
+- **Get the place ready, then seek.** When the arrows rest, the UI asks the core (asynchronously) to fetch the pieces around the target: the byte from the time (file size × position / duration) and a window around it. The UI stays live meanwhile (the loader, Back, more seeks). Once the pieces are in, the shell calls `seekTo`, which then returns quickly.
+- **A guard in the core.** A read of a piece that does not come ends the stream's response after a few seconds instead of waiting for ever: `seekTo` fails, the thread is free, the UI says the seek failed.
+
+Also seen on the TV:
+- The UI calls the core's synchronous methods over a synchronous XHR (`app/ui/native-http.ts`): a slow answer stops the UI the same way (0.1–0.5 s for `Engine.status`, `Catalog.saveProgress`).
+- The app's timers in NSH's realm frame fire about once a second (a 100 ms interval came every ~900 ms): the browser throttles that frame as hidden. Every delay in the UI rounds up to a second. To look at in NSH's web runtime.
