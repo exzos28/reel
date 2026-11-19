@@ -73,7 +73,18 @@ export function SetupScreen() {
   const step = signal(0);
   /** The focused item of the step: its options, then its actions. */
   const at = signal(0);
+  /** The drawer of all languages open (as Settings' pickers are), its focus on `pickAt`. */
   const allLanguages = signal(false);
+  const pickAt = signal(0);
+  const openLanguages = () => {
+    pickAt.set(Math.max(0, languageChoices().findIndex((c) => c.selected)));
+    allLanguages.set(true);
+  };
+  const pickLanguage = (i: number) => {
+    const l = contentLanguages()[i];
+    if (l) chooseContentLanguage(l.tag);
+    allLanguages.set(false);
+  };
   const form = sourceForm();
   const page = scroller({ anchor: (viewport) => viewport / 3 });
 
@@ -107,7 +118,7 @@ export function SetupScreen() {
     const c = options()[i];
     if (!c) return;
     if (step() === 0) {
-      if (c.key === "more") return allLanguages.set(true);
+      if (c.key === "more") return openLanguages();
       chooseContentLanguage(c.key);
     } else if (step() === 1) {
       const b = bufferChoices().find((x) => String(x.mb) === c.key);
@@ -137,12 +148,16 @@ export function SetupScreen() {
 
   keymap.bind(
     byKeys({
-      up: () => !allLanguages() && at.set(Math.max(at() - 1, 0)),
-      down: () => !allLanguages() && at.set(Math.min(at() + 1, count() - 1)),
+      // The drawer, while it is open, takes the arrows and OK.
+      up: () => (allLanguages() ? pickAt.set(Math.max(pickAt() - 1, 0)) : at.set(Math.max(at() - 1, 0))),
+      down: () =>
+        allLanguages()
+          ? pickAt.set(Math.min(pickAt() + 1, languageChoices().length - 1))
+          : at.set(Math.min(at() + 1, count() - 1)),
     }),
     { repeat: true },
   );
-  keymap.bind({ enter: () => !allLanguages() && act(at()) });
+  keymap.bind({ enter: () => (allLanguages() ? pickLanguage(pickAt()) : act(at())) });
   // Back: the languages' drawer first, then the previous step.
   onBack(() => {
     if (allLanguages()) return allLanguages.set(false), true;
@@ -219,12 +234,8 @@ export function SetupScreen() {
         <ChoicePanel
           title={() => t("settings.language.title")}
           choices={languageChoices}
-          focusedAt={() => Math.max(0, languageChoices().findIndex((c) => c.selected))}
-          onPick={(i) => {
-            const l = contentLanguages()[i];
-            if (l) chooseContentLanguage(l.tag);
-            allLanguages.set(false);
-          }}
+          focusedAt={pickAt}
+          onPick={pickLanguage}
           onClose={() => allLanguages.set(false)}
         />
       </If>
