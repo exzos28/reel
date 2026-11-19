@@ -32,7 +32,8 @@ export const LOADERS: Loader[] = ["logo", "dinosaur"];
 
 /** The settings as the core answers them (`Settings.load`, `Settings.current`). */
 export interface SettingsJson {
-  language: string;
+  /** The UI language picked (a BCP 47 tag); null follows the system's. */
+  language: string | null;
   bufferMB: number;
   bufferChoices: BufferChoice[];
   streamDetails?: boolean;
@@ -45,6 +46,8 @@ export interface SettingsJson {
   setupDone?: boolean;
 }
 
+/** The UI language picked; null follows the system's (the first of its languages reel has). */
+export const uiLanguage = signal<string | null>(null);
 export const contentLanguage = signal("en-US");
 export const contentLanguages = signal<ContentLanguage[]>([]);
 
@@ -81,7 +84,15 @@ export function applySettings(s: SettingsJson) {
   if (s.contentLanguages) contentLanguages.set(s.contentLanguages);
   if (s.source) source.set(s.source);
   if (s.setupDone !== undefined) setupDone.set(s.setupDone);
-  setLocale(s.language);
+  uiLanguage.set(s.language ?? null);
+  setLocale(s.language ?? null);
+}
+
+/** Shows the UI in `tag` (one of `availableLocales()`), or in the system's language with null. */
+export async function chooseUiLanguage(tag: string | null) {
+  uiLanguage.set(tag);
+  setLocale(tag);
+  await Settings.setLanguage(tag ?? "");
 }
 
 export async function toggleStreamDetails() {

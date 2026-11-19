@@ -38,7 +38,6 @@ fn recommended_mb(free: Option<u64>) -> u32 {
 pub fn recommended_buffer() -> u32 {
     recommended_mb(playback().check_space()["free"].as_u64())
 }
-pub const DEFAULT_LANGUAGE: &str = "en";
 
 /// Where the top nav's group (the pills and the round buttons after them) sits in its bar on a
 /// TV and a desktop: after the logo, in the middle, or at the right edge.
@@ -71,6 +70,10 @@ pub const CONTENT_LANGUAGES: [(&str, &str); 12] = [
 #[serde(default, rename_all = "camelCase")]
 struct Saved {
     buffer_mb: u32,
+    /// The UI language the user picked (a BCP 47 tag); empty follows the system's. Kept under
+    /// `uiLanguage`: the old `language` was always "en" (nothing could change it), so a file that
+    /// has only that follows the system too.
+    #[serde(rename = "uiLanguage")]
     language: String,
     /// The language of titles, descriptions and episode names (a TMDB tag).
     content_language: String,
@@ -114,7 +117,7 @@ impl Default for Saved {
     fn default() -> Self {
         Saved {
             buffer_mb: DEFAULT_BUFFER_MB,
-            language: DEFAULT_LANGUAGE.to_owned(),
+            language: String::new(),
             content_language: DEFAULT_CONTENT_LANGUAGE.to_owned(),
             source_url: String::new(),
             source_key: String::new(),
@@ -141,9 +144,6 @@ impl Saved {
         }
         if !LOADERS.contains(&self.loader.as_str()) {
             self.loader = DEFAULT_LOADER.to_owned();
-        }
-        if self.language.is_empty() {
-            self.language = DEFAULT_LANGUAGE.to_owned();
         }
         self
     }
@@ -281,14 +281,14 @@ pub fn load(data_dir: Option<&Path>) -> Value {
 }
 
 /// The settings as the UI shows them, from memory:
-/// `{"language","contentLanguage","contentLanguages":[{"tag","name"}],"bufferMB",
+/// `{"language" (the UI's; null follows the system),"contentLanguage","contentLanguages":[{"tag","name"}],"bufferMB",
 /// "streamDetails","navPosition","loader","setupDone","source":{"url","hasKey"},"bufferChoices":[{"mb","default"}]}`.
 pub fn current() -> Value {
     let saved = with(|s| s.saved.clone());
     let recommended = recommended_buffer();
     let choices: Vec<Value> = buffer_choices().into_iter().map(|c| json!({ "mb": c, "default": c == recommended })).collect();
     json!({
-        "language": saved.language,
+        "language": (!saved.language.is_empty()).then(|| saved.language.clone()),
         "contentLanguage": saved.content_language,
         "contentLanguages": CONTENT_LANGUAGES
             .iter()
@@ -463,9 +463,10 @@ pub fn set_content_language(tag: &str) -> String {
     now
 }
 
+/// Saves the UI language (a BCP 47 tag); an empty one follows the system's again.
 pub fn set_language(tag: &str) {
     with(|s| {
-        s.saved.language = tag.to_owned();
+        s.saved.language = tag.trim().to_owned();
         save(s);
     });
     bump();
@@ -519,7 +520,8 @@ mod tests {
         // A new install: the buffer its free space recommends (the one the choices mark).
         assert_eq!(first["bufferMB"], recommended_buffer());
         assert!(first["bufferChoices"].as_array().unwrap().iter().any(|c| c["default"] == true && c["mb"] == first["bufferMB"]));
-        assert_eq!(first["language"], "en");
+        // The UI language follows the system's until one is picked.
+        assert_eq!(first["language"], Value::Null);
         assert_eq!(first["bufferChoices"].as_array().unwrap().len(), BUFFER_CHOICES.len());
 
         assert_eq!(set_buffer_mb(1024), 1024);
@@ -550,6 +552,15 @@ mod tests {
         assert_eq!(set_content_language("xx-XX"), "ru-RU", "an unknown tag is refused");
         assert_eq!(load(Some(&dir))["contentLanguage"], "ru-RU");
         set_content_language(DEFAULT_CONTENT_LANGUAGE);
+
+        // UI language: a picked one is kept; empty follows the system again; the old `language`
+        // (always "en") is not a pick.
+        set_language("ru");
+        assert_eq!(load(Some(&dir))["language"], "ru");
+        set_language("");
+        assert_eq!(load(Some(&dir))["language"], Value::Null);
+        std::fs::write(dir.join("settings.json"), r#"{"language":"en"}"#).unwrap();
+        assert_eq!(load(Some(&dir))["language"], Value::Null);
 
         // Nav position and loader: one of their lists, kept across loads; missing or unknown
         // in the file: the defaults.

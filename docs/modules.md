@@ -236,9 +236,9 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/preferences.ts`.
 - `setContentLanguage(tag: String) -> String` (`set_content_language`): Saves the content language (titles, descriptions, episode names; one of `contentLanguages` from `load`) and drops what was asked in the old one; the language in effect.
   Called from: `ui/preferences.ts`.
-- `setLanguage(tag: String)` (`set_language`): Saves the UI language (a BCP 47 tag).
-  Called from: nothing in the UI.
-- `setLoader(loader: String) -> String` (`set_loader`): Saves the loading animation ("logo" or "dinosaur"; another value is refused); the one in effect.
+- `setLanguage(tag: String)` (`set_language`): Saves the UI language (a BCP 47 tag); an empty tag follows the system's again. `load` answers it as `language`, null while it follows the system.
+  Called from: `ui/preferences.ts`.
+- `setLoader(loader: String) -> String` (`set_loader`): Saves the loading animation ("dinosaur" or "logo"; another value is refused); the one in effect.
   Called from: `ui/preferences.ts`.
 - `setNavPosition(position: String) -> String` (`set_nav_position`): Saves where the top nav sits on a TV and a desktop ("left", "center" or "right"; another value is refused); the position in effect.
   Called from: `ui/preferences.ts`.

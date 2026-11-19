@@ -289,7 +289,8 @@ impl Settings {
         now
     }
 
-    /// Saves the UI language (a BCP 47 tag).
+    /// Saves the UI language (a BCP 47 tag); an empty tag follows the system's again. `load`
+    /// answers it as `language`, null while it follows the system.
     pub fn set_language(tag: String) {
         settings::set_language(&tag);
     }
