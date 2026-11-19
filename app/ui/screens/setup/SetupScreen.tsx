@@ -1,7 +1,8 @@
 // The first-run setup (design/setup-and-settings.md): the language of titles, the playback
-// buffer, the search source, one step at a time, each with an answer OK accepts. Beside the steps,
-// where the device serves its settings page (a TV), its QR code: doing it from a phone, which the
-// screen follows (a source saved there finishes the setup). Up/down move the focus, OK chooses
+// buffer, the search source, one step at a time, each with an answer OK accepts. Beside the first
+// two steps, where the device serves its settings page (a TV), its QR code: doing it from a phone,
+// which the screen follows (a source saved there finishes the setup). The source step does not
+// repeat it: under the fields it would push Skip off a TV's screen. Up/down move the focus, OK chooses
 // or goes on, Back goes to the previous step.
 import { effect, keymap, signal, Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
@@ -23,14 +24,15 @@ import { bufferChoiceList, languageChoices } from "../settings/choices";
 import { formWidth } from "../../kit/form";
 import { PhoneCard } from "../source/PhoneCard";
 import { partner } from "../../hosted";
-import { SourceByPhone, SourceForm } from "../source/SourceForm";
+import { SourceForm } from "../source/SourceForm";
 import { linkedSource, sourceForm } from "../source/sourceState";
 import { PartnerSource } from "../source/PartnerSource";
 
 /** How many languages the step lists before "More languages". */
 const SHOWN_LANGUAGES = 5;
 
-const layoutStyle = (): ViewStyle => ({ ...row(u(96), "flex-start"), paddingHorizontal: safe().x, paddingTop: u(40) });
+/** The steps and, beside them, the phone's card centred on their height. */
+const layoutStyle = (): ViewStyle => ({ ...row(u(96), "center"), paddingHorizontal: safe().x, paddingTop: u(40) });
 const stepStyle = (wide: boolean): ViewStyle => ({ flex: 1, maxWidth: wide ? formWidth() * 2 + u(120) : formWidth(), gap: u(16) });
 /** The source step's two ways side by side (one above the other on a phone): your own source, or
  * a rented one. */
@@ -172,9 +174,9 @@ export function SetupScreen() {
             </If>
             <If when={step() === 2}>
               {/* The fields take text where a keyboard is at hand; a TV's remote goes to the actions
-                  (its address is typed on the phone, beside). */}
+                  (its address is typed on the phone, from the first steps' code). */}
               <View style={waysStyle()}>
-                {/* Your own: the fields, Check and Finish (and, on a TV, typing it on a phone). */}
+                {/* Your own: the fields, Check and Finish. */}
                 <View style={wayStyle()}>
                   <Text style={sectionTitle()}>{t("setup.source.own_title")}</Text>
                   <SourceForm form={form} ownButton={false} />
@@ -187,7 +189,6 @@ export function SetupScreen() {
                       onPress={sourceAction}
                     />
                   </View>
-                  <SourceByPhone />
                 </View>
                 {/* Or a rented one, from the partner's bot (a build without one shows only yours). */}
                 <If when={partner()}>
