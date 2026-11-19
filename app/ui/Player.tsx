@@ -28,7 +28,7 @@ import { BarBack, barBackBox } from "./layout/WindowBar";
 import { onBack } from "./nav";
 import { SubtitleOverlay } from "./SubtitleOverlay";
 import { playerTracks, type TrackOption } from "./tracks";
-import { seeksWaitForData, VideoSurface, videoUnderUi, type SurfaceRef } from "./VideoSurface";
+import { VideoSurface, videoUnderUi, type SurfaceRef } from "./VideoSurface";
 import playIcon from "./icons/play.svg";
 import pauseIcon from "./icons/pause.svg";
 import rewindIcon from "./icons/rewind.svg";
@@ -282,9 +282,9 @@ export function Player() {
     seekNote.set(false);
     clearTimeout(seekPendingTimer);
     const job = currentJob();
-    // A view that waits for the data at the place (AVPlay holds the page meanwhile) seeks
-    // once the core has it; the app answers in between (Back, more presses).
-    const id = seeksWaitForData() && job ? Engine.prepareSeek(job, to, d) : 0;
+    // Every view seeks once the core has the data at the place: a view that seeks into pieces
+    // not downloaded waits in them (AVPlay holds the page meanwhile); the app answers in between.
+    const id = job ? Engine.prepareSeek(job, to, d) : 0;
     if (!id) return sendSeek(to);
     preparedFor = job;
     void (async () => {

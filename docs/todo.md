@@ -79,7 +79,7 @@ On the TV, AVPlay's `seekTo` holds the page's thread until it has data at the ta
 AVPlay cannot run on another thread in a web app. Only a native TV app (C#, `Tizen.Multimedia.Player`, the UI in a WebView) would move it, which rewrites the TV app.
 
 Within the web app:
-- **Done: get the place ready, then seek.** When the arrows rest, the player asks the core for the place (`Engine.prepareSeek`: the pieces from 8 s before the target at the file's average bitrate, fetched first and held) and waits asynchronously (`Engine.seekReady`); the app answers meanwhile. Only then does AVPlay seek. A place that does not come in 30 s: the picture stays, "not downloaded yet".
+- **Done: get the place ready, then seek** (every platform, not only the TV). When the arrows rest, the player asks the core for the place (`Engine.prepareSeek`: the pieces from 8 s before the target at the file's average bitrate, fetched first and held) and waits asynchronously (`Engine.seekReady`); the app answers meanwhile. Only then does AVPlay seek. A place that does not come in 30 s: the picture stays, "not downloaded yet".
 - **To measure on the TV:** how long `seekTo` takes into a place that is in (if it still holds the thread for seconds, AVPlay itself is slow and only a native player helps), and how far AVPlay's first read after a seek lands from the proportional guess (a VBR film may miss by tens of MB: then read the container's index, MKV Cues or MP4 `stco`/`stss`).
 - **Maybe later: a guard in the core.** A read of a piece that does not come could end the stream's response after a while. Careful: a 4K start legitimately waits 12 s and more for its first 8 MB, and a body cut short may look like the end of the file to AVPlay. In the engine, not in the librqbit patch.
 
