@@ -23,7 +23,7 @@ The version and build come from `app/nsh.json` only (`docs/releasing.md`). `REEL
 ## Workflows
 
 - `ci.yml`: on PRs and on main. Calls `checks.yml`, which main's branch protection requires before
-  a PR merges (PRs merge themselves with `gh pr merge --auto --merge`). The platform builds
+  a PR merges (merged by hand, `gh pr merge --merge`; never auto-merge). The platform builds
   (`build.yml` and `tizen.yml`) run only on a PR with the `build` label, on a version PR (branch
   `release/*`) and by hand (`workflow_dispatch`, input `build`). A newer push to a PR cancels its
   older run; on main every commit keeps its run.

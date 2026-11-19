@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Opens the version PR: the entries in .changes/ on origin/main become the next version
 # (build/changes.py apply: app/nsh.json's version and build, a CHANGELOG.md section), committed as
-# "Version X.Y.Z" on branch release/vX.Y.Z, pushed, and set to merge itself when its checks and
-# platform builds pass. The merge into main publishes the release (.github/workflows/release.yml).
+# "Version X.Y.Z" on branch release/vX.Y.Z and pushed. Merge it by hand once its checks and
+# platform builds pass; the merge into main publishes the release (.github/workflows/release.yml).
 #
 #   build/release.sh [--dry-run]     --dry-run: show the version and the section, change nothing
 #
@@ -46,5 +46,4 @@ git commit -q -m "Version $version"
 git push -q -u origin "$branch"
 notes="$(python3 -I build/changes.py notes "$version")"
 url="$(gh pr create --base main --head "$branch" --title "Version $version" --body "$notes")"
-gh pr merge "$url" --auto --merge
-log "$url merges itself when its checks and builds pass; the merge publishes v$version"
+log "$url: merge it once its checks and builds pass (gh pr merge --merge); the merge publishes v$version"
