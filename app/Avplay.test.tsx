@@ -111,9 +111,9 @@ test("pause, play and seeks reach AVPlay", async () => {
   await app.keyboard.press("space");
   await app.keyboard.press("right"); // 10 s on from 0:01
   // The seek reaches AVPlay a moment after the key (a slow machine, CI, is not there yet at once).
-  await app.waitUntil(() => ops().length >= 5);
+  await app.waitUntil(() => ops().length >= 6);
   // The seek holds the picture (a pause) until it is there.
-  expect(ops().slice(1)).toEqual([{ op: "pause" }, { op: "play" }, { op: "pause" }, { op: "seek", position: 11 }]);
+  expect(ops().slice(1)).toEqual([{ op: "pause" }, { op: "play" }, { op: "pause" }, { op: "seek", position: 11 }, { op: "play" }]);
 });
 
 test("a run of presses is one seek, sent once the arrows rest; the scrubber keeps its target until AVPlay gets there", async () => {
@@ -164,7 +164,7 @@ test("a seek waits for the core to have the place, then goes to AVPlay", async (
   expect(ops().filter((o) => o.op === "seek")).toEqual([{ op: "seek", position: 11 }]);
 });
 
-test("a seek holds the picture still while its place comes, and plays on once it is there", async () => {
+test("a seek holds the picture still while its place comes, and plays on once it goes to AVPlay", async () => {
   const { app, ops, event } = await playing(DETAILS, {
     "Engine.seek": () => new Promise<string>((r) => setTimeout(() => r(JSON.stringify({ state: "ready" })), 3000)),
   });
@@ -173,10 +173,10 @@ test("a seek holds the picture still while its place comes, and plays on once it
   await app.keyboard.press("right");
   await app.wait(1500); // the arrows rested: the place is asked for
   expect(shown().slice(before)).toEqual(["pause"]);
-  await app.wait(3000); // the place is in: AVPlay seeks, still held
-  expect(shown().slice(before)).toEqual(["pause", "seek"]);
-  await event({ type: "seeked" });
+  await app.wait(3000); // the place is in: AVPlay seeks and plays on
   expect(shown().slice(before)).toEqual(["pause", "seek", "play"]);
+  await event({ type: "seeked" });
+  expect(shown().slice(before).length).toBe(3); // nothing more
 });
 
 test("a seek the core replaced (the job closed) never goes to AVPlay, and its loader goes", async () => {

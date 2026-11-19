@@ -708,14 +708,18 @@ pub async fn seek(job: u32, seconds: f64) -> SeekReady {
             None => (Pinned(None, None), last),
         };
         let _pin = pin;
+        // Ready once the keyframe's own piece is in: the player starts from it, and the rest
+        // of the place (pinned, fetched first) comes while it plays. Waiting for all of it
+        // cost a whole extra piece where the place ends past a piece's end (seconds each).
+        let start = first;
         let ring = link.clone();
         let torrent = handle.id();
-        let have_all = move || match ring.as_ref().and_then(|l| l.has_all(first, last)) {
+        let have_all = move || match ring.as_ref().and_then(|l| l.has_all(first, start)) {
             Some(all) => all,
             // A torrent not in the ring (a film being saved, on disk): librqbit's own record.
             None => api
                 .api_dump_haves(torrent.into())
-                .map(|(have, _)| (first..=last).all(|p| have.get(p as usize).is_some_and(|b| *b)))
+                .map(|(have, _)| (first..=start).all(|p| have.get(p as usize).is_some_and(|b| *b)))
                 .unwrap_or(false),
         };
         let in_already = have_all();
