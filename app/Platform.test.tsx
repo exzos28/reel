@@ -2,18 +2,18 @@
 // window can fill the screen (a button and F) and has a Back in the window bar's slot;
 // a TV has neither (the remote's Back is it).
 import { expect, test } from "nsh/test";
-import { NATIVE, STILL, openApp } from "./testEngine";
+import { NATIVE, STILL, openApp, DUNE_FIRST } from "./testEngine";
 
 const engine = {
   ...NATIVE,
+  ...DUNE_FIRST,
   ...STILL,
   "Engine.status": JSON.stringify({ phase: "ready", name: "Dune.2021.1080p.BluRay", stream_url: "http://127.0.0.1:8000/torrents/0/stream/0", low_space: false, speed: 3.4, peers: 37, found: 52, start: 100, stage: "starting" }),
 };
 
 test("TV: the player offers no full screen and no Back button", async () => {
   const app = await openApp({ clock: {}, modules: { "app/native": engine } });
-  await app.keyboard.press("down"); // Trending movies: Dune
-  await app.press("Play");
+  await app.press("Play"); // Dune, the hero of a Home with nothing begun
   await app.wait(600);
   expect(app.shows("label:Pause")).toBe(true);
   expect(app.shows("label:Full screen")).toBe(false);

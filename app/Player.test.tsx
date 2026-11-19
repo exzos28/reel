@@ -2,7 +2,10 @@
 // (STILL: it plays its first frame at once and stands still, so the time
 // stays where seeks put it); and the stage before the first frame.
 import { expect, test } from "nsh/test";
-import { episode, NATIVE, STILL, openApp } from "./testEngine";
+import { episode, HOME, NATIVE, STILL, openApp, DUNE_FIRST } from "./testEngine";
+
+/** Home with Attack on Titan watched last: the hero. */
+const AOT_FIRST = { "Catalog.home": JSON.stringify(HOME.map((s) => (s.id === "continue" ? { ...s, items: [...s.items].reverse() } : s))) };
 
 const status = JSON.stringify({
   phase: "ready",
@@ -24,10 +27,9 @@ const DETAILS = {
 async function playing() {
   const app = await openApp({
     clock: {},
-    modules: { "app/native": { ...NATIVE, ...STILL, ...DETAILS, "Engine.status": status, "Engine.timeline": timeline } },
+    modules: { "app/native": { ...NATIVE, ...DUNE_FIRST, ...STILL, ...DETAILS, "Engine.status": status, "Engine.timeline": timeline } },
   });
-  await app.keyboard.press("down"); // Trending movies: Dune
-  await app.press("Play");
+  await app.press("Play"); // Dune, the hero of a Home with nothing begun
   await app.wait(600); // one poll of the engine
   return app;
 }
@@ -36,10 +38,9 @@ async function playing() {
 async function waiting(engine: Record<string, unknown>) {
   const app = await openApp({
     clock: {},
-    modules: { "app/native": { ...NATIVE, ...DETAILS, "Engine.status": JSON.stringify(engine) } },
+    modules: { "app/native": { ...NATIVE, ...DUNE_FIRST, ...DETAILS, "Engine.status": JSON.stringify(engine) } },
   });
-  await app.keyboard.press("down");
-  await app.press("Play");
+  await app.press("Play"); // Dune, the hero of a Home with nothing begun
   await app.wait(600);
   return app;
 }
@@ -59,7 +60,7 @@ test("while the engine looks for people, the stage shows the title and what it d
   await app.keyboard.press("enter"); // nothing to play or pause yet
   noControls(app);
   await app.keyboard.press("escape"); // Back leaves at once
-  expect(app.texts()).toContain("Continue watching");
+  expect(app.texts()).toContain("Trending movies");
 });
 
 test("connected, the stage counts the film's start in until the video loads", async () => {
@@ -74,7 +75,7 @@ test("connected, the stage counts the film's start in until the video loads", as
   expect(starting.texts()).toContain("Starting");
   noControls(starting);
   await starting.keyboard.press("escape"); // the remote's Back
-  expect(starting.texts()).toContain("Continue watching");
+  expect(starting.texts()).toContain("Trending movies");
 });
 
 test("a film that cannot play says so in the middle of the stage, with what to do", async () => {
@@ -194,9 +195,9 @@ test("escape hides the overlay first, then leaves the player", async () => {
   const app = await playing();
   await app.keyboard.press("escape");
   expect(app.texts()).not.toContain("streaming at 3.4 MB/s from 37 people");
-  expect(app.texts()).not.toContain("Continue watching");
+  expect(app.texts()).not.toContain("Trending movies");
   await app.keyboard.press("escape");
-  expect(app.texts()).toContain("Continue watching");
+  expect(app.texts()).toContain("Trending movies");
 });
 
 test("hidden, the remote is back on the scrubber", async () => {
@@ -213,11 +214,9 @@ async function nearTheEnd() {
   const app = await openApp({
     clock: {},
     // The core offers the next episode (as it does in the last 40 s).
-    modules: { "app/native": { ...NATIVE, ...STILL, "Engine.status": status, "Engine.timeline": timeline, "Catalog.upNext": nextEpisode } },
+    modules: { "app/native": { ...NATIVE, ...AOT_FIRST, ...STILL, "Engine.status": status, "Engine.timeline": timeline, "Catalog.upNext": nextEpisode } },
   });
-  await app.keyboard.press("right"); // Attack on Titan
-  await app.waitFor("Resume S3:E2"); // the hero follows once the focus rests
-  await app.press("Resume S3:E2");
+  await app.press("Resume S3:E2"); // the hero: Attack on Titan, watched last
   await app.wait(600);
   return app;
 }
@@ -246,10 +245,9 @@ test("Watch credits dismisses Up next and brings the controls back", async () =>
 test("by default the player keeps the stream's details to itself", async () => {
   const app = await openApp({
     clock: {},
-    modules: { "app/native": { ...NATIVE, ...STILL, "Engine.status": status, "Engine.timeline": timeline } },
+    modules: { "app/native": { ...NATIVE, ...DUNE_FIRST, ...STILL, "Engine.status": status, "Engine.timeline": timeline } },
   });
-  await app.keyboard.press("down");
-  await app.press("Play");
+  await app.press("Play"); // Dune, the hero of a Home with nothing begun
   await app.wait(600);
   expect(app.shows("scrubber")).toBe(true);
   expect(app.texts()).not.toContain("streaming at 3.4 MB/s from 37 people");

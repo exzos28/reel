@@ -1,7 +1,8 @@
-// Home: the nav, a hero for the focused title, then shelves of 16:9 cards.
+// Home: the nav, a hero for the title watched last (the first card: the core puts Continue
+// watching first; with nothing begun, the first of what follows), then shelves of 16:9 cards.
 // Remote: the focus starts on the first card; Up goes to the hero's
 // buttons, then to the nav. OK on a card opens its title; on Play, plays.
-import { cleanup, computed, effect, signal, View } from "nsh";
+import { computed, View } from "nsh";
 import { home, title, toggleList, type Summary } from "../../catalog";
 import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
@@ -18,9 +19,6 @@ import { cols, heroAt, navAt, row, zone } from "./focus";
 import { HOME_HERO, HomeHero } from "./HomeHero";
 import { HomeShelf } from "./HomeShelf";
 
-/** How long the focus rests before the hero shows it. */
-const HERO_SETTLE_MS = 150;
-
 export function HomeScreen() {
   const shelves = computed(() => home());
   const col = (r: number) => cols.at(r);
@@ -29,17 +27,9 @@ export function HomeScreen() {
     const s = shelves()[row()];
     return s.items[Math.min(col(row()), s.items.length - 1)];
   });
-  /** The hero follows the focus once it rests (~150 ms): moving along a shelf
-   * only moves the ring; the hero's still and text change when you stop. */
-  const hero = signal<Summary>(focused());
-  let settle: ReturnType<typeof setTimeout> | undefined;
-  effect(() => {
-    const f = focused();
-    clearTimeout(settle);
-    if (zone() !== "shelves" || f.id === hero().id) return hero.set(f);
-    settle = setTimeout(() => hero.set(f), HERO_SETTLE_MS);
-  });
-  cleanup(() => clearTimeout(settle));
+  /** The hero stays on the title watched last, wherever the focus goes: the first card of the
+   * first shelf (Continue watching, as the core orders the shelves). */
+  const hero = computed<Summary>(() => shelves()[0].items[0]);
   /** The hero's title as its page has it: asking for it (once Play is pressed) starts the search for its release. */
   const heroTitle = () => title(hero().id);
   /** Play waits for the source's answer (`playGate`); a release the card already knows plays at once. */
@@ -50,7 +40,7 @@ export function HomeScreen() {
     gate.press();
   };
   /** Play, the Watchlist, the title's page (left to right as the remote walks them). */
-  const heroActions = [playFocused, () => toggleList(focused().id), () => openTitle(hero().id)];
+  const heroActions = [playFocused, () => toggleList(hero().id), () => openTitle(hero().id)];
 
   /** The page puts the focused shelf in its upper third. */
   const page = scroller({ anchor: (viewport) => viewport / 3, memory: "home" });

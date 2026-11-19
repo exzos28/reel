@@ -5,7 +5,7 @@
 // nsh.json grants nothing: declaring capabilities would deny the rest) and
 // sends AVPlay's `avplay-event`s back.
 import { expect, test } from "nsh/test";
-import { NATIVE, openApp } from "./testEngine";
+import { NATIVE, openApp, DUNE_FIRST } from "./testEngine";
 
 const URL = "http://127.0.0.1:47391/torrents/0/stream/0";
 const status = JSON.stringify({
@@ -53,6 +53,7 @@ async function tv(settings: Record<string, unknown> = DETAILS, engine: Record<st
       "nsh": { "host.post": (_name: string, op: { op: string }) => { posts.push(op); } },
       "app/native": {
         ...NATIVE,
+        ...DUNE_FIRST,
         ...settings,
         "VideoEngine.kind": "avplay",
         "Engine.status": status,
@@ -65,8 +66,7 @@ async function tv(settings: Record<string, unknown> = DETAILS, engine: Record<st
       },
     },
   });
-  await app.keyboard.press("down"); // Trending movies: Dune
-  await app.press("Play");
+  await app.press("Play"); // Dune, the hero of a Home with nothing begun
   await app.wait(600); // one poll of the engine
   const ops = () => posts;
   const event = (e: Record<string, unknown>) => app.host.send("avplay-event", e);
@@ -226,6 +226,6 @@ test("AVPlay's error shows on the stage, and Back stops AVPlay", async () => {
   expect(app.shows("stage")).toBe(true);
   expect(app.texts()).toContain("Could not play: PLAYER_ERROR_NOT_SUPPORTED_FILE");
   await app.keyboard.press("escape"); // the remote's Back
-  expect(app.texts()).toContain("Continue watching");
+  expect(app.texts()).toContain("Trending movies");
   expect(ops().at(-1)).toEqual({ op: "stop" });
 });
