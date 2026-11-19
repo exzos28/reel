@@ -74,6 +74,14 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     r.sync("VideoEngine", "kind", |a| {
         no_args(&a)?;
         ret(VideoEngine::kind())
+    })
+    .sync("VideoEngine", "fullscreen", |a| {
+        let (on,): (bool,) = args(a)?;
+        ret(VideoEngine::fullscreen(on))
+    })
+    .sync("VideoEngine", "views", |a| {
+        no_args(&a)?;
+        ret(VideoEngine::views())
     });
 
     let host = data_dir.clone();
@@ -112,6 +120,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Settings", "setLoader", |a| {
         let (loader,): (String,) = args(a)?;
         ret(Settings::set_loader(loader))
+    })
+    .sync("Settings", "finishSetup", |a| {
+        no_args(&a)?;
+        ret(Settings::finish_setup())
     })
     .sync("Settings", "current", |a| {
         no_args(&a)?;
