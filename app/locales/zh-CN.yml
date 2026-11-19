@@ -431,6 +431,8 @@ settings:
   phone:
     title: "也可以在手机上更改"
     text: "扫描二维码，或打开 %{url}。"
+  interface:
+    title: "界面"
   about:
     title: "关于 reel"
     open: "关于 reel 及其数据来源"

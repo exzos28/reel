@@ -431,6 +431,8 @@ settings:
   phone:
     title: "スマートフォンからも変更できます"
     text: "コードをスキャンするか、%{url} を開いてください。"
+  interface:
+    title: "インターフェース"
   about:
     title: "reel について"
     open: "reel とデータソースについて"

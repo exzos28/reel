@@ -431,6 +431,8 @@ settings:
   phone:
     title: "Am Handy ändern"
     text: "Scanne den Code oder öffne %{url}."
+  interface:
+    title: "Oberfläche"
   about:
     title: "Über reel"
     open: "Über reel und seine Datenquellen"

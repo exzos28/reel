@@ -431,6 +431,8 @@ settings:
   phone:
     title: "Modifiez-les depuis votre téléphone"
     text: "Scannez le code, ou ouvrez %{url}."
+  interface:
+    title: "Interface"
   about:
     title: "À propos de reel"
     open: "À propos de reel et de ses sources de données"

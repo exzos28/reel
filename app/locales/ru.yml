@@ -421,6 +421,8 @@ settings:
   phone:
     title: Это можно поменять с телефона
     text: "Отсканируйте код или откройте %{url}."
+  interface:
+    title: "Интерфейс"
   about:
     title: О reel
     open: О reel и источниках данных

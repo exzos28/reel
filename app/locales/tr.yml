@@ -431,6 +431,8 @@ settings:
   phone:
     title: "Bunları telefonundan değiştir"
     text: "Kodu tara veya %{url} adresini aç."
+  interface:
+    title: "Arayüz"
   about:
     title: "reel hakkında"
     open: "reel ve veri kaynakları hakkında"
