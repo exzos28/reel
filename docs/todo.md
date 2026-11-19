@@ -87,3 +87,9 @@ Within the web app:
 Also seen on the TV:
 - The UI calls the core's synchronous methods over a synchronous XHR (`app/ui/native-http.ts`): a slow answer stops the UI the same way (0.1–0.5 s for `Engine.status`, `Catalog.saveProgress`).
 - The app's timers in NSH's realm frame fire about once a second (a 100 ms interval came every ~900 ms): the browser throttles that frame as hidden. Every delay in the UI rounds up to a second. To look at in NSH's web runtime.
+
+## Anime episodes on trackers that number them their own way
+
+rutracker's anime releases are named "[01-28 из 28]", "[TV] [1-12 из 12]" or "E28 of 28", not `S01E03`, and Jackett often passes them through unchanged. Two parts:
+- **Search and parsing:** an episode asks by the title alone too (the other names already do since the multi-name search), and `release.rs` reads those ranges as episodes of season 1. See also PR #19 (season packs of an episode).
+- **Long anime with absolute numbering** (One Piece's episode 1050 vs TMDB's S21E58): map S/E to the absolute number with the Fribb lists / AniList entries' episode counts. Harder; a step of its own.

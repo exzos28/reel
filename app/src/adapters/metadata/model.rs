@@ -229,6 +229,9 @@ pub struct AnimeInfo {
     pub entries: Vec<AnimeEntry>,
     /// The romaji title, the native one, synonyms: for search and release matching.
     pub aliases: Vec<String>,
+    /// AniList's romaji title ("Sousou no Frieren"), which trackers use for anime: a name to
+    /// search releases by.
+    pub romaji: Option<String>,
     pub tags: Vec<String>,
     pub studios: Vec<String>,
 }
@@ -267,6 +270,10 @@ pub struct Title {
     pub source_url: String,
     pub title: String,
     pub original_title: Option<String>,
+    /// The English title (TMDB's English translation, AniList's English title), for searching
+    /// releases: trackers name them in English too, whatever the UI's language. None when
+    /// there is none.
+    pub english_title: Option<String>,
     pub original_language: Option<String>,
     pub tagline: Option<String>,
     pub overview: Option<String>,

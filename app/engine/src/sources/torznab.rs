@@ -115,6 +115,18 @@ pub fn search_urls(endpoint: &str, key: Option<&str>, query: &Query, caps: &Caps
     Ok(urls)
 }
 
+/// The one URL for another name of the title: a plain text search by that name (with a
+/// film's year), in the query's categories. A source in another language names releases by
+/// it, and the name alone also finds packs that number their episodes their own way.
+pub fn name_url(endpoint: &str, key: Option<&str>, query: &Query, name: &str) -> anyhow::Result<String> {
+    let (cats, q) = match query {
+        Query::Movie { year: Some(y), .. } => (MOVIE_CATS, format!("{name} {y}")),
+        Query::Movie { .. } => (MOVIE_CATS, name.to_owned()),
+        _ => (TV_CATS, name.to_owned()),
+    };
+    with_params(endpoint, key, &[("t", "search".into()), ("q", q), ("cat", cats.to_owned())])
+}
+
 /// The text of an element, entities resolved.
 fn push_text(buf: &mut String, ev: &Event) {
     match ev {

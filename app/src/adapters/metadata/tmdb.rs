@@ -392,6 +392,23 @@ fn localized(body: &Value, field: &str, alt_field: &str, cx: &MapCx) -> Option<S
     pick(cx.lang_primary()).or_else(|| pick("en"))
 }
 
+/// The title in English: the title itself when the UI is in English; else TMDB's English
+/// translation (the US one first, as it is already in the cached response: no extra request);
+/// else the original title when the film's language is English. None when none of them is.
+fn english(body: &Value, field: &str, original_field: &str, cx: &MapCx, title: &str) -> Option<String> {
+    if cx.lang_primary() == "en" {
+        return Some(title.to_owned());
+    }
+    let translations = body.pointer("/translations/translations").and_then(Value::as_array);
+    let en: Vec<&Value> = translations.into_iter().flatten().filter(|t| t.get("iso_639_1").and_then(Value::as_str) == Some("en")).collect();
+    let name = |t: &&Value| t.get("data").and_then(|d| s(d, field));
+    en.iter()
+        .filter(|t| t.get("iso_3166_1").and_then(Value::as_str) == Some("US"))
+        .find_map(name)
+        .or_else(|| en.iter().find_map(name))
+        .or_else(|| (s(body, "original_language").as_deref() == Some("en")).then(|| s(body, original_field)).flatten())
+}
+
 /// Best first by vote; logos in the UI's language first, then English, then
 /// the rest (a logo in a language the UI does not show is still the title).
 fn ranked(images: &[Value], kind: ImageKind, cx: &MapCx) -> Vec<Image> {
@@ -597,6 +614,7 @@ impl TitleSource for Tmdb {
         let title = localized(body, title_field, "name", cx)
             .or_else(|| s(body, original_field))
             .ok_or_else(|| parse_err("title"))?;
+        let english_title = english(body, title_field, original_field, cx, &title);
         let ext = body.get("external_ids").unwrap_or(&Value::Null);
         let images = body.get("images").unwrap_or(&Value::Null);
         let posters = ranked(arr(images, "posters"), ImageKind::Poster, cx);
@@ -693,6 +711,7 @@ impl TitleSource for Tmdb {
             source: ProviderId::Tmdb,
             source_url: format!("{SITE}/{path}/{n}"),
             original_title: s(body, original_field).filter(|o| *o != title),
+            english_title,
             title,
             original_language: s(body, "original_language"),
             tagline: localized(body, "tagline", "tagline", cx),
