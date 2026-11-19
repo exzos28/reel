@@ -3,12 +3,15 @@
 //! looks the same index up and reads from the keyframe at or before the time; the engine gets
 //! that place first (`Engine.seek`).
 //!
-//! Only Matroska (MKV, WebM) for now: its `Cues`, found through the `SeekHead`. Anything else
-//! (MP4, AVI, an MKV without Cues) has no index here, and a seek in it is not prepared.
+//! Matroska (MKV, WebM): its `Cues`, found through the `SeekHead`. MP4 (and MOV): the `moov`
+//! box's sample tables (`mp4`). Anything else (AVI, fragmented MP4, an MKV without Cues) has
+//! no index here, and a seek in it is not prepared.
 //!
 //! No I/O: the bytes come through `Source`, which the engine implements over a torrent stream.
 
 use std::future::Future;
+
+mod mp4;
 
 /// Bytes of the file, as the engine fetches them.
 pub trait Source {
@@ -53,9 +56,11 @@ impl Index {
 /// Why a file has no index here.
 #[derive(Debug, Clone, PartialEq)]
 pub enum NoIndex {
-    /// Not Matroska (MP4 and the rest are not read yet).
-    NotMatroska,
-    /// No Cues, or none for the video track.
+    /// Neither Matroska nor MP4.
+    Unsupported,
+    /// A fragmented MP4 (its index is spread over the fragments).
+    Fragmented,
+    /// No Cues (none for the video track), or no keyframes in an MP4's tables.
     NoCues,
     /// The file's structure is broken or not what Matroska says (`what`).
     Broken(&'static str),
@@ -232,14 +237,14 @@ fn cue_points(cues: &[u8], track: u64, scale: u64, segment: u64) -> Vec<(f64, u6
 /// Reads the head: the EBML header (a Matroska or WebM DocType), the Segment's header, and its
 /// children in `b` up to the first Cluster.
 fn head(b: &[u8]) -> Result<Head, NoIndex> {
-    let ebml = header(b).ok_or(NoIndex::NotMatroska)?;
+    let ebml = header(b).ok_or(NoIndex::Unsupported)?;
     if ebml.id != id::EBML {
-        return Err(NoIndex::NotMatroska);
+        return Err(NoIndex::Unsupported);
     }
     let body = b.get(ebml.len..ebml.len + ebml.size.ok_or(NoIndex::Broken("EBML header size"))? as usize).ok_or(NoIndex::Broken("EBML header"))?;
     let doc = children(body).find(|(i, _)| *i == id::DOC_TYPE).map(|(_, v)| v);
     if !matches!(doc, Some(b"matroska") | Some(b"webm")) {
-        return Err(NoIndex::NotMatroska);
+        return Err(NoIndex::Unsupported);
     }
     let mut at = ebml.len + body.len();
     let seg = header(&b[at..]).ok_or(NoIndex::Broken("Segment header"))?;
@@ -285,7 +290,16 @@ async fn element<S: Source + Send>(src: &mut S, at: u64, want: u32) -> Result<Ve
 /// (a second SeekHead, Info and Tracks when they were not in the head, the Cues).
 pub async fn read_index<S: Source + Send>(src: &mut S, len: u64) -> Result<Index, NoIndex> {
     let start = src.read(0, HEAD.min(len)).await.map_err(|e| NoIndex::Read(e.to_string()))?;
-    let mut h = head(&start)?;
+    if start.get(4..8) == Some(b"ftyp") {
+        let moov = mp4::read_moov(src, len, &start).await?;
+        return Ok(Index { keyframes: mp4::keyframes(&moov)? });
+    }
+    mkv_index(src, &start).await
+}
+
+/// A Matroska file's index (`start`: its first bytes).
+async fn mkv_index<S: Source + Send>(src: &mut S, start: &[u8]) -> Result<Index, NoIndex> {
+    let mut h = head(start)?;
     let seg = h.segment;
     let find = |seeks: &[(u32, u64)], want: u32| seeks.iter().find(|(i, _)| *i == want).map(|&(_, p)| seg + p);
     // A SeekHead that points at another (often at the end of the file).
@@ -409,10 +423,10 @@ mod tests {
     }
 
     #[test]
-    fn not_matroska_is_no_index() {
-        let mp4 = b"\0\0\0\x20ftypisom\0\0\x02\0isomiso2avc1mp41".to_vec();
-        let len = mp4.len() as u64;
-        assert_eq!(block_on(read_index(&mut Mem(mp4, vec![]), len)), Err(NoIndex::NotMatroska));
+    fn neither_matroska_nor_mp4_is_no_index() {
+        let avi = b"RIFF\0\0\0\0AVI LIST".to_vec();
+        let len = avi.len() as u64;
+        assert_eq!(block_on(read_index(&mut Mem(avi, vec![]), len)), Err(NoIndex::Unsupported));
     }
 
     #[test]
@@ -429,7 +443,7 @@ mod tests {
         assert_eq!(Index { keyframes: vec![] }.place(1.0, 4.0, 10), None);
     }
 
-    /// A real file against what ffprobe says (a dev check): `REEL_MKV=<file.mkv> cargo test -p
+    /// A real file against what ffprobe says (a dev check): `REEL_FILM=<file> cargo test -p
     /// reel-domain -- --ignored real_file`; prints the keyframes to compare with
     /// `ffprobe -select_streams v -skip_frame nokey -show_entries frame=pts_time,pkt_pos`.
     #[test]
@@ -444,7 +458,7 @@ mod tests {
                 async move { r }
             }
         }
-        let path = std::env::var("REEL_MKV").expect("REEL_MKV=<file.mkv>");
+        let path = std::env::var("REEL_FILM").expect("REEL_FILM=<file.mkv or .mp4>");
         let f = std::fs::File::open(&path).unwrap();
         let len = f.metadata().unwrap().len();
         let index = block_on(read_index(&mut File(f), len)).unwrap();
