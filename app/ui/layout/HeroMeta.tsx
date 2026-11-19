@@ -7,9 +7,10 @@ import { Badge } from "../kit/Badge";
 import { row } from "../kit/shape";
 import { colors, ts, type, u } from "../theme";
 
+/** 24, a step under the about's 26: the two do not compete. */
 const metaLabel = (color: string, fontWeight?: number): TextStyle => ({
   ...type.label(),
-  fontSize: ts(26),
+  fontSize: ts(24),
   ...(fontWeight == null ? {} : { fontWeight }),
   color,
 });
@@ -35,7 +36,8 @@ function ScoreText(props: { score: () => Score; first: () => boolean }) {
 export function MetaLine(props: { item: () => Summary }) {
   const s = props.item;
   return (
-    <View style={{ ...row(u(20)), flexWrap: "wrap" }}>
+    // Groups apart (32) well past the words inside one (8): "1K votes" and "AniList" do not read as one.
+    <View style={{ ...row(u(32)), flexWrap: "wrap" }}>
       <Each of={s().ratings} key="index">
         {(sc, i) => <ScoreText score={sc} first={() => i() === 0} />}
       </Each>

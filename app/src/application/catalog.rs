@@ -341,11 +341,13 @@ fn rating(ratings: &Value) -> (String, String) {
 
 /// 950, 6.4K, 82K, 1.2M
 fn votes(n: u64) -> String {
+    // One decimal where it says something: "6.4K", but "1K", not "1.0K".
+    let one = |x: f64| format!("{x:.1}").trim_end_matches(".0").to_owned();
     match n {
         0..1_000 => n.to_string(),
-        1_000..10_000 => format!("{:.1}K", n as f64 / 1_000.0),
+        1_000..10_000 => format!("{}K", one(n as f64 / 1_000.0)),
         10_000..1_000_000 => format!("{}K", (n as f64 / 1_000.0).round()),
-        _ => format!("{:.1}M", n as f64 / 1_000_000.0),
+        _ => format!("{}M", one(n as f64 / 1_000_000.0)),
     }
 }
 

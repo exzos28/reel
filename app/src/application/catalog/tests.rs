@@ -95,6 +95,8 @@ fn numbers() {
     assert_eq!(votes(82_000), "82K");
     assert_eq!(votes(6_400), "6.4K");
     assert_eq!(votes(950), "950");
+    assert_eq!(votes(1_012), "1K", "no trailing .0");
+    assert_eq!(votes(2_000_000), "2M");
     let r = json!([{ "source": "anilist", "value": 85.0, "scale": 100.0, "votes": null }]);
     assert_eq!(rating(&r), ("8.5".into(), String::new()));
     assert_eq!(ymd(&json!("2018-07-23")), Some([2018, 7, 23]));
