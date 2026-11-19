@@ -1,0 +1,544 @@
+app:
+  name: reel
+
+nav:
+  row_back: "Atrás en esta fila"
+  row_on: "Siguiente en esta fila"
+  home: "Inicio"
+  movies: "Películas"
+  shows: "Series"
+  cartoons: "Dibujos animados"
+  anime: "Anime"
+  search: "Buscar"
+  settings: "Ajustes"
+  saved: "Guardado"
+  # The phone's last tab: the destinations that do not fit in its tab bar.
+  more: "Más"
+  back: "Atrás"
+  # Desktop tooltip of Back and its accessibility label: the page it goes to.
+  back_to: "Volver a %{page}"
+
+exit:
+  title: "¿Salir de reel?"
+  about: "Lo que se esté reproduciendo se detendrá. Lo que has visto se conserva."
+  stay: "Quedarse"
+  exit: "Salir"
+
+hosted:
+  pair_title: "Vincula tu móvil"
+  pair_about: "Escribe este código en la página de ajustes de reel en tu móvil u ordenador."
+  cancel: "Cancelar"
+  offer_title: "¿Usar la fuente de tu móvil?"
+  offer_about: "reel buscará versiones allí. Puedes cambiarla en Ajustes."
+  offer_use: "Usar"
+  offer_not_now: "Ahora no"
+
+shelf:
+  continue: "Seguir viendo"
+  watchlist: "Mi lista"
+  trending_movies: "Películas en tendencia"
+  trending_shows: "Series en tendencia"
+  popular: "Populares"
+  anime: "Anime en tendencia"
+  no_tmdb: "Películas y series"
+  loading: "Cargando"
+  offline: "Aún no hay nada aquí"
+
+empty:
+  no_tmdb:
+    title: "Las películas y series necesitan una clave de TMDB"
+    about: "Esta versión de reel no tiene clave de TMDB, así que solo se muestra anime de AniList. Añade tu propia clave para ver películas y series."
+  loading:
+    title: "Cargando…"
+    about: "Obteniendo títulos de TMDB y AniList."
+  offline:
+    title: "No se han podido cargar los títulos"
+    about: "TMDB y AniList no responden. Comprueba la conexión; reel lo volverá a intentar solo."
+  unavailable:
+    title: "Este título no está disponible"
+    about: "No se han podido cargar sus datos. Inténtalo más tarde."
+
+title:
+  play: "Reproducir"
+  resume: "Seguir desde %{at}"
+  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # a screen reader says the whole action.
+  my_list: "Mi lista"
+  add_to_list: "Mi lista"
+  in_list: "En mi lista"
+  add_to_list_spoken: "Añadir a Mi lista"
+  remove_from_list_spoken: "Quitar de Mi lista"
+  trailer: "Tráiler"
+  save: "Guardar"
+  saving: "Guardando %{percent} %"
+  saving_some: "Guardando %{count} de %{total}"
+  save_paused: "En pausa"
+  saved: "Guardado"
+  saved_one: "1 episodio guardado"
+  saved_some: "Episodios guardados: %{count}"
+
+card:
+  left: "Quedan %{time}"
+  open: "Abrir"
+
+kind:
+  movie: "Película"
+  short: "Cortometraje"
+  show: "Serie"
+  season_one: "1 temporada"
+  seasons: "Temporadas: %{count}"
+
+fmt:
+  minutes: "%{m} min"
+  hours: "%{h} h"
+  hours_minutes: "%{h} h %{m} min"
+  episode: "T%{season}:E%{episode}"
+  years: "%{from}–%{to}"
+  day: "%{day} %{month}"
+  date: "%{day} %{month} %{year}"
+  month_day: "%{day} %{month}"
+
+month:
+  "1": "ene"
+  "2": "feb"
+  "3": "mar"
+  "4": "abr"
+  "5": "may"
+  "6": "jun"
+  "7": "jul"
+  "8": "ago"
+  "9": "sept"
+  "10": "oct"
+  "11": "nov"
+  "12": "dic"
+
+
+badge:
+  sd: "SD"
+  hd: "1080p"
+  uhd: "4K"
+  cc: "CC"
+  silent: "Muda"
+  tv_pg: "TV-PG"
+
+tag:
+  new_season: "Nueva temporada"
+  new_episode: "Nuevo episodio"
+
+release:
+  sharing: "Compartido por %{count}"
+  sharing_short: "Comparten: %{count}"
+  pack: "temporada completa, %{size}"
+  fast: "empieza en segundos"
+  note:
+    starts_fast: "Empieza rápido"
+    needs: "Necesita %{mbit} Mbit/s"
+    slow_start: "Puede tardar en empezar"
+    few_sharing: "Pocos lo comparten, puede que no empiece"
+
+releases:
+  title: "Versiones"
+  title_episode: "Versiones de %{episode}"
+  title_season: "Versiones de la temporada %{season}"
+  not_in: "%{episode} no está en %{release}. Elige una versión para este episodio."
+  found: "Encontradas: %{count}, primero la mejor de cada calidad"
+  more: "Mostrar %{count} más"
+  state:
+    no_source: "Añade una fuente de búsqueda en Ajustes para encontrar versiones."
+    no_source_hosted: "Añade una fuente de búsqueda en Ajustes o abre %{url} en tu móvil."
+    searching: "Buscando en tu fuente…"
+    failed: "Tu fuente de búsqueda no ha respondido. Revísala en Ajustes."
+    none: "No se ha encontrado nada en tu fuente de búsqueda."
+  # The button next to a missing or failing search source.
+  open_settings: "Abrir Ajustes"
+
+score:
+  tmdb: TMDB
+  anilist: AniList
+  mal: "MAL"
+  votes: "Votos: %{votes}"
+
+about:
+  title: "Información"
+  cast: "Reparto"
+  details: "Detalles"
+  similar: "Títulos similares"
+
+crew:
+  director:
+    one: "Dirección"
+    other: "Dirección"
+  writer:
+    one: "Guion"
+    other: "Guion"
+  novel:
+    one: "Novela original"
+    other: "Novela original"
+  music:
+    one: "Música"
+    other: "Música"
+  creator:
+    one: "Creación"
+    other: "Creación"
+
+detail:
+  tagline: "Eslogan"
+  original_title: "Título original"
+  release_date: "Fecha de estreno"
+  first_aired: "Primera emisión"
+  runtime: "Duración"
+  status: "Estado"
+  countries: "País"
+  studios: "Estudio"
+  networks: "Cadena y estudios"
+
+status:
+  announced: "Anunciada"
+  inProduction: "En producción"
+  airing: "En emisión"
+  ended: "Finalizada"
+  canceled: "Cancelada"
+  released: "Estrenada"
+
+tracks:
+  audio:
+    original: "Original"
+  subtitles:
+    "off": "No"
+    en: "Inglés"
+  number: "Pista %{number}"
+  forced: "Forzados"
+  from_torrent: "Archivo de la versión"
+  loading: "Buscando subtítulos…"
+
+languages:
+  en: "Inglés"
+  ru: "Ruso"
+  uk: "Ucraniano"
+  be: "Bielorruso"
+  de: "Alemán"
+  fr: "Francés"
+  es: "Español"
+  it: "Italiano"
+  pt: "Portugués"
+  pl: "Polaco"
+  cs: "Checo"
+  nl: "Neerlandés"
+  sv: "Sueco"
+  "no": "Noruego"
+  da: "Danés"
+  fi: "Finés"
+  hu: "Húngaro"
+  ro: "Rumano"
+  el: "Griego"
+  tr: "Turco"
+  ar: "Árabe"
+  he: "Hebreo"
+  ja: "Japonés"
+  zh: "Chino"
+  ko: "Coreano"
+
+series:
+  season: "Temporada %{number}"
+  episodes: "Episodios: %{count}"
+  no_episodes: "Los episodios de esta serie aún no se conocen."
+  watched: "Visto"
+  not_in_release: "No está en esta versión"
+  airs: "Se estrena el %{date}"
+
+browse:
+  movies:
+    title: "Películas"
+    lead: "Lo más nuevo y lo mejor del cine"
+    trending: "Tendencias"
+    all: "Todas las películas"
+  shows:
+    title: "Series"
+    lead: "Series para ver de un tirón"
+    trending: "En emisión y próximas"
+    all: "Todas las series"
+  cartoons:
+    title: "Dibujos animados"
+    lead: "Series animadas para todas las edades"
+    trending: "Mejor valorados"
+    all: "Todos los dibujos animados"
+  anime:
+    title: "Anime"
+    lead: "Éxitos de temporada y favoritos de siempre"
+    trending: "Tendencias de la temporada"
+    all: "Todo el anime"
+  filter:
+    genres: "Géneros"
+    years: "Años"
+    countries: "Países"
+    sort: "Ordenar por"
+    picked: "%{filter}: %{picked}"
+  sort: "Ordenar por:"
+  option:
+    decade: "Años %{n}"
+    older: "Antes de %{n}"
+    popular: "Más populares"
+    top_rated: "Mejor valorados"
+    newest: "Más recientes"
+    any: "Todos"
+  state:
+    loading: "Cargando…"
+    empty: "Nada coincide con estos filtros."
+    offline: "No se ha podido cargar esta lista. Comprueba la conexión."
+    more_failed: "No se han podido cargar más títulos. Baja para volver a intentarlo."
+
+search:
+  title: "Buscar"
+  placeholder: "Películas, series y anime por título"
+  hint: "Escribe un título para encontrar películas, series y anime."
+  recent: "Búsquedas recientes"
+  clear: "Borrar historial"
+  searching: "Buscando…"
+  none: "No se ha encontrado nada para «%{query}»."
+  failed: "TMDB y AniList no responden. Comprueba la conexión y vuelve a intentarlo."
+  no_tmdb: "Esta versión no tiene clave de TMDB, así que solo se busca anime."
+  section:
+    movies: "Películas"
+    shows: "Series"
+    anime: "Anime"
+
+compat:
+  audio_dts: "Esta versión solo tiene audio DTS, que este dispositivo no puede reproducir. Elige otra versión."
+  audio_truehd: "Esta versión solo tiene audio TrueHD, que este dispositivo no puede reproducir. Elige otra versión."
+  dolby_vision_only: "Esta versión es Dolby Vision sin capa HDR10; este dispositivo mostraría colores incorrectos. Elige otra versión."
+  container: "El formato de este archivo no se reproduce en este dispositivo. Elige otra versión."
+
+player:
+  back: "Atrás"
+  close: "Cerrar"
+  close_tracks: "Cerrar audio y subtítulos"
+  episodes: "Episodios"
+  close_episodes: "Cerrar episodios"
+  now_playing: "Reproduciendo"
+  fullscreen: "Pantalla completa"
+  mute: "Silenciar"
+  unmute: "Activar sonido"
+  volume: "Volumen"
+  exit_fullscreen: "Salir de pantalla completa"
+  stage:
+    searching: "Buscando una versión"
+    finding: "Buscando quién la comparte"
+    connecting: "Conectando con quienes la comparten"
+    found:
+      one: "1 persona encontrada, conectando"
+      other: "%{count} personas encontradas, conectando"
+    fetching: "Cargando el inicio, %{percent} %"
+    starting: "Empezando"
+  buffering: "Cargando"
+  ahead_seconds: "%{seconds} s listos por delante"
+  rate_from: "%{speed} · comparten: %{count}"
+  ready_ahead: "%{minutes} min listos por delante"
+  ready_ahead_short: "Menos de un minuto listo por delante"
+  streaming: "transmitiendo a %{speed}"
+  streaming_from: "transmitiendo a %{speed} · comparten: %{count}"
+  left: "−%{time}"
+  play: "Reproducir"
+  pause: "Pausa"
+  back_10: "Atrás 10 segundos"
+  forward_10: "Adelante 10 segundos"
+  tracks: "Audio y subtítulos"
+  position: "Posición"
+  audio: "Audio"
+  subtitles: "Subtítulos"
+  release: "Versión"
+  next_episode: "Siguiente episodio · %{code}"
+  play_now: "Reproducir ya"
+  in_seconds: "en %{seconds} s"
+  watch_credits: "Ver créditos"
+  no_source: "No hay versión que reproducir."
+  no_source_hint: "Añade una fuente de búsqueda en Ajustes o elige otra versión."
+  not_in_release: "Este episodio no está en la versión."
+  not_in_release_hint: "Vuelve atrás y elige una versión para él."
+  failed: "No se ha podido reproducir: %{message}"
+  failed_hint: "Vuelve atrás y elige otra versión."
+  view_failed: "El vídeo no ha podido empezar en este dispositivo."
+  view_failed_hint: "Vuelve atrás e inténtalo de nuevo; reiniciar reel puede ayudar."
+  no_space: "No hay espacio suficiente para reproducir: se necesitan %{needed}, hay %{free} libres."
+  no_space_unknown: "No hay espacio suficiente para reproducir: se necesitan %{needed}."
+  no_space_hint: "Libera espacio en este dispositivo o reduce el búfer en Ajustes."
+  low_space: "Este dispositivo se ha quedado sin espacio, así que la reproducción está en pausa. Libera espacio o reduce el búfer en Ajustes."
+
+settings:
+  title: "Ajustes"
+  selected: "Seleccionado"
+  language:
+    title: "Idioma"
+    about: "Títulos, descripciones y nombres de episodios; reel también los usa para buscar versiones."
+  source:
+    title: "Fuente de búsqueda"
+    about: "Dónde busca reel las versiones de una película o un episodio. Una dirección Torznab y su clave API."
+    phone: "Escanea el código con tu móvil o abre %{url}"
+    # The address is what a source needs; a key only some have (a rented one is all in its address).
+    url: "Dirección Torznab (obligatoria)"
+    url_placeholder: "http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api"
+    key: "Clave API (opcional)"
+    key_placeholder: "Solo si tu fuente tiene una"
+    key_saved: "Clave guardada. Escribe una nueva para sustituirla"
+    save: "Guardar y comprobar"
+    remove: "Quitar fuente"
+    # The partner's ready source (design/partner-source.md).
+    partner_tv_title: "Consigue una fuente lista"
+    partner_tv_text: "Escanea el código con tu móvil y paga en Telegram (@%{bot}). La fuente volverá aquí: confírmala en esta pantalla."
+    partner_app: "Consigue una fuente lista en Telegram"
+    partner_app_note: "@%{bot} te devuelve un enlace: ábrelo y la fuente se rellena aquí."
+    saving: "Guardando…"
+    checking: "Comprobando la fuente…"
+    removed: "Fuente de búsqueda quitada."
+    ok_imdb: "Conectada. Busca por ID de IMDb."
+    ok_text: "Conectada. Busca por título."
+    failed: "No se ha podido conectar con la fuente: %{message}"
+    # Why a source did not answer (the core's reason), with what to do.
+    reason:
+      unreachable: "No se puede conectar con %{host}. Comprueba la dirección y que la fuente esté encendida."
+      key: "%{host} ha rechazado la clave API. Comprueba la clave."
+      not_torznab: "%{host} ha respondido, pero no como fuente Torznab. Comprueba la dirección: suele terminar en /torznab/api."
+      error: "%{host}: %{message}"
+  # Where the menu (the nav's tabs and buttons) sits in the bar at the top (TV, desktop).
+  nav_position:
+    title: "Posición del menú"
+    about: "Dónde se coloca el menú en la barra superior de la pantalla."
+    left: "Izquierda"
+    center: "Centro"
+    right: "Derecha"
+  # What shows while a film loads or waits for more of the stream.
+  loader:
+    title: "Animación de carga"
+    about: "Lo que se muestra mientras una película espera a que llegue más contenido."
+    dinosaur: "Dinosaurio"
+    logo: reel
+  # The drawer with the search source's fields: on Play with none (missing), when it did not
+  # answer (failed), from Settings (edit).
+  source_drawer:
+    missing_title: "Añade una fuente de búsqueda"
+    missing_about: "reel reproduce las versiones que encuentra en tu propia fuente de búsqueda, y aún no tienes ninguna. Introduce una dirección Torznab y su clave API; Reproducir funcionará en cuanto se conecte."
+    failed_title: "Tu fuente de búsqueda no ha respondido"
+    failed_about: "reel no ha podido buscar versiones en ella. Comprueba su dirección y su clave API y luego pulsa Guardar y comprobar; Reproducir funcionará en cuanto se conecte."
+    edit_title: "Fuente de búsqueda"
+    edit_about: "Una dirección Torznab y su clave API."
+    link_title: "¿Usar esta fuente?"
+    link_about: "Un enlace ha rellenado esta fuente. Pulsa Guardar y comprobar para usarla, o Atrás para dejar la tuya como está."
+  # The rows of Settings: a name and the value in effect.
+  rows:
+    connected: "Conectada"
+    not_set: "Sin configurar"
+    buffer_value: "%{size} · %{free} libres"
+  # The card beside Settings on a device that serves its settings page (a TV).
+  phone:
+    title: "Cámbialos desde tu móvil"
+    text: "Escanea el código o abre %{url}."
+  about:
+    title: "Acerca de reel"
+    open: "Acerca de reel y sus fuentes de datos"
+    data: "Fuentes de datos"
+    tmdb_logo: "The Movie Database (TMDB)"
+    version: "Versión %{version} (%{build})"
+  details:
+    title: "Detalles de la transmisión"
+    about: "Mientras una película se reproduce o espera, muestra a qué velocidad llega, cuántas personas la comparten y cuánto hay listo por delante."
+    show: "Mostrar detalles de la transmisión"
+  buffer:
+    title: "Búfer de reproducción"
+    about: "Cuánto de la película guarda reel mientras se reproduce. Cuanto más grande, mejor aguanta conexiones lentas y saltos largos."
+    free: "%{free} libres en este dispositivo"
+    default: "(predeterminado)"
+
+
+# The first-run setup: language, playback buffer, search source.
+setup:
+  step: "Paso %{n} de 3"
+  next: "Siguiente"
+  language:
+    title: "¿En qué idioma quieres los títulos?"
+    help: "reel también busca versiones por este título."
+    more: "Más idiomas"
+  buffer:
+    title: "¿Cuánto espacio puede usar reel al reproducir?"
+    help: "Un búfer más grande aguanta mejor conexiones lentas y saltos largos."
+    recommended: "Recomendado"
+  source:
+    title: "¿Dónde debe buscar películas reel?"
+    help: "Introduce la tuya o consigue una lista."
+    own_title: "Tu propia fuente"
+    rent_title: "O consigue una lista"
+    check: "Comprobar"
+    finish: "Terminar"
+    skip: "Omitir"
+    footnote: "Torznab es una forma habitual de que los servicios de búsqueda muestren versiones de torrent. reel no busca vídeos por sí mismo: es un catálogo y un reproductor, y solo encuentra qué reproducir a través de la fuente que le indiques."
+  phone:
+    title: "O configúralo desde tu móvil"
+    text: "Escanea el código con la cámara del móvil o abre %{url} en su navegador. Esta pantalla se actualizará sola."
+    source_title: "Más fácil desde tu móvil"
+    source_text: "Escribir una dirección con el mando es lento. Escanea el código o abre %{url} y pégala allí. Esta pantalla terminará la configuración sola."
+
+menu:
+  settings: "Ajustes…"
+  edit: "Edición"
+  go: "Ir"
+  back: "Atrás"
+  window: "Ventana"
+
+# Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
+saved:
+  title: "Guardado"
+  empty: "Aún no has guardado nada. Guarda una película o una temporada desde su página para verla sin internet."
+  saving: "Guardando"
+  while_open: "mientras reel esté abierto"
+  ready: "Listo para ver"
+  not_saved: "Sin guardar"
+  pause: "Pausar"
+  resume: "Seguir guardando"
+  remove: "Quitar"
+  remove_all: "Quitar todos los episodios"
+  pause_all: "Pausar todos los episodios"
+  resume_all: "Seguir guardando todos los episodios"
+  remove_title: "¿Quitar «%{name}»?"
+  remove_about: "Se borrarán %{size} de este dispositivo. Puedes volver a guardarlo más tarde."
+  open_folder: "Abrir carpeta"
+  group_line: "Episodios: %{count} · %{size}"
+  group_line_one: "1 episodio · %{size}"
+  space:
+    saved: "%{size} guardados"
+    free: "%{size} libres"
+  state:
+    searching: "Buscando una versión…"
+    resolving: "Buscando quién la comparte…"
+    saving: "%{percent} % · %{have} de %{size}"
+    paused: "En pausa · %{have} de %{size}"
+    waiting: "Empezará cuando termine lo que estás viendo"
+    saved: "Guardado · %{size}"
+    unavailable: "Su disco no está conectado"
+  failed:
+    no_source: "No se ha encontrado ninguna versión para guardar"
+    not_in_release: "Este episodio no está en la versión de su temporada"
+    unsupported: "Esta versión no se reproduce en este dispositivo"
+    no_video: "No hay vídeo en esta versión"
+    interrupted: "Se detuvo antes de empezar. Vuelve a guardarlo."
+    no_peers: "Ahora nadie comparte esta versión. Vuelve a guardarlo más tarde o elige otra versión."
+    no_space: "El disco está lleno. Libera espacio y vuelve a guardarlo."
+    write: "No se ha podido escribir en la carpeta. Vuelve a guardarlo."
+    path_too_long: "Los nombres de sus archivos son demasiado largos para este dispositivo. Elige otra versión."
+    other: "No se ha podido guardar. Vuelve a guardarlo."
+  drawer:
+    title: "Guardar en este dispositivo"
+    note: "Se ve sin internet"
+    whole_season: "Temporada completa"
+    episodes: "Episodios: %{count}"
+    season_state: "Guardados: %{saved} de %{total}"
+    release_locked: "Los episodios guardados vienen de esta versión, así que los nuevos también."
+    save_n: "Guardar episodios: %{count}"
+    save_one: "Guardar 1 episodio"
+    choose: "Elegir episodios"
+    more: "%{size} más"
+    new: "nuevo"
+
+confirm:
+  cancel: "Cancelar"
+
+home:
+  # The round ⓘ beside Play on Home: the title's page.
+  details: "Detalles"
