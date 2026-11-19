@@ -42,3 +42,7 @@ runs:
       with:
         workspaces: app -> target
         key: ${{ inputs.rust-cache-key }}
+        # The path dependencies too (the vendored librqbit, the workspace's crates), not only
+        # the registry's: they are most of a cold build.
+        cache-all-crates: true
+        cache-workspace-crates: true

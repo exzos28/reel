@@ -10,6 +10,8 @@
 #   test           test-crates + test-app
 #   test-crates    cargo test of the domain and engine crates (no GTK, no nsh needed)
 #   test-app       nsh test (cargo test of app/, then the *.test.tsx files, headless)
+#   test-rust      cargo test of app/ only (test-app's first half)
+#   test-ui <n>    the *.test.tsx files of part n of 3 (test-app's second half, split for CI)
 #   ui-rules       dev/ui-rules.sh (what screens must not do)
 #   macos          .app, zipped                       (macOS)
 #   linux          directory + .tar.gz                (Linux, GTK 4.14+)
@@ -133,6 +135,32 @@ case "$target" in
     out=".nsh/dist/test"
     mkdir -p "$out"
     nsh test . --junit "$out/junit.xml"
+    ;;
+
+  test-rust)
+    cargo test --locked -p reel-app
+    ;;
+
+  test-ui)
+    # The *.test.tsx files in three parts of about a minute each on a CI Mac (by their times
+    # there): CI runs the parts side by side. A file not named here is part 3's.
+    part="${2:-}"
+    part1="App Hosted Touch"
+    part2="Browse Search"
+    case "$part" in
+      1) files="$part1" ;;
+      2) files="$part2" ;;
+      3) files="$(for f in *.test.tsx; do n="${f%.test.tsx}"; case " $part1 $part2 " in *" $n "*) ;; *) printf '%s ' "$n" ;; esac; done)" ;;
+      *) die "test-ui <1|2|3>" ;;
+    esac
+    out=".nsh/dist/test"
+    mkdir -p "$out"
+    failed=0
+    for n in $files; do
+      log "== $n.test.tsx"
+      nsh test "$n.test.tsx" --junit "$out/junit-$n.xml" || failed=1
+    done
+    [ "$failed" = 0 ] || die "test-ui $part: a test failed (above)"
     ;;
 
   macos)
