@@ -75,6 +75,15 @@ mod tests {
     }
 
     #[test]
+    fn episodes_named_with_underscores() {
+        // A whole show's pack: "Season_01/s01e01_Pilot.avi" (seen on a 327-episode release).
+        let f = files(&["Season_13/s13e15_A.Most.Holy.Man.avi", "Season_01/s01e02_Wendigo.avi", "Season_01/s01e01_Pilot.avi", "Season_02/s02e01_In.My.Time.of.Dying.avi"]);
+        assert_eq!(pick(&f, Some((1, 1))), Some(2));
+        assert_eq!(pick(&f, Some((2, 1))), Some(3));
+        assert_eq!(pick(&f, Some((13, 15))), Some(0));
+    }
+
+    #[test]
     fn film_takes_the_largest_video() {
         let f = vec![(0, "a/sample.mkv".into(), 10), (1, "a/film.mkv".into(), 900), (2, "a/cover.jpg".into(), 5000)];
         assert_eq!(pick(&f, None), Some(1));

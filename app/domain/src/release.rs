@@ -67,6 +67,10 @@ static SEASON: LazyLock<Regex> =
     re!(r"(?i)\bS(\d{1,2})(?:[ ._-]?-[ ._-]?S?\d{1,2})?\b|\bseason[ ._-]?(\d{1,2})\b|сезон[ ._-]?(\d{1,2})|\b(\d{1,2})[ ._-]?сезон");
 
 pub fn parse(name: &str) -> ReleaseInfo {
+    // An underscore separates words in many names ("s01e01_Pilot.avi", "Show_1080p_WEB"), but
+    // regex's word boundary counts it as a letter: read it as a space.
+    let spaced = name.replace('_', " ");
+    let name = spaced.as_str();
     let mut info = ReleaseInfo::default();
 
     if let Some(c) = RES.captures(name) {
@@ -196,6 +200,14 @@ mod tests {
         assert_eq!(parse("Film 1080p BluRay DTS-HD MA 5.1").audio, vec!["dts"]);
         assert_eq!(parse("Film 1080p WEB AAC2.0 x264").audio, vec!["aac"]);
         assert_eq!(parse("Фильм 1080p AC3").audio, vec!["ac3"]);
+    }
+
+    #[test]
+    fn underscores_separate_words() {
+        let i = parse("s01e01_Pilot.avi");
+        assert_eq!((i.season, i.episodes.clone()), (Some(1), vec![1]));
+        assert_eq!(parse("Show_S02E05_1080p_WEB").resolution, Some(1080));
+        assert_eq!(parse("Season_01").season, Some(1));
     }
 
     #[test]
