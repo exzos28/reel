@@ -150,7 +150,17 @@ case "$target" in
     case "$part" in
       1) files="$part1" ;;
       2) files="$part2" ;;
-      3) files="$(for f in *.test.tsx; do n="${f%.test.tsx}"; case " $part1 $part2 " in *" $n "*) ;; *) printf '%s ' "$n" ;; esac; done)" ;;
+      3)
+        # Everything not in parts 1 and 2 (macOS's bash 3.2 cannot parse a case inside $(…)).
+        files=""
+        for f in *.test.tsx; do
+          n="${f%.test.tsx}"
+          case " $part1 $part2 " in
+            *" $n "*) ;;
+            *) files="$files $n" ;;
+          esac
+        done
+        ;;
       *) die "test-ui <1|2|3>" ;;
     esac
     out=".nsh/dist/test"
