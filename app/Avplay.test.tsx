@@ -121,12 +121,15 @@ test("a run of presses is one seek, sent once the arrows rest; the scrubber keep
   expect(ops().filter((o) => o.op === "seek")).toEqual([]); // AVPlay not asked yet
   await app.waitUntil(() => ops().some((o) => o.op === "seek"));
   expect(ops().filter((o) => o.op === "seek")).toEqual([{ op: "seek", position: 51 }]);
+  // The loader shows from the seek on (AVPlay holds the page while it seeks).
+  expect(app.shows("buffering")).toBe(true);
   // AVPlay still reports the old place while it seeks: the scrubber stays on the target.
   await event({ type: "time", position: 2 });
   expect(app.texts()).toContain("0:51");
   await event({ type: "time", position: 51 });
   await event({ type: "time", position: 52 });
   expect(app.texts()).toContain("0:52");
+  expect(app.shows("buffering")).toBe(false);
 });
 
 test("a stall shows the buffering note until AVPlay has enough again", async () => {

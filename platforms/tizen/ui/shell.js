@@ -177,9 +177,16 @@
       };
       // Some firmware never calls back: after 10 s the next seek may go anyway.
       av.seekTimer = setTimeout(function () { done(false, 'no answer in 10 s'); }, 10000);
-      try {
-        p.seekTo(ms, function () { done(true); }, function (e) { done(false, e); });
-      } catch (e) { done(false, e); }
+      // seekTo holds this page's thread (and the app's, in the same renderer) until AVPlay has
+      // data at the target, seconds on a stream still downloading: two frames first, so the
+      // app's loader, asked for with the seek, is on screen while it waits.
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          try {
+            p.seekTo(ms, function () { done(true); }, function (e) { done(false, e); });
+          } catch (e) { done(false, e); }
+        });
+      });
     },
 
     handle: function (msg, emit) {

@@ -243,11 +243,20 @@ export function Player() {
    * it, its times are the old place's (a TV's AVPlay takes seconds to get there), so the
    * scrubber keeps the target and the next press counts from it. */
   let seeking: { to: number; at: number } | null = null;
+  /** A seek sent and not there yet: the loader shows at once (a TV's AVPlay holds the page
+   * while it seeks, so a stall noticed after it would show only as it ends). */
+  const seekPending = signal(false);
+  let seekPendingTimer: ReturnType<typeof setTimeout> | undefined;
+  cleanup(() => clearTimeout(seekPendingTimer));
   const seekTo = (seconds: number) => {
     const d = duration();
     const to = Math.max(0, d > 0 ? Math.min(seconds, d) : seconds);
     position.set(to);
     seeking = { to, at: performance.now() };
+    seekPending.set(true);
+    // Paused, a player may report no time after the seek: the loader goes after a while anyway.
+    clearTimeout(seekPendingTimer);
+    seekPendingTimer = setTimeout(() => seekPending.set(false), SEEK_WAIT_MS);
     surface?.seek(to);
   };
   /** Where the arrows have moved the scrubber, not sent yet (null: none). Presses and a held
@@ -503,7 +512,10 @@ export function Player() {
             // The last file's progress, still coming after the new one was asked for: not this one's.
             if (!loaded()) return;
             // Still the old place's time while a seek is on its way: the scrubber keeps the target.
-            if (seeking && (Math.abs(e.currentTime - seeking.to) <= SEEK_NEAR_S || performance.now() - seeking.at > SEEK_WAIT_MS)) seeking = null;
+            if (seeking && (Math.abs(e.currentTime - seeking.to) <= SEEK_NEAR_S || performance.now() - seeking.at > SEEK_WAIT_MS)) {
+              seeking = null;
+              seekPending.set(false);
+            }
             if (!seeking) position.set(e.currentTime);
             cachedAhead.set(e.cached ?? 0);
             readAt.set({ byte: e.readAt ?? 0, time: e.readTime ?? 0 });
@@ -542,7 +554,7 @@ export function Player() {
 
       <SubtitleOverlay text={cue} lift={() => (overlay() && !card() ? controlsHeight() : 0)} />
 
-      <If when={started() && !failed() && buffering()}>
+      <If when={started() && !failed() && (buffering() || seekPending())}>
         <BufferingNote text={bufferingText} />
       </If>
 
