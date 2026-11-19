@@ -5,18 +5,17 @@ type Native = Record<string, {} | null>;
 const app_ = (native: Native = NATIVE, options: Record<string, unknown> = {}) =>
   openApp({ ...options, modules: { "app/native": native } });
 
-test("home starts on Continue watching and the hero follows the focus", async () => {
+test("home starts on Continue watching; the hero stays on the title watched last wherever the focus goes", async () => {
   const app = await app_();
   expect(app.texts()).toContain("2 h 28 min");
   expect(app.texts()).toContain("Resume 41:12");
   expect(app.texts()).toContain("Action, Science Fiction");
   await app.keyboard.press("right");
-  await app.waitFor("2013–2023"); // the hero follows once the focus rests
-  expect(app.texts()).toContain("Resume S3:E2");
   await app.keyboard.press("down");
   expect(app.texts()).toContain("Trending movies");
-  await app.waitFor("2 h 35 min"); // as above: once the focus rests on the first card
-  expect(app.texts()).toContain("Play");
+  await app.wait(400);
+  expect(app.texts()).toContain("Resume 41:12"); // still the first title
+  expect(app.texts()).not.toContain("2013–2023");
 });
 
 test("when the engine has no source to play from, the drawer that adds one opens instead of the player", async () => {

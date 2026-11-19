@@ -3,7 +3,7 @@
 // still video view, STILL, plays its first frame and stands still, so the
 // position is where seeks put it).
 import { expect, test } from "nsh/test";
-import { NATIVE, STILL, openApp } from "./testEngine";
+import { NATIVE, STILL, openApp, DUNE_FIRST } from "./testEngine";
 
 const status = JSON.stringify({
   phase: "ready",
@@ -40,6 +40,7 @@ async function playing(remembered: "off" | "x:5") {
     modules: {
       "app/native": {
         ...NATIVE,
+        ...DUNE_FIRST,
         ...STILL,
         "Engine.status": status,
         "Engine.tracks": menu(remembered),
@@ -51,8 +52,7 @@ async function playing(remembered: "off" | "x:5") {
       },
     },
   });
-  await app.keyboard.press("down"); // Trending movies: Dune
-  await app.press("Play");
+  await app.press("Play"); // Dune, the hero of a Home with nothing begun
   // The core's answers come from outside the app's clock: wait for the blocks they bring, not for a time.
   await app.waitFor("stage", { state: "gone" }); // the first frame played: the controls are there
   return { app, chosen };

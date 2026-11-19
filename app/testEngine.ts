@@ -215,6 +215,9 @@ export const STILL = { "VideoEngine.kind": "still" };
 /** Engine and catalog: what most tests run on. */
 export const NATIVE = { ...ENGINE, ...CATALOG };
 
+/** Home with nothing begun: the first card, and so the hero, is Dune (Trending movies). */
+export const DUNE_FIRST = { "Catalog.home": JSON.stringify(HOME.filter((s) => s.id !== "continue" && s.id !== "watchlist")) };
+
 /** Search as the core answers it: nothing typed (two recent searches), and "dune" found. */
 export const SEARCH_RECENT = { query: "", state: "recent", tmdb: true, recent: ["dune", "frieren"], sections: [] };
 export const SEARCH_DUNE = {
