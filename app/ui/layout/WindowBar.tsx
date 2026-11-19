@@ -58,7 +58,7 @@ function backTip(r: Route): string {
     const s = titleOf(r.id);
     return s ? t("nav.back_to", { page: titleText(s) }) : t("nav.back");
   }
-  return t("nav.back_to", { page: r.name === "about" ? t("settings.about.title") : t(`nav.${r.name}`) });
+  return t("nav.back_to", { page: r.name === "about" || r.name === "interface" ? t(`settings.${r.name}.title`) : t(`nav.${r.name}`) });
 }
 
 const barStyle = (solid: boolean): ViewStyle => ({

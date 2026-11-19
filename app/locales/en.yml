@@ -431,6 +431,8 @@ settings:
   phone:
     title: Change these on your phone
     text: "Scan the code, or open %{url}."
+  interface:
+    title: Interface
   about:
     title: About reel
     open: About reel and its data sources

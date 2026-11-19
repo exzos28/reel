@@ -33,7 +33,7 @@ const pt = iconPt;
 const tabBarHeight = () => TAB_ROW + safeArea().bottom;
 const topRowBottom = () => safeArea().top + TOP_ROW;
 
-const isSettings = () => route().name === "settings" || route().name === "about";
+const isSettings = () => route().name === "settings" || route().name === "about" || route().name === "interface";
 
 const disc = (size: number, selected = false): ViewStyle => ({
   width: size,
@@ -263,7 +263,7 @@ function underName(): string {
     const x = titleOf(r.id);
     return x ? titleText(x) : t("nav.back");
   }
-  return r.name === "about" ? t("settings.about.title") : t(`nav.${r.name}`);
+  return r.name === "about" || r.name === "interface" ? t(`settings.${r.name}.title`) : t(`nav.${r.name}`);
 }
 
 /** Back in the logo's place: iPad's "‹ Movies" capsule; Android's ← disc, then the logo. */
