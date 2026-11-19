@@ -63,6 +63,9 @@ export function AvplaySurface(props: VideoSurfaceProps) {
       case "ended":
         props.onEnd?.();
         break;
+      case "seeked":
+        props.onSeeked?.();
+        break;
       case "error":
         props.onError?.({ message: e.message });
         break;

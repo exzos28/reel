@@ -132,6 +132,18 @@ test("a run of presses is one seek, sent once the arrows rest; the scrubber keep
   expect(app.shows("buffering")).toBe(false);
 });
 
+test("AVPlay's seeked ends the seek's loader, landed on a keyframe before the target", async () => {
+  const { app, ops, event } = await playing();
+  await app.keyboard.press("right");
+  await app.keyboard.press("right"); // 0:21
+  await app.waitUntil(() => ops().some((o) => o.op === "seek"));
+  expect(app.shows("buffering")).toBe(true);
+  await event({ type: "seeked" });
+  await event({ type: "time", position: 16 }); // the keyframe, 5 s before
+  expect(app.shows("buffering")).toBe(false);
+  expect(app.texts()).toContain("0:16");
+});
+
 test("a stall shows the buffering note until AVPlay has enough again", async () => {
   const { app, event } = await playing();
   await event({ type: "buffering", buffering: true });

@@ -248,6 +248,11 @@ export function Player() {
   const seekPending = signal(false);
   let seekPendingTimer: ReturnType<typeof setTimeout> | undefined;
   cleanup(() => clearTimeout(seekPendingTimer));
+  const seekArrived = () => {
+    seeking = null;
+    clearTimeout(seekPendingTimer);
+    seekPending.set(false);
+  };
   const seekTo = (seconds: number) => {
     const d = duration();
     const to = Math.max(0, d > 0 ? Math.min(seconds, d) : seconds);
@@ -256,7 +261,7 @@ export function Player() {
     seekPending.set(true);
     // Paused, a player may report no time after the seek: the loader goes after a while anyway.
     clearTimeout(seekPendingTimer);
-    seekPendingTimer = setTimeout(() => seekPending.set(false), SEEK_WAIT_MS);
+    seekPendingTimer = setTimeout(seekArrived, SEEK_WAIT_MS);
     surface?.seek(to);
   };
   /** Where the arrows have moved the scrubber, not sent yet (null: none). Presses and a held
@@ -512,10 +517,7 @@ export function Player() {
             // The last file's progress, still coming after the new one was asked for: not this one's.
             if (!loaded()) return;
             // Still the old place's time while a seek is on its way: the scrubber keeps the target.
-            if (seeking && (Math.abs(e.currentTime - seeking.to) <= SEEK_NEAR_S || performance.now() - seeking.at > SEEK_WAIT_MS)) {
-              seeking = null;
-              seekPending.set(false);
-            }
+            if (seeking && (Math.abs(e.currentTime - seeking.to) <= SEEK_NEAR_S || performance.now() - seeking.at > SEEK_WAIT_MS)) seekArrived();
             if (!seeking) position.set(e.currentTime);
             cachedAhead.set(e.cached ?? 0);
             readAt.set({ byte: e.readAt ?? 0, time: e.readTime ?? 0 });
@@ -533,7 +535,9 @@ export function Player() {
             stallTimer = setTimeout(() => buffering.set(true), STALL_MS);
           }}
           onEnd={() => { paused.set(true); poke(); }}
-          onError={(e) => error.set(e)}
+          // The seek arrived (AVPlay lands on a keyframe, maybe seconds before the target): its times stand.
+          onSeeked={seekArrived}
+          onError={(e) => { seekArrived(); error.set(e); }}
           style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
         />
       </If>
