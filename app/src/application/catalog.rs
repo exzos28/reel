@@ -392,6 +392,9 @@ struct Info {
     title: String,
     about: String,
     original_title: Option<String>,
+    /// Other names to search releases by: the English title, an anime's romaji one.
+    english_title: Option<String>,
+    romaji: Option<String>,
     year: Option<u16>,
     year_end: Option<u16>,
     minutes: u32,
@@ -519,6 +522,8 @@ fn from_title(t: &Value) -> Info {
         title: text(&t["title"]).unwrap_or_default(),
         about: text(&t["overview"]).unwrap_or_default(),
         original_title: text(&t["originalTitle"]),
+        english_title: text(&t["englishTitle"]),
+        romaji: text(&t["anime"]["romaji"]),
         year: first,
         year_end: if show && ended { last.filter(|l| Some(*l) != first) } else { None },
         minutes: t["runtimeMinutes"].as_u64().unwrap_or(0) as u32,
@@ -578,8 +583,28 @@ fn has_source() -> bool {
 /// The names a source is searched by: the title in the content language first
 /// (trackers name releases "Локализованное / Original"), then the original.
 fn search_titles(info: &Info) -> (String, Vec<String>) {
-    let alt = info.original_title.iter().filter(|o| **o != info.title).cloned().collect();
-    (info.title.clone(), alt)
+    // The title in the UI's language first (a source in that language finds it at once, and
+    // the search stops there); then the English title, an anime's romaji one and the original,
+    // which trackers in other languages name releases by. At most `MOST_NAMES` names: each one
+    // is a query to the source (a season asks them all at once).
+    let mut names = vec![info.title.clone()];
+    for alt in [&info.english_title, &info.romaji, &info.original_title].into_iter().flatten() {
+        let alt = alt.trim();
+        let new = !names.iter().any(|n| n.to_lowercase() == alt.to_lowercase());
+        if new && names.len() < MOST_NAMES && distinctive(alt) {
+            names.push(alt.to_owned());
+        }
+    }
+    (names.remove(0), names)
+}
+
+/// The most names a release search asks by (the title and two others).
+const MOST_NAMES: usize = 3;
+
+/// Whether another name is worth searching by: a short one-word name ("Up", "Lost") matches
+/// releases of other titles. Two words or more, or five letters (any script) or more.
+fn distinctive(name: &str) -> bool {
+    name.split_whitespace().count() >= 2 || name.chars().filter(|c| c.is_alphanumeric()).count() >= 5
 }
 
 /// Starts the search for `key` (once per run) when there is a source.

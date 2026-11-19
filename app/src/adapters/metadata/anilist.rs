@@ -480,6 +480,7 @@ impl TitleSource for Anilist {
                 season_year: u(m, "seasonYear").map(|y| y as u16),
                 entries: vec![entry],
                 aliases: aliases(m, &title),
+                romaji: m.pointer("/title/romaji").and_then(Value::as_str).map(str::to_owned),
                 tags: arr(m, "tags")
                     .iter()
                     .filter(|t| t.get("isMediaSpoiler") != Some(&Value::Bool(true)))
@@ -495,6 +496,7 @@ impl TitleSource for Anilist {
                 .and_then(Value::as_str)
                 .map(str::to_owned)
                 .filter(|n| *n != title),
+            english_title: m.pointer("/title/english").and_then(Value::as_str).map(str::to_owned),
             title,
             original_language: None,
             tagline: None,

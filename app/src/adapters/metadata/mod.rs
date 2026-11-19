@@ -570,12 +570,17 @@ pub fn merge_anime(mut title: Title, mut entries: Vec<AnimeEntry>, primary: usiz
     if title.trailer.is_none() {
         title.trailer = anilist.as_ref().and_then(|t| t.trailer.clone());
     }
+    let (mut romaji, mut english) = (None, None);
     let (format, season, season_year, mut aliases, tags, studios) = match anilist.and_then(|t| {
         let display = t.title.clone();
+        english = t.english_title.clone();
         t.anime.map(|a| (display, a))
     }) {
         Some((display, a)) => (
-            a.format,
+            {
+                romaji = a.romaji.clone();
+                a.format
+            },
             a.season,
             a.season_year,
             {
@@ -593,7 +598,11 @@ pub fn merge_anime(mut title: Title, mut entries: Vec<AnimeEntry>, primary: usiz
     for e in entries.iter_mut() {
         e.ratings.dedup();
     }
-    title.anime = Some(AnimeInfo { format, season, season_year, entries, aliases, tags, studios });
+    // TMDB's English title first; AniList's when TMDB has none.
+    if title.english_title.is_none() {
+        title.english_title = english;
+    }
+    title.anime = Some(AnimeInfo { format, season, season_year, entries, aliases, romaji, tags, studios });
     title
 }
 

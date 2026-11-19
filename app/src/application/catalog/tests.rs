@@ -867,3 +867,27 @@ fn a_search_from_before_the_source_changed_does_not_land() {
     record_search("film", SEARCH_GEN.load(Ordering::Relaxed), Search { releases: Some(vec![]), failed: None });
     assert!(SEARCHES.lock().unwrap().get("film").is_some(), "the new one's lands");
 }
+
+
+#[test]
+fn releases_are_searched_by_the_title_then_its_english_romaji_and_original_names() {
+    use super::{Info, search_titles};
+    // Polish UI, an anime: the Polish title, then the English and romaji ones (at most three).
+    let frieren = Info {
+        title: "Frieren: U kresu drogi".into(),
+        english_title: Some("Frieren: Beyond Journey's End".into()),
+        romaji: Some("Sousou no Frieren".into()),
+        original_title: Some("葬送のフリーレン".into()),
+        ..Default::default()
+    };
+    assert_eq!(
+        search_titles(&frieren),
+        ("Frieren: U kresu drogi".to_string(), vec!["Frieren: Beyond Journey's End".to_string(), "Sousou no Frieren".to_string()])
+    );
+    // English UI: the English title is the title, not searched twice; then the original.
+    let en = Info { title: "Spirited Away".into(), english_title: Some("Spirited Away".into()), original_title: Some("千と千尋の神隠し".into()), ..Default::default() };
+    assert_eq!(search_titles(&en), ("Spirited Away".to_string(), vec!["千と千尋の神隠し".to_string()]));
+    // A short one-word name would match other titles' releases: not searched by.
+    let up = Info { title: "Вверх".into(), english_title: Some("Up".into()), original_title: Some("Up".into()), ..Default::default() };
+    assert_eq!(search_titles(&up), ("Вверх".to_string(), vec![]));
+}

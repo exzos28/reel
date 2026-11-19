@@ -29,7 +29,7 @@ trait Queries {
     fn query(&self) -> Query;
     fn query_for(&self, title: &str, imdb: Option<String>) -> Query;
     fn names(&self) -> Vec<String>;
-    fn alt_queries(&self) -> Vec<Query>;
+    fn alt_names(&self) -> Vec<String>;
 }
 
 impl Queries for Request {
@@ -50,9 +50,9 @@ impl Queries for Request {
         std::iter::once(self.title.clone()).chain(self.alt_titles.iter().cloned()).collect()
     }
 
-    /// The text queries after the first: each other title once (the IMDb id is
-    /// only tried with the first, it doesn't depend on the name).
-    fn alt_queries(&self) -> Vec<Query> {
+    /// The other names, each once (the IMDb id is only tried with the first: it doesn't
+    /// depend on the name).
+    fn alt_names(&self) -> Vec<String> {
         let mut seen = vec![self.title.to_lowercase()];
         let mut out = Vec::new();
         for t in &self.alt_titles {
@@ -61,7 +61,7 @@ impl Queries for Request {
                 continue;
             }
             seen.push(key);
-            out.push(self.query_for(t.trim(), None));
+            out.push(t.trim().to_owned());
         }
         out
     }
@@ -202,6 +202,9 @@ pub fn result(job: u32) -> Value {
     }
 }
 
+/// The most requests a season search sends to the source at once.
+const AT_ONCE: usize = 4;
+
 /// Runs the queries best first and stops once one finds something to play.
 /// The releases that fit, best first, and those hidden because this device
 /// cannot play them (`{"title","reason"}`).
@@ -211,8 +214,10 @@ async fn search(source: &Source, request: &Request) -> anyhow::Result<(Vec<Value
     let mut found = Vec::new();
     let mut last_err = None;
     let mut urls = torznab::search_urls(&source.url, source.key.as_deref(), &query, &caps)?;
-    for q in request.alt_queries() {
-        urls.extend(torznab::search_urls(&source.url, source.key.as_deref(), &q, &caps)?);
+    // Another name: one plain search by it (not each query shape again: a season asks them
+    // all at once).
+    for name in request.alt_names() {
+        urls.push(torznab::name_url(&source.url, source.key.as_deref(), &query, &name)?);
     }
     urls.dedup();
     let names = request.names();
@@ -221,8 +226,15 @@ async fn search(source: &Source, request: &Request) -> anyhow::Result<(Vec<Value
     // that opens tracker pages).
     let answers: Vec<anyhow::Result<String>> = if matches!(query, Query::Season { .. }) {
         let mut set = tokio::task::JoinSet::new();
+        // At most `AT_ONCE` requests to the source at a time: a source that opens tracker
+        // pages throttles or bans a burst.
+        let slots = std::sync::Arc::new(tokio::sync::Semaphore::new(AT_ONCE));
         for (i, url) in urls.iter().cloned().enumerate() {
-            set.spawn(async move { (i, get(&url).await) });
+            let slots = slots.clone();
+            set.spawn(async move {
+                let _slot = slots.acquire_owned().await;
+                (i, get(&url).await)
+            });
         }
         let mut got: Vec<(usize, anyhow::Result<String>)> = Vec::new();
         while let Some(r) = set.join_next().await {
@@ -454,7 +466,7 @@ mod tests {
     }
 
     #[test]
-    fn alt_titles_add_text_queries_once() {
+    fn alt_titles_are_each_searched_once_by_name() {
         let r = Request {
             imdb: Some("tt0013442".into()),
             title: "Носферату".into(),
@@ -463,9 +475,13 @@ mod tests {
             season: None,
             episode: None,
         };
-        let alts = r.alt_queries();
-        assert_eq!(alts.len(), 1, "a duplicate and a blank are skipped");
-        assert_eq!(alts[0], Query::Movie { imdb: None, title: "Nosferatu".into(), year: Some(1922) });
+        assert_eq!(r.alt_names(), vec!["Nosferatu".to_string()], "a duplicate and a blank are skipped");
+        // One plain search by the name, in the query's categories, with a film's year.
+        let url = torznab::name_url("http://x/api", None, &r.query(), "Nosferatu").unwrap();
+        assert!(url.contains("t=search") && url.contains("q=Nosferatu+1922") && url.contains("cat=2000"), "{url}");
+        let ep = Request { season: Some(1), episode: Some(3), year: None, ..r };
+        let url = torznab::name_url("http://x/api", None, &ep.query(), "Nosferatu").unwrap();
+        assert!(url.contains("q=Nosferatu&") && url.contains("cat=5000"), "{url}");
     }
 
     #[test]

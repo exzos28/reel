@@ -103,6 +103,8 @@ fn tmdb_movie() {
     assert_eq!(t.kind, TitleKind::Movie);
     assert_eq!(t.title, "Matrix");
     assert_eq!(t.original_title.as_deref(), Some("The Matrix"));
+    // For searching releases: the English title, from the translations in the same response.
+    assert_eq!(t.english_title.as_deref(), Some("The Matrix"));
     assert_eq!(t.ids.imdb.as_deref(), Some("tt0133093"));
     assert_eq!(t.ids.tmdb, Some(TmdbRef { kind: TmdbKind::Movie, id: 603 }));
     assert_eq!(t.release.year, Some(1999));
@@ -275,6 +277,8 @@ fn anilist_media() {
     assert_eq!(t.kind, TitleKind::Series);
     assert_eq!(t.title, "Attack on Titan");
     assert_eq!(t.original_title.as_deref(), Some("進撃の巨人"));
+    assert_eq!(t.english_title.as_deref(), Some("Attack on Titan"));
+    assert_eq!(t.anime.as_ref().and_then(|a| a.romaji.as_deref()), Some("Shingeki no Kyojin"));
     assert_eq!(t.ids.anilist, Some(16498));
     assert_eq!(t.ids.mal, Some(16498));
     assert_eq!(t.status, Some(TitleStatus::Ended));
