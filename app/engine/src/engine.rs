@@ -674,6 +674,16 @@ pub async fn seek(job: u32, seconds: f64) -> SeekReady {
             .unwrap_or(false),
     };
     let in_already = have_all();
+    const MB: f64 = 1024.0 * 1024.0;
+    log_line(&format!(
+        "seek job {job} to {seconds:.0} s: place {:.1}..{:.1} MB (target {:.1} MB), pieces {first}..={last}{}, {}",
+        place.from as f64 / MB,
+        place.end as f64 / MB,
+        place.target as f64 / MB,
+        if last < *place.pieces.end() { " (pin cut)" } else { "" },
+        if in_already { "in already" } else { "fetching" },
+    ));
+    let asked = std::time::Instant::now();
     let (done, mut waiting) = tokio::sync::watch::channel(in_already.then_some(SeekReady::Ready));
     let ready = done.clone();
     let task = core.rt.spawn(async move {
@@ -704,18 +714,24 @@ pub async fn seek(job: u32, seconds: f64) -> SeekReady {
                     }
                 }
             }
-            time_step(job, "seek's place in");
+            log_line(&format!("seek job {job}: place in after {} ms", asked.elapsed().as_millis()));
             ready.send_replace(Some(SeekReady::Ready));
             stream = Some(s);
         }
-        // Kept (pinned, the stream open) until the player reads inside the place: where it
-        // read before the seek says nothing (a seek back starts far behind it).
+        // Kept (pinned, the stream open) until a stream of the player reads inside the place
+        // (the streams' positions, as librqbit serves them: every view reads over HTTP).
         let kept = std::time::Instant::now();
+        let reads = || -> Vec<u64> {
+            handle.stream_positions().into_iter().filter(|(f, _)| *f == file).map(|(_, at)| at).collect()
+        };
+        // (Where the player reads after the seek shows in the timing log: the status poll notes
+        // every stream's new position.)
         while kept.elapsed() < SEEK_KEEP_FOR {
-            if play_of(job).and_then(|p| p.anchor).is_some_and(|a| (place.target..=place.end).contains(&(a.byte as u64))) {
+            let now = reads();
+            if now.iter().any(|at| (place.target..=place.end).contains(at)) {
                 break;
             }
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(250)).await;
         }
         drop(stream);
     });
