@@ -1,0 +1,546 @@
+app:
+  name: reel
+
+nav:
+  row_back: "Назад у цьому ряду"
+  row_on: "Далі в цьому ряду"
+  home: "Головна"
+  movies: "Фільми"
+  shows: "Серіали"
+  cartoons: "Мультфільми"
+  anime: "Аніме"
+  search: "Пошук"
+  settings: "Налаштування"
+  saved: "Збережене"
+  # The phone's last tab: the destinations that do not fit in its tab bar.
+  more: "Ще"
+  back: "Назад"
+  # Desktop tooltip of Back and its accessibility label: the page it goes to.
+  back_to: "Назад: %{page}"
+
+exit:
+  title: "Вийти з reel?"
+  about: "Відтворення зупиниться. Переглянуте збережеться."
+  stay: "Залишитися"
+  exit: "Вийти"
+
+hosted:
+  pair_title: "Підключіть телефон"
+  pair_about: "Введіть цей код на сторінці налаштувань reel на телефоні чи комп’ютері."
+  cancel: "Скасувати"
+  offer_title: "Взяти джерело з телефона?"
+  offer_about: "reel шукатиме роздачі в ньому. Його можна змінити в налаштуваннях."
+  offer_use: "Взяти"
+  offer_not_now: "Не зараз"
+
+shelf:
+  continue: "Продовжити перегляд"
+  watchlist: "Буду дивитися"
+  trending_movies: "Популярні фільми"
+  trending_shows: "Популярні серіали"
+  popular: "Популярне"
+  anime: "Популярне аніме"
+  no_tmdb: "Фільми та серіали"
+  loading: "Завантаження"
+  offline: "Тут поки порожньо"
+
+empty:
+  no_tmdb:
+    title: "Для фільмів і серіалів потрібен ключ TMDB"
+    about: "У цій збірці reel немає ключа TMDB, тому показано лише аніме з AniList. Додайте свій ключ, щоб бачити фільми й серіали."
+  loading:
+    title: "Завантаження…"
+    about: "Отримуємо список із TMDB і AniList."
+  offline:
+    title: "Не вдалося завантажити список"
+    about: "TMDB і AniList не відповідають. Перевірте підключення; reel спробує знову сам."
+  unavailable:
+    title: "Цей фільм недоступний"
+    about: "Не вдалося завантажити відомості про нього. Спробуйте пізніше."
+
+title:
+  play: "Дивитися"
+  resume: "Продовжити з %{at}"
+  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # a screen reader says the whole action.
+  my_list: "Буду дивитися"
+  add_to_list: "Буду дивитися"
+  in_list: "У списку"
+  add_to_list_spoken: "Додати до «Буду дивитися»"
+  remove_from_list_spoken: "Прибрати з «Буду дивитися»"
+  trailer: "Трейлер"
+  save: "Зберегти"
+  saving: "Зберігається %{percent}%"
+  saving_some: "Зберігається %{count} з %{total}"
+  save_paused: "На паузі"
+  saved: "Збережено"
+  saved_one: "Збережено 1 серію"
+  saved_some: "Збережено серій: %{count}"
+
+card:
+  left: "Залишилося %{time}"
+  open: "Відкрити"
+
+kind:
+  movie: "Фільм"
+  short: "Короткометражка"
+  show: "Серіал"
+  season_one: "1 сезон"
+  seasons: "Сезонів: %{count}"
+
+fmt:
+  minutes: "%{m} хв"
+  hours: "%{h} год"
+  hours_minutes: "%{h} год %{m} хв"
+  episode: "S%{season}:E%{episode}"
+  years: "%{from}–%{to}"
+  day: "%{day} %{month}"
+  date: "%{day} %{month} %{year}"
+  month_day: "%{day} %{month}"
+
+month:
+  "1": "січ."
+  "2": "лют."
+  "3": "бер."
+  "4": "квіт."
+  "5": "трав."
+  "6": "черв."
+  "7": "лип."
+  "8": "серп."
+  "9": "вер."
+  "10": "жовт."
+  "11": "лист."
+  "12": "груд."
+
+
+badge:
+  sd: "SD"
+  hd: 1080p
+  uhd: 4K
+  cc: "CC"
+  silent: "Без звуку"
+  tv_pg: "TV-PG"
+
+tag:
+  new_season: "Новий сезон"
+  new_episode: "Нова серія"
+
+release:
+  sharing: "Роздають %{count} ос."
+  sharing_short: "%{count} ос."
+  pack: "весь сезон, %{size}"
+  fast: "запуститься за секунди"
+  note:
+    starts_fast: "Запуститься швидко"
+    needs: "Потрібен інтернет %{mbit} Мбіт/с"
+    slow_start: "Може довго запускатися"
+    few_sharing: "Мало хто роздає, може не запуститися"
+
+releases:
+  title: "Роздачі"
+  title_episode: "Роздачі для %{episode}"
+  title_season: "Роздачі сезону %{season}"
+  not_in: "%{episode} немає в роздачі %{release}. Виберіть роздачу для цієї серії."
+  found: "Знайдено: %{count}, спершу найкращі в кожній якості"
+  more: "Показати ще %{count}"
+  state:
+    no_source: "Додайте джерело пошуку в налаштуваннях, щоб знаходити роздачі."
+    no_source_hosted: "Додайте джерело пошуку в налаштуваннях або відкрийте %{url} на телефоні."
+    searching: "Шукаємо у вашому джерелі…"
+    failed: "Джерело пошуку не відповіло. Перевірте його в налаштуваннях."
+    none: "У вашому джерелі нічого не знайшлося."
+  # The button next to a missing or failing search source.
+  open_settings: "Відкрити налаштування"
+
+score:
+  tmdb: TMDB
+  anilist: AniList
+  mal: "MAL"
+  votes: "Голосів: %{votes}"
+
+about:
+  title: "Опис"
+  cast: "У ролях"
+  details: "Подробиці"
+  similar: "Схоже"
+
+crew:
+  director:
+    one: "Режисер"
+    other: "Режисери"
+  writer:
+    one: "Сценарист"
+    other: "Сценаристи"
+  novel:
+    one: "За книгою"
+    other: "За книгою"
+  music:
+    one: "Музика"
+    other: "Музика"
+  creator:
+    one: "Творець"
+    other: "Творці"
+
+detail:
+  tagline: "Слоган"
+  original_title: "Оригінальна назва"
+  release_date: "Дата виходу"
+  first_aired: "Прем’єра"
+  runtime: "Тривалість"
+  status: "Статус"
+  countries: "Країна"
+  studios: "Студія"
+  networks: "Канал і студії"
+
+status:
+  announced: "Анонсовано"
+  inProduction: "У виробництві"
+  airing: "Триває"
+  ended: "Завершено"
+  canceled: "Закрито"
+  released: "Вийшов"
+
+tracks:
+  audio:
+    original: "Оригінал"
+  subtitles:
+    "off": "Вимк."
+    en: "Англійські"
+  number: "Доріжка %{number}"
+  forced: "Примусові"
+  from_torrent: "Файл із роздачі"
+  loading: "Шукаємо субтитри…"
+
+languages:
+  en: "Англійська"
+  ru: "Російська"
+  uk: "Українська"
+  be: "Білоруська"
+  de: "Німецька"
+  fr: "Французька"
+  es: "Іспанська"
+  it: "Італійська"
+  pt: "Португальська"
+  pl: "Польська"
+  cs: "Чеська"
+  nl: "Нідерландська"
+  sv: "Шведська"
+  "no": "Норвезька"
+  da: "Данська"
+  fi: "Фінська"
+  hu: "Угорська"
+  ro: "Румунська"
+  el: "Грецька"
+  tr: "Турецька"
+  ar: "Арабська"
+  he: "Іврит"
+  ja: "Японська"
+  zh: "Китайська"
+  ko: "Корейська"
+
+series:
+  season: "Сезон %{number}"
+  episodes: "Серій: %{count}"
+  no_episodes: "Серії цього серіалу поки невідомі."
+  watched: "Переглянуто"
+  not_in_release: "Немає в цій роздачі"
+  airs: "Вийде %{date}"
+
+browse:
+  movies:
+    title: "Фільми"
+    lead: "Новинки й найкраще в кіно"
+    trending: "Популярне"
+    all: "Усі фільми"
+  shows:
+    title: "Серіали"
+    lead: "Серіали, від яких не відірватися"
+    trending: "Ідуть і скоро вийдуть"
+    all: "Усі серіали"
+  cartoons:
+    title: "Мультфільми"
+    lead: "Мультсеріали для будь-якого віку"
+    trending: "Найкращі за оцінками"
+    all: "Усі мультфільми"
+  anime:
+    title: "Аніме"
+    lead: "Хіти сезону й улюблене всіх часів"
+    trending: "Популярне цього сезону"
+    all: "Усе аніме"
+  filter:
+    genres: "Жанри"
+    years: "Роки"
+    countries: "Країни"
+    sort: "Сортування"
+    picked: "%{filter}: %{picked}"
+  sort: "Сортування:"
+  option:
+    decade: "%{n}-ті"
+    older: "До %{n}"
+    popular: "Найпопулярніші"
+    top_rated: "Найкращі за оцінками"
+    newest: "Нові"
+    any: "Будь-які"
+  state:
+    loading: "Завантаження…"
+    empty: "Під ці фільтри нічого не підходить."
+    offline: "Не вдалося завантажити список. Перевірте підключення."
+    more_failed: "Не вдалося завантажити ще. Спустіться нижче, щоб спробувати знову."
+
+search:
+  title: "Пошук"
+  placeholder: "Фільми, серіали й аніме за назвою"
+  hint: "Введіть назву фільму, серіалу чи аніме."
+  recent: "Недавні запити"
+  clear: "Очистити історію"
+  searching: "Шукаємо…"
+  none: "За запитом «%{query}» нічого не знайшлося."
+  failed: "TMDB і AniList не відповідають. Перевірте підключення й спробуйте знову."
+  no_tmdb: "У цій збірці немає ключа TMDB, тому шукаємо лише аніме."
+  section:
+    movies: "Фільми"
+    shows: "Серіали"
+    anime: "Аніме"
+
+compat:
+  audio_dts: "У цій роздачі звук лише в DTS, а цей пристрій його не відтворює. Виберіть іншу роздачу."
+  audio_truehd: "У цій роздачі звук лише в TrueHD, а цей пристрій його не відтворює. Виберіть іншу роздачу."
+  dolby_vision_only: "Ця роздача в Dolby Vision без шару HDR10, тож на цьому пристрої кольори будуть неправильні. Виберіть іншу роздачу."
+  container: "Формат цього файлу не відтворюється на цьому пристрої. Виберіть іншу роздачу."
+
+player:
+  back: "Назад"
+  close: "Закрити"
+  close_tracks: "Закрити звук і субтитри"
+  episodes: "Серії"
+  close_episodes: "Закрити серії"
+  now_playing: "Зараз іде"
+  fullscreen: "На весь екран"
+  mute: "Вимкнути звук"
+  unmute: "Увімкнути звук"
+  volume: "Гучність"
+  exit_fullscreen: "Вийти з повноекранного режиму"
+  stage:
+    searching: "Шукаємо роздачу"
+    finding: "Шукаємо, хто роздає"
+    connecting: "Підключаємося до тих, хто роздає"
+    found:
+      one: "Знайдено 1 людину, підключаємося"
+      other: "Знайдено людей: %{count}, підключаємося"
+    fetching: "Завантажуємо початок, %{percent}%"
+    starting: "Запускаємо"
+  buffering: "Завантаження"
+  ahead_seconds: "У запасі %{seconds} с"
+  rate_from: "%{speed} від %{count} ос."
+  ready_ahead: "У запасі %{minutes} хв"
+  ready_ahead_short: "У запасі менше хвилини"
+  streaming: "потік %{speed}"
+  streaming_from: "потік %{speed} від %{count} ос."
+  left: "−%{time}"
+  play: "Дивитися"
+  pause: "Пауза"
+  back_10: "Назад на 10 секунд"
+  forward_10: "Уперед на 10 секунд"
+  tracks: "Звук і субтитри"
+  position: "Позиція"
+  audio: "Звук"
+  subtitles: "Субтитри"
+  release: "Роздача"
+  next_episode: "Наступна серія · %{code}"
+  play_now: "Дивитися зараз"
+  in_seconds: "через %{seconds} с"
+  watch_credits: "Дивитися титри"
+  no_source: "Немає роздачі для перегляду."
+  no_source_hint: "Додайте джерело пошуку в налаштуваннях або виберіть іншу роздачу."
+  not_in_release: "Цієї серії немає в роздачі."
+  not_in_release_hint: "Поверніться й виберіть для неї роздачу."
+  failed: "Не вдалося відтворити: %{message}"
+  failed_hint: "Поверніться й виберіть іншу роздачу."
+  view_failed: "Відео не запустилося на цьому пристрої."
+  view_failed_hint: "Поверніться й спробуйте знову; може допомогти перезапуск reel."
+  no_space: "Бракує місця: потрібно %{needed}, вільно %{free}."
+  no_space_unknown: "Бракує місця: потрібно %{needed}."
+  no_space_hint: "Звільніть місце на пристрої або зменште буфер у налаштуваннях."
+  low_space: "На пристрої закінчилося місце, тому перегляд на паузі. Звільніть місце або зменште буфер у налаштуваннях."
+
+settings:
+  title: "Налаштування"
+  selected: "Вибрано"
+  language:
+    title: "Мова"
+    about: "Назви, описи й назви серій; за ними reel також шукає роздачі."
+  source:
+    title: "Джерело пошуку"
+    about: "Де reel шукає роздачі фільму чи серії. Адреса Torznab і її API-ключ."
+    phone: "Відскануйте код телефоном або відкрийте %{url}"
+    # The address is what a source needs; a key only some have (a rented one is all in its address).
+    url: "Адреса Torznab (обов’язково)"
+    url_placeholder: "http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api"
+    key: "API-ключ (необов’язково)"
+    key_placeholder: "Лише якщо він є в джерела"
+    key_saved: "Ключ збережено. Введіть новий, щоб замінити"
+    save: "Зберегти й перевірити"
+    remove: "Видалити джерело"
+    # The partner's ready source (design/partner-source.md).
+    partner_tv_title: "Готове джерело"
+    partner_tv_text: "Відскануйте код телефоном і оплатіть у Telegram (@%{bot}). Джерело з’явиться тут: підтвердьте його на цьому екрані."
+    partner_app: "Готове джерело в Telegram"
+    partner_app_note: "@%{bot} надішле посилання: відкрийте його, і джерело заповниться тут."
+    saving: "Зберігаємо…"
+    checking: "Перевіряємо джерело…"
+    removed: "Джерело пошуку видалено."
+    ok_imdb: "Підключено. Шукає за IMDb id."
+    ok_text: "Підключено. Шукає за назвою."
+    failed: "Не вдалося зв’язатися з джерелом: %{message}"
+    # Why a source did not answer (the core's reason), with what to do.
+    reason:
+      unreachable: "%{host} недоступний. Перевірте адресу і чи ввімкнено джерело."
+      key: "%{host} не прийняв API-ключ. Перевірте ключ."
+      not_torznab: "%{host} відповів, але не як джерело Torznab. Перевірте адресу: зазвичай вона закінчується на /torznab/api."
+      error: "%{host}: %{message}"
+  # Where the menu (the nav's tabs and buttons) sits in the bar at the top (TV, desktop).
+  nav_position:
+    title: "Положення меню"
+    about: "Де розташоване меню на верхній панелі екрана."
+    left: "Ліворуч"
+    center: "По центру"
+    right: "Праворуч"
+  # What shows while a film loads or waits for more of the stream.
+  loader:
+    title: "Анімація завантаження"
+    about: "Що видно, поки фільм чекає на продовження потоку."
+    dinosaur: "Динозавр"
+    logo: reel
+  # The drawer with the search source's fields: on Play with none (missing), when it did not
+  # answer (failed), from Settings (edit).
+  source_drawer:
+    missing_title: "Додайте джерело пошуку"
+    missing_about: "reel відтворює роздачі, які знаходить у вашому джерелі пошуку, а його поки немає. Введіть адресу Torznab і її API-ключ; «Дивитися» запрацює після підключення."
+    failed_title: "Джерело пошуку не відповіло"
+    failed_about: "reel не зміг знайти в ньому роздачі. Перевірте адресу й API-ключ, потім натисніть «Зберегти й перевірити»; «Дивитися» запрацює після підключення."
+    edit_title: "Джерело пошуку"
+    edit_about: "Адреса Torznab і її API-ключ."
+    link_title: "Взяти це джерело?"
+    link_about: "Джерело заповнено за посиланням. Натисніть «Зберегти й перевірити», щоб узяти його, або «Назад», щоб залишити своє."
+  # The rows of Settings: a name and the value in effect.
+  rows:
+    connected: "Підключено"
+    not_set: "Не задано"
+    buffer_value: "%{size} · вільно %{free}"
+  # The card beside Settings on a device that serves its settings page (a TV).
+  phone:
+    title: "Це можна змінити з телефона"
+    text: "Відскануйте код або відкрийте %{url}."
+  interface:
+    title: "Інтерфейс"
+  about:
+    title: "Про reel"
+    open: "Про reel і джерела даних"
+    data: "Джерела даних"
+    tmdb_logo: "The Movie Database (TMDB)"
+    version: "Версія %{version} (%{build})"
+  details:
+    title: "Відомості про потік"
+    about: "Поки фільм іде або чекає, показувати швидкість, скільки людей роздає і скільки завантажено наперед."
+    show: "Показувати відомості про потік"
+  buffer:
+    title: "Буфер відтворення"
+    about: "Скільки фільму reel тримає під час перегляду. Що більший буфер, то краще, коли роздають повільно або ви далеко перемотуєте."
+    free: "Вільно на пристрої: %{free}"
+    default: "(за замовчуванням)"
+
+
+# The first-run setup: language, playback buffer, search source.
+setup:
+  step: "Крок %{n} з 3"
+  next: "Далі"
+  language:
+    title: "Якою мовою показувати назви?"
+    help: "За цими назвами reel також шукає роздачі."
+    more: "Інші мови"
+  buffer:
+    title: "Скільки місця reel може зайняти під час перегляду?"
+    help: "Що більший буфер, то краще, коли роздають повільно або ви далеко перемотуєте."
+    recommended: "Рекомендовано"
+  source:
+    title: "Де reel шукати фільми?"
+    help: "Вкажіть своє джерело або візьміть готове."
+    own_title: "Своє джерело"
+    rent_title: "Або готове"
+    check: "Перевірити"
+    finish: "Готово"
+    skip: "Пропустити"
+    footnote: "Torznab — поширений спосіб, у який пошукові сервіси віддають списки торрент-роздач. reel сам відео не шукає: це каталог і плеєр, а що дивитися, він знаходить лише через указане вами джерело."
+  phone:
+    title: "Або налаштуйте з телефона"
+    text: "Відскануйте код камерою телефона або відкрийте %{url} у його браузері. Цей екран оновиться сам."
+    source_title: "З телефона простіше"
+    source_text: "Вводити адресу пультом довго. Відскануйте код або відкрийте %{url} і вставте адресу там. Цей екран завершить налаштування сам."
+
+menu:
+  settings: "Налаштування…"
+  edit: "Редагування"
+  go: "Перехід"
+  back: "Назад"
+  window: "Вікно"
+
+# Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
+saved:
+  title: "Збережене"
+  empty: "Поки нічого не збережено. Збережіть фільм або сезон на його сторінці, щоб дивитися без інтернету."
+  saving: "Зберігається"
+  while_open: "поки reel відкрито"
+  ready: "Можна дивитися"
+  not_saved: "Не збережено"
+  pause: "Пауза"
+  resume: "Продовжити збереження"
+  remove: "Видалити"
+  remove_all: "Видалити всі серії"
+  pause_all: "Призупинити всі серії"
+  resume_all: "Продовжити збереження всіх серій"
+  remove_title: "Видалити «%{name}»?"
+  remove_about: "З пристрою буде видалено %{size}. Пізніше можна зберегти знову."
+  open_folder: "Відкрити папку"
+  group_line: "Серій: %{count} · %{size}"
+  group_line_one: "1 серія · %{size}"
+  space:
+    saved: "Збережено %{size}"
+    free: "Вільно %{size}"
+  state:
+    searching: "Шукаємо роздачу…"
+    resolving: "Шукаємо, хто роздає…"
+    saving: "%{percent}% · %{have} з %{size}"
+    paused: "На паузі · %{have} з %{size}"
+    waiting: "Почнеться, коли закінчиться поточний перегляд"
+    saved: "Збережено · %{size}"
+    unavailable: "Його диск не підключено"
+  failed:
+    no_source: "Не знайшлося роздачі для збереження"
+    not_in_release: "Цієї серії немає в роздачі її сезону"
+    unsupported: "Ця роздача не відтворюється на цьому пристрої"
+    no_video: "У цій роздачі немає відео"
+    interrupted: "Зупинилося, не почавшись. Збережіть знову."
+    no_peers: "Зараз цю роздачу ніхто не роздає. Збережіть пізніше або виберіть іншу роздачу."
+    no_space: "Диск заповнено. Звільніть місце й збережіть знову."
+    write: "Не вдалося записати в папку. Збережіть знову."
+    path_too_long: "Імена файлів задовгі для цього пристрою. Виберіть іншу роздачу."
+    other: "Не вдалося зберегти. Збережіть знову."
+  drawer:
+    title: "Зберегти на пристрій"
+    note: "Можна дивитися без інтернету"
+    whole_season: "Увесь сезон"
+    episodes: "Серій: %{count}"
+    season_state: "Збережено %{saved} з %{total}"
+    release_locked: "Збережені серії взято з цієї роздачі, тож нові теж будуть із неї."
+    save_n: "Зберегти серії: %{count}"
+    save_one: "Зберегти 1 серію"
+    choose: "Виберіть серії"
+    more: "Ще %{size}"
+    new: "нова"
+
+confirm:
+  cancel: "Скасувати"
+
+home:
+  # The round ⓘ beside Play on Home: the title's page.
+  details: "Детальніше"

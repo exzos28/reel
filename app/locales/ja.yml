@@ -1,0 +1,546 @@
+app:
+  name: reel
+
+nav:
+  row_back: "この列の前へ"
+  row_on: "この列の次へ"
+  home: "ホーム"
+  movies: "映画"
+  shows: "ドラマ"
+  cartoons: "アニメーション"
+  anime: "アニメ"
+  search: "検索"
+  settings: "設定"
+  saved: "保存済み"
+  # The phone's last tab: the destinations that do not fit in its tab bar.
+  more: "その他"
+  back: "戻る"
+  # Desktop tooltip of Back and its accessibility label: the page it goes to.
+  back_to: "%{page}に戻る"
+
+exit:
+  title: "reel を終了しますか？"
+  about: "再生中のものは停止します。視聴履歴は残ります。"
+  stay: "続ける"
+  exit: "終了"
+
+hosted:
+  pair_title: "スマートフォンと接続"
+  pair_about: "スマートフォンかパソコンで reel の設定ページを開き、このコードを入力してください。"
+  cancel: "キャンセル"
+  offer_title: "スマートフォンのソースを使いますか？"
+  offer_about: "reel はそのソースでリリースを検索します。設定でいつでも変更できます。"
+  offer_use: "使う"
+  offer_not_now: "今はしない"
+
+shelf:
+  continue: "続きを観る"
+  watchlist: "ウォッチリスト"
+  trending_movies: "話題の映画"
+  trending_shows: "話題のドラマ"
+  popular: "人気"
+  anime: "話題のアニメ"
+  no_tmdb: "映画とドラマ"
+  loading: "読み込み中"
+  offline: "まだ何もありません"
+
+empty:
+  no_tmdb:
+    title: "映画とドラマには TMDB キーが必要です"
+    about: "この reel には TMDB キーが含まれていないため、AniList のアニメだけを表示しています。映画やドラマを表示するには、ご自身のキーを追加してください。"
+  loading:
+    title: "読み込み中…"
+    about: "TMDB と AniList から作品を取得しています。"
+  offline:
+    title: "作品を読み込めませんでした"
+    about: "TMDB と AniList から応答がありません。接続を確認してください。reel は自動で再試行します。"
+  unavailable:
+    title: "この作品は表示できません"
+    about: "詳細を読み込めませんでした。しばらくしてからもう一度お試しください。"
+
+title:
+  play: "再生"
+  resume: "%{at}から再生"
+  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # a screen reader says the whole action.
+  my_list: "ウォッチリスト"
+  add_to_list: "ウォッチリスト"
+  in_list: "ウォッチリスト追加済み"
+  add_to_list_spoken: "ウォッチリストに追加"
+  remove_from_list_spoken: "ウォッチリストから削除"
+  trailer: "予告編"
+  save: "保存"
+  saving: "保存中 %{percent}%"
+  saving_some: "保存中 %{count}/%{total}"
+  save_paused: "一時停止中"
+  saved: "保存済み"
+  saved_one: "1話を保存済み"
+  saved_some: "%{count}話を保存済み"
+
+card:
+  left: "残り%{time}"
+  open: "開く"
+
+kind:
+  movie: "映画"
+  short: "短編"
+  show: "ドラマ"
+  season_one: "1シーズン"
+  seasons: "%{count}シーズン"
+
+fmt:
+  minutes: "%{m}分"
+  hours: "%{h}時間"
+  hours_minutes: "%{h}時間%{m}分"
+  episode: "S%{season}:E%{episode}"
+  years: "%{from}–%{to}"
+  day: "%{month}%{day}日"
+  date: "%{year}年%{month}%{day}日"
+  month_day: "%{month}%{day}日"
+
+month:
+  "1": "1月"
+  "2": "2月"
+  "3": "3月"
+  "4": "4月"
+  "5": "5月"
+  "6": "6月"
+  "7": "7月"
+  "8": "8月"
+  "9": "9月"
+  "10": "10月"
+  "11": "11月"
+  "12": "12月"
+
+
+badge:
+  sd: "SD"
+  hd: 1080p
+  uhd: 4K
+  cc: "CC"
+  silent: "サイレント"
+  tv_pg: "TV-PG"
+
+tag:
+  new_season: "新シーズン"
+  new_episode: "新エピソード"
+
+release:
+  sharing: "%{count}人が共有中"
+  sharing_short: "%{count}人共有"
+  pack: "シーズンパック %{size}"
+  fast: "すぐに再生"
+  note:
+    starts_fast: "すぐに再生できます"
+    needs: "%{mbit} Mbps の回線が必要です"
+    slow_start: "再生開始まで時間がかかる場合があります"
+    few_sharing: "共有している人が少なく、再生できない場合があります"
+
+releases:
+  title: "リリース"
+  title_episode: "%{episode}のリリース"
+  title_season: "シーズン%{season}のリリース"
+  not_in: "%{episode}は%{release}に含まれていません。このエピソードのリリースを選んでください。"
+  found: "%{count}件見つかりました。画質ごとに最適なものから表示します"
+  more: "さらに%{count}件表示"
+  state:
+    no_source: "リリースを探すには、設定で検索ソースを追加してください。"
+    no_source_hosted: "設定で検索ソースを追加するか、スマートフォンで %{url} を開いてください。"
+    searching: "ソースを検索しています…"
+    failed: "検索ソースから応答がありません。設定で確認してください。"
+    none: "検索ソースで何も見つかりませんでした。"
+  # The button next to a missing or failing search source.
+  open_settings: "設定を開く"
+
+score:
+  tmdb: TMDB
+  anilist: AniList
+  mal: "MAL"
+  votes: "%{votes}票"
+
+about:
+  title: "作品情報"
+  cast: "キャスト"
+  details: "詳細"
+  similar: "似ている作品"
+
+crew:
+  director:
+    one: "監督"
+    other: "監督"
+  writer:
+    one: "脚本"
+    other: "脚本"
+  novel:
+    one: "原作"
+    other: "原作"
+  music:
+    one: "音楽"
+    other: "音楽"
+  creator:
+    one: "制作"
+    other: "制作"
+
+detail:
+  tagline: "キャッチコピー"
+  original_title: "原題"
+  release_date: "公開日"
+  first_aired: "初回放送"
+  runtime: "上映時間"
+  status: "ステータス"
+  countries: "国"
+  studios: "スタジオ"
+  networks: "放送局・スタジオ"
+
+status:
+  announced: "発表済み"
+  inProduction: "制作中"
+  airing: "放送中"
+  ended: "終了"
+  canceled: "打ち切り"
+  released: "公開済み"
+
+tracks:
+  audio:
+    original: "オリジナル"
+  subtitles:
+    "off": "オフ"
+    en: "英語"
+  number: "トラック%{number}"
+  forced: "強制字幕"
+  from_torrent: "リリース内のファイル"
+  loading: "字幕を探しています…"
+
+languages:
+  en: "英語"
+  ru: "ロシア語"
+  uk: "ウクライナ語"
+  be: "ベラルーシ語"
+  de: "ドイツ語"
+  fr: "フランス語"
+  es: "スペイン語"
+  it: "イタリア語"
+  pt: "ポルトガル語"
+  pl: "ポーランド語"
+  cs: "チェコ語"
+  nl: "オランダ語"
+  sv: "スウェーデン語"
+  "no": "ノルウェー語"
+  da: "デンマーク語"
+  fi: "フィンランド語"
+  hu: "ハンガリー語"
+  ro: "ルーマニア語"
+  el: "ギリシャ語"
+  tr: "トルコ語"
+  ar: "アラビア語"
+  he: "ヘブライ語"
+  ja: "日本語"
+  zh: "中国語"
+  ko: "韓国語"
+
+series:
+  season: "シーズン%{number}"
+  episodes: "%{count}話"
+  no_episodes: "このドラマのエピソードはまだ登録されていません。"
+  watched: "視聴済み"
+  not_in_release: "このリリースにはありません"
+  airs: "%{date}配信"
+
+browse:
+  movies:
+    title: "映画"
+    lead: "話題の新作から名作まで"
+    trending: "話題"
+    all: "すべての映画"
+  shows:
+    title: "ドラマ"
+    lead: "一気見したくなるドラマ"
+    trending: "放送中・近日配信"
+    all: "すべてのドラマ"
+  cartoons:
+    title: "アニメーション"
+    lead: "どの年代でも楽しめるアニメーション"
+    trending: "高評価"
+    all: "すべてのアニメーション"
+  anime:
+    title: "アニメ"
+    lead: "今季のヒットから不朽の名作まで"
+    trending: "今季の話題作"
+    all: "すべてのアニメ"
+  filter:
+    genres: "ジャンル"
+    years: "年代"
+    countries: "国"
+    sort: "並べ替え"
+    picked: "%{filter}: %{picked}"
+  sort: "並べ替え："
+  option:
+    decade: "%{n}年代"
+    older: "%{n}年より前"
+    popular: "人気順"
+    top_rated: "評価順"
+    newest: "新しい順"
+    any: "すべて"
+  state:
+    loading: "読み込み中…"
+    empty: "条件に合う作品はありません。"
+    offline: "リストを読み込めませんでした。接続を確認してください。"
+    more_failed: "続きを読み込めませんでした。下に移動すると再試行します。"
+
+search:
+  title: "検索"
+  placeholder: "映画・ドラマ・アニメのタイトル"
+  hint: "タイトルを入力して、映画・ドラマ・アニメを検索します。"
+  recent: "最近の検索"
+  clear: "履歴を消去"
+  searching: "検索中…"
+  none: "「%{query}」は見つかりませんでした。"
+  failed: "TMDB と AniList から応答がありません。接続を確認して、もう一度お試しください。"
+  no_tmdb: "この reel には TMDB キーがないため、アニメだけを検索します。"
+  section:
+    movies: "映画"
+    shows: "ドラマ"
+    anime: "アニメ"
+
+compat:
+  audio_dts: "このリリースの音声は DTS のみで、このデバイスでは再生できません。別のリリースを選んでください。"
+  audio_truehd: "このリリースの音声は TrueHD のみで、このデバイスでは再生できません。別のリリースを選んでください。"
+  dolby_vision_only: "このリリースは HDR10 レイヤーのない Dolby Vision のため、このデバイスでは色が正しく表示されません。別のリリースを選んでください。"
+  container: "このファイル形式はこのデバイスでは再生できません。別のリリースを選んでください。"
+
+player:
+  back: "戻る"
+  close: "閉じる"
+  close_tracks: "音声と字幕を閉じる"
+  episodes: "エピソード"
+  close_episodes: "エピソードを閉じる"
+  now_playing: "再生中"
+  fullscreen: "全画面表示"
+  mute: "ミュート"
+  unmute: "ミュート解除"
+  volume: "音量"
+  exit_fullscreen: "全画面表示を終了"
+  stage:
+    searching: "リリースを探しています"
+    finding: "共有している人を探しています"
+    connecting: "共有している人に接続しています"
+    found:
+      one: "1人見つかりました。接続しています"
+      other: "%{count}人見つかりました。接続しています"
+    fetching: "冒頭を読み込み中 %{percent}%"
+    starting: "まもなく再生"
+  buffering: "読み込み中"
+  ahead_seconds: "%{seconds}秒分を先読み済み"
+  rate_from: "%{count}人から %{speed}"
+  ready_ahead: "%{minutes}分ぶんを先読み済み"
+  ready_ahead_short: "先読みは1分未満"
+  streaming: "%{speed} で受信中"
+  streaming_from: "%{count}人から %{speed} で受信中"
+  left: "−%{time}"
+  play: "再生"
+  pause: "一時停止"
+  back_10: "10秒戻る"
+  forward_10: "10秒進む"
+  tracks: "音声と字幕"
+  position: "再生位置"
+  audio: "音声"
+  subtitles: "字幕"
+  release: "リリース"
+  next_episode: "次のエピソード · %{code}"
+  play_now: "今すぐ再生"
+  in_seconds: "%{seconds}秒後"
+  watch_credits: "クレジットを観る"
+  no_source: "再生できるリリースがありません。"
+  no_source_hint: "設定で検索ソースを追加するか、別のリリースを選んでください。"
+  not_in_release: "このエピソードはリリースに含まれていません。"
+  not_in_release_hint: "戻って、このエピソードのリリースを選んでください。"
+  failed: "再生できませんでした: %{message}"
+  failed_hint: "戻って別のリリースを選んでください。"
+  view_failed: "このデバイスで動画を開始できませんでした。"
+  view_failed_hint: "戻ってもう一度お試しください。reel を再起動すると直る場合があります。"
+  no_space: "再生に必要な空き容量が足りません（必要: %{needed}、空き: %{free}）。"
+  no_space_unknown: "再生に必要な空き容量が足りません（必要: %{needed}）。"
+  no_space_hint: "このデバイスの空き容量を増やすか、設定でバッファサイズを小さくしてください。"
+  low_space: "このデバイスの空き容量がないため、再生を一時停止しました。空き容量を増やすか、設定でバッファサイズを小さくしてください。"
+
+settings:
+  title: "設定"
+  selected: "選択中"
+  language:
+    title: "言語"
+    about: "タイトル、あらすじ、エピソード名の言語です。reel はこのタイトルでもリリースを検索します。"
+  source:
+    title: "検索ソース"
+    about: "reel が映画やエピソードのリリースを探す場所です。Torznab のアドレスと API キーを入力します。"
+    phone: "スマートフォンでコードをスキャンするか、%{url} を開いてください"
+    # The address is what a source needs; a key only some have (a rented one is all in its address).
+    url: "Torznab アドレス（必須）"
+    url_placeholder: "http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api"
+    key: "API キー（任意）"
+    key_placeholder: "ソースにキーがある場合のみ"
+    key_saved: "キーは保存済みです。新しいキーを入力すると置き換わります"
+    save: "保存して確認"
+    remove: "ソースを削除"
+    # The partner's ready source (design/partner-source.md).
+    partner_tv_title: "すぐ使えるソースを入手"
+    partner_tv_text: "スマートフォンでスキャンし、Telegram（@%{bot}）で支払います。ソースがここに届いたら、この画面で確定してください。"
+    partner_app: "Telegram ですぐ使えるソースを入手"
+    partner_app_note: "@%{bot} からリンクが届きます。開くと、ここにソースが入力されます。"
+    saving: "保存中…"
+    checking: "ソースを確認中…"
+    removed: "検索ソースを削除しました。"
+    ok_imdb: "接続しました。IMDb ID で検索します。"
+    ok_text: "接続しました。タイトルで検索します。"
+    failed: "ソースに接続できませんでした: %{message}"
+    # Why a source did not answer (the core's reason), with what to do.
+    reason:
+      unreachable: "%{host} に接続できません。アドレスと、ソースが起動しているかを確認してください。"
+      key: "%{host} が API キーを受け付けませんでした。キーを確認してください。"
+      not_torznab: "%{host} から応答はありましたが、Torznab ソースではありません。アドレスを確認してください。通常は /torznab/api で終わります。"
+      error: "%{host}: %{message}"
+  # Where the menu (the nav's tabs and buttons) sits in the bar at the top (TV, desktop).
+  nav_position:
+    title: "メニューの位置"
+    about: "画面上部のバーでメニューを置く位置です。"
+    left: "左"
+    center: "中央"
+    right: "右"
+  # What shows while a film loads or waits for more of the stream.
+  loader:
+    title: "読み込みアニメーション"
+    about: "映画がストリームの続きを待っている間に表示されます。"
+    dinosaur: "恐竜"
+    logo: reel
+  # The drawer with the search source's fields: on Play with none (missing), when it did not
+  # answer (failed), from Settings (edit).
+  source_drawer:
+    missing_title: "検索ソースを追加"
+    missing_about: "reel はご自身の検索ソースで見つけたリリースを再生しますが、まだソースがありません。Torznab のアドレスと API キーを入力してください。接続すると再生できるようになります。"
+    failed_title: "検索ソースから応答がありません"
+    failed_about: "reel はこのソースでリリースを検索できませんでした。アドレスと API キーを確認し、「保存して確認」を押してください。接続すると再生できるようになります。"
+    edit_title: "検索ソース"
+    edit_about: "Torznab のアドレスと API キー。"
+    link_title: "このソースを使いますか？"
+    link_about: "リンクからソースが入力されました。使う場合は「保存して確認」、今のソースのままにする場合は「戻る」を押してください。"
+  # The rows of Settings: a name and the value in effect.
+  rows:
+    connected: "接続済み"
+    not_set: "未設定"
+    buffer_value: "%{size} · 空き %{free}"
+  # The card beside Settings on a device that serves its settings page (a TV).
+  phone:
+    title: "スマートフォンからも変更できます"
+    text: "コードをスキャンするか、%{url} を開いてください。"
+  interface:
+    title: "インターフェース"
+  about:
+    title: "reel について"
+    open: "reel とデータソースについて"
+    data: "データソース"
+    tmdb_logo: "The Movie Database (TMDB)"
+    version: "バージョン %{version} (%{build})"
+  details:
+    title: "ストリーム情報"
+    about: "映画の再生中や待機中に、受信速度、共有している人数、先読みできている量を表示します。"
+    show: "ストリーム情報を表示"
+  buffer:
+    title: "再生バッファ"
+    about: "再生中に reel が保持する映画の量です。大きいほど、相手の回線が遅いときや大きく移動したときに強くなります。"
+    free: "このデバイスの空き容量: %{free}"
+    default: "（標準）"
+
+
+# The first-run setup: language, playback buffer, search source.
+setup:
+  step: "ステップ %{n}/3"
+  next: "次へ"
+  language:
+    title: "タイトルを何語で表示しますか？"
+    help: "reel はこのタイトルでもリリースを検索します。"
+    more: "ほかの言語"
+  buffer:
+    title: "再生中に reel が使える容量は？"
+    help: "バッファが大きいほど、相手の回線が遅いときや大きく移動したときに強くなります。"
+    recommended: "おすすめ"
+  source:
+    title: "reel はどこで映画を探しますか？"
+    help: "ご自身のソースを入力するか、すぐ使えるソースを入手してください。"
+    own_title: "自分のソース"
+    rent_title: "すぐ使えるソースを入手"
+    check: "確認"
+    finish: "完了"
+    skip: "スキップ"
+    footnote: "Torznab は、検索サービスが torrent のリリース一覧を提供する一般的な方式です。reel 自体は動画を検索しません。reel はカタログとプレーヤーで、再生するものは指定されたソースからのみ探します。"
+  phone:
+    title: "スマートフォンでも設定できます"
+    text: "スマートフォンのカメラでコードをスキャンするか、ブラウザで %{url} を開いてください。この画面も自動で切り替わります。"
+    source_title: "スマートフォンなら簡単"
+    source_text: "リモコンでのアドレス入力は時間がかかります。コードをスキャンするか %{url} を開いて、そこに貼り付けてください。この画面は自動で完了します。"
+
+menu:
+  settings: "設定…"
+  edit: "編集"
+  go: "移動"
+  back: "戻る"
+  window: "ウインドウ"
+
+# Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
+saved:
+  title: "保存済み"
+  empty: "保存したものはまだありません。作品ページから映画やシーズンを保存すると、インターネットなしで観られます。"
+  saving: "保存中"
+  while_open: "reel を開いている間"
+  ready: "視聴できます"
+  not_saved: "未保存"
+  pause: "一時停止"
+  resume: "保存を再開"
+  remove: "削除"
+  remove_all: "すべてのエピソードを削除"
+  pause_all: "すべてのエピソードを一時停止"
+  resume_all: "すべてのエピソードの保存を再開"
+  remove_title: "「%{name}」を削除しますか？"
+  remove_about: "このデバイスから %{size} が削除されます。あとでもう一度保存できます。"
+  open_folder: "フォルダを開く"
+  group_line: "%{count}話 · %{size}"
+  group_line_one: "1話 · %{size}"
+  space:
+    saved: "保存済み %{size}"
+    free: "空き %{size}"
+  state:
+    searching: "リリースを探しています…"
+    resolving: "共有している人を探しています…"
+    saving: "%{percent}% · %{have}/%{size}"
+    paused: "一時停止中 · %{have}/%{size}"
+    waiting: "視聴中の映画を止めると開始します"
+    saved: "保存済み · %{size}"
+    unavailable: "保存先のディスクが接続されていません"
+  failed:
+    no_source: "保存できるリリースが見つかりません"
+    not_in_release: "このエピソードはシーズンのリリースに含まれていません"
+    unsupported: "このリリースはこのデバイスでは再生できません"
+    no_video: "このリリースには動画がありません"
+    interrupted: "開始前に停止しました。もう一度保存してください。"
+    no_peers: "現在このリリースを共有している人はいません。あとで保存し直すか、別のリリースを選んでください。"
+    no_space: "ディスクがいっぱいです。空き容量を増やして、もう一度保存してください。"
+    write: "フォルダに書き込めませんでした。もう一度保存してください。"
+    path_too_long: "ファイル名が長すぎるため、このデバイスでは再生できません。別のリリースを選んでください。"
+    other: "保存できませんでした。もう一度保存してください。"
+  drawer:
+    title: "このデバイスに保存"
+    note: "インターネットなしで再生できます"
+    whole_season: "シーズン全体"
+    episodes: "%{count}話"
+    season_state: "%{total}話中%{saved}話を保存済み"
+    release_locked: "保存済みのエピソードはこのリリースのものなので、新しいエピソードも同じリリースから保存します。"
+    save_n: "%{count}話を保存"
+    save_one: "1話を保存"
+    choose: "エピソードを選択"
+    more: "さらに %{size} 使用"
+    new: "新規"
+
+confirm:
+  cancel: "キャンセル"
+
+home:
+  # The round ⓘ beside Play on Home: the title's page.
+  details: "詳細"

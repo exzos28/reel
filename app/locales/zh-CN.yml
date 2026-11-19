@@ -1,0 +1,546 @@
+app:
+  name: reel
+
+nav:
+  row_back: "本行上一页"
+  row_on: "本行下一页"
+  home: "首页"
+  movies: "电影"
+  shows: "剧集"
+  cartoons: "动画片"
+  anime: "动漫"
+  search: "搜索"
+  settings: "设置"
+  saved: "已保存"
+  # The phone's last tab: the destinations that do not fit in its tab bar.
+  more: "更多"
+  back: "返回"
+  # Desktop tooltip of Back and its accessibility label: the page it goes to.
+  back_to: "返回%{page}"
+
+exit:
+  title: "退出 reel？"
+  about: "正在播放的内容会停止，观看记录会保留。"
+  stay: "留下"
+  exit: "退出"
+
+hosted:
+  pair_title: "连接手机"
+  pair_about: "在手机或电脑上打开 reel 的设置页面，输入此代码。"
+  cancel: "取消"
+  offer_title: "使用手机上的搜索源？"
+  offer_about: "reel 将通过它搜索资源。可随时在设置中更改。"
+  offer_use: "使用"
+  offer_not_now: "暂不"
+
+shelf:
+  continue: "继续观看"
+  watchlist: "片单"
+  trending_movies: "热门电影"
+  trending_shows: "热门剧集"
+  popular: "热门"
+  anime: "热门动漫"
+  no_tmdb: "电影和剧集"
+  loading: "加载中"
+  offline: "暂无内容"
+
+empty:
+  no_tmdb:
+    title: "电影和剧集需要 TMDB 密钥"
+    about: "此版本的 reel 没有内置 TMDB 密钥，因此只显示 AniList 中的动漫。添加你自己的密钥即可浏览电影和剧集。"
+  loading:
+    title: "加载中…"
+    about: "正在从 TMDB 和 AniList 获取影片。"
+  offline:
+    title: "无法加载影片"
+    about: "TMDB 和 AniList 没有响应。请检查网络连接，reel 会自动重试。"
+  unavailable:
+    title: "此影片暂不可用"
+    about: "无法加载详情，请稍后再试。"
+
+title:
+  play: "播放"
+  resume: "从 %{at} 继续"
+  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # a screen reader says the whole action.
+  my_list: "片单"
+  add_to_list: "片单"
+  in_list: "已在片单"
+  add_to_list_spoken: "加入片单"
+  remove_from_list_spoken: "移出片单"
+  trailer: "预告片"
+  save: "保存"
+  saving: "正在保存 %{percent}%"
+  saving_some: "正在保存 %{count}/%{total}"
+  save_paused: "已暂停"
+  saved: "已保存"
+  saved_one: "已保存 1 集"
+  saved_some: "已保存 %{count} 集"
+
+card:
+  left: "剩余 %{time}"
+  open: "打开"
+
+kind:
+  movie: "电影"
+  short: "短片"
+  show: "剧集"
+  season_one: "1 季"
+  seasons: "%{count} 季"
+
+fmt:
+  minutes: "%{m} 分钟"
+  hours: "%{h} 小时"
+  hours_minutes: "%{h} 小时 %{m} 分钟"
+  episode: "S%{season}:E%{episode}"
+  years: "%{from}–%{to}"
+  day: "%{month}%{day}日"
+  date: "%{year}年%{month}%{day}日"
+  month_day: "%{month}%{day}日"
+
+month:
+  "1": "1月"
+  "2": "2月"
+  "3": "3月"
+  "4": "4月"
+  "5": "5月"
+  "6": "6月"
+  "7": "7月"
+  "8": "8月"
+  "9": "9月"
+  "10": "10月"
+  "11": "11月"
+  "12": "12月"
+
+
+badge:
+  sd: "SD"
+  hd: 1080p
+  uhd: 4K
+  cc: "CC"
+  silent: "默片"
+  tv_pg: "TV-PG"
+
+tag:
+  new_season: "新一季"
+  new_episode: "新一集"
+
+release:
+  sharing: "%{count} 人分享中"
+  sharing_short: "%{count} 人分享"
+  pack: "整季合集 %{size}"
+  fast: "数秒即可播放"
+  note:
+    starts_fast: "秒开"
+    needs: "需要 %{mbit} Mbit/s 网速"
+    slow_start: "可能需要较长时间才能开始播放"
+    few_sharing: "分享人数少，可能无法播放"
+
+releases:
+  title: "资源"
+  title_episode: "%{episode} 的资源"
+  title_season: "第 %{season} 季的资源"
+  not_in: "%{release} 中没有 %{episode}。请为这一集选择资源。"
+  found: "找到 %{count} 个，每种画质的最佳资源排在前面"
+  more: "再显示 %{count} 个"
+  state:
+    no_source: "请在设置中添加搜索源以查找资源。"
+    no_source_hosted: "请在设置中添加搜索源，或在手机上打开 %{url}。"
+    searching: "正在搜索你的搜索源…"
+    failed: "你的搜索源没有响应，请在设置中检查。"
+    none: "你的搜索源中没有找到任何资源。"
+  # The button next to a missing or failing search source.
+  open_settings: "打开设置"
+
+score:
+  tmdb: TMDB
+  anilist: AniList
+  mal: "MAL"
+  votes: "%{votes} 票"
+
+about:
+  title: "简介"
+  cast: "演员"
+  details: "详情"
+  similar: "相似推荐"
+
+crew:
+  director:
+    one: "导演"
+    other: "导演"
+  writer:
+    one: "编剧"
+    other: "编剧"
+  novel:
+    one: "原著"
+    other: "原著"
+  music:
+    one: "音乐"
+    other: "音乐"
+  creator:
+    one: "主创"
+    other: "主创"
+
+detail:
+  tagline: "宣传语"
+  original_title: "原名"
+  release_date: "上映日期"
+  first_aired: "首播"
+  runtime: "片长"
+  status: "状态"
+  countries: "国家/地区"
+  studios: "制作公司"
+  networks: "播出平台和制作公司"
+
+status:
+  announced: "已官宣"
+  inProduction: "制作中"
+  airing: "连载中"
+  ended: "已完结"
+  canceled: "已停播"
+  released: "已上映"
+
+tracks:
+  audio:
+    original: "原声"
+  subtitles:
+    "off": "关闭"
+    en: "英语"
+  number: "音轨 %{number}"
+  forced: "强制字幕"
+  from_torrent: "资源内的文件"
+  loading: "正在查找字幕…"
+
+languages:
+  en: "英语"
+  ru: "俄语"
+  uk: "乌克兰语"
+  be: "白俄罗斯语"
+  de: "德语"
+  fr: "法语"
+  es: "西班牙语"
+  it: "意大利语"
+  pt: "葡萄牙语"
+  pl: "波兰语"
+  cs: "捷克语"
+  nl: "荷兰语"
+  sv: "瑞典语"
+  "no": "挪威语"
+  da: "丹麦语"
+  fi: "芬兰语"
+  hu: "匈牙利语"
+  ro: "罗马尼亚语"
+  el: "希腊语"
+  tr: "土耳其语"
+  ar: "阿拉伯语"
+  he: "希伯来语"
+  ja: "日语"
+  zh: "中文"
+  ko: "韩语"
+
+series:
+  season: "第 %{number} 季"
+  episodes: "%{count} 集"
+  no_episodes: "这部剧的剧集信息尚未公布。"
+  watched: "已看"
+  not_in_release: "此资源中没有"
+  airs: "%{date} 播出"
+
+browse:
+  movies:
+    title: "电影"
+    lead: "最新最好看的电影"
+    trending: "热门"
+    all: "全部电影"
+  shows:
+    title: "剧集"
+    lead: "让你一口气追完的好剧"
+    trending: "热播与即将上线"
+    all: "全部剧集"
+  cartoons:
+    title: "动画片"
+    lead: "适合各个年龄的动画剧集"
+    trending: "高分"
+    all: "全部动画片"
+  anime:
+    title: "动漫"
+    lead: "本季热番与经典佳作"
+    trending: "本季热门"
+    all: "全部动漫"
+  filter:
+    genres: "类型"
+    years: "年代"
+    countries: "国家/地区"
+    sort: "排序"
+    picked: "%{filter}：%{picked}"
+  sort: "排序："
+  option:
+    decade: "%{n} 年代"
+    older: "%{n} 年以前"
+    popular: "最热门"
+    top_rated: "评分最高"
+    newest: "最新"
+    any: "全部"
+  state:
+    loading: "加载中…"
+    empty: "没有符合筛选条件的内容。"
+    offline: "无法加载此列表，请检查网络连接。"
+    more_failed: "无法加载更多内容，向下移动即可重试。"
+
+search:
+  title: "搜索"
+  placeholder: "按片名搜索电影、剧集和动漫"
+  hint: "输入片名，查找电影、剧集和动漫。"
+  recent: "最近搜索"
+  clear: "清除历史记录"
+  searching: "正在搜索…"
+  none: "没有找到与“%{query}”相关的内容。"
+  failed: "TMDB 和 AniList 没有响应。请检查网络连接后重试。"
+  no_tmdb: "此版本没有 TMDB 密钥，因此只能搜索动漫。"
+  section:
+    movies: "电影"
+    shows: "剧集"
+    anime: "动漫"
+
+compat:
+  audio_dts: "此资源只有 DTS 音频，本设备无法播放。请选择其他资源。"
+  audio_truehd: "此资源只有 TrueHD 音频，本设备无法播放。请选择其他资源。"
+  dolby_vision_only: "此资源为不含 HDR10 层的杜比视界（Dolby Vision），在本设备上颜色会显示异常。请选择其他资源。"
+  container: "此文件格式无法在本设备上播放。请选择其他资源。"
+
+player:
+  back: "返回"
+  close: "关闭"
+  close_tracks: "关闭音频和字幕"
+  episodes: "选集"
+  close_episodes: "关闭选集"
+  now_playing: "正在播放"
+  fullscreen: "全屏"
+  mute: "静音"
+  unmute: "取消静音"
+  volume: "音量"
+  exit_fullscreen: "退出全屏"
+  stage:
+    searching: "正在查找资源"
+    finding: "正在查找分享者"
+    connecting: "正在连接分享者"
+    found:
+      one: "找到 1 位分享者，正在连接"
+      other: "找到 %{count} 位分享者，正在连接"
+    fetching: "正在加载开头 %{percent}%"
+    starting: "即将播放"
+  buffering: "缓冲中"
+  ahead_seconds: "已缓冲 %{seconds} 秒"
+  rate_from: "%{speed}，来自 %{count} 人"
+  ready_ahead: "已缓冲 %{minutes} 分钟"
+  ready_ahead_short: "已缓冲不到 1 分钟"
+  streaming: "速度 %{speed}"
+  streaming_from: "速度 %{speed}，来自 %{count} 人"
+  left: "−%{time}"
+  play: "播放"
+  pause: "暂停"
+  back_10: "后退 10 秒"
+  forward_10: "快进 10 秒"
+  tracks: "音频和字幕"
+  position: "播放进度"
+  audio: "音频"
+  subtitles: "字幕"
+  release: "资源"
+  next_episode: "下一集 · %{code}"
+  play_now: "立即播放"
+  in_seconds: "%{seconds} 秒后"
+  watch_credits: "观看片尾字幕"
+  no_source: "没有可播放的资源。"
+  no_source_hint: "请在设置中添加搜索源，或选择其他资源。"
+  not_in_release: "此资源中没有这一集。"
+  not_in_release_hint: "请返回为这一集选择资源。"
+  failed: "无法播放：%{message}"
+  failed_hint: "请返回并选择其他资源。"
+  view_failed: "视频无法在本设备上播放。"
+  view_failed_hint: "请返回重试，重启 reel 也许能解决。"
+  no_space: "空间不足，无法播放：需要 %{needed}，可用 %{free}。"
+  no_space_unknown: "空间不足，无法播放：需要 %{needed}。"
+  no_space_hint: "请清理本设备的空间，或在设置中调小缓冲区。"
+  low_space: "本设备空间已满，播放已暂停。请清理空间，或在设置中调小缓冲区。"
+
+settings:
+  title: "设置"
+  selected: "已选择"
+  language:
+    title: "语言"
+    about: "片名、简介和分集标题的语言；reel 也会用这些片名搜索资源。"
+  source:
+    title: "搜索源"
+    about: "reel 查找电影或剧集资源的地方：一个 Torznab 地址及其 API 密钥。"
+    phone: "用手机扫描二维码，或打开 %{url}"
+    # The address is what a source needs; a key only some have (a rented one is all in its address).
+    url: "Torznab 地址（必填）"
+    url_placeholder: "http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api"
+    key: "API 密钥（选填）"
+    key_placeholder: "仅当你的搜索源需要时填写"
+    key_saved: "密钥已保存。输入新密钥即可替换"
+    save: "保存并检查"
+    remove: "删除搜索源"
+    # The partner's ready source (design/partner-source.md).
+    partner_tv_title: "获取现成的搜索源"
+    partner_tv_text: "用手机扫码，在 Telegram（@%{bot}）中付款。搜索源会发送到这里，请在此屏幕上确认。"
+    partner_app: "在 Telegram 中获取现成的搜索源"
+    partner_app_note: "@%{bot} 会发回一个链接，打开后搜索源会自动填写到这里。"
+    saving: "正在保存…"
+    checking: "正在检查搜索源…"
+    removed: "搜索源已删除。"
+    ok_imdb: "已连接，按 IMDb ID 搜索。"
+    ok_text: "已连接，按片名搜索。"
+    failed: "无法连接搜索源：%{message}"
+    # Why a source did not answer (the core's reason), with what to do.
+    reason:
+      unreachable: "无法连接 %{host}。请检查地址，并确认搜索源已开启。"
+      key: "%{host} 拒绝了 API 密钥。请检查密钥。"
+      not_torznab: "%{host} 有响应，但不是 Torznab 搜索源。请检查地址：通常以 /torznab/api 结尾。"
+      error: "%{host}：%{message}"
+  # Where the menu (the nav's tabs and buttons) sits in the bar at the top (TV, desktop).
+  nav_position:
+    title: "菜单位置"
+    about: "菜单在屏幕顶部栏中的位置。"
+    left: "靠左"
+    center: "居中"
+    right: "靠右"
+  # What shows while a film loads or waits for more of the stream.
+  loader:
+    title: "加载动画"
+    about: "影片等待后续数据时显示的画面。"
+    dinosaur: "恐龙"
+    logo: reel
+  # The drawer with the search source's fields: on Play with none (missing), when it did not
+  # answer (failed), from Settings (edit).
+  source_drawer:
+    missing_title: "添加搜索源"
+    missing_about: "reel 播放的是在你自己的搜索源中找到的资源，但目前还没有搜索源。请输入 Torznab 地址及其 API 密钥，连接成功后即可播放。"
+    failed_title: "你的搜索源没有响应"
+    failed_about: "reel 无法通过它搜索资源。请检查地址和 API 密钥，然后点“保存并检查”，连接成功后即可播放。"
+    edit_title: "搜索源"
+    edit_about: "一个 Torznab 地址及其 API 密钥。"
+    link_title: "使用此搜索源？"
+    link_about: "已通过链接填写此搜索源。点“保存并检查”即可使用，或点“返回”保留原来的搜索源。"
+  # The rows of Settings: a name and the value in effect.
+  rows:
+    connected: "已连接"
+    not_set: "未设置"
+    buffer_value: "%{size} · 可用 %{free}"
+  # The card beside Settings on a device that serves its settings page (a TV).
+  phone:
+    title: "也可以在手机上更改"
+    text: "扫描二维码，或打开 %{url}。"
+  interface:
+    title: "界面"
+  about:
+    title: "关于 reel"
+    open: "关于 reel 及其数据来源"
+    data: "数据来源"
+    tmdb_logo: "The Movie Database (TMDB)"
+    version: "版本 %{version} (%{build})"
+  details:
+    title: "播放信息"
+    about: "在影片播放或等待时，显示下载速度、分享人数和已缓冲的内容。"
+    show: "显示播放信息"
+  buffer:
+    title: "播放缓冲区"
+    about: "reel 在播放时保留的影片内容大小。越大越能应对分享者速度慢和大幅跳转。"
+    free: "本设备可用 %{free}"
+    default: "（默认）"
+
+
+# The first-run setup: language, playback buffer, search source.
+setup:
+  step: "第 %{n} 步，共 3 步"
+  next: "下一步"
+  language:
+    title: "片名用哪种语言显示？"
+    help: "reel 也会用这些片名搜索资源。"
+    more: "更多语言"
+  buffer:
+    title: "播放时 reel 可以占用多少空间？"
+    help: "缓冲区越大，越能应对分享者速度慢和大幅跳转。"
+    recommended: "推荐"
+  source:
+    title: "reel 去哪里找影片？"
+    help: "输入你自己的搜索源，或获取现成的。"
+    own_title: "自己的搜索源"
+    rent_title: "或获取现成的"
+    check: "检查"
+    finish: "完成"
+    skip: "跳过"
+    footnote: "Torznab 是搜索服务提供 torrent 资源列表的常用方式。reel 本身不搜索视频：它是一个影片目录和播放器，只通过你提供的搜索源查找要播放的内容。"
+  phone:
+    title: "或在手机上设置"
+    text: "用手机相机扫描二维码，或在手机浏览器中打开 %{url}。此屏幕会同步更新。"
+    source_title: "用手机更方便"
+    source_text: "用遥控器输入地址很慢。扫描二维码或打开 %{url}，在那里粘贴地址，此屏幕会自动完成设置。"
+
+menu:
+  settings: "设置…"
+  edit: "编辑"
+  go: "前往"
+  back: "返回"
+  window: "窗口"
+
+# Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
+saved:
+  title: "已保存"
+  empty: "还没有保存任何内容。在影片页面保存电影或一整季，无需联网即可观看。"
+  saving: "正在保存"
+  while_open: "需保持 reel 打开"
+  ready: "可以观看"
+  not_saved: "未保存"
+  pause: "暂停"
+  resume: "继续保存"
+  remove: "删除"
+  remove_all: "删除全部剧集"
+  pause_all: "暂停全部剧集"
+  resume_all: "继续保存全部剧集"
+  remove_title: "删除“%{name}”？"
+  remove_about: "将从本设备删除 %{size}，之后可以重新保存。"
+  open_folder: "打开文件夹"
+  group_line: "%{count} 集 · %{size}"
+  group_line_one: "1 集 · %{size}"
+  space:
+    saved: "已保存 %{size}"
+    free: "可用 %{size}"
+  state:
+    searching: "正在查找资源…"
+    resolving: "正在查找分享者…"
+    saving: "%{percent}% · %{have}/%{size}"
+    paused: "已暂停 · %{have}/%{size}"
+    waiting: "当前观看的影片停止后开始"
+    saved: "已保存 · %{size}"
+    unavailable: "存储磁盘未连接"
+  failed:
+    no_source: "找不到可保存的资源"
+    not_in_release: "该季的资源中没有这一集"
+    unsupported: "此资源无法在本设备上播放"
+    no_video: "此资源中没有视频"
+    interrupted: "未开始就已停止，请重新保存。"
+    no_peers: "目前没有人分享此资源。请稍后重新保存，或选择其他资源。"
+    no_space: "磁盘已满。请清理空间后重新保存。"
+    write: "无法写入文件夹，请重新保存。"
+    path_too_long: "文件名太长，无法在本设备上播放。请选择其他资源。"
+    other: "保存失败，请重新保存。"
+  drawer:
+    title: "保存到本设备"
+    note: "无需联网即可观看"
+    whole_season: "整季"
+    episodes: "%{count} 集"
+    season_state: "已保存 %{saved}/%{total} 集"
+    release_locked: "已保存的剧集来自此资源，新的剧集也会从此资源保存。"
+    save_n: "保存 %{count} 集"
+    save_one: "保存 1 集"
+    choose: "选择剧集"
+    more: "另需 %{size}"
+    new: "新"
+
+confirm:
+  cancel: "取消"
+
+home:
+  # The round ⓘ beside Play on Home: the title's page.
+  details: "详情"

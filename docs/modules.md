@@ -227,7 +227,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/platform/index.ts`.
 - `finishSetup()` (`finish_setup`): The first-run setup is done (it does not show again).
   Called from: `ui/preferences.ts`.
-- `load(data_dir: String) -> String`: Loads the settings from `data_dir` (the app's data directory, empty when the host has none) and configures the engine from them; JSON `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`.
+- `load(data_dir: String, languages: String) -> String`: Loads the settings from `data_dir` (the app's data directory, empty when the host has none) and configures the engine from them; JSON `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`. `languages`: the system's preferred languages, a JSON array of BCP 47 tags; a new install starts with the first one reel has titles in (`contentLanguage`), else English.
   JSON: `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`
   Called from: `ui/preferences.ts`.
 - `revision() -> f64`: Goes up when the settings change (here or on the hosted page) and when the hosted page's pairing code appears or goes: read `current` and `Hosted.pairing` again.

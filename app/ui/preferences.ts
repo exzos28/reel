@@ -1,8 +1,8 @@
 // The UI's mirror of the user's settings. The core keeps and applies them
 // (`Settings.load`, `Settings.setBufferMb`); this holds them in signals for
 // the screens.
-import { signal } from "nsh";
-import { setLocale } from "nsh/i18n";
+import { localeSettings, signal } from "nsh";
+import { availableLocales, setLocale } from "nsh/i18n";
 import { dataDir, Settings, Sources } from "./native";
 
 export interface BufferChoice {
@@ -64,9 +64,18 @@ export async function finishSetup() {
   await Settings.finishSetup();
 }
 
-/** Loads the settings from the core and applies the language. */
+/** Loads the settings from the core and applies the language (a new install's is the system's
+ * when reel has it: the core picks it from these). */
 export async function loadSettings() {
-  applySettings(JSON.parse(await Settings.load(dataDir())));
+  applySettings(JSON.parse(await Settings.load(dataDir(), JSON.stringify(localeSettings().languages))));
+}
+
+/** The UI follows the content language, one setting for both: its locale file by the full tag
+ * ("pt-BR"), else by its base ("ru" for "ru-RU"), else English. */
+function showUiIn(tag: string) {
+  const have = availableLocales();
+  const base = tag.split("-")[0];
+  setLocale(have.includes(tag) ? tag : have.includes(base) ? base : "en");
 }
 
 /** Shows the settings as the core answers them (`Settings.load` or `Settings.current`,
@@ -78,10 +87,10 @@ export function applySettings(s: SettingsJson) {
   if (s.navPosition) navPosition.set(s.navPosition);
   if (s.loader) loader.set(s.loader);
   if (s.contentLanguage) contentLanguage.set(s.contentLanguage);
+  showUiIn(contentLanguage());
   if (s.contentLanguages) contentLanguages.set(s.contentLanguages);
   if (s.source) source.set(s.source);
   if (s.setupDone !== undefined) setupDone.set(s.setupDone);
-  setLocale(s.language);
 }
 
 export async function toggleStreamDetails() {
@@ -127,7 +136,8 @@ export async function checkSource(): Promise<CheckResult> {
   }
 }
 
-/** Shows titles and descriptions in `tag`; the core drops what it asked in the old one. */
+/** Shows titles, descriptions and the UI in `tag`; the core drops what it asked in the old one. */
 export async function chooseContentLanguage(tag: string) {
   contentLanguage.set(await Settings.setContentLanguage(tag));
+  showUiIn(contentLanguage());
 }

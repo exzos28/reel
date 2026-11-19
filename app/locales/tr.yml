@@ -1,0 +1,546 @@
+app:
+  name: reel
+
+nav:
+  row_back: "Bu sırada geri"
+  row_on: "Bu sırada ileri"
+  home: "Ana sayfa"
+  movies: "Filmler"
+  shows: "Diziler"
+  cartoons: "Çizgi filmler"
+  anime: "Anime"
+  search: "Ara"
+  settings: "Ayarlar"
+  saved: "Kaydedilenler"
+  # The phone's last tab: the destinations that do not fit in its tab bar.
+  more: "Daha fazla"
+  back: "Geri"
+  # Desktop tooltip of Back and its accessibility label: the page it goes to.
+  back_to: "Geri: %{page}"
+
+exit:
+  title: "reel'den çıkılsın mı?"
+  about: "Oynatılan her şey durur. İzlediklerin saklanır."
+  stay: "Kal"
+  exit: "Çık"
+
+hosted:
+  pair_title: "Telefonunu bağla"
+  pair_about: "Bu kodu telefonundaki veya bilgisayarındaki reel ayarlar sayfasına yaz."
+  cancel: "İptal"
+  offer_title: "Telefonundaki kaynak kullanılsın mı?"
+  offer_about: "reel sürümleri orada arayacak. Bunu Ayarlar'dan değiştirebilirsin."
+  offer_use: "Kullan"
+  offer_not_now: "Şimdi değil"
+
+shelf:
+  continue: "İzlemeye devam et"
+  watchlist: "Listem"
+  trending_movies: "Gündemdeki filmler"
+  trending_shows: "Gündemdeki diziler"
+  popular: "Popüler"
+  anime: "Gündemdeki animeler"
+  no_tmdb: "Filmler ve diziler"
+  loading: "Yükleniyor"
+  offline: "Burada henüz bir şey yok"
+
+empty:
+  no_tmdb:
+    title: "Filmler ve diziler için TMDB anahtarı gerekli"
+    about: "reel'in bu sürümünde TMDB anahtarı yok, bu yüzden yalnızca AniList'teki animeler listeleniyor. Filmleri ve dizileri görmek için kendi anahtarını ekle."
+  loading:
+    title: "Yükleniyor…"
+    about: "Başlıklar TMDB ve AniList'ten alınıyor."
+  offline:
+    title: "Başlıklar yüklenemedi"
+    about: "TMDB ve AniList yanıt vermedi. Bağlantını kontrol et; reel kendisi yeniden dener."
+  unavailable:
+    title: "Bu başlık kullanılamıyor"
+    about: "Ayrıntıları yüklenemedi. Daha sonra yeniden dene."
+
+title:
+  play: "Oynat"
+  resume: "Devam et · %{at}"
+  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # a screen reader says the whole action.
+  my_list: "Listem"
+  add_to_list: "Listem"
+  in_list: "Listemde"
+  add_to_list_spoken: "Listeme ekle"
+  remove_from_list_spoken: "Listemden kaldır"
+  trailer: "Fragman"
+  save: "Kaydet"
+  saving: "Kaydediliyor %{percent}%"
+  saving_some: "Kaydediliyor: %{count}/%{total}"
+  save_paused: "Duraklatıldı"
+  saved: "Kaydedildi"
+  saved_one: "1 bölüm kaydedildi"
+  saved_some: "%{count} bölüm kaydedildi"
+
+card:
+  left: "%{time} kaldı"
+  open: "Aç"
+
+kind:
+  movie: "Film"
+  short: "Kısa film"
+  show: "Dizi"
+  season_one: "1 sezon"
+  seasons: "%{count} sezon"
+
+fmt:
+  minutes: "%{m} dk"
+  hours: "%{h} sa"
+  hours_minutes: "%{h} sa %{m} dk"
+  episode: "S%{season}:B%{episode}"
+  years: "%{from}–%{to}"
+  day: "%{day} %{month}"
+  date: "%{day} %{month} %{year}"
+  month_day: "%{day} %{month}"
+
+month:
+  "1": "Oca"
+  "2": "Şub"
+  "3": "Mar"
+  "4": "Nis"
+  "5": "May"
+  "6": "Haz"
+  "7": "Tem"
+  "8": "Ağu"
+  "9": "Eyl"
+  "10": "Eki"
+  "11": "Kas"
+  "12": "Ara"
+
+
+badge:
+  sd: "SD"
+  hd: 1080p
+  uhd: 4K
+  cc: "CC"
+  silent: "Sessiz"
+  tv_pg: "TV-PG"
+
+tag:
+  new_season: "Yeni sezon"
+  new_episode: "Yeni bölüm"
+
+release:
+  sharing: "%{count} kişi paylaşıyor"
+  sharing_short: "%{count} kişi"
+  pack: "tüm sezon, %{size}"
+  fast: "saniyeler içinde başlar"
+  note:
+    starts_fast: "Hızlı başlar"
+    needs: "%{mbit} Mbit/sn internet gerekir"
+    slow_start: "Başlaması uzun sürebilir"
+    few_sharing: "Paylaşan az, başlamayabilir"
+
+releases:
+  title: "Sürümler"
+  title_episode: "%{episode} sürümleri"
+  title_season: "%{season}. sezonun sürümleri"
+  not_in: "%{episode}, %{release} sürümünde yok. Bu bölüm için bir sürüm seç."
+  found: "%{count} sürüm bulundu, önce her kalitenin en iyisi"
+  more: "%{count} tane daha göster"
+  state:
+    no_source: "Sürüm bulmak için Ayarlar'dan bir arama kaynağı ekle."
+    no_source_hosted: "Ayarlar'dan bir arama kaynağı ekle veya telefonunda %{url} adresini aç."
+    searching: "Kaynağında aranıyor…"
+    failed: "Arama kaynağın yanıt vermedi. Ayarlar'dan kontrol et."
+    none: "Arama kaynağında hiçbir şey bulunamadı."
+  # The button next to a missing or failing search source.
+  open_settings: "Ayarları aç"
+
+score:
+  tmdb: TMDB
+  anilist: AniList
+  mal: "MAL"
+  votes: "%{votes} oy"
+
+about:
+  title: "Hakkında"
+  cast: "Oyuncular"
+  details: "Ayrıntılar"
+  similar: "Benzerleri"
+
+crew:
+  director:
+    one: "Yönetmen"
+    other: "Yönetmenler"
+  writer:
+    one: "Senarist"
+    other: "Senaristler"
+  novel:
+    one: "Roman"
+    other: "Roman"
+  music:
+    one: "Müzik"
+    other: "Müzik"
+  creator:
+    one: "Yaratıcı"
+    other: "Yaratıcılar"
+
+detail:
+  tagline: "Slogan"
+  original_title: "Orijinal adı"
+  release_date: "Çıkış tarihi"
+  first_aired: "İlk yayın"
+  runtime: "Süre"
+  status: "Durum"
+  countries: "Ülke"
+  studios: "Stüdyo"
+  networks: "Kanal ve stüdyolar"
+
+status:
+  announced: "Duyuruldu"
+  inProduction: "Yapım aşamasında"
+  airing: "Devam ediyor"
+  ended: "Sona erdi"
+  canceled: "İptal edildi"
+  released: "Yayınlandı"
+
+tracks:
+  audio:
+    original: "Orijinal"
+  subtitles:
+    "off": "Kapalı"
+    en: "İngilizce"
+  number: "Parça %{number}"
+  forced: "Zorunlu"
+  from_torrent: "Sürümdeki dosya"
+  loading: "Altyazı aranıyor…"
+
+languages:
+  en: "İngilizce"
+  ru: "Rusça"
+  uk: "Ukraynaca"
+  be: "Belarusça"
+  de: "Almanca"
+  fr: "Fransızca"
+  es: "İspanyolca"
+  it: "İtalyanca"
+  pt: "Portekizce"
+  pl: "Lehçe"
+  cs: "Çekçe"
+  nl: "Felemenkçe"
+  sv: "İsveççe"
+  "no": "Norveççe"
+  da: "Danca"
+  fi: "Fince"
+  hu: "Macarca"
+  ro: "Romence"
+  el: "Yunanca"
+  tr: "Türkçe"
+  ar: "Arapça"
+  he: "İbranice"
+  ja: "Japonca"
+  zh: "Çince"
+  ko: "Korece"
+
+series:
+  season: "%{number}. Sezon"
+  episodes: "%{count} bölüm"
+  no_episodes: "Bu dizinin bölümleri henüz listelenmedi."
+  watched: "İzlendi"
+  not_in_release: "Bu sürümde yok"
+  airs: "Yayın tarihi: %{date}"
+
+browse:
+  movies:
+    title: "Filmler"
+    lead: "Sinemanın en yenileri ve en iyileri"
+    trending: "Gündemde"
+    all: "Tüm filmler"
+  shows:
+    title: "Diziler"
+    lead: "Bir solukta izlenecek diziler"
+    trending: "Yayında ve yakında"
+    all: "Tüm diziler"
+  cartoons:
+    title: "Çizgi filmler"
+    lead: "Her yaşa uygun animasyon diziler"
+    trending: "En yüksek puanlılar"
+    all: "Tüm çizgi filmler"
+  anime:
+    title: "Anime"
+    lead: "Sezonun hitleri ve tüm zamanların favorileri"
+    trending: "Bu sezon gündemde"
+    all: "Tüm animeler"
+  filter:
+    genres: "Türler"
+    years: "Yıllar"
+    countries: "Ülkeler"
+    sort: "Sırala"
+    picked: "%{filter}: %{picked}"
+  sort: "Sırala:"
+  option:
+    decade: "%{n} yılları"
+    older: "%{n} öncesi"
+    popular: "En popüler"
+    top_rated: "En yüksek puanlı"
+    newest: "En yeni"
+    any: "Tümü"
+  state:
+    loading: "Yükleniyor…"
+    empty: "Bu filtrelere uyan bir şey yok."
+    offline: "Bu liste yüklenemedi. Bağlantını kontrol et."
+    more_failed: "Daha fazla başlık yüklenemedi. Yeniden denemek için aşağı in."
+
+search:
+  title: "Ara"
+  placeholder: "Ada göre film, dizi ve anime"
+  hint: "Film, dizi ve anime bulmak için bir ad yaz."
+  recent: "Son aramalar"
+  clear: "Geçmişi temizle"
+  searching: "Aranıyor…"
+  none: "“%{query}” için hiçbir şey bulunamadı."
+  failed: "TMDB ve AniList yanıt vermedi. Bağlantını kontrol edip yeniden dene."
+  no_tmdb: "Bu sürümde TMDB anahtarı yok, bu yüzden yalnızca anime aranıyor."
+  section:
+    movies: "Filmler"
+    shows: "Diziler"
+    anime: "Anime"
+
+compat:
+  audio_dts: "Bu sürümde yalnızca DTS ses var ve bu cihaz onu oynatamıyor. Başka bir sürüm seç."
+  audio_truehd: "Bu sürümde yalnızca TrueHD ses var ve bu cihaz onu oynatamıyor. Başka bir sürüm seç."
+  dolby_vision_only: "Bu sürüm HDR10 katmanı olmayan Dolby Vision; bu cihazda renkler yanlış görünür. Başka bir sürüm seç."
+  container: "Bu dosyanın biçimi bu cihazda oynatılamıyor. Başka bir sürüm seç."
+
+player:
+  back: "Geri"
+  close: "Kapat"
+  close_tracks: "Ses ve altyazıyı kapat"
+  episodes: "Bölümler"
+  close_episodes: "Bölümleri kapat"
+  now_playing: "Şimdi oynatılıyor"
+  fullscreen: "Tam ekran"
+  mute: "Sesi kapat"
+  unmute: "Sesi aç"
+  volume: "Ses düzeyi"
+  exit_fullscreen: "Tam ekrandan çık"
+  stage:
+    searching: "Sürüm aranıyor"
+    finding: "Paylaşanlar aranıyor"
+    connecting: "Paylaşanlara bağlanılıyor"
+    found:
+      one: "1 kişi bulundu, bağlanılıyor"
+      other: "%{count} kişi bulundu, bağlanılıyor"
+    fetching: "Başlangıç yükleniyor, %{percent}%"
+    starting: "Başlatılıyor"
+  buffering: "Yükleniyor"
+  ahead_seconds: "%{seconds} sn hazır"
+  rate_from: "%{count} kişiden %{speed}"
+  ready_ahead: "%{minutes} dk hazır"
+  ready_ahead_short: "1 dakikadan az hazır"
+  streaming: "akış hızı %{speed}"
+  streaming_from: "akış hızı %{speed}, %{count} kişiden"
+  left: "−%{time}"
+  play: "Oynat"
+  pause: "Duraklat"
+  back_10: "10 saniye geri"
+  forward_10: "10 saniye ileri"
+  tracks: "Ses ve altyazı"
+  position: "Konum"
+  audio: "Ses"
+  subtitles: "Altyazı"
+  release: "Sürüm"
+  next_episode: "Sonraki bölüm · %{code}"
+  play_now: "Şimdi oynat"
+  in_seconds: "%{seconds} sn içinde"
+  watch_credits: "Jeneriği izle"
+  no_source: "Oynatılacak sürüm yok."
+  no_source_hint: "Ayarlar'dan bir arama kaynağı ekle veya başka bir sürüm seç."
+  not_in_release: "Bu bölüm sürümde yok."
+  not_in_release_hint: "Geri dön ve bu bölüm için bir sürüm seç."
+  failed: "Oynatılamadı: %{message}"
+  failed_hint: "Geri dön ve başka bir sürüm seç."
+  view_failed: "Video bu cihazda başlatılamadı."
+  view_failed_hint: "Geri dönüp yeniden dene; reel'i yeniden başlatmak işe yarayabilir."
+  no_space: "Oynatmak için yer yetersiz: %{needed} gerekli, %{free} boş."
+  no_space_unknown: "Oynatmak için yer yetersiz: %{needed} gerekli."
+  no_space_hint: "Bu cihazda yer aç veya Ayarlar'dan arabellek boyutunu küçült."
+  low_space: "Bu cihazda yer kalmadı, bu yüzden oynatma duraklatıldı. Yer aç veya Ayarlar'dan arabellek boyutunu küçült."
+
+settings:
+  title: "Ayarlar"
+  selected: "Seçili"
+  language:
+    title: "Dil"
+    about: "Başlıklar, açıklamalar ve bölüm adları; reel sürümleri de bu adlarla arar."
+  source:
+    title: "Arama kaynağı"
+    about: "reel'in bir filmin veya bölümün sürümlerini aradığı yer. Bir Torznab adresi ve API anahtarı."
+    phone: "Kodu telefonunla tara veya %{url} adresini aç"
+    # The address is what a source needs; a key only some have (a rented one is all in its address).
+    url: "Torznab adresi (zorunlu)"
+    url_placeholder: "http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api"
+    key: "API anahtarı (isteğe bağlı)"
+    key_placeholder: "Yalnızca kaynağının anahtarı varsa"
+    key_saved: "Anahtar kaydedildi. Değiştirmek için yenisini yaz"
+    save: "Kaydet ve kontrol et"
+    remove: "Kaynağı kaldır"
+    # The partner's ready source (design/partner-source.md).
+    partner_tv_title: "Hazır kaynak al"
+    partner_tv_text: "Telefonunla tara ve Telegram'da (@%{bot}) öde. Kaynak buraya gelir: bu ekranda onayla."
+    partner_app: "Telegram'dan hazır kaynak al"
+    partner_app_note: "@%{bot} sana bir bağlantı gönderir: onu aç, kaynak burada kendiliğinden dolar."
+    saving: "Kaydediliyor…"
+    checking: "Kaynak kontrol ediliyor…"
+    removed: "Arama kaynağı kaldırıldı."
+    ok_imdb: "Bağlandı. IMDb kimliğiyle arar."
+    ok_text: "Bağlandı. Ada göre arar."
+    failed: "Kaynağa ulaşılamadı: %{message}"
+    # Why a source did not answer (the core's reason), with what to do.
+    reason:
+      unreachable: "%{host} adresine ulaşılamıyor. Adresi ve kaynağın açık olduğunu kontrol et."
+      key: "%{host} API anahtarını reddetti. Anahtarı kontrol et."
+      not_torznab: "%{host} yanıt verdi ama Torznab kaynağı olarak değil. Adresi kontrol et: genellikle /torznab/api ile biter."
+      error: "%{host}: %{message}"
+  # Where the menu (the nav's tabs and buttons) sits in the bar at the top (TV, desktop).
+  nav_position:
+    title: "Menü konumu"
+    about: "Menünün ekranın üstündeki çubukta durduğu yer."
+    left: "Solda"
+    center: "Ortada"
+    right: "Sağda"
+  # What shows while a film loads or waits for more of the stream.
+  loader:
+    title: "Yükleme animasyonu"
+    about: "Film akışın devamını beklerken görünen şey."
+    dinosaur: "Dinozor"
+    logo: reel
+  # The drawer with the search source's fields: on Play with none (missing), when it did not
+  # answer (failed), from Settings (edit).
+  source_drawer:
+    missing_title: "Arama kaynağı ekle"
+    missing_about: "reel, kendi arama kaynağında bulduğu sürümleri oynatır ve henüz bir kaynak yok. Bir Torznab adresi ve API anahtarını gir; bağlandıktan sonra Oynat çalışır."
+    failed_title: "Arama kaynağın yanıt vermedi"
+    failed_about: "reel bu kaynakta sürüm arayamadı. Adresi ve API anahtarını kontrol et, sonra Kaydet ve kontrol et'e bas; bağlandıktan sonra Oynat çalışır."
+    edit_title: "Arama kaynağı"
+    edit_about: "Bir Torznab adresi ve API anahtarı."
+    link_title: "Bu kaynak kullanılsın mı?"
+    link_about: "Bu kaynak bir bağlantıyla dolduruldu. Kullanmak için Kaydet ve kontrol et'e, kendi kaynağını korumak için Geri'ye bas."
+  # The rows of Settings: a name and the value in effect.
+  rows:
+    connected: "Bağlı"
+    not_set: "Ayarlanmadı"
+    buffer_value: "%{size} · %{free} boş"
+  # The card beside Settings on a device that serves its settings page (a TV).
+  phone:
+    title: "Bunları telefonundan değiştir"
+    text: "Kodu tara veya %{url} adresini aç."
+  interface:
+    title: "Arayüz"
+  about:
+    title: "reel hakkında"
+    open: "reel ve veri kaynakları hakkında"
+    data: "Veri kaynakları"
+    tmdb_logo: "The Movie Database (TMDB)"
+    version: "Sürüm %{version} (%{build})"
+  details:
+    title: "Akış ayrıntıları"
+    about: "Film oynarken veya beklerken akışın hızını, kaç kişiden geldiğini ve ne kadarının hazır olduğunu göster."
+    show: "Akış ayrıntılarını göster"
+  buffer:
+    title: "Oynatma arabelleği"
+    about: "reel'in oynatırken filmin ne kadarını tuttuğu. Büyük olması yavaş kaynaklarda ve uzun atlamalarda daha iyidir."
+    free: "Bu cihazda %{free} boş"
+    default: "(varsayılan)"
+
+
+# The first-run setup: language, playback buffer, search source.
+setup:
+  step: "Adım %{n}/3"
+  next: "İleri"
+  language:
+    title: "Başlıklar hangi dilde olsun?"
+    help: "reel sürümleri de bu adlarla arar."
+    more: "Diğer diller"
+  buffer:
+    title: "reel oynatırken ne kadar yer kullanabilir?"
+    help: "Büyük bir arabellek yavaş kaynaklarda ve uzun atlamalarda daha iyidir."
+    recommended: "Önerilen"
+  source:
+    title: "reel filmleri nerede bulsun?"
+    help: "Kendi kaynağını gir veya hazır bir tane al."
+    own_title: "Kendi kaynağın"
+    rent_title: "Veya hazır bir kaynak"
+    check: "Kontrol et"
+    finish: "Bitir"
+    skip: "Atla"
+    footnote: "Torznab, arama hizmetlerinin torrent sürümlerini listelemek için kullandığı yaygın bir yöntemdir. reel kendisi video aramaz: bir katalog ve oynatıcıdır, neyin oynatılacağını yalnızca senin verdiğin kaynak üzerinden bulur."
+  phone:
+    title: "Veya telefonundan kur"
+    text: "Kodu telefonunun kamerasıyla tara veya telefonun tarayıcısında %{url} adresini aç. Bu ekran kendiliğinden güncellenir."
+    source_title: "Telefondan daha kolay"
+    source_text: "Kumandayla adres yazmak yavaştır. Kodu tara veya %{url} adresini aç ve adresi oraya yapıştır. Bu ekran kurulumu kendisi tamamlar."
+
+menu:
+  settings: "Ayarlar…"
+  edit: "Düzen"
+  go: "Git"
+  back: "Geri"
+  window: "Pencere"
+
+# Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
+saved:
+  title: "Kaydedilenler"
+  empty: "Henüz kaydedilen bir şey yok. İnternetsiz izlemek için bir filmi veya sezonu kendi sayfasından kaydet."
+  saving: "Kaydediliyor"
+  while_open: "reel açıkken"
+  ready: "İzlemeye hazır"
+  not_saved: "Kaydedilmedi"
+  pause: "Duraklat"
+  resume: "Kaydetmeye devam et"
+  remove: "Kaldır"
+  remove_all: "Tüm bölümleri kaldır"
+  pause_all: "Tüm bölümleri duraklat"
+  resume_all: "Tüm bölümleri kaydetmeye devam et"
+  remove_title: "“%{name}” kaldırılsın mı?"
+  remove_about: "Bu cihazdan %{size} silinecek. Daha sonra yeniden kaydedebilirsin."
+  open_folder: "Klasörü aç"
+  group_line: "%{count} bölüm · %{size}"
+  group_line_one: "1 bölüm · %{size}"
+  space:
+    saved: "%{size} kaydedildi"
+    free: "%{size} boş"
+  state:
+    searching: "Sürüm aranıyor…"
+    resolving: "Paylaşanlar aranıyor…"
+    saving: "%{percent}% · %{have}/%{size}"
+    paused: "Duraklatıldı · %{have}/%{size}"
+    waiting: "İzlediğin film durunca başlar"
+    saved: "Kaydedildi · %{size}"
+    unavailable: "Diski bağlı değil"
+  failed:
+    no_source: "Kaydedilecek sürüm bulunamadı"
+    not_in_release: "Bu bölüm, sezonunun sürümünde yok"
+    unsupported: "Bu sürüm bu cihazda oynatılamıyor"
+    no_video: "Bu sürümde video yok"
+    interrupted: "Başlamadan durdu. Yeniden kaydet."
+    no_peers: "Şu anda bu sürümü paylaşan yok. Daha sonra yeniden kaydet veya başka bir sürüm seç."
+    no_space: "Disk dolu. Biraz yer aç ve yeniden kaydet."
+    write: "Klasöre yazılamadı. Yeniden kaydet."
+    path_too_long: "Dosya adları bu cihaz için çok uzun. Başka bir sürüm seç."
+    other: "Kaydedilemedi. Yeniden kaydet."
+  drawer:
+    title: "Bu cihaza kaydet"
+    note: "İnternetsiz izlenir"
+    whole_season: "Tüm sezon"
+    episodes: "%{count} bölüm"
+    season_state: "%{saved}/%{total} kaydedildi"
+    release_locked: "Kaydedilen bölümler bu sürümden, bu yüzden yeniler de bu sürümden gelir."
+    save_n: "%{count} bölümü kaydet"
+    save_one: "1 bölümü kaydet"
+    choose: "Bölümleri seç"
+    more: "%{size} daha"
+    new: "yeni"
+
+confirm:
+  cancel: "İptal"
+
+home:
+  # The round ⓘ beside Play on Home: the title's page.
+  details: "Ayrıntılar"

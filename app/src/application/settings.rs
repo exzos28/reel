@@ -246,9 +246,28 @@ fn android_temp_dir(data_dir: &Path) {
     }
 }
 
+/// The content language a new install starts with: the first of the system's `languages`
+/// (BCP 47 tags, most preferred first) that `CONTENT_LANGUAGES` has, by its full tag, else by its
+/// base language ("ru" → "ru-RU"); else `DEFAULT_CONTENT_LANGUAGE`.
+pub fn system_content_language(languages: &[String]) -> &'static str {
+    let base = |tag: &str| tag.split(['-', '_']).next().unwrap_or_default().to_ascii_lowercase();
+    languages
+        .iter()
+        .find_map(|l| {
+            let l = l.replace('_', "-");
+            CONTENT_LANGUAGES
+                .iter()
+                .find(|(tag, _)| tag.eq_ignore_ascii_case(&l))
+                .or_else(|| CONTENT_LANGUAGES.iter().find(|(tag, _)| base(tag) == base(&l)))
+                .map(|(tag, _)| *tag)
+        })
+        .unwrap_or(DEFAULT_CONTENT_LANGUAGE)
+}
+
 /// Reads the settings from `data_dir` (None: defaults, kept in memory),
-/// configures the engine from them and returns what the UI needs (`current`).
-pub fn load(data_dir: Option<&Path>) -> Value {
+/// configures the engine from them and returns what the UI needs (`current`). A new install
+/// starts in the system's language (`languages`, see `system_content_language`).
+pub fn load(data_dir: Option<&Path>, languages: &[String]) -> Value {
     #[cfg(target_os = "android")]
     if let Some(dir) = data_dir {
         android_temp_dir(dir);
@@ -266,6 +285,7 @@ pub fn load(data_dir: Option<&Path>) -> Value {
     // A new install starts with the buffer its free space recommends.
     if !existed {
         saved.buffer_mb = recommended_buffer();
+        saved.content_language = system_content_language(languages).to_owned();
     }
     if let (Some(f), true) = (&file, saved.default_source_used != before.default_source_used) {
         write(f, &saved);
@@ -472,6 +492,27 @@ pub fn set_language(tag: &str) {
 }
 
 #[cfg(test)]
+mod system_language_tests {
+    use super::{DEFAULT_CONTENT_LANGUAGE, system_content_language};
+
+    fn pick(languages: &[&str]) -> &'static str {
+        system_content_language(&languages.iter().map(|l| (*l).to_owned()).collect::<Vec<_>>())
+    }
+
+    #[test]
+    fn a_new_install_takes_the_first_system_language_reel_has() {
+        assert_eq!(pick(&["pt-BR"]), "pt-BR", "the full tag");
+        assert_eq!(pick(&["ru"]), "ru-RU", "the base language");
+        assert_eq!(pick(&["de-AT"]), "de-DE");
+        assert_eq!(pick(&["zh_CN"]), "zh-CN");
+        assert_eq!(pick(&["xx-XX", "uk-UA", "en-US"]), "uk-UA", "the first one it has");
+        assert_eq!(pick(&["en-GB", "ru-RU"]), "en-US", "the most preferred wins over a full tag further down");
+        assert_eq!(pick(&["xx"]), DEFAULT_CONTENT_LANGUAGE);
+        assert_eq!(pick(&[]), DEFAULT_CONTENT_LANGUAGE);
+    }
+}
+
+#[cfg(test)]
 mod recommended_tests {
     use super::recommended_mb;
     const GB: u64 = 1024 * 1024 * 1024;
@@ -496,16 +537,16 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("reel-setup-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         // A new install: setup shows, and still after a setting is saved before it is done.
-        assert_eq!(load(Some(&dir))["setupDone"], false);
+        assert_eq!(load(Some(&dir), &[])["setupDone"], false);
         set_buffer_mb(512);
-        assert_eq!(load(Some(&dir))["setupDone"], false);
+        assert_eq!(load(Some(&dir), &[])["setupDone"], false);
         finish_setup();
-        assert_eq!(load(Some(&dir))["setupDone"], true);
+        assert_eq!(load(Some(&dir), &[])["setupDone"], true);
         // Without a data dir (nothing remembers it): no setup.
-        assert_eq!(load(None)["setupDone"], true);
+        assert_eq!(load(None, &[])["setupDone"], true);
         // Settings written before the setup existed (no setupDone in the file): set up already.
         std::fs::write(dir.join("settings.json"), r#"{"bufferMb":512,"language":"en"}"#).unwrap();
-        assert_eq!(load(Some(&dir))["setupDone"], true);
+        assert_eq!(load(Some(&dir), &[])["setupDone"], true);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -515,7 +556,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("reel-settings-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
 
-        let first = load(Some(&dir));
+        let first = load(Some(&dir), &[]);
         // A new install: the buffer its free space recommends (the one the choices mark).
         assert_eq!(first["bufferMB"], recommended_buffer());
         assert!(first["bufferChoices"].as_array().unwrap().iter().any(|c| c["default"] == true && c["mb"] == first["bufferMB"]));
@@ -526,43 +567,45 @@ mod tests {
         assert_eq!(set_buffer_mb(333), 1024, "a size not offered is refused");
         assert_eq!(playback().buffer_mb(), 1024);
 
-        let again = load(Some(&dir));
+        let again = load(Some(&dir), &[]);
         assert_eq!(again["bufferMB"], 1024);
 
         // A broken file falls back to the defaults.
         std::fs::write(dir.join("settings.json"), "{ not json").unwrap();
-        assert_eq!(load(Some(&dir))["bufferMB"], DEFAULT_BUFFER_MB);
+        assert_eq!(load(Some(&dir), &[])["bufferMB"], DEFAULT_BUFFER_MB);
 
         // The source: a bad address is refused, the key is never shown.
-        load(Some(&dir));
+        load(Some(&dir), &[]);
         assert!(set_source("not a url", "").is_err());
         let shown = set_source("http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/api", "secret").unwrap();
         assert_eq!(shown["hasKey"], true);
         assert!(!shown.to_string().contains("secret"));
         assert_eq!(source().unwrap().key.as_deref(), Some("secret"));
-        assert_eq!(load(Some(&dir))["source"]["hasKey"], true);
+        assert_eq!(load(Some(&dir), &[])["source"]["hasKey"], true);
         set_source("", "").unwrap();
         assert!(source().is_none());
 
         // Content language: one of the list, kept across loads.
-        assert_eq!(load(Some(&dir))["contentLanguage"], DEFAULT_CONTENT_LANGUAGE);
+        assert_eq!(load(Some(&dir), &[])["contentLanguage"], DEFAULT_CONTENT_LANGUAGE);
         assert_eq!(set_content_language("ru-RU"), "ru-RU");
         assert_eq!(set_content_language("xx-XX"), "ru-RU", "an unknown tag is refused");
-        assert_eq!(load(Some(&dir))["contentLanguage"], "ru-RU");
+        assert_eq!(load(Some(&dir), &[])["contentLanguage"], "ru-RU");
         set_content_language(DEFAULT_CONTENT_LANGUAGE);
+        // A kept content language stays whatever the system's.
+        assert_eq!(load(Some(&dir), &["ru-RU".to_owned()])["contentLanguage"], DEFAULT_CONTENT_LANGUAGE);
 
         // Nav position and loader: one of their lists, kept across loads; missing or unknown
         // in the file: the defaults.
-        assert_eq!(load(Some(&dir))["navPosition"], DEFAULT_NAV_POSITION);
+        assert_eq!(load(Some(&dir), &[])["navPosition"], DEFAULT_NAV_POSITION);
         assert_eq!(current()["loader"], DEFAULT_LOADER);
         assert_eq!(set_nav_position("center"), "center");
         assert_eq!(set_nav_position("top"), "center", "an unknown position is refused");
         assert_eq!(set_loader("logo"), "logo");
         assert_eq!(set_loader("spinner"), "logo", "an unknown loader is refused");
-        let again = load(Some(&dir));
+        let again = load(Some(&dir), &[]);
         assert_eq!((again["navPosition"].as_str(), again["loader"].as_str()), (Some("center"), Some("logo")));
         std::fs::write(dir.join("settings.json"), r#"{"navPosition":"top","loader":"spinner"}"#).unwrap();
-        let unknown = load(Some(&dir));
+        let unknown = load(Some(&dir), &[]);
         assert_eq!((unknown["navPosition"].as_str(), unknown["loader"].as_str()), (Some(DEFAULT_NAV_POSITION), Some(DEFAULT_LOADER)));
 
         std::fs::remove_dir_all(&dir).unwrap();
