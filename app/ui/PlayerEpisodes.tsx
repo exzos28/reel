@@ -1,18 +1,23 @@
 // The show's episodes inside the player: a panel on the right with the seasons on top and the
 // season's episodes under them, the one playing marked. A press (or OK) plays one at once; one
 // that has not aired is dimmed and does not play. Up/down move along the episodes, left/right
-// change the season, Back closes it.
-import { computed, Image, keymap, Scroll, signal, Text, View, type TextStyle, type ViewStyle } from "nsh";
+// change the season, Back closes it. The seasons scroll sideways in one row, the episodes up and
+// down, each following where the keys are.
+import { computed, Image, keymap, signal, Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { episodeCode, episodes, runtime, shortDate, title, type Episode, type Summary } from "./catalog";
+import { Scroller, scroller } from "./layout/Scroller";
 import { onBack } from "./nav";
-import { alpha, colors, focusRing, font, radius, safe, showFocus, ts, type, u } from "./theme";
+import { alpha, colors, focusRing, font, radius, ringRoom, safe, showFocus, ts, type, u } from "./theme";
 
 const panelStyle = (): ViewStyle => ({
   // Over the controls (the scrubber, the times, the volume), which come later in the player.
   position: "absolute", zIndex: 20, top: u(130), right: safe().x, width: u(780), maxWidth: "90%",
   padding: u(26), gap: u(18), borderRadius: radius() + u(26), borderCurve: "continuous", backgroundColor: colors.card(),
 });
+/** The seasons' row: room for the focus ring around a pill, the panel's edge under it. */
+const seasonsRowStyle = (): ViewStyle => ({ flexDirection: "row", gap: u(10), padding: ringRoom() });
+const seasonsStyle = (): ViewStyle => ({ marginHorizontal: -ringRoom(), marginVertical: -ringRoom() });
 const seasonStyle = (on: boolean, lit: boolean): ViewStyle => ({
   height: u(52), paddingHorizontal: u(22), borderRadius: u(26), alignItems: "center", justifyContent: "center",
   backgroundColor: on ? colors.snow() : colors.raise(), ...focusRing(lit),
@@ -65,28 +70,34 @@ export function PlayerEpisodes(props: {
   });
   onBack(() => (props.onClose(), true));
   const lit = (i: number) => showFocus() && at() === i;
+  /** The season shown stays in view as left/right change it; the episode the keys are on, as
+   * up/down move (a third down the list, as a page keeps its focus). */
+  const seasonRow = scroller({ horizontal: true, anchor: (viewport) => viewport / 3 });
+  const episodeList = scroller({ anchor: (viewport) => viewport / 3 });
   return (
     <View testID="episodes-panel" style={{ ...panelStyle(), bottom: props.bottom() }}>
       <Text style={{ ...type.label(), color: colors.ash() }}>{t("player.episodes")}</Text>
       <If when={seasons().length > 1}>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: u(10) }}>
+        <Scroller ctl={seasonRow} style={seasonsStyle()}>
+          <View style={seasonsRowStyle()}>
           <Each of={seasons()} key={(n) => n}>
             {(n) => (
-              <View role="tab" accessibilityLabel={t("series.season", { number: n() })} accessibilityState={{ selected: season() === n() }}
+              <View ref={seasonRow.follow(() => season() === n(), "nearest")} role="tab" accessibilityLabel={t("series.season", { number: n() })} accessibilityState={{ selected: season() === n() }}
                 onPress={() => (season.set(n()), at.set(-1))} style={seasonStyle(season() === n(), showFocus() && at() === -1 && season() === n())}>
                 <Text style={{ ...type.label(), color: season() === n() ? colors.ink() : colors.snow() }}>{t("series.season", { number: n() })}</Text>
               </View>
             )}
           </Each>
-        </View>
+          </View>
+        </Scroller>
       </If>
-      <Scroll style={{ flex: 1 }} scrollbar={false}>
+      <Scroller ctl={episodeList} style={{ flex: 1 }}>
         <View style={{ gap: u(6) }}>
         <Each of={list()} key={(e) => e.id}>
           {(e, i) => {
             const current = () => season() === props.season() && e().number === props.episode();
             return (
-              <View role="button" accessibilityLabel={`${episodeCode(e().season, e().number)} ${e().title}`}
+              <View ref={episodeList.follow(() => at() === i())} role="button" accessibilityLabel={`${episodeCode(e().season, e().number)} ${e().title}`}
                 onPress={() => pick(e())} hoverStyle={{ backgroundColor: colors.raise() }} style={rowStyle(current(), lit(i()), !playable(e()))}>
                 <View style={thumbStyle()}>
                   <If when={e().thumb}>{(src) => <Image src={src()} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}</If>
@@ -107,7 +118,7 @@ export function PlayerEpisodes(props: {
           }}
         </Each>
         </View>
-      </Scroll>
+      </Scroller>
     </View>
   );
 }
