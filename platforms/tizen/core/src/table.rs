@@ -90,8 +90,8 @@ pub fn registry(data_dir: PathBuf) -> Registry {
 
     let host = data_dir.clone();
     r.sync("Settings", "load", move |a| {
-        let (dir,): (String,) = args(a)?;
-        ret(Settings::load(host_dir(dir, &host)?))
+        let (dir, languages): (String, String) = args(a)?;
+        ret(Settings::load(host_dir(dir, &host)?, languages))
     })
     .sync("Settings", "setBufferMb", |a| {
         let (mb,): (u32,) = args(a)?;
@@ -403,7 +403,7 @@ mod tests {
     #[tokio::test]
     async fn data_dir_is_the_hosts() {
         let r = table();
-        let wrong = r.call("Settings", "load", json!(["/somewhere/else"])).await;
+        let wrong = r.call("Settings", "load", json!(["/somewhere/else", "[]"])).await;
         assert!(matches!(wrong, Err(Error::BadArgs(m)) if m.contains("GET /health")));
     }
 
