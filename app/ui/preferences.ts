@@ -28,7 +28,7 @@ export type NavPosition = "left" | "center" | "right";
 export const NAV_POSITIONS: NavPosition[] = ["left", "center", "right"];
 /** What shows while something loads: the running dinosaur or the blinking logotype. */
 export type Loader = "dinosaur" | "logo";
-export const LOADERS: Loader[] = ["dinosaur", "logo"];
+export const LOADERS: Loader[] = ["logo", "dinosaur"];
 
 /** The settings as the core answers them (`Settings.load`, `Settings.current`). */
 export interface SettingsJson {
@@ -52,7 +52,7 @@ export const bufferMB = signal(0);
 /** The player shows the stream's speed, people and what is ready ahead. */
 export const streamDetails = signal(false);
 export const navPosition = signal<NavPosition>("right");
-export const loader = signal<Loader>("dinosaur");
+export const loader = signal<Loader>("logo");
 export const source = signal<SourceInfo>({ url: "", hasKey: false });
 export const bufferChoices = signal<BufferChoice[]>([]);
 /** Whether the first-run setup was gone through; null until the settings are loaded. */

@@ -44,9 +44,10 @@ pub const DEFAULT_LANGUAGE: &str = "en";
 /// TV and a desktop: after the logo, in the middle, or at the right edge.
 pub const NAV_POSITIONS: [&str; 3] = ["left", "center", "right"];
 pub const DEFAULT_NAV_POSITION: &str = "right";
-/// What shows while something loads: the running dinosaur, or the blinking "reel" logotype.
-pub const LOADERS: [&str; 2] = ["dinosaur", "logo"];
-pub const DEFAULT_LOADER: &str = "dinosaur";
+/// What shows while something loads: the blinking "reel" logotype (the default), or the running
+/// dinosaur.
+pub const LOADERS: [&str; 2] = ["logo", "dinosaur"];
+pub const DEFAULT_LOADER: &str = "logo";
 pub const DEFAULT_CONTENT_LANGUAGE: &str = "en-US";
 
 /// Languages titles, descriptions and episode names can be shown in (TMDB

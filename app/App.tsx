@@ -14,6 +14,7 @@ import { setupWindow, WindowFrame } from "./ui/platform/window";
 import { appDrawn, bindPlatformInput, mapPlatformKeys } from "./ui/platform/remote";
 import { startDiagnostics } from "./ui/platform/diagnostics";
 import { AboutScreen } from "./ui/screens/about/AboutScreen";
+import { InterfaceScreen } from "./ui/screens/interface/InterfaceScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
 import { canGoBack, closeFirst, go, handleBack, isRoot, route, section, useTabStacks } from "./ui/nav";
@@ -89,6 +90,9 @@ function OneScreen() {
     </If>,
     <If when={r().name === "about"}>
       <AboutScreen />
+    </If>,
+    <If when={r().name === "interface"}>
+      <InterfaceScreen />
     </If>,
     // Keyed by the id: a title opened from another one (More like this) is a new screen.
     <Each of={r().name === "title" ? [(r() as { id: string }).id] : []} key={(id) => id}>

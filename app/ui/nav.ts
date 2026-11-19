@@ -5,7 +5,7 @@
 import { cleanup, signal } from "nsh";
 
 export type Destination = "home" | "movies" | "shows" | "cartoons" | "anime" | "search" | "settings" | "saved";
-export type Route = { name: Destination } | { name: "title"; id: string } | { name: "about" };
+export type Route = { name: Destination } | { name: "title"; id: string } | { name: "about" } | { name: "interface" };
 
 /** The nav's destinations: a page with nothing under it. */
 export const ROOTS: Destination[] = ["home", "movies", "shows", "cartoons", "anime", "search", "settings", "saved"];
@@ -18,7 +18,7 @@ export const route = () => stack()[stack().length - 1];
  * route of its stack; About belongs to Settings. */
 export function section(): Destination {
   const first = stack()[0].name;
-  return first === "about" ? "settings" : first === "title" ? "home" : first;
+  return first === "about" || first === "interface" ? "settings" : first === "title" ? "home" : first;
 }
 
 /** Whether there is a page under this one. */
@@ -77,6 +77,8 @@ const push = (r: Route) => stack.set([...stack(), r]);
 export const openTitle = (id: string) => push({ name: "title", id });
 /** About reel and its data sources, over Settings. */
 export const openAbout = () => push({ name: "about" });
+/** How the app looks (Menu position, Loading animation), over Settings. */
+export const openInterface = () => push({ name: "interface" });
 /** Settings: a destination of its own, or (with tab stacks) on top of the current tab. */
 export function openSettings() {
   if (!tabStacks) return go("settings");

@@ -195,20 +195,20 @@ test("a stall shows the buffering note until AVPlay has enough again", async () 
   expect(note()).toBe(false);
 });
 
-test("a stall shows the loader Settings picked: the dinosaur by default, the blinking reel instead", async () => {
-  const dino = await playing();
-  await dino.event({ type: "buffering", buffering: true });
-  await dino.app.wait(400);
-  expect(dino.app.shows("loader-dinosaur")).toBe(true);
-  expect(dino.app.shows("loader-logo")).toBe(false);
-
-  const logo = await playing({
-    "Settings.load": JSON.stringify({ language: "en", bufferMB: 256, bufferChoices: [{ mb: 256, default: true }], streamDetails: true, loader: "logo" }),
-  });
+test("a stall shows the loader Settings picked: the blinking reel by default, the dinosaur instead", async () => {
+  const logo = await playing();
   await logo.event({ type: "buffering", buffering: true });
   await logo.app.wait(400);
   expect(logo.app.shows("loader-logo")).toBe(true);
   expect(logo.app.shows("loader-dinosaur")).toBe(false);
+
+  const dino = await playing({
+    "Settings.load": JSON.stringify({ language: "en", bufferMB: 256, bufferChoices: [{ mb: 256, default: true }], streamDetails: true, loader: "dinosaur" }),
+  });
+  await dino.event({ type: "buffering", buffering: true });
+  await dino.app.wait(400);
+  expect(dino.app.shows("loader-dinosaur")).toBe(true);
+  expect(dino.app.shows("loader-logo")).toBe(false);
 });
 
 test("at the end the film stands paused with the controls up", async () => {

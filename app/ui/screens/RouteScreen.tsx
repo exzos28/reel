@@ -4,6 +4,7 @@ import type { Route } from "../nav";
 import { AboutScreen } from "./about/AboutScreen";
 import { BrowseScreen } from "./browse/BrowseScreen";
 import { HomeScreen } from "./home/HomeScreen";
+import { InterfaceScreen } from "./interface/InterfaceScreen";
 import { SearchScreen } from "./search/SearchScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { SavedScreen } from "./saved/SavedScreen";
@@ -26,6 +27,8 @@ export function screenFor(r: Route) {
       return <SavedScreen />;
     case "about":
       return <AboutScreen />;
+    case "interface":
+      return <InterfaceScreen />;
     case "title":
       return <TitleScreen id={r.id} />;
   }
