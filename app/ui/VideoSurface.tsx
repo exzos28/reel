@@ -101,10 +101,15 @@ export function VideoSurface(props: VideoSurfaceProps) {
   /** A seek sent to the view and not there yet. */
   let sent: number | null = null;
   let sentTimer: ReturnType<typeof setTimeout> | undefined;
+  /** A seek waiting for its place holds the view still: the old place does not play on under
+   * the loader while the new one comes. Not the viewer's pause, and only until the seek goes to
+   * the view (a paused view may not report its time, by which the seek is seen to arrive). */
+  const holding = signal(false);
   cleanup(() => { gen++; clearTimeout(sentTimer); });
   const over = () => {
     sent = null;
     clearTimeout(sentTimer);
+    holding.set(false);
     props.onSeeked?.();
   };
   const arrived = () => { if (sent != null) over(); };
@@ -112,13 +117,16 @@ export function VideoSurface(props: VideoSurfaceProps) {
     sent = to;
     clearTimeout(sentTimer);
     sentTimer = setTimeout(arrived, SEEK_WAIT_MS);
+    // The seek first, then the view plays on: it does not play a moment of the old place.
     view?.seek(to);
+    holding.set(false);
   };
   props.surfaceRef?.({
     seek: (to) => {
       const g = ++gen;
       sent = null;
       clearTimeout(sentTimer);
+      holding.set(true);
       props.onSeeking?.(to);
       const job = currentJob();
       if (!job) return send(to);
@@ -141,6 +149,7 @@ export function VideoSurface(props: VideoSurfaceProps) {
   return (
     <PlayerView
       {...props}
+      paused={props.paused || holding()}
       surfaceRef={(r) => (view = r)}
       onLoad={(e) => props.onLoad?.(e)}
       onProgress={(e) => {
@@ -152,6 +161,7 @@ export function VideoSurface(props: VideoSurfaceProps) {
         gen++;
         sent = null;
         clearTimeout(sentTimer);
+        holding.set(false);
         props.onError?.(e);
       }}
     />

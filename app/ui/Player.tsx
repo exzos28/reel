@@ -239,6 +239,21 @@ export function Player() {
    * shows, and the view's times are the old place's, so the scrubber keeps the target and the
    * next press counts from it. */
   const seekPending = signal(false);
+  /** The loader for a seek: only once it has taken `STALL_MS` (a seek into what is downloaded
+   * is there before that, and a loader would only flicker). */
+  const seekSlow = signal(false);
+  let seekSlowTimer: ReturnType<typeof setTimeout> | undefined;
+  cleanup(() => clearTimeout(seekSlowTimer));
+  const seekStarted = () => {
+    seekPending.set(true);
+    clearTimeout(seekSlowTimer);
+    seekSlowTimer = setTimeout(() => seekSlow.set(seekPending()), STALL_MS);
+  };
+  const seekOver = () => {
+    seekPending.set(false);
+    clearTimeout(seekSlowTimer);
+    seekSlow.set(false);
+  };
   const seekTo = (seconds: number) => {
     const d = duration();
     surface?.seek(Math.max(0, d > 0 ? Math.min(seconds, d) : seconds));
@@ -497,7 +512,9 @@ export function Player() {
             if (!loaded()) return;
             // Still the old place's time while a seek is on its way: the scrubber keeps the target.
             if (!seekPending()) position.set(e.currentTime);
-            cachedAhead.set(e.cached ?? 0);
+            // What the view holds ahead is the old place's while a seek is on its way: not
+            // drawn after the new one as ready.
+            cachedAhead.set(seekPending() ? 0 : (e.cached ?? 0));
             readAt.set({ byte: e.readAt ?? 0, time: e.readTime ?? 0 });
             if (e.duration > 0) duration.set(e.duration);
             // The first frame from where it should start: the film plays.
@@ -513,10 +530,10 @@ export function Player() {
             stallTimer = setTimeout(() => buffering.set(true), STALL_MS);
           }}
           onEnd={() => { paused.set(true); poke(); }}
-          onSeeking={(to) => { position.set(to); seekPending.set(true); }}
+          onSeeking={(to) => { position.set(to); cachedAhead.set(0); seekStarted(); }}
           // The seek is over (AVPlay lands on a keyframe, maybe seconds before the target): its times stand.
-          onSeeked={() => seekPending.set(false)}
-          onError={(e) => { seekPending.set(false); error.set(e); }}
+          onSeeked={seekOver}
+          onError={(e) => { seekOver(); error.set(e); }}
           style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
         />
       </If>
@@ -537,7 +554,7 @@ export function Player() {
 
       <SubtitleOverlay text={cue} lift={() => (overlay() && !card() ? controlsHeight() : 0)} />
 
-      <If when={started() && !failed() && (buffering() || seekPending())}>
+      <If when={started() && !failed() && (buffering() || seekSlow())}>
         <BufferingNote text={bufferingText} />
       </If>
 
