@@ -97,8 +97,17 @@ pub fn search_urls(endpoint: &str, key: Option<&str>, query: &Query, caps: &Caps
                 )?);
             }
             urls.push(url(&[("t", "search".into()), ("q", format!("{title} S{season:02}E{episode:02}"))])?);
-            // Whole-season packs hold the episode too.
+            // Whole-season packs hold the episode too; a source that matches `ep` exactly
+            // drops them, so the season is asked for alone as well.
+            if let (Some(id), true) = (imdb, caps.tv_imdb) {
+                urls.push(url(&[("t", "tvsearch".into()), ("imdbid", imdb_digits(id)), ("season", season.to_string())])?);
+            }
+            if caps.tv_season_ep {
+                urls.push(url(&[("t", "tvsearch".into()), ("q", title.clone()), ("season", season.to_string())])?);
+            }
             urls.push(url(&[("t", "search".into()), ("q", format!("{title} S{season:02}"))])?);
+            // Trackers often name a season pack "S6E1-22" or "Сезон 6", which neither finds.
+            urls.push(url(&[("t", "search".into()), ("q", title.clone())])?);
         }
         Query::Season { imdb, title, season } => {
             if let (Some(id), true) = (imdb, caps.tv_imdb) {
@@ -323,6 +332,8 @@ mod tests {
         assert_eq!(u[0], "http://h/api?t=tvsearch&q=Flash+Gordon&season=1&ep=3&cat=5000", "no imdb tv search, no key; only TV");
         assert!(u.iter().any(|x| x.ends_with("q=Flash+Gordon+S01E03&cat=5000")));
         assert!(u.iter().any(|x| x.ends_with("q=Flash+Gordon+S01&cat=5000")));
+        assert!(u.iter().any(|x| x.ends_with("t=tvsearch&q=Flash+Gordon&season=1&cat=5000")), "the season alone: packs");
+        assert!(u.last().unwrap().ends_with("t=search&q=Flash+Gordon&cat=5000"), "the title alone, last: packs named S1E1-22");
     }
 
     #[test]
