@@ -126,7 +126,10 @@ export function VideoSurface(props: VideoSurfaceProps) {
         (r) => {
           if (g !== gen) return;
           const { state } = JSON.parse(r) as { state: "ready" | "replaced" | "unknown" };
-          if (state !== "replaced") send(to);
+          // Replaced while this seek is the last one: the job closed (the next episode, a
+          // retry), so the seek is over.
+          if (state === "replaced") over();
+          else send(to);
         },
         (e) => {
           console.warn("seek: the core could not get the place ready", e);

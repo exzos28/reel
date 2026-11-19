@@ -36,6 +36,8 @@ use librqbit_core::lengths::ValidPieceIndex;
 
 /// Share of the budget kept behind a reader, for short seeks back.
 pub const BEHIND_PERCENT: u64 = 12;
+/// The most of the budget a pin keeps (a seek's place): the readers keep the rest.
+const PIN_PERCENT: u64 = 40;
 pub use reel_domain::play::PLAYER_CACHE;
 /// A reader not seen for this long is forgotten (unless it is the last one).
 const FORGET_READER_AFTER: Duration = Duration::from_secs(60);
@@ -137,12 +139,20 @@ impl Policy {
         }
     }
 
-    /// Keeps pieces `from..=to` until `unpin`; an id for it.
-    pub fn pin(&mut self, from: u32, to: u32) -> u64 {
+    /// Keeps pieces `from..=to` until `unpin`, at most `PIN_PERCENT` of the budget from
+    /// `from` (the readers must keep room): an id for it and the last piece pinned.
+    pub fn pin(&mut self, from: u32, to: u32) -> (u64, u32) {
+        let most = (self.budget * PIN_PERCENT / 100 / self.piece_len.max(1)).max(1) as u32;
+        let to = to.min(from.saturating_add(most - 1));
         let id = self.next_pin;
         self.next_pin += 1;
         self.pins.push((id, from, to));
-        id
+        (id, to)
+    }
+
+    /// Whether pieces `from..=to` are all downloaded and verified.
+    pub fn has_all(&self, from: u32, to: u32) -> bool {
+        (from..=to).all(|p| self.pieces.get(&p).is_some_and(|s| s.state == State::Complete))
     }
 
     pub fn unpin(&mut self, id: u64) {
@@ -436,10 +446,16 @@ impl Link {
         }
     }
 
-    /// Keeps pieces `from..=to` of the torrent until `unpin` (None before the torrent has
-    /// metadata: nothing is stored yet to keep).
-    pub fn pin(&self, from: u32, to: u32) -> Option<u64> {
+    /// Keeps pieces `from..=to` of the torrent until `unpin`, as much as the budget allows
+    /// (`Policy::pin`): its id and the last piece kept. None before the torrent has metadata
+    /// (nothing is stored yet to keep).
+    pub fn pin(&self, from: u32, to: u32) -> Option<(u64, u32)> {
         self.ring().map(|r| r.policy.lock().unwrap().pin(from, to))
+    }
+
+    /// Whether pieces `from..=to` are in the ring, downloaded and verified (None: no ring).
+    pub fn has_all(&self, from: u32, to: u32) -> Option<bool> {
+        self.ring().map(|r| r.policy.lock().unwrap().has_all(from, to))
     }
 
     pub fn unpin(&self, id: u64) {
@@ -838,7 +854,9 @@ mod tests {
         for piece in 0..3 {
             complete(&mut p, piece, now);
         }
-        let pin = p.pin(0, 1);
+        let (pin, last) = p.pin(0, 1);
+        assert_eq!(last, 1);
+        assert!(p.has_all(0, 2) && !p.has_all(0, 3));
         // The reader moves far on and fills the budget: what is behind it goes, the pin stays.
         p.see(&[5000], now);
         for piece in 50..55 {
@@ -854,6 +872,14 @@ mod tests {
             complete(&mut p, piece, later);
         }
         assert!(!p.has(0) && !p.has(1), "unpinned pieces far behind stay");
+    }
+
+    #[test]
+    fn a_pin_keeps_at_most_a_part_of_the_budget() {
+        // Pieces of 100 bytes, a budget of 1000: at most 400 bytes pinned.
+        let mut p = Policy::new(100, 10_000, 1000);
+        assert_eq!(p.pin(10, 30).1, 13);
+        assert_eq!(p.pin(10, 11).1, 11);
     }
 
     #[test]

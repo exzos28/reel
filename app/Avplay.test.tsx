@@ -163,13 +163,14 @@ test("a seek waits for the core to have the place, then goes to AVPlay", async (
   expect(ops().filter((o) => o.op === "seek")).toEqual([{ op: "seek", position: 11 }]);
 });
 
-test("a seek a newer one replaced never goes to AVPlay", async () => {
+test("a seek the core replaced (the job closed) never goes to AVPlay, and its loader goes", async () => {
   const { app, ops } = await playing(DETAILS, {
     "Engine.seek": async () => JSON.stringify({ state: "replaced" }),
   });
   await app.keyboard.press("right");
   await app.wait(1500);
   expect(ops().filter((o) => o.op === "seek")).toEqual([]);
+  expect(app.shows("buffering")).toBe(false);
 });
 
 test("a seek the core could not get ready stays where it plays", async () => {

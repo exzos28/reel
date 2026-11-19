@@ -176,7 +176,7 @@ pub fn cache_dir() -> PathBuf {
 /// holds it (a film being saved stays, `leases`).
 pub fn close(job: u32) {
     crate::subtitles::forget(job);
-    replace_seek(job, None);
+    drop_seek(job);
     if let Some(plays) = PLAYS.lock().unwrap().as_mut() {
         plays.remove(&job);
     }
@@ -551,23 +551,43 @@ static PLAYS: Mutex<Option<HashMap<u32, Play>>> = Mutex::new(None);
 /// The seek on its way per job: a newer one, or `close`, replaces it (the task stops, its
 /// stream and its pin go, its waiter hears `Replaced`).
 struct SeekPrep {
+    /// The order the seeks came in: an older one never replaces a newer one (async calls may
+    /// run side by side).
+    seq: u64,
     done: tokio::sync::watch::Sender<Option<SeekReady>>,
     task: tokio::task::JoinHandle<()>,
 }
 
-static SEEKS: Mutex<Option<HashMap<u32, SeekPrep>>> = Mutex::new(None);
+impl SeekPrep {
+    /// Stops it; its waiter, if still waiting, hears `Replaced`.
+    fn replace(self) {
+        self.task.abort();
+        self.done.send_if_modified(|d| {
+            let waiting = d.is_none();
+            if waiting {
+                *d = Some(SeekReady::Replaced);
+            }
+            waiting
+        });
+    }
+}
 
-/// The player has the job's film open, `duration` seconds long.
+static SEEKS: Mutex<Option<HashMap<u32, SeekPrep>>> = Mutex::new(None);
+static NEXT_SEEK: AtomicU64 = AtomicU64::new(1);
+
+/// The player has the job's film open, `duration` seconds long: from now on the engine knows
+/// where its seeks are (`seek`).
 pub fn opened(job: u32, duration: f64) {
     if duration > 0.0 {
         PLAYS.lock().unwrap().get_or_insert_with(HashMap::new).entry(job).or_default().duration = duration;
     }
 }
 
-/// What the player reported last (timeline), for where a seek's bytes are.
+/// What the player reported last (timeline), for where a seek's bytes are; only for a job
+/// the player has `opened` (a report coming in after `close` adds nothing).
 fn played(job: u32, duration: f64, anchor: Option<Anchor>) {
     let mut plays = PLAYS.lock().unwrap();
-    let play = plays.get_or_insert_with(HashMap::new).entry(job).or_default();
+    let Some(play) = plays.as_mut().and_then(|p| p.get_mut(&job)) else { return };
     if duration > 0.0 {
         play.duration = duration;
     }
@@ -580,25 +600,27 @@ fn play_of(job: u32) -> Option<Play> {
     PLAYS.lock().unwrap().as_ref()?.get(&job).copied()
 }
 
-/// Replaces the job's seek on its way (with `next`, or none): its waiter hears `Replaced`.
-fn replace_seek(job: u32, next: Option<SeekPrep>) {
-    let old = {
+/// Makes `next` the job's seek on its way, unless a newer one is there already (then `next`
+/// is the one replaced).
+fn put_seek(job: u32, next: SeekPrep) {
+    let gone = {
         let mut seeks = SEEKS.lock().unwrap();
         let seeks = seeks.get_or_insert_with(HashMap::new);
-        match next {
-            Some(n) => seeks.insert(job, n),
-            None => seeks.remove(&job),
+        match seeks.get(&job) {
+            Some(newer) if newer.seq > next.seq => Some(next),
+            _ => seeks.insert(job, next),
         }
     };
-    if let Some(old) = old {
-        old.task.abort();
-        old.done.send_if_modified(|d| {
-            let waiting = d.is_none();
-            if waiting {
-                *d = Some(SeekReady::Replaced);
-            }
-            waiting
-        });
+    if let Some(gone) = gone {
+        gone.replace();
+    }
+}
+
+/// The job's seek on its way is not wanted any more (`close`).
+fn drop_seek(job: u32) {
+    let gone = SEEKS.lock().unwrap().as_mut().and_then(|s| s.remove(&job));
+    if let Some(gone) = gone {
+        gone.replace();
     }
 }
 
@@ -614,11 +636,12 @@ impl Drop for Pinned {
 }
 
 /// Gets the place at `seconds` ready before the player seeks there: the pieces from the
-/// keyframe before it to a little after it are fetched first and pinned in the buffer until
-/// the player has read past them. Ready at once when they are in; else when they come. A
-/// newer seek of the job, or `close`, replaces it. Never gives up on its own: the viewer
-/// decides (another seek, Back).
+/// keyframe before it to a little after it are pinned in the buffer and fetched first, and
+/// stay until the player has read into them. Ready at once when they are in; else when they
+/// come. A newer seek of the job, or `close`, replaces it. Never gives up on its own: the
+/// viewer decides (another seek, Back).
 pub async fn seek(job: u32, seconds: f64) -> SeekReady {
+    let seq = NEXT_SEEK.fetch_add(1, Ordering::Relaxed);
     let Some(core) = CORE.get() else { return SeekReady::Unknown };
     let state = core.jobs.lock().unwrap().get(&job).cloned();
     let (handle, link) = match state {
@@ -633,61 +656,71 @@ pub async fn seek(job: u32, seconds: f64) -> SeekReady {
     let Some(place) = layout.seek_place(seconds, play.duration, play.anchor, SEEK_LEAD_S, SEEK_AFTER_S) else {
         return SeekReady::Unknown;
     };
+    // Pinned first, so nothing of it is evicted from here on; the buffer may pin less than
+    // the place (a part of its budget at most), and that part is what is waited for.
+    let (pin, first, last) = match link.as_ref().and_then(|l| l.pin(*place.pieces.start(), *place.pieces.end())) {
+        Some((id, last)) => (Pinned(link.clone(), Some(id)), *place.pieces.start(), last),
+        None => (Pinned(None, None), *place.pieces.start(), *place.pieces.end()),
+    };
     let api = core.api.clone();
     let torrent = handle.id();
-    let pieces = place.pieces.clone();
-    let have_all = move || {
-        api.api_dump_haves(torrent.into())
-            .map(|(have, _)| pieces.clone().all(|p| have.get(p as usize).is_some_and(|b| *b)))
-            .unwrap_or(false)
+    let ring = link.clone();
+    let have_all = move || match ring.as_ref().and_then(|l| l.has_all(first, last)) {
+        Some(all) => all,
+        // A torrent not in the ring (a film being saved, on disk): librqbit's own record.
+        None => api
+            .api_dump_haves(torrent.into())
+            .map(|(have, _)| (first..=last).all(|p| have.get(p as usize).is_some_and(|b| *b)))
+            .unwrap_or(false),
     };
-    if have_all() {
-        // In already: an older seek on its way is not wanted any more.
-        replace_seek(job, None);
-        return SeekReady::Ready;
-    }
-    let (done, mut waiting) = tokio::sync::watch::channel(None);
+    let in_already = have_all();
+    let (done, mut waiting) = tokio::sync::watch::channel(in_already.then_some(SeekReady::Ready));
     let ready = done.clone();
     let task = core.rt.spawn(async move {
         use tokio::io::{AsyncReadExt, AsyncSeekExt};
-        let _pin = Pinned(link.clone(), link.as_ref().and_then(|l| l.pin(*place.pieces.start(), *place.pieces.end())));
-        // A stream at the place: librqbit fetches its pieces first, then its readahead.
-        let stream = match handle.clone().stream(file).await {
-            Ok(mut s) => s.seek(std::io::SeekFrom::Start(place.from)).await.ok().map(|_| s),
-            Err(_) => None,
-        };
-        let Some(mut stream) = stream else {
-            // No stream to fetch the place with: the player seeks as it is.
-            ready.send_replace(Some(SeekReady::Unknown));
-            return;
-        };
-        {
-            // One byte read asks for the first piece; the loop watches all of them.
-            let mut byte = [0u8; 1];
-            let read = stream.read(&mut byte);
-            tokio::pin!(read);
-            let mut read_done = false;
-            while !have_all() {
-                tokio::select! {
-                    _ = &mut read, if !read_done => read_done = true,
-                    _ = tokio::time::sleep(SEEK_LOOK_EVERY) => {}
+        let _pin = pin;
+        let mut stream = None;
+        if !in_already {
+            // A stream at the place: librqbit fetches its pieces first, then its readahead.
+            let opened = match handle.clone().stream(file).await {
+                Ok(mut s) => s.seek(std::io::SeekFrom::Start(place.from)).await.ok().map(|_| s),
+                Err(_) => None,
+            };
+            let Some(mut s) = opened else {
+                // No stream to fetch the place with: the player seeks as it is.
+                ready.send_replace(Some(SeekReady::Unknown));
+                return;
+            };
+            {
+                // One byte read asks for the first piece; the loop watches all of them.
+                let mut byte = [0u8; 1];
+                let read = s.read(&mut byte);
+                tokio::pin!(read);
+                let mut read_done = false;
+                while !have_all() {
+                    tokio::select! {
+                        _ = &mut read, if !read_done => read_done = true,
+                        _ = tokio::time::sleep(SEEK_LOOK_EVERY) => {}
+                    }
                 }
             }
+            time_step(job, "seek's place in");
+            ready.send_replace(Some(SeekReady::Ready));
+            stream = Some(s);
         }
-        time_step(job, "seek's place in");
-        ready.send_replace(Some(SeekReady::Ready));
-        // Kept (pinned, the stream open) until the player has read past the target.
+        // Kept (pinned, the stream open) until the player reads inside the place: where it
+        // read before the seek says nothing (a seek back starts far behind it).
         let kept = std::time::Instant::now();
         while kept.elapsed() < SEEK_KEEP_FOR {
-            if play_of(job).and_then(|p| p.anchor).is_some_and(|a| a.byte as u64 >= place.target) {
+            if play_of(job).and_then(|p| p.anchor).is_some_and(|a| (place.target..=place.end).contains(&(a.byte as u64))) {
                 break;
             }
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         }
         drop(stream);
     });
-    replace_seek(job, Some(SeekPrep { done, task }));
-    // Answered by the task or by `replace_seek`; the sender lives in `SEEKS` until then.
+    put_seek(job, SeekPrep { seq, done, task });
+    // Answered by the task or when replaced; the sender lives in `SEEKS` until then.
     match waiting.wait_for(|d| d.is_some()).await {
         Ok(d) => d.unwrap_or(SeekReady::Replaced),
         Err(_) => SeekReady::Replaced,
@@ -1188,7 +1221,6 @@ fn file_layout(handle: &Arc<librqbit::ManagedTorrent>, file: usize) -> Option<La
 }
 
 
-/// Where a file lies in its torrent's pieces.
 /// Where the player has read to: a byte of the file and the moment of the film there.
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Anchor {
@@ -1201,12 +1233,15 @@ struct Anchor {
 struct SeekPlace {
     /// The byte to fetch from.
     from: u64,
-    /// The target's byte: the player has read the place once it is past it.
+    /// The target's byte, and the place's last: the player has read the place once it reads
+    /// between them.
     target: u64,
+    end: u64,
     /// The torrent's pieces of the place.
     pieces: std::ops::RangeInclusive<u32>,
 }
 
+/// Where a file lies in its torrent's pieces.
 #[derive(Clone, Copy)]
 struct Layout {
     piece_length: u64,
@@ -1265,7 +1300,7 @@ impl Layout {
         let at = move |s: f64| self.byte_at(s, duration, anchor);
         let piece = |b: u64| ((self.file_offset + b) / self.piece_length) as u32;
         let (from, target, to) = (at(seconds - lead), at(seconds), at(seconds + after));
-        Some(SeekPlace { from, target, pieces: piece(from)..=piece(to) })
+        Some(SeekPlace { from, target, end: to, pieces: piece(from)..=piece(to) })
     }
 
     /// The stretches of the file whose pieces are all in, as `(from, to)` in 0..1 of the
@@ -1380,13 +1415,13 @@ pub(crate) mod tests {
         // Pieces of 100 bytes; the file is bytes 50..1050 (1000 bytes) of a 100 s film: 10 bytes a second.
         let l = Layout { piece_length: 100, total_length: 1100, file_offset: 50, file_length: 1000 };
         // 50 s: byte 500; from 42 s (file 420, torrent 470, piece 4) to 54 s (file 540, torrent 590, piece 5).
-        assert_eq!(l.seek_place(50.0, 100.0, None, 8.0, 4.0), Some(SeekPlace { from: 420, target: 500, pieces: 4..=5 }));
+        assert_eq!(l.seek_place(50.0, 100.0, None, 8.0, 4.0), Some(SeekPlace { from: 420, target: 500, end: 540, pieces: 4..=5 }));
         // Anchored where the player read: the same place 100 bytes earlier.
         let read = Some(Anchor { byte: 300.0, time: 40.0 });
-        assert_eq!(l.seek_place(50.0, 100.0, read, 8.0, 4.0), Some(SeekPlace { from: 320, target: 400, pieces: 3..=4 }));
+        assert_eq!(l.seek_place(50.0, 100.0, read, 8.0, 4.0), Some(SeekPlace { from: 320, target: 400, end: 440, pieces: 3..=4 }));
         // At the start the lead stops at the file's first byte; past the end, the last byte.
-        assert_eq!(l.seek_place(2.0, 100.0, None, 8.0, 4.0), Some(SeekPlace { from: 0, target: 20, pieces: 0..=1 }));
-        assert_eq!(l.seek_place(500.0, 100.0, None, 8.0, 4.0), Some(SeekPlace { from: 920, target: 999, pieces: 9..=10 }));
+        assert_eq!(l.seek_place(2.0, 100.0, None, 8.0, 4.0), Some(SeekPlace { from: 0, target: 20, end: 60, pieces: 0..=1 }));
+        assert_eq!(l.seek_place(500.0, 100.0, None, 8.0, 4.0), Some(SeekPlace { from: 920, target: 999, end: 999, pieces: 9..=10 }));
         // No duration, no file: no place.
         assert_eq!(l.seek_place(10.0, 0.0, None, 8.0, 4.0), None);
         let empty = Layout { piece_length: 100, total_length: 100, file_offset: 0, file_length: 0 };
