@@ -137,7 +137,7 @@ static SEARCH_GEN: AtomicU64 = AtomicU64::new(0);
 fn record_search(key: &str, started_in: u64, search: Search) {
     let mut searches = SEARCHES.lock().unwrap();
     if SEARCH_GEN.load(Ordering::Relaxed) == started_in {
-        searches.insert(key.to_owned(), search);
+        searches.insert(key.to_owned(), Search { ended: Some(Instant::now()), ..search });
     }
 }
 
@@ -566,7 +566,14 @@ struct Search {
     /// Ranked as `sources` ranks them; None while it runs.
     releases: Option<Vec<Value>>,
     failed: Option<String>,
+    /// When it ended (a failed one is asked again a while after: `RETRY_FAILED_AFTER`).
+    ended: Option<Instant>,
 }
+
+/// How long after a search failed (the source refused, timed out, asked to slow down) the
+/// screens asking for it start it again: soon enough that "nothing found" does not stay until
+/// the app restarts, not so soon that a source asking to slow down is asked again at once.
+const RETRY_FAILED_AFTER: Duration = Duration::from_secs(30);
 
 static SEARCHES: LazyLock<Mutex<HashMap<String, Search>>> = LazyLock::new(Default::default);
 /// The user's choice of release per what plays: an index into its releases.
@@ -609,7 +616,7 @@ fn distinctive(name: &str) -> bool {
 
 /// Starts the search for `key` (once per run) when there is a source.
 fn ensure_search(key: &str, info: &Info) {
-    if !has_source() || SEARCHES.lock().unwrap().contains_key(key) {
+    if !has_source() || !search_wanted(SEARCHES.lock().unwrap().get(key), Instant::now()) {
         return;
     }
     let (_, ep) = parse_key(key);
@@ -628,6 +635,16 @@ fn ensure_search(key: &str, info: &Info) {
     start_search(key.to_owned(), request);
 }
 
+/// Whether a search should start for a key whose last search is `last`: none yet, or one that
+/// failed `RETRY_FAILED_AFTER` ago. One that found something (or nothing) or still runs stays.
+fn search_wanted(last: Option<&Search>, now: Instant) -> bool {
+    match last {
+        None => true,
+        Some(Search { failed: Some(_), ended: Some(at), .. }) => now.duration_since(*at) >= RETRY_FAILED_AFTER,
+        Some(_) => false,
+    }
+}
+
 #[cfg(not(test))]
 fn start_search(key: String, request: Value) {
     let started_in = SEARCH_GEN.load(Ordering::Relaxed);
@@ -638,7 +655,7 @@ fn start_search(key: String, request: Value) {
     let Some(source) = settings::source() else { return };
     let request: reel_domain::search::Request = match serde_json::from_value(request) {
         Ok(r) => r,
-        Err(e) => return finish(Search { releases: None, failed: Some(e.to_string()) }),
+        Err(e) => return finish(Search { releases: None, failed: Some(e.to_string()), ended: None }),
     };
     let job = playback().search(source, request);
     std::thread::spawn(move || {
@@ -650,12 +667,12 @@ fn start_search(key: String, request: Value) {
                 Some("pending") if started.elapsed() < Duration::from_secs(120) => continue,
                 Some("done") => {
                     let releases = r["releases"].as_array().cloned().unwrap_or_default();
-                    break finish(Search { releases: Some(releases), failed: None });
+                    break finish(Search { releases: Some(releases), failed: None, ended: None });
                 }
                 _ => {
                     let message = text(&r["message"]).unwrap_or_else(|| "timed out".into());
                     eprintln!("reel catalog: search failed: {message}");
-                    break finish(Search { releases: None, failed: Some(message) });
+                    break finish(Search { releases: None, failed: Some(message), ended: None });
                 }
             }
         }

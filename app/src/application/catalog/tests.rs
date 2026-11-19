@@ -58,7 +58,7 @@ fn release(title: &str, resolution: Option<u16>, source: &str, size_gb: f64, see
 }
 
 fn found(key: &str, releases: Vec<Value>) {
-    SEARCHES.lock().unwrap().insert(key.into(), Search { releases: Some(releases), failed: None });
+    SEARCHES.lock().unwrap().insert(key.into(), Search { releases: Some(releases), failed: None, ended: None });
 }
 
 /// Takes the stores for the test, empty, with TMDB and a source as given.
@@ -862,9 +862,9 @@ fn a_search_from_before_the_source_changed_does_not_land() {
     let _g = fresh(true, true);
     let before = SEARCH_GEN.load(Ordering::Relaxed);
     source_changed();
-    record_search("film", before, Search { releases: None, failed: Some("the old source died".into()) });
+    record_search("film", before, Search { releases: None, failed: Some("the old source died".into()), ended: None });
     assert!(SEARCHES.lock().unwrap().get("film").is_none(), "the old source's failure is dropped");
-    record_search("film", SEARCH_GEN.load(Ordering::Relaxed), Search { releases: Some(vec![]), failed: None });
+    record_search("film", SEARCH_GEN.load(Ordering::Relaxed), Search { releases: Some(vec![]), failed: None, ended: None });
     assert!(SEARCHES.lock().unwrap().get("film").is_some(), "the new one's lands");
 }
 
@@ -890,4 +890,18 @@ fn releases_are_searched_by_the_title_then_its_english_romaji_and_original_names
     // A short one-word name would match other titles' releases: not searched by.
     let up = Info { title: "Вверх".into(), english_title: Some("Up".into()), original_title: Some("Up".into()), ..Default::default() };
     assert_eq!(search_titles(&up), ("Вверх".to_string(), vec![]));
+}
+
+
+#[test]
+fn a_failed_search_is_asked_again_a_while_after() {
+    use super::{RETRY_FAILED_AFTER, Search, search_wanted};
+    use std::time::{Duration, Instant};
+    let now = Instant::now();
+    let failed = |ago: Duration| Search { failed: Some("HTTP 429".into()), ended: now.checked_sub(ago), ..Default::default() };
+    assert!(search_wanted(None, now), "never asked");
+    assert!(!search_wanted(Some(&Search::default()), now), "still running");
+    assert!(!search_wanted(Some(&Search { releases: Some(vec![]), ended: Some(now), ..Default::default() }), now), "found nothing: stays");
+    assert!(!search_wanted(Some(&failed(Duration::from_secs(5))), now), "failed just now: not again at once");
+    assert!(search_wanted(Some(&failed(RETRY_FAILED_AFTER)), now), "failed a while ago: again");
 }
