@@ -1,4 +1,4 @@
 ---
 bump: minor
 ---
-reel speaks Russian: the app follows the system language, so on a Russian device it shows in Russian.
+reel speaks Russian. The Language setting now sets the language of the app too, and a new install starts in the device's language when reel has it.

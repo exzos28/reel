@@ -227,7 +227,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/platform/index.ts`.
 - `finishSetup()` (`finish_setup`): The first-run setup is done (it does not show again).
   Called from: `ui/preferences.ts`.
-- `load(data_dir: String) -> String`: Loads the settings from `data_dir` (the app's data directory, empty when the host has none) and configures the engine from them; JSON `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`.
+- `load(data_dir: String, languages: String) -> String`: Loads the settings from `data_dir` (the app's data directory, empty when the host has none) and configures the engine from them; JSON `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`. `languages`: the system's preferred languages, a JSON array of BCP 47 tags; a new install starts with the first one reel has titles in (`contentLanguage`), else English.
   JSON: `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`
   Called from: `ui/preferences.ts`.
 - `revision() -> f64`: Goes up when the settings change (here or on the hosted page) and when the hosted page's pairing code appears or goes: read `current` and `Hosted.pairing` again.
@@ -236,8 +236,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/preferences.ts`.
 - `setContentLanguage(tag: String) -> String` (`set_content_language`): Saves the content language (titles, descriptions, episode names; one of `contentLanguages` from `load`) and drops what was asked in the old one; the language in effect.
   Called from: `ui/preferences.ts`.
-- `setLanguage(tag: String)` (`set_language`): Saves the UI language (a BCP 47 tag); an empty tag follows the system's again. `load` answers it as `language`, null while it follows the system.
-  Called from: `ui/preferences.ts`.
+- `setLanguage(tag: String)` (`set_language`): Saves the UI language (a BCP 47 tag).
+  Called from: nothing in the UI.
 - `setLoader(loader: String) -> String` (`set_loader`): Saves the loading animation ("dinosaur" or "logo"; another value is refused); the one in effect.
   Called from: `ui/preferences.ts`.
 - `setNavPosition(position: String) -> String` (`set_nav_position`): Saves where the top nav sits on a TV and a desktop ("left", "center" or "right"; another value is refused); the position in effect.

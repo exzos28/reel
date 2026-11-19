@@ -14,7 +14,7 @@ fn setup(name: &str) -> (std::sync::MutexGuard<'static, ()>, std::path::PathBuf)
     let guard = catalog::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let dir = std::env::temp_dir().join(format!("reel-hosted-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
-    settings::load(Some(&dir));
+    settings::load(Some(&dir), &[]);
     PAIRING.lock().unwrap().cancel();
     (guard, dir)
 }
@@ -193,7 +193,7 @@ fn not_ready_until_the_settings_are_loaded() {
     settings::forget_loaded_for_test();
     let r = call("POST", "/settings/api/pair", None, "");
     assert_eq!((r.status, r.body), (503, json!({ "error": "not_ready" })));
-    settings::load(Some(&dir));
+    settings::load(Some(&dir), &[]);
     assert_eq!(call("POST", "/settings/api/pair", None, "").status, 200);
     cancel_pairing();
     let _ = std::fs::remove_dir_all(&dir);

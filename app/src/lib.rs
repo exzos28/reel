@@ -232,10 +232,13 @@ impl Settings {
 
     /// Loads the settings from `data_dir` (the app's data directory, empty
     /// when the host has none) and configures the engine from them; JSON
-    /// `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`.
-    pub fn load(data_dir: String) -> String {
+    /// `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`. `languages`: the system's
+    /// preferred languages, a JSON array of BCP 47 tags; a new install starts with the first
+    /// one reel has titles in (`contentLanguage`), else English.
+    pub fn load(data_dir: String, languages: String) -> String {
         let dir = (!data_dir.is_empty()).then(|| std::path::PathBuf::from(data_dir));
-        let loaded = settings::load(dir.as_deref());
+        let languages: Vec<String> = serde_json::from_str(&languages).unwrap_or_default();
+        let loaded = settings::load(dir.as_deref(), &languages);
         // Watch progress and the metadata cache live there too, and the saved films' library.
         catalog::init(dir.as_deref());
         library::init(dir.as_deref());
@@ -289,8 +292,7 @@ impl Settings {
         now
     }
 
-    /// Saves the UI language (a BCP 47 tag); an empty tag follows the system's again. `load`
-    /// answers it as `language`, null while it follows the system.
+    /// Saves the UI language (a BCP 47 tag).
     pub fn set_language(tag: String) {
         settings::set_language(&tag);
     }
