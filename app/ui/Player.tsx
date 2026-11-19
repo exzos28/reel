@@ -9,7 +9,7 @@
 // buttons on the buttons row), Up/Down switch rows, Escape closes the
 // panel, then hides the overlay, then leaves. Near the end of an episode
 // the Up next card (tv-player-end.html) takes the remote instead.
-import { cleanup, computed, effect, Image, keymap, safeArea, Scroll, signal, Text, View, windowSize, type ImageAsset, type ViewStyle } from "nsh";
+import { cleanup, computed, effect, Image, keymap, safeArea, Scroll, signal, Text, untracked, View, windowSize, type ImageAsset, type ViewStyle } from "nsh";
 import { BufferingNote, PlayerStage, type StageLine } from "./PlayerStage";
 import { t } from "nsh/i18n";
 import { Catalog, Fmt } from "./native";
@@ -45,6 +45,12 @@ export const OVERLAY_MS = 5000;
 /** How long the Up next card counts down before the next episode plays. */
 export const UP_NEXT_MS = 6000;
 const SEEK_S = 10;
+/** Held, the arrows step further: after this many steps 30 s, after that many 60 s. */
+const SCRUB_FASTER = [8, 20];
+/** Presses closer than this, ms, are one hold (a key's repeat). */
+const SCRUB_HOLD_MS = 300;
+/** The player seeks once the arrows have rested this long, ms: one seek for a run of presses. */
+const SCRUB_IDLE_MS = 600;
 /** A seek has arrived when the player's time is this near its target, s… */
 const SEEK_NEAR_S = 3;
 /** …or after this long anyway (it may land elsewhere, on a keyframe), ms. */
@@ -181,7 +187,7 @@ export function Player() {
     const w = what();
     // Only once this episode plays: until then position and duration may still be the last
     // one's, near its end, and the card offered the episode after this one at once.
-    return w && started() ? JSON.parse(Catalog.upNext(w.id, position(), duration())) : null;
+    return w && started() ? JSON.parse(Catalog.upNext(w.id, playSecond(), duration())) : null;
   });
   const dismissed = signal(false);
   const card = computed(() => next() != null && !dismissed());
@@ -244,7 +250,48 @@ export function Player() {
     seeking = { to, at: performance.now() };
     surface?.seek(to);
   };
-  const seekBy = (d: number) => seekTo(position() + d);
+  /** Where the arrows have moved the scrubber, not sent yet (null: none). Presses and a held
+   * key's repeats only move it; the player seeks once they rest (`SCRUB_IDLE_MS`): a TV's
+   * AVPlay takes seconds a seek, and one per press piled them up. */
+  const scrubTo = signal<number | null>(null);
+  let scrubTimer: ReturnType<typeof setTimeout> | undefined;
+  let scrubSteps = 0;
+  let lastScrub = 0;
+  cleanup(() => clearTimeout(scrubTimer));
+  /** Where the scrubber and the times show: the arrows' target while they move it. */
+  const shown = () => scrubTo() ?? position();
+  const scrubBy = (dir: 1 | -1) => {
+    const now = performance.now();
+    scrubSteps = now - lastScrub < SCRUB_HOLD_MS ? scrubSteps + 1 : 0;
+    lastScrub = now;
+    const step = scrubSteps >= SCRUB_FASTER[1] ? 60 : scrubSteps >= SCRUB_FASTER[0] ? 30 : SEEK_S;
+    const d = duration();
+    const to = Math.max(0, Math.min(shown() + dir * step, d > 0 ? d : Infinity));
+    scrubTo.set(to);
+    clearTimeout(scrubTimer);
+    scrubTimer = setTimeout(() => {
+      scrubTo.set(null);
+      seekTo(to);
+    }, SCRUB_IDLE_MS);
+  };
+  /** A seek at once (a click on the scrubber): what the arrows were moving goes. */
+  const seekNow = (seconds: number) => {
+    clearTimeout(scrubTimer);
+    scrubTo.set(null);
+    seekTo(seconds);
+  };
+  /** The whole seconds of the place playing and of the place shown: what asks the core
+   * (Up next, the times' words) changes once a second, not with every report or press. */
+  const playSecond = signal(0);
+  const shownSecond = signal(0);
+  effect(() => {
+    const p = Math.floor(position());
+    if (p !== untracked(playSecond)) playSecond.set(p);
+  });
+  effect(() => {
+    const p = Math.floor(shown());
+    if (p !== untracked(shownSecond)) shownSecond.set(p);
+  });
   const togglePause = () => paused.set(!paused());
   const openPanel = () => {
     panel.set(true);
@@ -256,7 +303,7 @@ export function Player() {
     else if (id === "tracks") (episodesOpen.set(false), panel() ? panel.set(false) : openPanel());
     else if (id === "episodes") (panel.set(false), episodesOpen.set(!episodesOpen()));
     else if (id === "fullscreen") setFullscreen(!fullscreen());
-    else seekBy(id === "back" ? -SEEK_S : SEEK_S);
+    else scrubBy(id === "back" ? -1 : 1);
   };
   const movePanel = (dc: number, dr: number) => {
     const col = Math.min(Math.max(panelCol() + dc, 0), 2);
@@ -278,7 +325,7 @@ export function Player() {
         () => {
           if (panel()) movePanel(-1, 0);
           else if (row() === "buttons") button.set(Math.max(button() - 1, 0));
-          else seekBy(-SEEK_S);
+          else scrubBy(-1);
         },
         () => cardButton.set(0),
       ),
@@ -286,7 +333,7 @@ export function Player() {
         () => {
           if (panel()) movePanel(1, 0);
           else if (row() === "buttons") button.set(Math.min(button() + 1, buttons.length - 1));
-          else seekBy(SEEK_S);
+          else scrubBy(1);
         },
         () => cardButton.set(1),
       ),
@@ -605,17 +652,17 @@ export function Player() {
             </If>
             <Scrubber
               focused={() => row() === "scrubber" && !panel()}
-              position={position}
+              position={shown}
               duration={duration}
               ranges={() => timeline().ranges}
-              onSeek={(s) => { poke(); seekTo(s); }}
+              onSeek={(s) => { poke(); seekNow(s); }}
             />
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: u(16) }}>
               <Text style={{ fontFamily: font, fontSize: ts(24), fontWeight: 500, color: colors.snow() }}>
-                {Fmt.position(Math.floor(position()))}
+                {Fmt.position(shownSecond())}
               </Text>
               <Text style={{ fontFamily: font, fontSize: ts(24), fontWeight: 500, color: colors.ash() }}>
-                {duration() > 0 ? t("player.left", { time: Fmt.position(Math.ceil(Math.max(duration() - position(), 0))) }) : ""}
+                {duration() > 0 ? t("player.left", { time: Fmt.position(Math.max(Math.ceil(duration()) - shownSecond(), 0)) }) : ""}
               </Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: u(14), marginTop: u(26) }}>
