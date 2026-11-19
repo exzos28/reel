@@ -512,7 +512,9 @@ export function Player() {
             if (!loaded()) return;
             // Still the old place's time while a seek is on its way: the scrubber keeps the target.
             if (!seekPending()) position.set(e.currentTime);
-            cachedAhead.set(e.cached ?? 0);
+            // What the view holds ahead is the old place's while a seek is on its way: not
+            // drawn after the new one as ready.
+            cachedAhead.set(seekPending() ? 0 : (e.cached ?? 0));
             readAt.set({ byte: e.readAt ?? 0, time: e.readTime ?? 0 });
             if (e.duration > 0) duration.set(e.duration);
             // The first frame from where it should start: the film plays.
@@ -528,7 +530,7 @@ export function Player() {
             stallTimer = setTimeout(() => buffering.set(true), STALL_MS);
           }}
           onEnd={() => { paused.set(true); poke(); }}
-          onSeeking={(to) => { position.set(to); seekStarted(); }}
+          onSeeking={(to) => { position.set(to); cachedAhead.set(0); seekStarted(); }}
           // The seek is over (AVPlay lands on a keyframe, maybe seconds before the target): its times stand.
           onSeeked={seekOver}
           onError={(e) => { seekOver(); error.set(e); }}
