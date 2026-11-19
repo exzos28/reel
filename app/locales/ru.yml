@@ -321,7 +321,7 @@ player:
   exit_fullscreen: Выйти из полноэкранного режима
   stage:
     searching: Ищем раздачу
-    finding: Ищем, кто её раздаёт
+    finding: Ищем, кто раздаёт
     connecting: Подключаемся к раздающим
     found:
       one: Найден 1 раздающий, подключаемся
@@ -494,7 +494,7 @@ saved:
     free: "Свободно %{size}"
   state:
     searching: Ищем раздачу…
-    resolving: Ищем, кто её раздаёт…
+    resolving: Ищем, кто раздаёт…
     saving: "%{percent}% · %{have} из %{size}"
     paused: "На паузе · %{have} из %{size}"
     waiting: Начнётся, когда закончится текущий просмотр

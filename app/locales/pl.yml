@@ -322,7 +322,7 @@ player:
   exit_fullscreen: "Zamknij pełny ekran"
   stage:
     searching: "Szukanie wydania"
-    finding: "Szukanie osób, które je udostępniają"
+    finding: "Szukanie udostępniających"
     connecting: "Łączenie z udostępniającymi"
     found:
       one: "Znaleziono 1 osobę, łączenie"
@@ -506,7 +506,7 @@ saved:
     free: "Wolne: %{size}"
   state:
     searching: "Szukanie wydania…"
-    resolving: "Szukanie osób, które je udostępniają…"
+    resolving: "Szukanie udostępniających…"
     saving: "%{percent}% · %{have} z %{size}"
     paused: "Wstrzymane · %{have} z %{size}"
     waiting: "Zacznie się, gdy skończy się bieżące oglądanie"

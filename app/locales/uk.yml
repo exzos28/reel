@@ -322,7 +322,7 @@ player:
   exit_fullscreen: "Вийти з повноекранного режиму"
   stage:
     searching: "Шукаємо роздачу"
-    finding: "Шукаємо, хто її роздає"
+    finding: "Шукаємо, хто роздає"
     connecting: "Підключаємося до тих, хто роздає"
     found:
       one: "Знайдено 1 людину, підключаємося"
@@ -506,7 +506,7 @@ saved:
     free: "Вільно %{size}"
   state:
     searching: "Шукаємо роздачу…"
-    resolving: "Шукаємо, хто її роздає…"
+    resolving: "Шукаємо, хто роздає…"
     saving: "%{percent}% · %{have} з %{size}"
     paused: "На паузі · %{have} з %{size}"
     waiting: "Почнеться, коли закінчиться поточний перегляд"

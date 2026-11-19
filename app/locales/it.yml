@@ -322,8 +322,8 @@ player:
   exit_fullscreen: "Esci da schermo intero"
   stage:
     searching: "Ricerca di una versione"
-    finding: "Ricerca di chi la condivide"
-    connecting: "Connessione a chi la condivide"
+    finding: "Ricerca di chi condivide"
+    connecting: "Connessione a chi condivide"
     found:
       one: "Trovata 1 persona, connessione"
       other: "Trovate %{count} persone, connessione"
@@ -506,7 +506,7 @@ saved:
     free: "Liberi: %{size}"
   state:
     searching: "Ricerca di una versione…"
-    resolving: "Ricerca di chi la condivide…"
+    resolving: "Ricerca di chi condivide…"
     saving: "%{percent}% · %{have} di %{size}"
     paused: "In pausa · %{have} di %{size}"
     waiting: "Parte quando finisci di guardare"
