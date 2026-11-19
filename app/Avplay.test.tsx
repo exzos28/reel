@@ -114,6 +114,36 @@ test("pause, play and seeks reach AVPlay", async () => {
   expect(ops().slice(1)).toEqual([{ op: "pause" }, { op: "play" }, { op: "seek", position: 11 }]);
 });
 
+test("a run of presses is one seek, sent once the arrows rest; the scrubber keeps its target until AVPlay gets there", async () => {
+  const { app, ops, event } = await playing();
+  for (let i = 0; i < 5; i++) await app.keyboard.press("right"); // 50 s on from 0:01
+  expect(app.texts()).toContain("0:51"); // the scrubber moved at once
+  expect(ops().filter((o) => o.op === "seek")).toEqual([]); // AVPlay not asked yet
+  await app.waitUntil(() => ops().some((o) => o.op === "seek"));
+  expect(ops().filter((o) => o.op === "seek")).toEqual([{ op: "seek", position: 51 }]);
+  // The loader shows from the seek on (AVPlay holds the page while it seeks).
+  expect(app.shows("buffering")).toBe(true);
+  // AVPlay still reports the old place while it seeks: the scrubber stays on the target.
+  await event({ type: "time", position: 2 });
+  expect(app.texts()).toContain("0:51");
+  await event({ type: "time", position: 51 });
+  await event({ type: "time", position: 52 });
+  expect(app.texts()).toContain("0:52");
+  expect(app.shows("buffering")).toBe(false);
+});
+
+test("AVPlay's seeked ends the seek's loader, landed on a keyframe before the target", async () => {
+  const { app, ops, event } = await playing();
+  await app.keyboard.press("right");
+  await app.keyboard.press("right"); // 0:21
+  await app.waitUntil(() => ops().some((o) => o.op === "seek"));
+  expect(app.shows("buffering")).toBe(true);
+  await event({ type: "seeked" });
+  await event({ type: "time", position: 16 }); // the keyframe, 5 s before
+  expect(app.shows("buffering")).toBe(false);
+  expect(app.texts()).toContain("0:16");
+});
+
 test("a stall shows the buffering note until AVPlay has enough again", async () => {
   const { app, event } = await playing();
   await event({ type: "buffering", buffering: true });
