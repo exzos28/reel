@@ -31,7 +31,8 @@ import { PartnerSource } from "../source/PartnerSource";
 /** How many languages the step lists before "More languages". */
 const SHOWN_LANGUAGES = 5;
 
-const layoutStyle = (): ViewStyle => ({ ...row(u(96), "flex-start"), paddingHorizontal: safe().x, paddingTop: u(40) });
+/** The steps and, beside them, the phone's card centred on their height. */
+const layoutStyle = (): ViewStyle => ({ ...row(u(96), "center"), paddingHorizontal: safe().x, paddingTop: u(40) });
 const stepStyle = (wide: boolean): ViewStyle => ({ flex: 1, maxWidth: wide ? formWidth() * 2 + u(120) : formWidth(), gap: u(16) });
 /** The source step's two ways side by side (one above the other on a phone): your own source, or
  * a rented one. */
