@@ -3,6 +3,9 @@
 // shows saving progress is up.
 import { cleanup, signal } from "nsh";
 import { Library } from "./native";
+// The core is told the platform family (`Settings.setFamily`) before it is asked below: on a TV,
+// an Android TV's too, it saves nothing.
+import "./platform";
 
 /** Whether this device saves films: false on TVs and without the engine (no Save control). */
 export const librarySupported: boolean = (() => {

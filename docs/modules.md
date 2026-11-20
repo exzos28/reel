@@ -258,7 +258,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/preferences.ts`.
 - `setContentLanguage(tag: String) -> String` (`set_content_language`): Saves the content language (titles, descriptions, episode names; one of `contentLanguages` from `load`) and drops what was asked in the old one; the language in effect.
   Called from: `ui/preferences.ts`.
-- `setFamily(name: String) -> bool` (`set_family`): Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows", "linux", "tablet", "phone"), once at start: what Play and Save pick by themselves follows from it (a phone keeps to 1080p and a size per hour, `fit::limits`). False for an unknown name.
+- `setFamily(name: String) -> bool` (`set_family`): Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows", "linux", "tablet", "phone"), once at start, before `Settings.load` and `Library.supported`: what Play and Save pick by themselves follows from it (a phone keeps to 1080p and a size per hour, `fit::limits`), and whether it saves films (not a TV, `fit::saves`). False for an unknown name.
   Called from: `ui/platform/index.ts`.
 - `setLanguage(tag: String)` (`set_language`): Saves the UI language (a BCP 47 tag).
   Called from: nothing in the UI.

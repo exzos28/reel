@@ -48,6 +48,12 @@ pub fn within(limits: Limits, lines: Option<u32>, bytes: f64, minutes: u32) -> b
     picture && size
 }
 
+/// Whether a kind of device (`compat::family`) saves films to watch offline: not a TV, whatever
+/// its player (a Samsung TV's, Android TV's), design/offline-downloads.md. An unknown one does.
+pub fn saves(device: Option<&str>) -> bool {
+    device != Some("tv")
+}
+
 /// Kept free on the volume of saved films, past what they take: room for the system and the
 /// other apps (a phone short of space stops working well well before it is full).
 pub const RESERVE: u64 = 1024 * 1024 * 1024;
@@ -81,6 +87,14 @@ mod tests {
     fn a_tv_and_a_desktop_pick_any() {
         for d in [Some("tv"), Some("mac"), Some("windows"), Some("linux"), None] {
             assert!(within(limits(d), Some(2160), 80.0 * GB, 120), "{d:?}");
+        }
+    }
+
+    #[test]
+    fn a_tv_saves_nothing() {
+        assert!(!saves(Some("tv")), "a Samsung TV and an Android TV alike");
+        for d in [Some("phone"), Some("tablet"), Some("mac"), Some("windows"), Some("linux"), None] {
+            assert!(saves(d), "{d:?}");
         }
     }
 

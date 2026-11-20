@@ -24,11 +24,12 @@ pub fn playback() -> &'static dyn Playback {
 }
 
 /// Saving films to watch offline: the engine's (the same session as `playback`), else
-/// `NoKeep`. A Samsung TV's core has the engine but saves nothing (no room, no offline use).
+/// `NoKeep`. A TV's core (a Samsung TV's, an Android TV's: the family the UI reports before it
+/// asks for saved films) has the engine but saves nothing (no room, no offline use).
 pub fn keep() -> &'static dyn Keep {
     static KEEP: OnceLock<Box<dyn Keep>> = OnceLock::new();
     KEEP.get_or_init(|| {
-        let tv = reel_domain::compat::profile().device() == Some("tv");
+        let tv = !reel_domain::fit::saves(reel_domain::compat::family());
         #[cfg(feature = "engine")]
         if !tv {
             let _ = playback(); // the engine is built with its host first

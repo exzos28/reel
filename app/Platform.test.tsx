@@ -35,3 +35,18 @@ test("Mac: the player offers full screen (the button and F) and Back in the wind
   await app.keyboard.press("f");
   expect(app.shows("label:Full screen")).toBe(true);
 });
+
+test("TV: the core hears the family before it is asked whether this device saves films", async () => {
+  const asked: string[] = [];
+  const app = await openApp({
+    modules: {
+      "app/native": {
+        ...engine,
+        "Settings.setFamily": (name: string) => (asked.push(`family ${name}`), true),
+        "Library.supported": () => (asked.push("supported"), false),
+      },
+    },
+  });
+  expect(asked.slice(0, 2)).toEqual(["family tv", "supported"]);
+  expect(app.shows("label:Saved")).toBe(false);
+});

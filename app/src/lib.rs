@@ -282,9 +282,10 @@ impl Settings {
     }
 
     /// Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows",
-    /// "linux", "tablet", "phone"), once at start: what Play and Save pick by themselves follows
-    /// from it (a phone keeps to 1080p and a size per hour, `fit::limits`). False for an
-    /// unknown name.
+    /// "linux", "tablet", "phone"), once at start, before `Settings.load` and `Library.supported`:
+    /// what Play and Save pick by themselves follows from it (a phone keeps to 1080p and a size
+    /// per hour, `fit::limits`), and whether it saves films (not a TV, `fit::saves`). False for
+    /// an unknown name.
     pub fn set_family(name: String) -> bool {
         reel_domain::compat::set_family(&name).is_some()
     }

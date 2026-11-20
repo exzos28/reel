@@ -46,8 +46,10 @@ fn set_asked(key: &str, a: Option<Asked>) {
     REVISION.fetch_add(1, Ordering::Relaxed);
 }
 
+/// Whether this device saves films: not a TV (the family the UI reported, so an Android TV as
+/// well as a Samsung one), and only with the engine.
 pub fn supported() -> bool {
-    keep().supported()
+    fit::saves(reel_domain::compat::family()) && keep().supported()
 }
 
 /// Opens the library (Settings.load hands the data dir over once).
