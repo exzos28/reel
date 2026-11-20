@@ -183,6 +183,7 @@ export function BrowseScreen(props: { page: Page }) {
         <Trending
           title={() => t(`browse.${props.page}.trending`)}
           items={() => data().trending}
+          facet={() => data().facet}
           airs={props.page !== "movies"}
           focusedAt={() => (zone() === "trending" ? trend() : null)}
           blockRef={page.follow(() => zone() === "trending", "nearest")}
@@ -211,6 +212,7 @@ export function BrowseScreen(props: { page: Page }) {
           cell={(item, at) => (
             <GridCard
               item={item}
+              facet={() => data().facet}
               width={() => cellWidth(columns(), GRID_GAP)}
               focused={() => zone() === "grid" && cell() === at()}
               onPress={() => openCell(at())}

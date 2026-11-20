@@ -97,8 +97,8 @@ kind:
   movie: Movie
   short: Short
   show: Series
-  season_one: 1 Season
-  seasons: "%{count} Seasons"
+  season_one: "1 season"
+  seasons: "%{count} seasons"
 
 fmt:
   minutes: "%{m} min"

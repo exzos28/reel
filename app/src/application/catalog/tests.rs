@@ -140,9 +140,9 @@ fn home_shelves_from_meta() {
         land(&Call::Trending(k), &json!({ "data": null, "error": { "kind": "network" } }), u64::MAX);
     }
     let shelves = home_shelves();
-    assert_eq!(shelves, json!([{ "id": "offline", "items": [notice("offline")] }]));
+    assert_eq!(shelves, json!([{ "id": "offline", "facet": "kind", "items": [notice("offline")] }]));
     // A notice card alone: the hero says it, and its shelf stays (nothing would be left).
-    assert_eq!(home(), json!({ "hero": notice("offline"), "shelves": [{ "id": "offline", "items": [notice("offline")] }] }));
+    assert_eq!(home(), json!({ "hero": notice("offline"), "shelves": shelves }));
     assert_eq!(shelves[0]["items"][0]["notice"], "offline");
 }
 

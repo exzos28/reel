@@ -75,7 +75,7 @@ pub(super) fn answer_key(query: &str, lang: &str) -> String {
 /// "done" (`sections` empty: nothing found), "failed" (the sources did not
 /// answer). `tmdb`: whether films and shows are searched (without a key
 /// only anime is). `sections`: `[{"id":"movies"|"shows"|"anime","state":
-/// "done"|"failed","items":[summary…]}]`, each title once; an empty row is
+/// "done"|"failed","facet","items":[summary…]}]`, each title once; an empty row is
 /// left out unless its source did not answer ("failed": the screen says
 /// so and offers `retry`).
 pub fn search(query: &str) -> Value {
@@ -220,7 +220,7 @@ fn sections(data: &Value) -> Vec<Value> {
                 (true, true) => "failed",
                 (true, false) => return None,
             };
-            Some(json!({ "id": id, "state": state, "items": items }))
+            Some(json!({ "id": id, "state": state, "facet": facet(id == "movies"), "items": items }))
         })
         .collect()
 }

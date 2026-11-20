@@ -451,7 +451,7 @@ impl Catalog {
     }
 
     /// `"movies"`, `"shows"` or `"anime"`: `{"trending":[summary…],"all":[summary…],
-    /// "filters":[group…],"allState"}` (see `catalog::browse`).
+    /// "filters":[group…],"allState","facet"}` (see `catalog::browse`).
     pub fn browse(page: String) -> String {
         catalog::browse(&page).to_string()
     }
