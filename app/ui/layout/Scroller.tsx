@@ -63,8 +63,15 @@ function Bar(props: { ctl: ScrollCtl; shown: () => boolean }) {
 }
 
 /** `style` is the outer view's (size, background); `onScroll` hears where
- * the content is. */
-export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; onScroll?: (e: ScrollEvent) => void; children: JSX.Element }) {
+ * the content is, `onDragEnd` where a finger let it go, `onContent` how long the content is. */
+export function Scroller(props: {
+  ctl: ScrollCtl;
+  style?: ViewStyle;
+  onScroll?: (e: ScrollEvent) => void;
+  onDragEnd?: (offset: number) => void;
+  onContent?: (length: number) => void;
+  children: JSX.Element;
+}) {
   const c = props.ctl;
   // Our thin bar for pages only: rows of cards show none (a trackpad, the keys and the focus move them).
   const bar = density === "regular" && !c.horizontal;
@@ -106,11 +113,16 @@ export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; onScroll?: 
           props.onScroll?.(e);
         }}
         onScrollDragStart={stopAll}
+        onScrollDragEnd={(e) => props.onDragEnd?.(c.horizontal ? e.offset.x : e.offset.y)}
         style={c.horizontal ? undefined : { flex: 1 }}
       >
         <View
           ref={(r: ViewRef) => (c.content = r)}
-          onLayout={(e) => c.sized(null, c.horizontal ? e.bounds.size.width : e.bounds.size.height)}
+          onLayout={(e) => {
+            const length = c.horizontal ? e.bounds.size.width : e.bounds.size.height;
+            c.sized(null, length);
+            props.onContent?.(length);
+          }}
         >
           {props.children}
         </View>

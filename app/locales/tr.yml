@@ -333,6 +333,8 @@ compat:
 player:
   back: "Geri"
   close: "Kapat"
+  expand_sheet: "Daha fazla göster"
+  collapse_sheet: "Daha az göster"
   close_tracks: "Ses ve altyazıyı kapat"
   episodes: "Bölümler"
   close_episodes: "Bölümleri kapat"

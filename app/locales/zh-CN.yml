@@ -333,6 +333,8 @@ compat:
 player:
   back: "返回"
   close: "关闭"
+  expand_sheet: "显示更多"
+  collapse_sheet: "显示更少"
   close_tracks: "关闭音频和字幕"
   episodes: "选集"
   close_episodes: "关闭选集"

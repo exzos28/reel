@@ -333,6 +333,8 @@ compat:
 player:
   back: "Назад"
   close: "Закрити"
+  expand_sheet: "Показати більше"
+  collapse_sheet: "Показати менше"
   close_tracks: "Закрити звук і субтитри"
   episodes: "Серії"
   close_episodes: "Закрити серії"
