@@ -79,7 +79,7 @@ test("Settings: the source row opens its drawer; saving checks it and says how i
   await app.press("label:Settings");
   await app.press("label:Search source");
   expect(app.shows("source-panel")).toBe(true);
-  await app.press("Save and check");
+  await app.press("Check");
   await app.wait(400);
   expect(app.texts()).toContain("Connected. It searches by title.");
 });
@@ -90,7 +90,7 @@ test("Settings: a bad address is refused with the core's message", async () => {
   });
   await app.press("label:Settings");
   await app.press("label:Search source");
-  await app.press("Save and check");
+  await app.press("Check");
   await app.waitFor("text:not an address"); // the core's answer comes a moment after the press
 });
 

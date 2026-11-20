@@ -68,13 +68,13 @@ title:
   resume_episode: "Continuar %{episode} de %{at}"
   about_more: "Mostrar a descrição inteira"
   about_less: "Mostrar menos"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: "Minha lista"
-  add_to_list: "Minha lista"
+  my_list: "Adicionar à minha lista"
+  add_to_list: "Adicionar à minha lista"
   in_list: "Na minha lista"
-  add_to_list_spoken: "Adicionar à Minha lista"
-  remove_from_list_spoken: "Remover da Minha lista"
+  add_to_list_spoken: "Adicionar à minha lista"
+  remove_from_list_spoken: "Remover da minha lista"
   trailer: "Trailer"
   other_releases: "Outras versões"
   save: "Salvar"
@@ -420,7 +420,7 @@ settings:
     key: "Chave de API (opcional)"
     key_placeholder: "Só se a sua fonte tiver uma"
     key_saved: "Chave salva. Digite uma nova para substituí-la"
-    save: "Salvar e verificar"
+    save: "Verificar"
     remove: "Remover fonte"
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: "Obter uma fonte pronta"
@@ -458,11 +458,11 @@ settings:
     missing_title: "Adicione uma fonte de busca"
     missing_about: "O reel reproduz versões que encontra na sua própria fonte de busca, e ainda não há nenhuma. Digite um endereço Torznab e a chave de API dele; Assistir funciona assim que conectar."
     failed_title: "Sua fonte de busca não respondeu"
-    failed_about: "O reel não conseguiu buscar versões nela. Verifique o endereço e a chave de API e toque em Salvar e verificar; Assistir funciona assim que conectar."
+    failed_about: "O reel não conseguiu buscar versões nela. Verifique o endereço e a chave de API e toque em Verificar; Assistir funciona assim que conectar."
     edit_title: "Fonte de busca"
     edit_about: "Um endereço Torznab e a chave de API dele."
     link_title: "Usar esta fonte?"
-    link_about: "Um link preencheu esta fonte. Toque em Salvar e verificar para usá-la, ou em Voltar para manter a sua."
+    link_about: "Um link preencheu esta fonte. Toque em Verificar para usá-la, ou em Voltar para manter a sua."
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: "Conectada"
@@ -486,7 +486,7 @@ settings:
     show: "Mostrar detalhes da transmissão"
   buffer:
     title: "Buffer de reprodução"
-    about: "Quanto do filme o reel guarda durante a reprodução. Quanto maior, melhor com fontes lentas e saltos longos."
+    about: "Quanto espaço o reel usa enquanto um filme toca. Quanto maior, melhor com fontes lentas e saltos longos."
     free: "%{free} livres neste dispositivo"
     default: "(padrão)"
 
@@ -500,8 +500,8 @@ setup:
     help: "O reel também usa esses títulos para buscar versões."
     more: "Mais idiomas"
   buffer:
-    title: "Quanto espaço o reel pode usar durante a reprodução?"
-    help: "Um buffer maior lida melhor com fontes lentas e saltos longos."
+    title: "Buffer de reprodução"
+    help: "Quanto espaço o reel pode usar enquanto um filme toca. Um buffer maior lida melhor com fontes lentas e saltos longos."
     recommended: "Recomendado"
   source:
     title: "Onde o reel deve encontrar filmes?"

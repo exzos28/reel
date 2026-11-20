@@ -38,7 +38,7 @@ hosted:
 
 shelf:
   continue: "Oglądaj dalej"
-  watchlist: "Do obejrzenia"
+  watchlist: "Moja lista"
   trending_movies: "Popularne filmy"
   trending_shows: "Popularne seriale"
   popular: "Popularne"
@@ -68,13 +68,13 @@ title:
   resume_episode: "Wznów %{episode} od %{at}"
   about_more: "Pokaż cały opis"
   about_less: "Pokaż mniej"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: "Do obejrzenia"
-  add_to_list: "Do obejrzenia"
+  my_list: "Dodaj do listy"
+  add_to_list: "Dodaj do listy"
   in_list: "Na liście"
-  add_to_list_spoken: "Dodaj do listy do obejrzenia"
-  remove_from_list_spoken: "Usuń z listy do obejrzenia"
+  add_to_list_spoken: "Dodaj do listy"
+  remove_from_list_spoken: "Usuń z listy"
   trailer: "Zwiastun"
   other_releases: "Inne wydania"
   save: "Zapisz"
@@ -420,7 +420,7 @@ settings:
     key: "Klucz API (opcjonalny)"
     key_placeholder: "Tylko jeśli Twoje źródło go ma"
     key_saved: "Klucz zapisany. Wpisz nowy, aby go zastąpić"
-    save: "Zapisz i sprawdź"
+    save: "Sprawdź"
     remove: "Usuń źródło"
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: "Gotowe źródło"
@@ -458,11 +458,11 @@ settings:
     missing_title: "Dodaj źródło wyszukiwania"
     missing_about: "reel odtwarza wydania znalezione w Twoim źródle wyszukiwania, a jeszcze go nie ma. Wpisz adres Torznab i jego klucz API; „Odtwórz” zadziała po połączeniu."
     failed_title: "Źródło wyszukiwania nie odpowiedziało"
-    failed_about: "reel nie mógł wyszukać w nim wydań. Sprawdź adres i klucz API, a potem wybierz „Zapisz i sprawdź”; „Odtwórz” zadziała po połączeniu."
+    failed_about: "reel nie mógł wyszukać w nim wydań. Sprawdź adres i klucz API, a potem wybierz „Sprawdź”; „Odtwórz” zadziała po połączeniu."
     edit_title: "Źródło wyszukiwania"
     edit_about: "Adres Torznab i jego klucz API."
     link_title: "Użyć tego źródła?"
-    link_about: "Źródło zostało wypełnione z linku. Wybierz „Zapisz i sprawdź”, aby go użyć, lub „Wstecz”, aby zostawić swoje."
+    link_about: "Źródło zostało wypełnione z linku. Wybierz „Sprawdź”, aby go użyć, lub „Wstecz”, aby zostawić swoje."
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: "Połączono"
@@ -486,7 +486,7 @@ settings:
     show: "Pokazuj szczegóły strumienia"
   buffer:
     title: "Bufor odtwarzania"
-    about: "Ile filmu reel trzyma podczas odtwarzania. Większy lepiej radzi sobie z wolnym udostępnianiem i dalekim przewijaniem."
+    about: "Ile miejsca reel zajmuje podczas odtwarzania filmu. Większy lepiej radzi sobie z wolnym udostępnianiem i dalekim przewijaniem."
     free: "Wolne na urządzeniu: %{free}"
     default: "(domyślnie)"
 
@@ -500,8 +500,8 @@ setup:
     help: "reel szuka też wydań według tego tytułu."
     more: "Więcej języków"
   buffer:
-    title: "Ile miejsca reel może zająć podczas oglądania?"
-    help: "Większy bufor lepiej radzi sobie z wolnym udostępnianiem i dalekim przewijaniem."
+    title: "Bufor odtwarzania"
+    help: "Ile miejsca reel może zająć podczas odtwarzania filmu. Większy bufor lepiej radzi sobie z wolnym udostępnianiem i dalekim przewijaniem."
     recommended: "Zalecane"
   source:
     title: "Gdzie reel ma szukać filmów?"

@@ -38,7 +38,7 @@ hosted:
 
 shelf:
   continue: Continue watching
-  watchlist: Watchlist
+  watchlist: "My list"
   trending_movies: Trending movies
   trending_shows: Trending series
   popular: Popular
@@ -68,13 +68,13 @@ title:
   resume_episode: "Resume %{episode} · %{at}"
   about_more: "Show the whole description"
   about_less: "Show less"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: Watchlist
-  add_to_list: Watchlist
-  in_list: In Watchlist
-  add_to_list_spoken: Add to Watchlist
-  remove_from_list_spoken: Remove from Watchlist
+  my_list: "Add to list"
+  add_to_list: "Add to list"
+  in_list: "In list"
+  add_to_list_spoken: "Add to list"
+  remove_from_list_spoken: "Remove from list"
   trailer: Trailer
   other_releases: Other releases
   save: Save
@@ -423,7 +423,7 @@ settings:
     key: API key (optional)
     key_placeholder: Only if your source has one
     key_saved: Key saved. Type a new one to replace it
-    save: Save and check
+    save: "Check"
     remove: Remove source
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: Get a ready source
@@ -461,11 +461,11 @@ settings:
     missing_title: Add a search source
     missing_about: reel plays from releases it finds on your own search source, and there is none yet. Enter a Torznab address and its API key; Play works once it connects.
     failed_title: Your search source did not answer
-    failed_about: reel could not search it for releases. Check its address and API key, then Save and check; Play works once it connects.
+    failed_about: "reel could not search it for releases. Check its address and API key, then press Check; Play works once it connects."
     edit_title: Search source
     edit_about: A Torznab address and its API key.
     link_title: Use this source?
-    link_about: A link filled in this source. Save and check to use it, or Back to leave yours as it is.
+    link_about: "A link filled in this source. Press Check to use it, or Back to leave yours as it is."
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: Connected
@@ -489,7 +489,7 @@ settings:
     show: Show stream details
   buffer:
     title: Playback buffer
-    about: How much of the film reel keeps while it plays. Bigger copes better with slow peers and long jumps.
+    about: "How much space reel uses while a film plays. A bigger buffer copes better with slow peers and long jumps."
     free: "%{free} free on this device"
     default: (default)
 
@@ -503,8 +503,8 @@ setup:
     help: reel also searches releases by this title.
     more: More languages
   buffer:
-    title: How much space can reel use while playing?
-    help: A bigger buffer copes better with slow peers and long jumps.
+    title: "Playback buffer"
+    help: "How much space reel may use while a film plays. A bigger buffer copes better with slow peers and long jumps."
     recommended: Recommended
   source:
     title: Where should reel find films?

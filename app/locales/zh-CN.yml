@@ -68,10 +68,10 @@ title:
   resume_episode: "从 %{at} 继续 %{episode}"
   about_more: "显示完整简介"
   about_less: "收起"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: "片单"
-  add_to_list: "片单"
+  my_list: "加入片单"
+  add_to_list: "加入片单"
   in_list: "已在片单"
   add_to_list_spoken: "加入片单"
   remove_from_list_spoken: "移出片单"
@@ -420,7 +420,7 @@ settings:
     key: "API 密钥（选填）"
     key_placeholder: "仅当你的搜索源需要时填写"
     key_saved: "密钥已保存。输入新密钥即可替换"
-    save: "保存并检查"
+    save: "检查"
     remove: "删除搜索源"
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: "获取现成的搜索源"
@@ -458,11 +458,11 @@ settings:
     missing_title: "添加搜索源"
     missing_about: "reel 播放的是在你自己的搜索源中找到的资源，但目前还没有搜索源。请输入 Torznab 地址及其 API 密钥，连接成功后即可播放。"
     failed_title: "你的搜索源没有响应"
-    failed_about: "reel 无法通过它搜索资源。请检查地址和 API 密钥，然后点“保存并检查”，连接成功后即可播放。"
+    failed_about: "reel 无法通过它搜索资源。请检查地址和 API 密钥，然后点“检查”，连接成功后即可播放。"
     edit_title: "搜索源"
     edit_about: "一个 Torznab 地址及其 API 密钥。"
     link_title: "使用此搜索源？"
-    link_about: "已通过链接填写此搜索源。点“保存并检查”即可使用，或点“返回”保留原来的搜索源。"
+    link_about: "已通过链接填写此搜索源。点“检查”即可使用，或点“返回”保留原来的搜索源。"
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: "已连接"
@@ -486,7 +486,7 @@ settings:
     show: "显示播放信息"
   buffer:
     title: "播放缓冲区"
-    about: "reel 在播放时保留的影片内容大小。越大越能应对分享者速度慢和大幅跳转。"
+    about: "播放影片时 reel 占用的空间。越大越能应对分享者速度慢和大幅跳转。"
     free: "本设备可用 %{free}"
     default: "（默认）"
 
@@ -500,8 +500,8 @@ setup:
     help: "reel 也会用这些片名搜索资源。"
     more: "更多语言"
   buffer:
-    title: "播放时 reel 可以占用多少空间？"
-    help: "缓冲区越大，越能应对分享者速度慢和大幅跳转。"
+    title: "播放缓冲区"
+    help: "播放影片时 reel 可以占用的空间。缓冲区越大，越能应对分享者速度慢和大幅跳转。"
     recommended: "推荐"
   source:
     title: "reel 去哪里找影片？"

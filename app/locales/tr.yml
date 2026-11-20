@@ -68,10 +68,10 @@ title:
   resume_episode: "%{episode} devam et · %{at}"
   about_more: "Açıklamanın tamamını göster"
   about_less: "Daha az göster"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: "Listem"
-  add_to_list: "Listem"
+  my_list: "Listeye ekle"
+  add_to_list: "Listeye ekle"
   in_list: "Listemde"
   add_to_list_spoken: "Listeme ekle"
   remove_from_list_spoken: "Listemden kaldır"
@@ -420,7 +420,7 @@ settings:
     key: "API anahtarı (isteğe bağlı)"
     key_placeholder: "Yalnızca kaynağının anahtarı varsa"
     key_saved: "Anahtar kaydedildi. Değiştirmek için yenisini yaz"
-    save: "Kaydet ve kontrol et"
+    save: "Kontrol et"
     remove: "Kaynağı kaldır"
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: "Hazır kaynak al"
@@ -458,11 +458,11 @@ settings:
     missing_title: "Arama kaynağı ekle"
     missing_about: "reel, kendi arama kaynağında bulduğu sürümleri oynatır ve henüz bir kaynak yok. Bir Torznab adresi ve API anahtarını gir; bağlandıktan sonra Oynat çalışır."
     failed_title: "Arama kaynağın yanıt vermedi"
-    failed_about: "reel bu kaynakta sürüm arayamadı. Adresi ve API anahtarını kontrol et, sonra Kaydet ve kontrol et'e bas; bağlandıktan sonra Oynat çalışır."
+    failed_about: "reel bu kaynakta sürüm arayamadı. Adresi ve API anahtarını kontrol et, sonra Kontrol et'e bas; bağlandıktan sonra Oynat çalışır."
     edit_title: "Arama kaynağı"
     edit_about: "Bir Torznab adresi ve API anahtarı."
     link_title: "Bu kaynak kullanılsın mı?"
-    link_about: "Bu kaynak bir bağlantıyla dolduruldu. Kullanmak için Kaydet ve kontrol et'e, kendi kaynağını korumak için Geri'ye bas."
+    link_about: "Bu kaynak bir bağlantıyla dolduruldu. Kullanmak için Kontrol et'e, kendi kaynağını korumak için Geri'ye bas."
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: "Bağlı"
@@ -486,7 +486,7 @@ settings:
     show: "Akış ayrıntılarını göster"
   buffer:
     title: "Oynatma arabelleği"
-    about: "reel'in oynatırken filmin ne kadarını tuttuğu. Büyük olması yavaş kaynaklarda ve uzun atlamalarda daha iyidir."
+    about: "reel'in bir film oynarken kullandığı yer. Büyük olması yavaş kaynaklarda ve uzun atlamalarda daha iyidir."
     free: "Bu cihazda %{free} boş"
     default: "(varsayılan)"
 
@@ -500,8 +500,8 @@ setup:
     help: "reel sürümleri de bu adlarla arar."
     more: "Diğer diller"
   buffer:
-    title: "reel oynatırken ne kadar yer kullanabilir?"
-    help: "Büyük bir arabellek yavaş kaynaklarda ve uzun atlamalarda daha iyidir."
+    title: "Oynatma arabelleği"
+    help: "reel'in bir film oynarken ne kadar yer kullanabileceği. Büyük bir arabellek yavaş kaynaklarda ve uzun atlamalarda daha iyidir."
     recommended: "Önerilen"
   source:
     title: "reel filmleri nerede bulsun?"

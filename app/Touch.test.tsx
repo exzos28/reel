@@ -54,7 +54,7 @@ test("phone: the back disc over a title's hero goes back; the Watchlist is the d
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
   expect(app.shows("title-discs")).toBe(true);
-  expect(app.shows("label:Add to Watchlist")).toBe(true);
+  expect(app.shows("label:Add to list")).toBe(true);
   await app.press("label:Back to Movies");
   expect(app.texts()).toContain("All movies");
 });
@@ -68,7 +68,7 @@ test("phone: a title scrolled past its hero keeps a bar with Back, its name and 
   await app.wait(300); // the bar fades in
   expect(app.shows("title-bar")).toBe(true);
   expect(app.shows("status-scrim-solid")).toBe(true);
-  expect(app.shows("label:Add to Watchlist")).toBe(true);
+  expect(app.shows("label:Add to list")).toBe(true);
   // A title opened from it starts over its hero; back on this one, its bar is still up. (The
   // test engine answers every title with Inception's details.)
   await app.press("label:Arrival >> nth=0");
@@ -139,7 +139,7 @@ test("first run: the setup takes the screen, Next walks the steps, Skip ends it 
   expect(app.texts()).toContain("Which language should titles be in?");
   expect(app.shows("tab-bar")).toBe(false);
   await app.press("label:Next");
-  expect(app.texts()).toContain("How much space can reel use while playing?");
+  expect(app.texts()).toContain("Playback buffer");
   await app.press("label:Next");
   expect(app.texts()).toContain("Where should reel find films?");
   expect(app.shows("status-scrim-solid")).toBe(true); // nothing of the page shows under the clock
@@ -163,7 +163,7 @@ test("first run on a phone: Back (the disc, or the system's swipe) goes to the p
   });
   expect(app.shows("label:Back")).toBe(false); // the first step has none
   await app.press("label:Next");
-  expect(app.texts()).toContain("How much space can reel use while playing?");
+  expect(app.texts()).toContain("Playback buffer");
   const bigger = app.texts().find((x) => x.startsWith("512"))!;
   await app.press(`label:${bigger}`);
   await app.press("label:Back");
@@ -173,7 +173,7 @@ test("first run on a phone: Back (the disc, or the system's swipe) goes to the p
   expect(app.texts()).toContain("Where should reel find films?");
   await app.type("source-url", "https://source.example/api");
   await app.back(); // iOS's swipe back
-  expect(app.texts()).toContain("How much space can reel use while playing?");
+  expect(app.texts()).toContain("Playback buffer");
   await app.back();
   expect(app.texts()).toContain("Which language should titles be in?");
   await app.press("label:Next");

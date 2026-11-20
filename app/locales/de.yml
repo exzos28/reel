@@ -68,10 +68,10 @@ title:
   resume_episode: "%{episode} weiter ab %{at}"
   about_more: "Ganze Beschreibung zeigen"
   about_less: "Weniger zeigen"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: "Merkliste"
-  add_to_list: "Merkliste"
+  my_list: "Zur Merkliste"
+  add_to_list: "Zur Merkliste"
   in_list: "Auf der Merkliste"
   add_to_list_spoken: "Zur Merkliste hinzufügen"
   remove_from_list_spoken: "Von der Merkliste entfernen"
@@ -420,7 +420,7 @@ settings:
     key: "API-Schlüssel (optional)"
     key_placeholder: "Nur falls deine Quelle einen hat"
     key_saved: "Schlüssel gespeichert. Gib einen neuen ein, um ihn zu ersetzen"
-    save: "Speichern und prüfen"
+    save: "Prüfen"
     remove: "Quelle entfernen"
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: "Fertige Quelle holen"
@@ -458,11 +458,11 @@ settings:
     missing_title: "Suchquelle hinzufügen"
     missing_about: "reel spielt Releases ab, die es in deiner eigenen Suchquelle findet, und noch gibt es keine. Gib eine Torznab-Adresse und ihren API-Schlüssel ein; „Abspielen“ funktioniert, sobald die Verbindung steht."
     failed_title: "Deine Suchquelle hat nicht geantwortet"
-    failed_about: "reel konnte darin nicht nach Releases suchen. Prüfe Adresse und API-Schlüssel und wähle dann „Speichern und prüfen“; „Abspielen“ funktioniert, sobald die Verbindung steht."
+    failed_about: "reel konnte darin nicht nach Releases suchen. Prüfe Adresse und API-Schlüssel und wähle dann „Prüfen“; „Abspielen“ funktioniert, sobald die Verbindung steht."
     edit_title: "Suchquelle"
     edit_about: "Eine Torznab-Adresse und ihr API-Schlüssel."
     link_title: "Diese Quelle verwenden?"
-    link_about: "Ein Link hat diese Quelle ausgefüllt. Wähle „Speichern und prüfen“, um sie zu verwenden, oder „Zurück“, um deine zu behalten."
+    link_about: "Ein Link hat diese Quelle ausgefüllt. Wähle „Prüfen“, um sie zu verwenden, oder „Zurück“, um deine zu behalten."
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: "Verbunden"
@@ -486,7 +486,7 @@ settings:
     show: "Stream-Details anzeigen"
   buffer:
     title: "Wiedergabepuffer"
-    about: "Wie viel vom Film reel während der Wiedergabe vorhält. Ein größerer Puffer kommt besser mit langsamen Teilenden und weiten Sprüngen zurecht."
+    about: "Wie viel Speicher reel beim Abspielen nutzt. Ein größerer Puffer kommt besser mit langsamen Teilenden und weiten Sprüngen zurecht."
     free: "%{free} frei auf diesem Gerät"
     default: "(Standard)"
 
@@ -500,8 +500,8 @@ setup:
     help: "reel sucht mit diesen Titeln auch nach Releases."
     more: "Weitere Sprachen"
   buffer:
-    title: "Wie viel Speicher darf reel beim Abspielen nutzen?"
-    help: "Ein größerer Puffer kommt besser mit langsamen Teilenden und weiten Sprüngen zurecht."
+    title: "Wiedergabepuffer"
+    help: "Wie viel Speicher reel beim Abspielen nutzen darf. Ein größerer Puffer kommt besser mit langsamen Teilenden und weiten Sprüngen zurecht."
     recommended: "Empfohlen"
   source:
     title: "Wo soll reel Filme finden?"

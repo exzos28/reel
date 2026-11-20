@@ -160,7 +160,7 @@ test("a reel:// link from the partner's bot fills the source's drawer; nothing i
   await app.waitUntil(() => app.texts().includes("Use this source?"));
   expect(saved).toBe(0);
   // Save saves what the link filled in.
-  await app.press("label:Save and check");
+  await app.press("label:Check");
   expect(saved).toBe(1);
 });
 

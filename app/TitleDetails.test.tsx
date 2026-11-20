@@ -83,8 +83,8 @@ test("Trailer shows only when the title has one", async () => {
   const app = await inception(withTrailer);
   const texts = app.texts();
   expect(texts.indexOf("Resume 41:12")).toBeLessThan(texts.indexOf("Trailer")); // in the row after Play
-  // The Watchlist is the page's header action, not one of the hero's.
-  expect(texts).toContain("Watchlist");
+  // Add to list is the page's header action, not one of the hero's.
+  expect(texts).toContain("Add to list");
 });
 
 test("Left and Right walk one line: Play, ⌄, Trailer; Down from any of them goes on to the cast", async () => {
@@ -249,7 +249,7 @@ test("touch, with no search source: Play opens the drawer that adds one, not the
   await app.press("label:Resume 41:12");
   expect(app.shows("source-panel")).toBe(true);
   expect(app.texts()).toContain("Add a search source");
-  expect(app.shows("label:Save and check")).toBe(true);
+  expect(app.shows("label:Check")).toBe(true);
 });
 
 test("with a source, Play waits for the source's answer: while it searches, a press opens neither the player nor the drawer", async () => {
