@@ -9,6 +9,7 @@ pub mod compat;
 pub mod container;
 pub mod discover;
 pub mod episode;
+pub mod eta;
 pub mod keys;
 pub mod numbering;
 pub mod play;
