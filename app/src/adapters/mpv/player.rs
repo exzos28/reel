@@ -35,6 +35,14 @@ struct Shared {
     at_end: AtomicBool,
     /// A wait of the player's own is on (`Player::own_wait`), not the stream's.
     own_wait: std::sync::Mutex<OwnWait>,
+    /// mpv shows the picture of the last file or seek asked of it: its playback restarted since
+    /// (`EVENT_PLAYBACK_RESTART`, the first frame there on screen).
+    shown: AtomicBool,
+    /// A seek of the view's waits for its place (`seekWaiting`: the core fetches it and the view
+    /// holds still); mpv has not been asked for it yet.
+    seek_waiting: AtomicBool,
+    /// Called on the event thread when mpv's playback restarted (`Player::when_shown`).
+    on_shown: std::sync::OnceLock<Box<dyn Fn() + Send + Sync>>,
 }
 
 /// How long a wait of the player's own (its video back after the background, its output started
@@ -239,6 +247,9 @@ impl Player {
             interval_ms: AtomicU64::new(250),
             at_end: AtomicBool::new(false),
             own_wait: Default::default(),
+            shown: AtomicBool::new(false),
+            seek_waiting: AtomicBool::new(false),
+            on_shown: std::sync::OnceLock::new(),
         });
         let thread = {
             let shared = shared.clone();
@@ -286,6 +297,23 @@ impl Player {
         self.shared.own_wait.lock().unwrap().start(Instant::now());
     }
 
+    /// Whether mpv shows the picture where it was asked to, with no seek on its way: its playback
+    /// restarted after the last file or seek, and no seek of the view's waits for its place. Only
+    /// then may the view start mpv's output again (iOS, at a new size): started again while the
+    /// film opened, or while the core fetched the place to resume at, it left the film without a
+    /// picture.
+    #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
+    pub fn settled(&self) -> bool {
+        self.shared.shown.load(Ordering::Acquire) && !self.shared.seek_waiting.load(Ordering::Acquire)
+    }
+
+    /// `hook` runs on the player's event thread each time mpv's playback restarts (`settled` may
+    /// have become true). Once.
+    #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
+    pub fn when_shown(&self, hook: Box<dyn Fn() + Send + Sync>) {
+        let _ = self.shared.on_shown.set(hook);
+    }
+
     /// Runs an mpv command (for the platform's view).
     #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
     pub fn command_args(&self, args: &[&str]) {
@@ -328,6 +356,7 @@ impl Player {
                 }
                 self.src = src;
                 self.shared.at_end.store(false, Ordering::Relaxed);
+                self.shared.shown.store(false, Ordering::Release);
                 if self.src.is_empty() {
                     if let Some(g) = &self.gate {
                         g.forget();
@@ -383,6 +412,8 @@ impl Player {
             // runs on mpv's thread, which picks the tracks only once the stream has opened.
             "audioLanguages" => self.set("alang", value.and_then(Value::as_str).unwrap_or("")),
             "audioTrack" => self.set("aid", &track_value(value)),
+            // The view holds still while the core fetches the place of a seek (`settled`).
+            "seekWaiting" => self.shared.seek_waiting.store(value.and_then(Value::as_bool).unwrap_or(false), Ordering::Release),
             "subtitleTrack" => self.set("sid", &track_value(value)),
             _ => {}
         }
@@ -395,6 +426,7 @@ impl Player {
             self.shared.at_end.store(false, Ordering::Relaxed);
             // The viewer's seek waits for the stream: it shows.
             self.shared.own_wait.lock().unwrap().until = None;
+            self.shared.shown.store(false, Ordering::Release);
             self.command(&["seek", &format!("{s}"), "absolute"]);
         }
     }
@@ -480,6 +512,15 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
                 if !no_picture && (line.starts_with("Error opening/initializing the selected video_out") || line.starts_with("Failed initializing any suitable GPU context")) {
                     no_picture = true;
                     emit("error", json!({ "message": line, "code": "view" }));
+                }
+            }
+            // A file or a seek starts: its picture is not on screen until playback restarts. Told
+            // here too, in mpv's own order: a restart of the place before is not this one's.
+            ffi::EVENT_START_FILE | ffi::EVENT_SEEK => shared.shown.store(false, Ordering::Release),
+            ffi::EVENT_PLAYBACK_RESTART => {
+                shared.shown.store(true, Ordering::Release);
+                if let Some(hook) = shared.on_shown.get() {
+                    hook();
                 }
             }
             ffi::EVENT_FILE_LOADED => {

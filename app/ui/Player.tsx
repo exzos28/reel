@@ -225,15 +225,23 @@ export function Player() {
         }
       });
     });
-  /** A phone held upright turns sideways for a wide film (the core says which) once, on the
-   * player's first load: not again for the next episode, which keeps what the viewer chose. */
-  let mayTurnSideways = PHONE() && caps.rotate;
+  /** A phone held upright turns sideways as the player opens, before the picture's size is
+   * known: mpv's output then starts at the sideways size (turned once it had started upright,
+   * the film played on without a picture). Once the film loads, a picture taller than wide (the
+   * core says) turns it back upright. Only for the player's first load: not again for the next
+   * episode, which keeps what the viewer chose. */
+  let turnedSideways = false;
+  if (PHONE() && caps.rotate) {
+    const w = untracked(windowSize);
+    if (w.width <= w.height) {
+      VideoEngine.turn(true);
+      turnedSideways = true;
+    }
+  }
   const turnForPicture = (width?: number, height?: number) => {
-    if (!mayTurnSideways) return;
-    mayTurnSideways = false;
-    const w = windowSize();
-    if (!width || !height || w.width > w.height || leaving() || !VideoEngine.sideways(width, height)) return;
-    VideoEngine.turn(true);
+    if (!turnedSideways) return;
+    turnedSideways = false;
+    if (!leaving() && !VideoEngine.sideways(width ?? 0, height ?? 0)) VideoEngine.turn(false);
   };
 
   // The tracks panel: three columns, the focus inside it while it is open.
