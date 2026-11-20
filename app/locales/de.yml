@@ -66,7 +66,7 @@ title:
   resume: "Weiter ab %{at}"
   play_episode: "%{episode} abspielen"
   resume_episode: "%{episode} weiter ab %{at}"
-  about_more: "Ganze Beschreibung zeigen"
+  about_more: "Aufklappen"
   about_less: "Weniger zeigen"
   # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.

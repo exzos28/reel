@@ -66,7 +66,7 @@ title:
   resume: "Devam et · %{at}"
   play_episode: "%{episode} oynat"
   resume_episode: "%{episode} devam et · %{at}"
-  about_more: "Açıklamanın tamamını göster"
+  about_more: "Genişlet"
   about_less: "Daha az göster"
   # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.

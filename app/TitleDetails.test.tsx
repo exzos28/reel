@@ -130,6 +130,15 @@ test("a click on Trailer opens it", async () => {
   expect(app.openedUrls()).toEqual([TRAILER]);
 });
 
+test("desktop: the description starts cut short, with an Expand button below it", async () => {
+  const app = await openApp({ platform: "macos", width: 1440, height: 900, modules: { "app/native": NATIVE } });
+  await app.press("label:Inception >> nth=0");
+  expect(app.shows("label:Expand")).toBe(true);
+  expect(app.shows("label:Show less")).toBe(false);
+  await app.press("label:Expand");
+  expect(app.shows("label:Show less")).toBe(true);
+});
+
 test("the remote goes from the actions to the cast, then More like this, which opens a title; Back finds the focus", async () => {
   const chosen: number[] = [];
   const app = await inception({
@@ -224,7 +233,7 @@ test("phone: a tap on a person opens their page; a tap on the description shows 
   await app.press("label:Dune >> nth=0");
   expect(app.texts()).toContain("One.");
   expect(app.texts()).not.toContain(about);
-  await app.press("label:Show the whole description");
+  await app.press("label:Expand");
   expect(app.texts()).toContain(about);
   await app.press("label:Show less");
   expect(app.texts()).not.toContain(about);

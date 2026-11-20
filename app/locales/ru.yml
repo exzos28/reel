@@ -68,7 +68,7 @@ title:
   resume: "Продолжить с %{at}"
   play_episode: "Смотреть %{episode}"
   resume_episode: "Продолжить %{episode} с %{at}"
-  about_more: "Показать всё описание"
+  about_more: "Раскрыть"
   about_less: "Свернуть"
   my_list: "В список"
   add_to_list: "В список"
