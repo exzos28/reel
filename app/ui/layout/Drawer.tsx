@@ -66,13 +66,16 @@ const LARGE = 0.9;
 const MEDIUM_SLACK = 1.15;
 /** The grabber and the room over it, points. */
 const GRABBER_ROOM = 13;
-/** The grabber's press area reaches this far, points (a 44-point target, over the heading's top). */
+/** The grabber's press area reaches this far, points: a 44-point target over the title's top; over
+ * a head (the tracks' tabs) only the room above it, `HEAD_ROOM`, so the head keeps its presses. */
 const GRABBER_REACH = 44;
+const HEAD_ROOM = 8;
 /** The keyboard is up: NSH then lifts a bottom sheet over it, at its largest detent. */
 const keyboardUp = () => keyboardFrame().height - safeArea().bottom > 0;
 /** The tallest a bottom sheet gets: under the status bar (NSH keeps it over the keyboard). */
 const room = () => windowSize().height - safeArea().top - 8;
-/** Each drawer's rows as they last measured (by its id): it opens at the height it had. */
+/** Each drawer's rows as they last measured (by its id and title: the choices share one id): it
+ * opens at the height it had. */
 const lastRows = new Map<string, number>();
 
 function sheetStyle(place: Place): ViewStyle {
@@ -247,7 +250,8 @@ export function Drawer(props: {
   // had last time (the detents set before it comes in: a change while it comes in would land it
   // at the old one first); a drawer opened the first time guesses a long list until they measure.
   const heading = signal(0);
-  const rows = signal(lastRows.get(props.id) ?? 0);
+  const remembered = () => `${props.id}:${props.title?.() ?? ""}`;
+  const rows = signal(lastRows.get(untracked(remembered)) ?? 0);
   const foot = signal(0);
   const expanded = signal(false);
   /** The rows' first height since it opened replaces the remembered one. */
@@ -255,13 +259,13 @@ export function Drawer(props: {
   effect(() => {
     if (!props.open()) return;
     fresh = true;
-    untracked(() => rows.set(lastRows.get(props.id) ?? 0));
+    untracked(() => rows.set(lastRows.get(remembered()) ?? 0));
     expanded.set(false);
   });
   const measuredRows = (h: number) => {
     const next = fresh ? h : Math.max(rows(), h);
     fresh = false;
-    lastRows.set(props.id, next);
+    lastRows.set(untracked(remembered), next);
     rows.set(next);
   };
   const natural = () => GRABBER_ROOM + heading() + rows() + foot();
@@ -323,7 +327,7 @@ export function Drawer(props: {
                 accessibilityLabel={t(expanded() ? "player.collapse_sheet" : "player.expand_sheet")}
                 accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
                 onAccessibilityAction={(e) => expanded.set(e.actionName === "increment")}
-                hitSlop={{ bottom: GRABBER_REACH - GRABBER_ROOM }} onPress={() => expanded.set(!expanded())} style={grabberArea()}>
+                hitSlop={{ bottom: props.head ? HEAD_ROOM : GRABBER_REACH - GRABBER_ROOM }} onPress={() => expanded.set(!expanded())} style={{ ...grabberArea(), zIndex: 1 }}>
                 <View style={grabberStyle()} />
               </Pressable>
             </If>
