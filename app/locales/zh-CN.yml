@@ -305,6 +305,12 @@ search:
     movies: "电影"
     shows: "剧集"
     anime: "动漫"
+  try_again: "重试"
+  # A row of results whose source did not answer.
+  row_failed:
+    movies: "无法加载电影。"
+    shows: "无法加载剧集。"
+    anime: "无法加载动漫。"
 
 compat:
   audio_dts: "此资源只有 DTS 音频，本设备无法播放。请选择其他资源。"

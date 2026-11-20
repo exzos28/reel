@@ -305,6 +305,12 @@ search:
     movies: "Filmes"
     shows: "Séries"
     anime: "Animes"
+  try_again: "Tentar de novo"
+  # A row of results whose source did not answer.
+  row_failed:
+    movies: "Não foi possível carregar os filmes."
+    shows: "Não foi possível carregar as séries."
+    anime: "Não foi possível carregar os animes."
 
 compat:
   audio_dts: "Esta versão só tem áudio DTS, que este dispositivo não reproduz. Escolha outra versão."

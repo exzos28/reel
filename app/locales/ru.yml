@@ -305,6 +305,12 @@ search:
     movies: Фильмы
     shows: Сериалы
     anime: Аниме
+  try_again: Повторить
+  # A row of results whose source did not answer.
+  row_failed:
+    movies: Не удалось загрузить фильмы.
+    shows: Не удалось загрузить сериалы.
+    anime: Не удалось загрузить аниме.
 
 compat:
   audio_dts: В этой раздаче звук только в DTS, а это устройство его не воспроизводит. Выберите другую раздачу.

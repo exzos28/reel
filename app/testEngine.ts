@@ -227,9 +227,9 @@ export const SEARCH_DUNE = {
   tmdb: true,
   recent: [],
   sections: [
-    { id: "movies", items: [DUNE, ARRIVAL] },
-    { id: "shows", items: [SEVERANCE] },
-    { id: "anime", items: [FRIEREN] },
+    { id: "movies", state: "done", items: [DUNE, ARRIVAL] },
+    { id: "shows", state: "done", items: [SEVERANCE] },
+    { id: "anime", state: "done", items: [FRIEREN] },
   ],
 };
 
