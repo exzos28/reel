@@ -620,6 +620,21 @@ async fn tmdb_title(
     Ok((title, cx))
 }
 
+/// A TMDB person ("tmdb:person:6384"): `data` is a Person (`model`), their titles marked anime
+/// where the lists know them.
+async fn person_work(id: String, lang: String) -> CallResult {
+    let n = tmdb::person_number(&id).ok_or((ProviderError::BadId, None))?;
+    let src = service().tmdb();
+    let mut age = Age::default();
+    let cx = map_cx(&lang, &mut age, true).await;
+    let req = src.person_request(n, &lang).map_err(|e| (e, Some(ProviderId::Tmdb)))?;
+    let got = cached(req).await.map_err(|e| (e, Some(ProviderId::Tmdb)))?;
+    age.add(&got);
+    let mut person = src.map_person(&got.body, &cx).map_err(|e| (e, Some(ProviderId::Tmdb)))?;
+    mark_anime(&mut person.credits);
+    Ok((serde_json::to_value(person).expect("plain data"), age))
+}
+
 async fn title_work(id: String, lang: String) -> CallResult {
     let id = MetaId::parse(&id).ok_or((ProviderError::BadId, None))?;
     let tmdb_on = service().tmdb().configured();
@@ -923,6 +938,10 @@ pub async fn season(id: String, season: u32, language: String) -> String {
     run(season_work(id, season, language)).await
 }
 
+pub async fn person(id: String, language: String) -> String {
+    run(person_work(id, language)).await
+}
+
 pub async fn search(query: String, language: String) -> String {
     run(search_work(query, language)).await
 }
@@ -981,6 +1000,10 @@ impl reel_domain::ports::Metadata for Providers {
 
     fn season(&self, id: String, season: u32, language: String) -> Answer {
         Box::pin(self::season(id, season, language))
+    }
+
+    fn person(&self, id: String, language: String) -> Answer {
+        Box::pin(self::person(id, language))
     }
 
     fn search(&self, query: String, language: String) -> Answer {

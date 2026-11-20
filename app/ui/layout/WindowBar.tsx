@@ -10,7 +10,7 @@
 import { Text, View, type JSX, type TextStyle, type ViewStyle } from "nsh";
 import { titleBar } from "../platform/titlebar";
 import { t } from "nsh/i18n";
-import { title as titleOf, titleText, toggleList } from "../catalog";
+import { person as personOf, title as titleOf, titleText, toggleList } from "../catalog";
 import backIcon from "../icons/back.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
@@ -58,6 +58,10 @@ function backTip(r: Route): string {
   if (r.name === "title") {
     const s = titleOf(r.id);
     return s ? t("nav.back_to", { page: titleText(s) }) : t("nav.back");
+  }
+  if (r.name === "person") {
+    const name = personOf(r.id).name;
+    return name ? t("nav.back_to", { page: name }) : t("nav.back");
   }
   return t("nav.back_to", { page: r.name === "about" || r.name === "interface" ? t(`settings.${r.name}.title`) : t(`nav.${r.name}`) });
 }

@@ -112,6 +112,7 @@ test("without a TMDB key home shows anime and says what is missing", async () =>
     yearEnd: null, minutes: 0, rating: "", votes: "", badges: [], genres: [], still: null, card: null, poster: null,
     ink: "#F5F5F5", paper: "#1A1A1A", stoppedAt: null, progress: 0, left: null, resume: null, seasons: 0, airs: null,
     tag: null, playable: false, inList: false, release: null, play: { id: "reel:notice:no_tmdb", start: 0 },
+    playAs: { verb: "play", season: null, episode: null, at: null },
   };
   const app = await app_({ ...NATIVE, "Catalog.home": JSON.stringify([{ id: "no_tmdb", items: [notice] }]) });
   expect(app.texts()).toContain("Movies and shows need a TMDB key");
@@ -133,11 +134,12 @@ async function series(native: Native = { ...ENGINE, ...SHOW }) {
 
 test("a series opens on the season the viewer is in", async () => {
   const app = await series();
-  expect(app.texts()).toContain("Resume S3:E2");
+  expect(app.texts()).toContain("Resume S3:E2 · 10:00");
   expect(app.texts()).toContain("22 episodes · Season 3");
   expect(app.texts()).toContain("Pain");
   expect(app.texts()).toContain("Old Story");
-  expect(app.texts()).toContain("24 min · Jul 30, 2018 · 14 min left");
+  expect(app.texts()).toContain("24 min · 14 min left"); // started: the time left instead of its date
+  expect(app.texts()).toContain("24 min · Aug 6, 2018");
   expect(app.texts()).toContain("Watched");
 });
 

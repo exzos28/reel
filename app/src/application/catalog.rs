@@ -53,6 +53,8 @@ enum Call {
     Discover(DiscoverKind, Filter, u32),
     /// What the filters of a catalog offer (genre names, country names).
     FilterOptions(DiscoverKind),
+    /// A person and their titles ("tmdb:person:6384").
+    Person(String),
 }
 
 impl Call {
@@ -64,6 +66,7 @@ impl Call {
             Call::Discover(kind, f, 1) => format!("discover/{}/{}", kind.as_str(), f.key()),
             Call::Discover(kind, f, n) => format!("discover/{}/{}/p{n}", kind.as_str(), f.key()),
             Call::FilterOptions(kind) => format!("filterOptions/{}", kind.as_str()),
+            Call::Person(id) => format!("person/{id}"),
         }
     }
 }
@@ -258,6 +261,7 @@ fn ask(call: Call, rev: u64) {
             Call::Season(id, n) => metadata().season(id.clone(), *n, lang).await,
             Call::Discover(kind, f, n) => metadata().discover(*kind, f.clone(), lang, *n).await,
             Call::FilterOptions(kind) => metadata().filter_options(*kind, lang).await,
+            Call::Person(id) => metadata().person(id.clone(), lang).await,
         };
         let envelope: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
         if !envelope["error"].is_null() {
@@ -1270,6 +1274,18 @@ fn next_episode(show: &str, info: &Info, season: u32, episode: u32) -> Option<(u
     info.seasons.iter().find(|s| s.0 > season && s.2 > 0).map(|s| (s.0, 1))
 }
 
+/// The least a thumbnail's watched bar shows of something started: a minute into an hour is
+/// still a mark the viewer sees.
+const BAR_MIN: f64 = 0.04;
+
+/// The watched bar of an episode: its watched part, at least `BAR_MIN` once started (0: not started).
+fn bar(seen: Option<&progress::Entry>) -> f64 {
+    match seen.map(progress::Entry::fraction) {
+        Some(f) if f > 0.0 => f.max(BAR_MIN),
+        _ => 0.0,
+    }
+}
+
 fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
     let season = ep["season"].as_u64().unwrap_or(0) as u32;
     let number = ep["number"].as_u64().unwrap_or(0) as u32;
@@ -1297,6 +1313,7 @@ fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
     let airs = upcoming(ymd(&ep["airDate"]), today());
     let in_release = if airs { None } else { in_release };
     let quality = pick.as_ref().filter(|_| in_release != Some("no")).map(quality);
+    let left = seen.as_ref().filter(|e| !e.watched && e.position > 0.0).map(|e| e.minutes_left());
     json!({
         "id": key,
         "show": show,
@@ -1308,8 +1325,12 @@ fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
         "date": ymd(&ep["airDate"]),
         "rating": rating(&ep["ratings"]).0,
         "thumb": image_url(&ep["still"], THUMB_W),
-        "progress": seen.as_ref().map_or(0.0, |e| e.fraction()),
-        "left": seen.as_ref().filter(|e| !e.watched && e.position > 0.0).map(|e| e.minutes_left()),
+        "progress": bar(seen.as_ref()),
+        // What the row says after the runtime: the time left once started, else the air date.
+        "note": match left {
+            Some(m) => json!({ "left": m }),
+            None => ymd(&ep["airDate"]).map_or(Value::Null, |d| json!({ "date": d })),
+        },
         "watched": watched,
         "start": seen.as_ref().filter(|e| !e.watched).map_or(0.0, |e| e.position),
         "quality": quality,
@@ -1323,8 +1344,10 @@ fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
 }
 
 /// The episodes of a season: `[{"id","show","season","number","title","about",
-/// "minutes","date":[y,m,d]|null,"rating","thumb","progress","left","watched",
-/// "start","quality","playable"}]`; empty until the season is known.
+/// "minutes","date":[y,m,d]|null,"rating","thumb","progress","note","watched",
+/// "start","quality","playable"}]`; empty until the season is known. `progress` is the
+/// thumbnail's watched bar (see `bar`); `note` what follows the runtime: `{"left":minutes}`
+/// once started, else `{"date":[y,m,d]}`, or null.
 pub fn episodes(show: &str, season: u32) -> Value {
     let got = meta_all(&[Call::Season(show.to_owned(), season), Call::Title(show.to_owned())]);
     let Some(s) = &got[0] else { return json!([]) };
@@ -1469,7 +1492,18 @@ fn summary(info: &Info) -> Value {
         "inList": in_list(&info.id),
         "release": release_line(&release_key(info, &w), info),
         "play": play,
+        "playAs": play_as(info, &w),
     })
+}
+
+/// What Play says (the UI words it): `{"verb","season","episode","at"}`. "resume" with `at`
+/// (seconds) where the viewer stopped in what it plays, else "play" from the start; a show's
+/// names the episode ("Play S1:E1", "Resume S2:E3 · 14:30") once its seasons are known, a
+/// film's none.
+fn play_as(info: &Info, w: &Where) -> Value {
+    let at = (w.start > 0.0).then_some(w.start as u32);
+    let (season, episode) = w.episode.filter(|_| !info.seasons.is_empty()).unzip();
+    json!({ "verb": if at.is_some() { "resume" } else { "play" }, "season": season, "episode": episode, "at": at })
 }
 
 /// A stand-in card that says something instead of a title (`notice`, a key
@@ -1735,6 +1769,37 @@ pub fn title(id: &str) -> Value {
             .collect();
     }
     v
+}
+
+/// How many titles a person's page shows.
+const PERSON_TITLES: usize = 60;
+
+/// A person's page: `{"id","name","photo","initials","items":[summary…],"state"}`, the titles
+/// they are in, the best known first (the most votes on TMDB). `state`: "done", "loading" (not
+/// known yet: `name` empty, no titles) or "unavailable" (the source did not answer).
+pub fn person(id: &str) -> Value {
+    let call = Call::Person(id.to_owned());
+    let Some(p) = meta_all(std::slice::from_ref(&call)).remove(0) else {
+        let state = if answered(&call) { "unavailable" } else { "loading" };
+        return json!({ "id": id, "name": "", "photo": null, "initials": "", "items": [], "state": state });
+    };
+    let name = text(&p["name"]).unwrap_or_default();
+    let mut cards: Vec<&Value> = list_of(&p["credits"]).iter().collect();
+    // Stable: equally known titles keep the source's order.
+    cards.sort_by_key(|c| std::cmp::Reverse(tmdb_votes(c)));
+    json!({
+        "id": id,
+        "photo": image_url(&p["profile"], details::PHOTO_W * 2),
+        "initials": details::initials(&name),
+        "name": name,
+        "items": cards.into_iter().take(PERSON_TITLES).map(|c| summary(&card_info(c))).collect::<Vec<_>>(),
+        "state": "done",
+    })
+}
+
+/// A card's TMDB vote count (0 without one).
+fn tmdb_votes(card: &Value) -> u64 {
+    list_of(&card["ratings"]).iter().find(|r| r["source"] == "tmdb").and_then(|r| r["votes"].as_u64()).unwrap_or(0)
 }
 
 /// The year a season's first episode aired, from its episodes when the catalog has them (never

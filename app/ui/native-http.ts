@@ -152,6 +152,7 @@ export const Catalog: CatalogModule = {
   title: s("Catalog", "title"),
   episodes: s("Catalog", "episodes"),
   episode: s("Catalog", "episode"),
+  person: s("Catalog", "person"),
   upNext: s("Catalog", "upNext"),
   tracks: s("Catalog", "tracks"),
   toggleList: s("Catalog", "toggleList"),

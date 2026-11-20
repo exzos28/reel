@@ -1,6 +1,6 @@
 import { computed, Text, View, type TextStyle, type ViewRef, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
-import { dateText, runtime, shortDate, type Episode } from "../../catalog";
+import { episodeNote, runtime, shortDate, type Episode } from "../../catalog";
 import { Icon } from "../../kit/Icon";
 import { rowStyle } from "../../kit/Row";
 import { row } from "../../kit/shape";
@@ -27,12 +27,8 @@ const numberStyle = (watched: boolean): TextStyle => ({
 const titleStyle = (watched: boolean): TextStyle => ({ ...oneLine, ...fontText(26, watched ? colors.ash() : colors.snow(), 600) });
 const aboutStyle = (): TextStyle => ({ ...oneLine, ...fontText(22, colors.quiet()), marginTop: u(2) });
 
-/** "19 min · Apr 24, 1940 · 7 min left". */
-function metaOf(e: Episode) {
-  const parts = [runtime(e.minutes), dateText(e.date)];
-  if (e.left != null) parts.push(t("card.left", { time: runtime(e.left) }));
-  return parts.join(" · ");
-}
+/** "19 min · Apr 24, 1940", or once started "19 min · 7 min left". */
+const metaOf = (e: Episode) => [runtime(e.minutes), episodeNote(e)].filter((x) => x).join(" · ");
 
 /** Only what differs from the season's release (shown on the button above):
  * "Watched", that the release lacks it, or the quality of a release picked for it. */

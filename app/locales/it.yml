@@ -64,6 +64,10 @@ empty:
 title:
   play: "Riproduci"
   resume: "Riprendi da %{at}"
+  play_episode: "Riproduci %{episode}"
+  resume_episode: "Riprendi %{episode} da %{at}"
+  about_more: "Mostra tutta la descrizione"
+  about_less: "Mostra meno"
   # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
   # a screen reader says the whole action.
   my_list: "La mia lista"
@@ -177,6 +181,13 @@ about:
   cast: "Cast"
   details: "Dettagli"
   similar: "Titoli simili"
+
+person:
+  titles: "Film e serie"
+  state:
+    loading: "Caricamento…"
+    unavailable: "Impossibile caricare i suoi titoli. Riprova più tardi."
+    none: "Nessun film o serie."
 
 crew:
   director:

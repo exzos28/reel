@@ -287,6 +287,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         let (show, season): (String, u32) = args(a)?;
         ret(Catalog::episodes(show, season))
     })
+    .sync("Catalog", "person", |a| {
+        let (id,): (String,) = args(a)?;
+        ret(Catalog::person(id))
+    })
     .sync("Catalog", "episode", |a| {
         let (show, season, number): (String, u32, u32) = args(a)?;
         ret(Catalog::episode(show, season, number))

@@ -16,6 +16,7 @@ import { startDiagnostics } from "./ui/platform/diagnostics";
 import { AboutScreen } from "./ui/screens/about/AboutScreen";
 import { InterfaceScreen } from "./ui/screens/interface/InterfaceScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
+import { PersonScreen } from "./ui/screens/person/PersonScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
 import { back, canGoBack, closeFirst, go, handleBack, isRoot, route, section, useHomeTab, useTabStacks } from "./ui/nav";
 import { screenFor } from "./ui/screens/RouteScreen";
@@ -98,6 +99,10 @@ function OneScreen() {
     // Keyed by the id: a title opened from another one (More like this) is a new screen.
     <Each of={r().name === "title" ? [(r() as { id: string }).id] : []} key={(id) => id}>
       {(id) => <TitleScreen id={id()} />}
+    </Each>,
+    // A person's page, keyed the same way (one opened from a title over another's).
+    <Each of={r().name === "person" ? [(r() as { id: string }).id] : []} key={(id) => id}>
+      {(id) => <PersonScreen id={id()} />}
     </Each>,
   ];
 }

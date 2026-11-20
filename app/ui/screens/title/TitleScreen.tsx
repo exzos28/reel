@@ -8,7 +8,8 @@
 // left); Down goes to the season tabs; on them Left and Right switch the
 // season; OK on a release makes it the one Play uses, on an episode plays it;
 // Down past the list walks the cast row, then More like this, where OK opens
-// the title. Back closes the release panel, then goes one level up.
+// the title; OK on a person of the cast opens their page. Back closes the release panel, then
+// goes one level up.
 import { computed, effect, keymap, openUrl, signal, View } from "nsh";
 import { t } from "nsh/i18n";
 import { chooseRelease, episodeCode, episodeReleases, episodes, releaseLine, releasesText, title as titleOf, titleText, toggleList, type Episode, type Title } from "../../catalog";
@@ -18,7 +19,7 @@ import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { caps } from "../../platform";
 import { ListToggle } from "../../layout/ListToggle";
-import { go, openTitle } from "../../nav";
+import { go, openPerson, openTitle } from "../../nav";
 import { isSaved, NO_PLAN, save as saveKeys, saveOffer, saveRelease, seasonPlan, titleSaveState, watchSaved, type SaveOffer } from "../../library";
 import { ConfirmDialog, type Confirm } from "../../layout/ConfirmDialog";
 import { Fmt } from "../../native";
@@ -240,6 +241,13 @@ export function TitleScreen(props: { id: string }) {
     else if (listLength() > 0) enterList(clamp(item(), listLength() - 1));
     else zone.set(isShow() ? "tabs" : "actions");
   };
+  /** A person of the cast: their page (one reel has none for stays where it is). */
+  const openCast = (i: number) => {
+    zone.set("cast");
+    castAt.set(i);
+    const id = cast()[i]?.person;
+    if (id) openPerson(id);
+  };
   const openSimilar = (i: number) => {
     zone.set("similar");
     similarAt.set(i);
@@ -293,6 +301,7 @@ export function TitleScreen(props: { id: string }) {
         right: () => castAt.set(clamp(castAt() + 1, cast().length - 1)),
         up: () => above("cast"),
         down: () => below("cast"),
+        enter: () => openCast(clamp(castAt(), cast().length - 1)),
       },
       similar: {
         left: () => similarAt.set(clamp(similarAt() - 1, similar().length - 1)),
@@ -360,10 +369,7 @@ export function TitleScreen(props: { id: string }) {
           <CastRow
             cast={cast}
             focusedAt={() => (zone() === "cast" ? castAt() : null)}
-            onFocus={(i) => {
-              zone.set("cast");
-              castAt.set(i);
-            }}
+            onOpen={openCast}
           />
           </LazyBlock>
         </If>

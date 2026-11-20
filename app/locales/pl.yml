@@ -64,6 +64,10 @@ empty:
 title:
   play: "Odtwórz"
   resume: "Wznów od %{at}"
+  play_episode: "Odtwórz %{episode}"
+  resume_episode: "Wznów %{episode} od %{at}"
+  about_more: "Pokaż cały opis"
+  about_less: "Pokaż mniej"
   # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
   # a screen reader says the whole action.
   my_list: "Do obejrzenia"
@@ -177,6 +181,13 @@ about:
   cast: "Obsada"
   details: "Szczegóły"
   similar: "Podobne"
+
+person:
+  titles: "Filmy i seriale"
+  state:
+    loading: "Wczytywanie…"
+    unavailable: "Nie udało się wczytać tytułów. Spróbuj później."
+    none: "Brak filmów i seriali."
 
 crew:
   director:

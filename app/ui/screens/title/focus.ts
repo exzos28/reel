@@ -10,7 +10,9 @@ export type Zone = "header" | "actions" | "releases" | "save" | "tabs" | "list" 
  * releases), Save, Trailer. */
 export type HeroAction = "play" | "releases" | "save" | "trailer";
 
-let shownId = "";
+/** The title shown last, by its place in the history and its id ("2:tmdb:movie:603"): the same
+ * title opened again higher up (from a person's page) is another screen, its focus new. */
+let shown = "";
 export const zone = signal<Zone>("actions");
 /** The focused action, by name: the row changes as the release comes in or the search finds
  * none, and the focus stays on what it was on (Play when that is gone). */
@@ -32,15 +34,16 @@ const saved = new Map<string, Saved>();
 /** Starts the focus over when `id` is not the title shown last (or takes
  * it back to where it was on `id`). */
 export function focusTitle(id: string, startSeason: number) {
-  if (shownId === id) return;
+  const key = `${stack().length - 1}:${id}`;
+  if (shown === key) return;
   // The release panel and the Save drawer close when the screen does: back on their buttons.
-  if (shownId) saved.set(shownId, [zone() === "releases" || zone() === "save" ? "actions" : zone(), action(), season(), item(), castAt(), similarAt()]);
+  if (shown) saved.set(shown, [zone() === "releases" || zone() === "save" ? "actions" : zone(), action(), season(), item(), castAt(), similarAt()]);
   // Only titles still under this one are come back to.
-  const open = new Set(stack().flatMap((r) => (r.name === "title" ? [r.id] : [])));
+  const open = new Set(stack().flatMap((r, at) => (r.name === "title" ? [`${at}:${r.id}`] : [])));
   for (const k of saved.keys()) if (!open.has(k)) saved.delete(k);
-  shownId = id;
-  const [z, a, s, i, c, m] = saved.get(id) ?? ["actions", "play", startSeason, 0, 0, 0];
-  saved.delete(id);
+  shown = key;
+  const [z, a, s, i, c, m] = saved.get(key) ?? ["actions", "play", startSeason, 0, 0, 0];
+  saved.delete(key);
   zone.set(z);
   action.set(a);
   season.set(s);

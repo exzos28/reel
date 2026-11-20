@@ -1,7 +1,8 @@
 // The top of home and title screens: the still filling the top of the
 // screen and fading into the background, the logotype, meta, genres,
 // about and the actions bottom-left.
-import { computed, Image, Text, untracked, View, windowSize, type ImageStyle, type JSX, type TextStyle, type ViewStyle } from "nsh";
+import { computed, Image, signal, Text, untracked, View, windowSize, type ImageStyle, type JSX, type TextStyle, type ViewStyle } from "nsh";
+import { t } from "nsh/i18n";
 import { aboutText, genresText, shortAboutText, titleText, type Summary } from "../catalog";
 import { cover } from "../kit/shape";
 import { bodyText, metaText } from "../kit/text";
@@ -139,9 +140,18 @@ export function Hero(props: {
   wholeAbout?: boolean;
   /** The whole title, however many lines (a desktop's title page: the hero grows with its text). */
   wholeTitle?: boolean;
+  /** A tap on the about shows it whole, another folds it back to three lines (a title's page on
+   * touch, where nothing under the hero repeats it). */
+  expandAbout?: boolean;
   children: JSX.Element;
 }) {
   const s = props.item;
+  const whole = signal(false);
+  const about = () => (
+    <Text style={aboutStyle(!!props.steadyAbout, !!props.wholeAbout || whole())}>
+      {props.wholeAbout || whole() ? aboutText(s()) : shortAboutText(s())}
+    </Text>
+  );
   const box = computed(() => heroBoxNow(props.height, props.backdropLeft ?? 0));
   return (
     <View style={heroStyle(box().height, !!props.fit)}>
@@ -160,7 +170,16 @@ export function Hero(props: {
         </If>
         <MetaLine item={s} />
         <Text style={{ ...metaText(), fontSize: ts(24) }}>{genresText(s())}</Text>
-        <Text style={aboutStyle(!!props.steadyAbout, !!props.wholeAbout)}>{props.wholeAbout ? aboutText(s()) : shortAboutText(s())}</Text>
+        <If when={props.expandAbout} else={about()}>
+          <Pressable
+            role="button"
+            accessibilityLabel={t(whole() ? "title.about_less" : "title.about_more")}
+            accessibilityState={{ expanded: whole() }}
+            onPress={() => whole.set(!whole())}
+          >
+            {about()}
+          </Pressable>
+        </If>
         {props.children}
       </View>
     </View>

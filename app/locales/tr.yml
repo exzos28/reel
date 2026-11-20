@@ -64,6 +64,10 @@ empty:
 title:
   play: "Oynat"
   resume: "Devam et · %{at}"
+  play_episode: "%{episode} oynat"
+  resume_episode: "%{episode} devam et · %{at}"
+  about_more: "Açıklamanın tamamını göster"
+  about_less: "Daha az göster"
   # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
   # a screen reader says the whole action.
   my_list: "Listem"
@@ -177,6 +181,13 @@ about:
   cast: "Oyuncular"
   details: "Ayrıntılar"
   similar: "Benzerleri"
+
+person:
+  titles: "Filmler ve diziler"
+  state:
+    loading: "Yükleniyor…"
+    unavailable: "Yapımları yüklenemedi. Daha sonra tekrar deneyin."
+    none: "Gösterilecek film ya da dizi yok."
 
 crew:
   director:

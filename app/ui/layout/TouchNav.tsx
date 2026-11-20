@@ -8,7 +8,7 @@
 // once content is under it.
 import { safeArea, Text, View, windowSize, type ImageAsset, type JSX, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
-import { title as titleOf, titleText, toggleList } from "../catalog";
+import { person as personOf, title as titleOf, titleText, toggleList } from "../catalog";
 import backIcon from "../icons/back.svg";
 import settingsIcon from "../icons/settings.svg";
 import { Icon } from "../kit/Icon";
@@ -375,6 +375,7 @@ function underName(): string {
     const x = titleOf(r.id);
     return x ? titleText(x) : t("nav.back");
   }
+  if (r.name === "person") return personOf(r.id).name || t("nav.back");
   return r.name === "about" || r.name === "interface" ? t(`settings.${r.name}.title`) : t(`nav.${r.name}`);
 }
 

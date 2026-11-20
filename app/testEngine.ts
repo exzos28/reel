@@ -35,6 +35,7 @@ function summary(over: Record<string, unknown>) {
     ink: "#F5F5F5", paper: "#1A1A1A", stoppedAt: null, progress: 0, left: null, resume: null,
     seasons: 0, airs: null, tag: null, playable: true, inList: false, release: null,
     play: { id, start: 0 },
+    playAs: { verb: "play", season: null, episode: null, at: null },
     aboutShort: (over.aboutShort ?? over.about ?? "") as string,
     ...over,
   };
@@ -45,6 +46,7 @@ export const INCEPTION = summary({
   id: "tmdb:movie:27205", title: "Inception", year: 2010, minutes: 148, rating: "8.4", votes: "38K",
   genres: ["Action", "Science Fiction"], about: "A thief who steals secrets through dreams is offered a way home.",
   stoppedAt: 2472, progress: 0.28, left: 107, play: { id: "tmdb:movie:27205", start: 2472 },
+  playAs: { verb: "resume", season: null, episode: null, at: 2472 },
   release: { quality: "1080p", source: "BluRay", pack: false, size: "8 GB", peers: 412, fast: true },
 });
 
@@ -53,6 +55,7 @@ export const AOT = summary({
   id: "tmdb:tv:1429", kind: "show", title: "Attack on Titan", year: 2013, yearEnd: 2023, rating: "8.7", votes: "7.1K",
   genres: ["Animation", "Action & Adventure"], anime: true, seasons: 4, progress: 0.4, left: 14,
   resume: { season: 3, episode: 2 }, play: { id: "tmdb:tv:1429:s3e2", season: 3, episode: 2, start: 600 },
+  playAs: { verb: "resume", season: 3, episode: 2, at: 600 },
 });
 
 const ARRIVAL = summary({ id: "tmdb:movie:329865", title: "Arrival", year: 2016, minutes: 116, rating: "7.6" });
@@ -68,6 +71,12 @@ export const HOME = [
   { id: "anime", items: [FRIEREN, AOT] },
 ];
 
+/** Leonardo DiCaprio's page: his titles, best known first. */
+export const DICAPRIO = {
+  id: "tmdb:person:6193", name: "Leonardo DiCaprio", photo: img("w185", "dicaprio"), initials: "LD", state: "done",
+  items: [INCEPTION, summary({ id: "tmdb:movie:11324", title: "Shutter Island", year: 2010, rating: "8.2" }), DUNE],
+};
+
 /** A release as the core gives it; `line` its second line's parts before the size. */
 export const release = (index: number, quality: string, source: string, group: string, size: string, peers: number, note: string, mbit: number, selected = false, line: object[] = []) => {
   const all = [...line, { text: size }];
@@ -81,9 +90,9 @@ export const release = (index: number, quality: string, source: string, group: s
 const BELOW = {
   aboutFull: true,
   cast: [
-    { name: "Leonardo DiCaprio", character: "Cobb", photo: img("w185", "dicaprio"), initials: "LD" },
-    { name: "Joseph Gordon-Levitt", character: "Arthur", photo: null, initials: "JG" },
-    { name: "Elliot Page", character: "Ariadne", photo: img("w185", "page"), initials: "EP" },
+    { name: "Leonardo DiCaprio", character: "Cobb", photo: img("w185", "dicaprio"), initials: "LD", person: "tmdb:person:6193" },
+    { name: "Joseph Gordon-Levitt", character: "Arthur", photo: null, initials: "JG", person: "tmdb:person:24045" },
+    { name: "Elliot Page", character: "Ariadne", photo: img("w185", "page"), initials: "EP", person: "tmdb:person:27578" },
   ],
   crew: [
     { job: "director", names: ["Christopher Nolan"] },
@@ -123,7 +132,7 @@ export const AOT_TITLE = {
   ...BELOW,
   aboutFull: false,
   crew: [{ job: "creator", names: ["Hajime Isayama"] }],
-  cast: [{ name: "Yuki Kaji", character: "Eren Yeager (voice)", photo: null, initials: "YK" }],
+  cast: [{ name: "Yuki Kaji", character: "Eren Yeager (voice)", photo: null, initials: "YK", person: null }],
   tagline: null,
   releaseDate: [2013, 4, 7],
   countries: ["Japan"],
@@ -157,14 +166,14 @@ function airDate(n: number) {
 export function episode(n: number, title: string, over: Record<string, unknown> = {}) {
   return {
     id: `tmdb:tv:1429:s3e${n}`, show: "tmdb:tv:1429", season: 3, number: n, title, about: `${title}, the episode.`,
-    minutes: 24, date: airDate(n), rating: "8.5", thumb: null, progress: 0, left: null, watched: false,
+    minutes: 24, date: airDate(n), rating: "8.5", thumb: null, progress: 0, note: { date: airDate(n) }, watched: false,
     start: 0, quality: null, playable: true, ...over,
   };
 }
 
 export const AOT_S3 = [
   episode(1, "Smoke Signal", { progress: 1, watched: true }),
-  episode(2, "Pain", { progress: 0.4, left: 14, start: 600 }),
+  episode(2, "Pain", { progress: 0.4, note: { left: 14 }, start: 600 }),
   episode(3, "Old Story"),
   episode(4, "Trust"),
 ];
@@ -202,6 +211,7 @@ export const CATALOG = {
   "Catalog.title": JSON.stringify(INCEPTION_TITLE),
   "Catalog.episodes": JSON.stringify(AOT_S3),
   "Catalog.episode": JSON.stringify(AOT_S3[1]),
+  "Catalog.person": JSON.stringify(DICAPRIO),
   "Catalog.upNext": "null",
   "Catalog.tracks": JSON.stringify({
     audio: [{ key: "original", selected: true }],

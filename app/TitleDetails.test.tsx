@@ -141,7 +141,10 @@ test("the remote goes from the actions to the cast, then More like this, which o
   });
   await app.keyboard.press("down"); // the cast
   await app.keyboard.press("right");
-  await app.keyboard.press("enter"); // nothing opens on a person
+  await app.keyboard.press("enter"); // the person's page
+  expect(app.texts()).toContain("Films and series");
+  await app.keyboard.press("escape"); // back on the cast, on that person
+  expect(app.texts()).toContain("More like this");
   expect(chosen).toEqual([]);
   await app.keyboard.press("down"); // More like this, on Dune
   await app.keyboard.press("enter"); // opens it (the stand-in answers every title with Inception)
@@ -180,8 +183,54 @@ test("while the release is not known, Play says it is searched under its label; 
   await app.keyboard.press("enter"); // Inception
   expect(app.shows("release-row-skeleton")).toBe(true);
   await app.keyboard.press("down"); // the cast
-  await app.keyboard.press("enter"); // nothing opens on a person
+  await app.keyboard.press("enter"); // the person's page, not the releases
   expect(app.texts()).not.toContain("Releases");
+  expect(app.texts()).toContain("Films and series");
+});
+
+test("OK on a person of the cast opens their titles; OK opens one; Back comes back to the cast", async () => {
+  const app = await inception();
+  await app.keyboard.press("down"); // the cast: Leonardo DiCaprio
+  await app.keyboard.press("enter");
+  for (const s of ["Leonardo DiCaprio", "Films and series", "Inception", "Shutter Island", "Dune"]) expect(app.texts()).toContain(s);
+  expect(app.texts()).not.toContain("More like this");
+  await app.keyboard.press("right"); // Shutter Island
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("More like this"); // a title's page (the stand-in answers Inception's)
+  expect(app.texts()).not.toContain("Films and series");
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("Films and series");
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("More like this");
+  expect(app.texts()).not.toContain("Films and series");
+});
+
+test("a person reel has no page for is shown, not pressable", async () => {
+  const app = await app_({ ...ENGINE, ...SHOW });
+  await app.keyboard.press("right"); // Attack on Titan
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("Yuki Kaji");
+  for (const _ of ["tabs", "S3:E2", "S3:E3", "S3:E4", "the cast"]) await app.keyboard.press("down");
+  await app.keyboard.press("enter"); // on Yuki Kaji: nothing opens
+  expect(app.texts()).not.toContain("Films and series");
+  expect(app.texts()).toContain("Yuki Kaji");
+});
+
+test("phone: a tap on a person opens their page; a tap on the description shows it whole, another folds it", async () => {
+  const about = "One. Two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen.";
+  const native = titleWith({ about, aboutShort: "One." });
+  const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  expect(app.texts()).toContain("One.");
+  expect(app.texts()).not.toContain(about);
+  await app.press("label:Show the whole description");
+  expect(app.texts()).toContain(about);
+  await app.press("label:Show less");
+  expect(app.texts()).not.toContain(about);
+  await app.press("label:Leonardo DiCaprio");
+  expect(app.texts()).toContain("Films and series");
+  expect(app.texts()).toContain("Shutter Island");
 });
 
 test("with no release at all, Play is plain and a line under it says why", async () => {
