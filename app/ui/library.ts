@@ -94,6 +94,20 @@ export interface SeasonPlan {
   saved: number;
   total: number;
   size: number | null;
+  /** Bytes free where films are saved, null when not known. */
+  free: number | null;
+  /** The ticked episodes: how many, the bytes of those whose size is known, and whether they fit
+   * the free space (null while a size or the free space is not known). */
+  picked: { count: number; size: number; fits: boolean | null };
+}
+
+/** A film's Save as the core sees it: the bytes its release takes, the free space, whether it
+ * fits (null while either is not known), and the release to save instead when it does not. */
+export interface SaveOffer {
+  size: number | null;
+  free: number | null;
+  fits: boolean | null;
+  smaller: { id: string; quality: string; source: string; size: number } | null;
 }
 
 /** Ticks every second while some screen watches (`watchSaved`): readers ask the core again. */
@@ -143,14 +157,32 @@ export function titleSaveState(id: string, show: boolean): SaveState {
   return parsed<SaveState>(`title:${id}`, Library.title(id, show));
 }
 
-export function seasonPlan(show: string, season: number): SeasonPlan {
+export const NO_PLAN: SeasonPlan = { episodes: [], saved: 0, total: 0, size: null, free: null, picked: { count: 0, size: 0, fits: true } };
+
+/** The Save drawer's season, with the keys ticked in it. */
+export function seasonPlan(show: string, season: number, picked: string[]): SeasonPlan {
   tick();
-  if (!librarySupported) return { episodes: [], saved: 0, total: 0, size: null };
-  return parsed<SeasonPlan>(`plan:${show}:${season}`, Library.plan(show, season));
+  if (!librarySupported) return NO_PLAN;
+  return parsed<SeasonPlan>(`plan:${show}:${season}`, Library.plan(show, season, JSON.stringify(picked)));
+}
+
+const NO_OFFER: SaveOffer = { size: null, free: null, fits: null, smaller: null };
+
+/** A film's Save: its size and whether it fits (read again every second while watched). */
+export function saveOffer(key: string): SaveOffer {
+  tick();
+  if (!librarySupported) return NO_OFFER;
+  return parsed<SaveOffer>(`offer:${key}`, Library.offer(key));
 }
 
 export function save(keys: string[]) {
   if (keys.length) Library.save(JSON.stringify(keys));
+  refresh();
+}
+
+/** Saves film `key` from release `release` (an offer's smaller one); Play's release stays. */
+export function saveRelease(key: string, release: string) {
+  Library.saveRelease(key, release);
   refresh();
 }
 

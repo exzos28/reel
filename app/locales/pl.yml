@@ -80,6 +80,10 @@ title:
   saved: "Zapisano"
   saved_one: "Zapisano 1 odcinek"
   saved_some: "Zapisane odcinki: %{count}"
+  save_size: "Zapisz · %{size}"
+  no_space_title: "Za mało miejsca"
+  no_space_about: "Potrzeba %{needed}, wolne na tym urządzeniu: %{free}."
+  save_smaller: "Zapisz %{quality} · %{size}"
 
 card:
   left: "Zostało %{time}"
@@ -555,6 +559,9 @@ saved:
     save_one: "Zapisz 1 odcinek"
     choose: "Wybierz odcinki"
     more: "Jeszcze %{size}"
+    free: "Wolne: %{free}"
+    more_free: "%{size} · wolne: %{free}"
+    no_room: "Za mało miejsca: potrzeba %{size}, wolne: %{free}"
     new: "nowy"
 
 confirm:

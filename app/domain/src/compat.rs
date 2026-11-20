@@ -100,6 +100,25 @@ pub fn device() -> Option<&'static str> {
     DEVICE.lock().unwrap().or_else(|| profile().device())
 }
 
+static FAMILY: Mutex<Option<&'static str>> = Mutex::new(None);
+
+/// The platform family the UI lays itself out for (`platform/index.ts`: a phone, a tablet, a
+/// Mac…), as it reports it once at start: the core cannot tell a phone from a tablet itself
+/// (NSH's idiom is the UI thread's). A fact, not a policy: what follows from it (`fit::limits`)
+/// is decided here. `None` for one not in `DEVICES`. One per process: a core serving several
+/// screens (a remote server, later) will need it per client.
+pub fn set_family(name: &str) -> Option<&'static str> {
+    let known = DEVICES.iter().copied().find(|d| *d == name)?;
+    *FAMILY.lock().unwrap() = Some(known);
+    Some(known)
+}
+
+/// The kind of device Play's and Save's own picks are for: what `device` says (a development
+/// host's stand-in, a Samsung TV), else the family the UI reported, else none.
+pub fn family() -> Option<&'static str> {
+    device().or_else(|| *FAMILY.lock().unwrap())
+}
+
 /// Why a release or file will not play here. The UI words it (`compat.<key>`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]

@@ -80,6 +80,10 @@ title:
   saved: Сохранено
   saved_one: Сохранена 1 серия
   saved_some: "Сохранено серий: %{count}"
+  save_size: "Сохранить · %{size}"
+  no_space_title: "Не хватает места"
+  no_space_about: "Нужно %{needed}, свободно %{free} на этом устройстве."
+  save_smaller: "Сохранить %{quality} · %{size}"
 
 card:
   left: "Осталось %{time}"
@@ -544,6 +548,9 @@ saved:
     save_one: Сохранить 1 серию
     choose: Выберите серии
     more: "Ещё %{size}"
+    free: "Свободно %{free}"
+    more_free: "%{size} · свободно %{free}"
+    no_room: "Не хватает места: нужно %{size}, свободно %{free}"
     new: новая
 
 confirm:

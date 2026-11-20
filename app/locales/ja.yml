@@ -80,6 +80,10 @@ title:
   saved: "保存済み"
   saved_one: "1話を保存済み"
   saved_some: "%{count}話を保存済み"
+  save_size: "保存 · %{size}"
+  no_space_title: "空き容量が足りません"
+  no_space_about: "%{needed} 必要ですが、このデバイスの空きは %{free} です。"
+  save_smaller: "%{quality} を保存 · %{size}"
 
 card:
   left: "残り%{time}"
@@ -555,6 +559,9 @@ saved:
     save_one: "1話を保存"
     choose: "エピソードを選択"
     more: "さらに %{size} 使用"
+    free: "空き %{free}"
+    more_free: "%{size} · 空き %{free}"
+    no_room: "空き容量が足りません：%{size} 必要、空き %{free}"
     new: "新規"
 
 confirm:
