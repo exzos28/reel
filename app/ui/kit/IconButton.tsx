@@ -22,6 +22,8 @@ export function IconButton(props: {
   onPress: () => void;
   size?: number;
   background?: () => string;
+  /** The icon's color (white by default). */
+  iconColor?: () => string;
 }) {
   const size = props.size ?? 62;
   const fill = () => (props.selected?.() ? colors.control() : props.background ? props.background() : colors.card());
@@ -34,7 +36,7 @@ export function IconButton(props: {
       hoverStyle={{ backgroundColor: colors.raise() }}
       style={iconButtonStyle(size, fill(), props.focused())}
     >
-      <Icon src={props.icon} size={size * 0.42} />
+      <Icon src={props.icon} size={size * 0.42} color={props.iconColor} />
     </View>
   );
 }

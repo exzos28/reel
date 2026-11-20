@@ -9,8 +9,8 @@ import { IconButton } from "../../kit/IconButton";
 import { t } from "nsh/i18n";
 import { colors } from "../../theme";
 import infoIcon from "../../icons/info.svg";
-import plusIcon from "../../icons/plus.svg";
-import checkIcon from "../../icons/check.svg";
+import heartIcon from "../../icons/heart.svg";
+import heartFilledIcon from "../../icons/heart-filled.svg";
 import { density } from "../../theme";
 
 /** The hero's height and its text's top, TV pixels. On a TV the first row (its cards
@@ -34,14 +34,15 @@ export function HomeHero(props: {
       <ReleaseText item={props.item} />
       <View style={actionsRow(false)}>
         <PlayButton label={() => playLabel(props.item())} focused={() => props.focusedAt() === 0} onPress={props.onPlay} />
-        {/* A phone's row has room for Play and two discs only: the Watchlist is a disc there (with a
+        {/* A phone's row has room for Play and two discs only: the Watchlist is a heart there (with a
             label for a screen reader), else the row ran past the screen and the page drifted sideways. */}
         <If
           when={density === "compact"}
           else={<ListButton inList={() => props.item().inList} addKey="title.my_list" focused={() => props.focusedAt() === 1} onPress={props.onToggle} />}
         >
           <IconButton
-            icon={() => (props.item().inList ? checkIcon : plusIcon)}
+            icon={() => (props.item().inList ? heartFilledIcon : heartIcon)}
+            iconColor={() => (props.item().inList ? colors.red() : colors.snow())}
             label={() => (props.item().inList ? t("title.in_list") : t("title.my_list"))}
             focused={() => props.focusedAt() === 1}
             background={() => colors.raise()}
