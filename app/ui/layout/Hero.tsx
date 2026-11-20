@@ -7,9 +7,10 @@ import { aboutText, genresText, shortAboutText, titleText, type Summary } from "
 import { cover } from "../kit/shape";
 import { bodyText, metaText } from "../kit/text";
 import { alpha, colors, heroFade, insetMaxWidth, safe, ts, type, u } from "../theme";
-import { MetaLine } from "./HeroMeta";
+import { heroMeta, MetaLine } from "./HeroMeta";
 import { heroBoxNow, heroFollowsWindow, stillTop, type HeroBox } from "./metrics";
 import { Pressable } from "../kit/Pressable";
+import { caps } from "../platform";
 
 /** The backdrop: from the window's right edge (a wide desktop window's: its content column's), as
  * wide and tall as the hero's box says. */
@@ -51,6 +52,13 @@ const RIGHT_FADE: [number, number][] = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 1
 const textShadeStyle = (height: number): ViewStyle => ({
   position: "absolute", top: 0, left: 0, height, width: Math.min(insetMaxWidth(1500) + u(400), windowSize().width),
   backgroundImage: `linear-gradient(90deg, ${alpha(colors.ink(), 0.82)} 0%, ${alpha(colors.ink(), 0.68)} 35%, ${alpha(colors.ink(), 0.35)} 62%, ${alpha(colors.ink(), 0.1)} 82%, ${alpha(colors.ink(), 0)} 100%)`,
+});
+/** Touch's shade behind the hero's text only (not over the whole still): the still runs right
+ * under the text there, and its bright parts washed out the grey meta. It starts a little above
+ * the title, fading in, and stays under the lines to the hero's end, where the still fades out. */
+const touchShadeStyle = (top: number): ViewStyle => ({
+  position: "absolute", left: 0, right: 0, bottom: 0, top: Math.max(0, top - u(60)),
+  backgroundImage: `linear-gradient(180deg, ${alpha(colors.ink(), 0)} 0%, ${alpha(colors.ink(), 0.45)} 25%, ${alpha(colors.ink(), 0.55)} 100%)`,
 });
 /** The text's column: at the inset, as wide as in an ordinary window (a wide desktop window's
  * larger inset moves it, `insetMaxWidth`, instead of narrowing it). */
@@ -156,7 +164,7 @@ export function Hero(props: {
   return (
     <View style={heroStyle(box().height, !!props.fit)}>
       <Backdrop item={s} box={box} />
-      <If when={heroFollowsWindow}>
+      <If when={heroFollowsWindow} else={<If when={caps.touch}><View style={touchShadeStyle(props.top)} /></If>}>
         <View style={textShadeStyle(box().height + box().stillBelow)} />
       </If>
       {/* Not fit to its text: room under the actions before what follows. */}
@@ -169,7 +177,7 @@ export function Hero(props: {
           )}
         </If>
         <MetaLine item={s} />
-        <Text style={{ ...metaText(), fontSize: ts(24) }}>{genresText(s())}</Text>
+        <Text style={{ ...metaText(heroMeta()), fontSize: ts(24) }}>{genresText(s())}</Text>
         <If when={props.expandAbout} else={about()}>
           <Pressable
             role="button"

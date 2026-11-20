@@ -11,6 +11,10 @@ import { caps } from "../platform";
 import { colors, iconPt, ts, type, u } from "../theme";
 import personIcon from "../icons/person.svg";
 
+/** The hero's grey words (score sources, votes, genres, the release's details): over a still
+ * they need more than the page's `ash`, at least 70 % of snow. */
+export const heroMeta = () => colors.quiet();
+
 /** 24, a step under the about's 26: the two do not compete. */
 const metaLabel = (color: string, fontWeight?: number): TextStyle => ({
   ...type.label(),
@@ -27,10 +31,10 @@ function ScoreText(props: { score: () => Score; first: () => boolean }) {
       <If when={props.first()}>
         <Text style={metaLabel(colors.red())}>★</Text>
       </If>
-      <Text style={metaLabel(colors.ash(), 400)}>{scoreSource(sc())}</Text>
+      <Text style={metaLabel(heroMeta(), 400)}>{scoreSource(sc())}</Text>
       <Text style={metaLabel(colors.snow(), 500)}>{sc().value}</Text>
       <If when={sc().votes}>
-        <Text style={metaLabel(colors.ash(), 400)}>{votesText(sc())}</Text>
+        <Text style={metaLabel(heroMeta(), 400)}>{votesText(sc())}</Text>
       </If>
     </View>
   );
@@ -78,7 +82,7 @@ export function ShortRelease(props: { line: () => ReturnType<typeof releaseLine>
  * `ShortRelease`, so it keeps to one line). */
 export function ReleaseText(props: { item: () => Summary; withStart?: boolean; size?: number }) {
   const line = () => releaseLine(props.item().release!, props.withStart ?? true);
-  const style = () => ({ ...type.meta(), fontSize: ts(props.size ?? 22), color: colors.ash() });
+  const style = () => ({ ...type.meta(), fontSize: ts(props.size ?? 22), color: heroMeta() });
   const name: TextStyle = { fontWeight: 500, color: colors.snow() };
   return (
     // With a source its line is kept while the release is still searched, so the buttons under it
