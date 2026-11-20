@@ -349,6 +349,7 @@ export function TitleScreen(props: { id: string }) {
           tabsFocused={() => zone() === "tabs"}
           focusedAt={listFocus}
           follow={page.follow}
+          page={page}
           onPickSeason={(n) => {
             zone.set("tabs");
             season.set(n);
@@ -368,6 +369,7 @@ export function TitleScreen(props: { id: string }) {
           <LazyBlock page={page} height={() => u(300)}>
           <CastRow
             cast={cast}
+            page={page}
             focusedAt={() => (zone() === "cast" ? castAt() : null)}
             onOpen={openCast}
           />
@@ -383,6 +385,7 @@ export function TitleScreen(props: { id: string }) {
           <LazyBlock page={page} height={() => wideCardHeight(shelfCardWidth()) + u(160)}>
           <SimilarShelf
             items={similar}
+            page={page}
             focusedAt={() => (zone() === "similar" ? similarAt() : null)}
             onOpen={openSimilar}
           />

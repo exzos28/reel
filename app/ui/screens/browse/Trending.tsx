@@ -1,6 +1,6 @@
 import { View, type ViewRef } from "nsh";
 import { airsText, type Facet, type Summary } from "../../catalog";
-import { scroller } from "../../layout/Scroller";
+import { scroller, type ScrollCtl } from "../../layout/Scroller";
 import { Rail, railLead } from "../../layout/Rail";
 import { RowGap, rowWindow } from "../../layout/reach";
 import { u } from "../../theme";
@@ -19,6 +19,8 @@ export function Trending(props: {
   focusedAt: () => number | null;
   blockRef: (r: ViewRef) => void;
   onOpen: (i: number) => void;
+  /** The page's scroll: the wheel up and down over the row moves it. */
+  page: ScrollCtl;
 }) {
   /** The row puts the focused poster at the left edge of its inset. */
   const line = scroller({ horizontal: true, anchor: railLead, step: () => step() });
@@ -29,7 +31,7 @@ export function Trending(props: {
       <View style={{ marginTop: u(34) }}>
         <SectionTitle text={props.title} inset rail={line} />
       </View>
-      <Rail ctl={line} gap={20} top={26} bottom={16}>
+      <Rail ctl={line} page={props.page} gap={20} top={26} bottom={16}>
         <RowGap window={win} step={step} gap={20} />
         <Each of={props.items().slice(win().from, win().to)} key={(s) => s.id}>
           {(item, i) => (

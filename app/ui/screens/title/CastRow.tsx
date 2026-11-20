@@ -7,7 +7,7 @@ import { t } from "nsh/i18n";
 import type { CastMember } from "../../catalog";
 import { fontText, labelText, metaText } from "../../kit/text";
 import { SectionTitle } from "../../layout/Section";
-import { scroller, type Follow } from "../../layout/Scroller";
+import { scroller, type Follow, type ScrollCtl } from "../../layout/Scroller";
 import { Rail, railLead } from "../../layout/Rail";
 import { colors, focusRing, ts, u } from "../../theme";
 import { Pressable } from "../../kit/Pressable";
@@ -67,13 +67,19 @@ function Person(props: { person: () => CastMember; focused: () => boolean; follo
   );
 }
 
-export function CastRow(props: { cast: () => CastMember[]; focusedAt: () => number | null; onOpen: (i: number) => void }) {
+export function CastRow(props: {
+  cast: () => CastMember[];
+  focusedAt: () => number | null;
+  onOpen: (i: number) => void;
+  /** The page's scroll: the wheel up and down over the row moves it. */
+  page: ScrollCtl;
+}) {
   /** The row puts the focused person at the left edge of its inset. */
   const line = scroller({ horizontal: true, anchor: railLead });
   return (
     <View style={{ gap: u(18) }}>
       <SectionTitle text={() => t("about.cast")} inset rail={line} />
-      <Rail ctl={line} gap={20} top={0} bottom={8}>
+      <Rail ctl={line} page={props.page} gap={20} top={0} bottom={8}>
         <Each of={props.cast()} key="index">
           {(p, i) => (
             <Person

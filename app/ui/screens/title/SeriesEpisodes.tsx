@@ -3,7 +3,7 @@ import { Text, View, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { seasonText, type Episode, type Title } from "../../catalog";
 import { bodyText } from "../../kit/text";
-import type { Follow } from "../../layout/Scroller";
+import type { Follow, ScrollCtl } from "../../layout/Scroller";
 import { safe, u } from "../../theme";
 import { EpisodeRow } from "./EpisodeRow";
 import { SeasonTabs } from "./SeasonTabs";
@@ -19,6 +19,8 @@ export function SeriesEpisodes(props: {
   follow: Follow;
   onPickSeason: (n: number) => void;
   onPlay: (i: number) => void;
+  /** The page's scroll: the wheel up and down over the season tabs moves it. */
+  page: ScrollCtl;
 }) {
   const seasons = () => props.data().seasonList ?? [];
   const sub = () => {
@@ -33,6 +35,7 @@ export function SeriesEpisodes(props: {
       follow={props.follow}
       onPick={props.onPickSeason}
       sub={sub}
+      page={props.page}
     />,
     <View style={listStyle()}>
       <If when={props.episodes().length > 0} else={<Text style={bodyText()}>{t("series.no_episodes")}</Text>}>

@@ -200,6 +200,7 @@ export function BrowseScreen(props: { page: Page }) {
           focusedAt={() => (zone() === "trending" ? trend() : null)}
           blockRef={page.follow(() => zone() === "trending", "nearest")}
           onOpen={openTrending}
+          page={page}
         />
         <FilterBar
           title={() => t(`browse.${props.page}.all`)}
@@ -210,6 +211,7 @@ export function BrowseScreen(props: { page: Page }) {
           openAt={() => (panelOpen() ? pill() : null)}
           blockRef={page.follow(() => zone() === "filters" || zone() === "panel", "nearest")}
           onOpen={openPanel}
+          page={page}
         />
         <If when={stateText()}>
           <Text style={{ ...metaText(), paddingHorizontal: safe().x, marginTop: u(24) }}>{stateText()}</Text>
