@@ -1,9 +1,10 @@
 // The player's waiting states. From Play until the first frame plays (and
 // when the film cannot play) the stage fills the screen: the title's still,
-// darkened (not blurred: the direction refuses blur), its logotype in the middle, the loader
-// Settings picks under it, one calm line from the core and a thin bar of the film's start
-// coming in; an error takes the same place, still. Once the film plays, a stall only shows a
-// line over the picture (`BufferingNote`), with no loader.
+// darkened (not blurred: the direction refuses blur), its logotype in the middle, the release
+// under it, one calm line from the core and a thin bar of the film's start coming in (the
+// dinosaur over the line when Settings asks for it); an error takes the same place, still.
+// Once the film plays, a stall only shows a line over the picture (`BufferingNote`), with no
+// loader.
 import { Image, reduceMotion, Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { titleText, type Summary } from "./catalog";
 import { Loader } from "./kit/Loader";
@@ -82,11 +83,9 @@ export function PlayerStage(props: {
             <Text style={subtitleStyle()}>{props.subtitle()}</Text>
           </If>
         </View>
-        {/* The loader Settings picks (the dinosaur or the red reel), while it waits. */}
+        {/* The dinosaur, when Settings picks it, while it waits; by default nothing. */}
         <If when={!error()}>
-          <View style={loaderStyle()}>
-            <Loader label={props.line().text} />
-          </View>
+          <Loader label={props.line().text} style={loaderStyle()} />
         </If>
         <Text testID="stage-line" style={lineStyle(error())}>{props.line().text}</Text>
         <If when={props.line().hint}>

@@ -458,8 +458,8 @@ settings:
   loader:
     title: "読み込みアニメーション"
     about: "映画の開始を待つ間に表示されます。"
+    none: "なし"
     dinosaur: "恐竜"
-    logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not
   # answer (failed), from Settings (edit).
   source_drawer:

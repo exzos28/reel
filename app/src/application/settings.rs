@@ -45,10 +45,10 @@ pub const DEFAULT_LANGUAGE: &str = "en";
 /// TV and a desktop: after the logo, in the middle, or at the right edge.
 pub const NAV_POSITIONS: [&str; 3] = ["left", "center", "right"];
 pub const DEFAULT_NAV_POSITION: &str = "right";
-/// What shows while something loads: the blinking "reel" logotype (the default), or the running
-/// dinosaur.
-pub const LOADERS: [&str; 2] = ["logo", "dinosaur"];
-pub const DEFAULT_LOADER: &str = "logo";
+/// What shows on the player's stage while a film starts: nothing but its lines (the default), or
+/// the running dinosaur.
+pub const LOADERS: [&str; 2] = ["none", "dinosaur"];
+pub const DEFAULT_LOADER: &str = "none";
 pub const DEFAULT_CONTENT_LANGUAGE: &str = "en-US";
 
 /// Languages titles, descriptions and episode names can be shown in (TMDB
@@ -142,6 +142,10 @@ impl Saved {
         }
         if !NAV_POSITIONS.contains(&self.nav_position.as_str()) {
             self.nav_position = DEFAULT_NAV_POSITION.to_owned();
+        }
+        // The blinking "reel" logotype was a loader once: a file that kept it shows none.
+        if self.loader == "logo" {
+            self.loader = "none".to_owned();
         }
         if !LOADERS.contains(&self.loader.as_str()) {
             self.loader = DEFAULT_LOADER.to_owned();
@@ -662,10 +666,12 @@ mod tests {
         assert_eq!(current()["loader"], DEFAULT_LOADER);
         assert_eq!(set_nav_position("center"), "center");
         assert_eq!(set_nav_position("top"), "center", "an unknown position is refused");
-        assert_eq!(set_loader("logo"), "logo");
-        assert_eq!(set_loader("spinner"), "logo", "an unknown loader is refused");
+        assert_eq!(set_loader("dinosaur"), "dinosaur");
+        assert_eq!(set_loader("spinner"), "dinosaur", "an unknown loader is refused");
+        assert_eq!(set_loader("logo"), "dinosaur", "the logotype is no longer one");
         let again = load(Some(&dir), &[]);
-        assert_eq!((again["navPosition"].as_str(), again["loader"].as_str()), (Some("center"), Some("logo")));
+        assert_eq!((again["navPosition"].as_str(), again["loader"].as_str()), (Some("center"), Some("dinosaur")));
+        assert_eq!(set_loader("none"), "none");
         std::fs::write(dir.join("settings.json"), r#"{"navPosition":"top","loader":"spinner"}"#).unwrap();
         let unknown = load(Some(&dir), &[]);
         assert_eq!((unknown["navPosition"].as_str(), unknown["loader"].as_str()), (Some(DEFAULT_NAV_POSITION), Some(DEFAULT_LOADER)));
@@ -680,6 +686,14 @@ mod tests {
     fn only_buffers_the_device_has_room_for_are_offered() {
         assert!(playback().buffer_fits(1));
         assert!(!playback().buffer_fits(1 << 30), "a petabyte fits nowhere");
+    }
+
+    #[test]
+    fn a_kept_logo_loader_reads_as_none() {
+        let read = |json: &str| serde_json::from_str::<Saved>(json).unwrap().sanitized().loader;
+        assert_eq!(read(r#"{"loader":"logo"}"#), "none", "the logotype loader is gone");
+        assert_eq!(read(r#"{"loader":"dinosaur"}"#), "dinosaur");
+        assert_eq!(read("{}"), "none", "a new install shows none");
     }
 
     #[test]

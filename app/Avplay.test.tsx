@@ -248,24 +248,25 @@ test("a stall shows the buffering note until AVPlay has enough again", async () 
   expect(note()).toBe(true);
   expect(app.texts()).toContain("Waiting for the stream · 3.4 MB/s"); // the stream's details are on
   // No loader over the picture: what is ready shows on the scrubber, which the stall brings up.
-  expect(app.shows("loader-logo")).toBe(false);
   expect(app.shows("loader-dinosaur")).toBe(false);
   expect(app.shows("scrubber")).toBe(true);
   await event({ type: "buffering", buffering: false });
   expect(note()).toBe(false);
 });
 
-test("the start shows the loader Settings picked: the blinking reel by default, the dinosaur instead", async () => {
-  const logo = await tv();
-  expect(logo.app.shows("stage")).toBe(true);
-  expect(logo.app.shows("loader-logo")).toBe(true);
-  expect(logo.app.shows("loader-dinosaur")).toBe(false);
+test("the start shows no loader by default: the title, the release, the line and the bar; the dinosaur when Settings picks it", async () => {
+  const plain = await tv();
+  expect(plain.app.shows("stage")).toBe(true);
+  expect(plain.app.shows("loader-dinosaur")).toBe(false);
+  expect(plain.app.texts()).not.toContain("reel"); // no logotype on the stage
+  expect(plain.app.texts()).toContain("DUNE");
+  expect(plain.app.shows("stage-line")).toBe(true);
 
   const dino = await tv({
     "Settings.load": JSON.stringify({ language: "en", bufferMB: 256, bufferChoices: [{ mb: 256, default: true }], streamDetails: true, loader: "dinosaur" }),
   });
   expect(dino.app.shows("loader-dinosaur")).toBe(true);
-  expect(dino.app.shows("loader-logo")).toBe(false);
+  expect(dino.app.texts()).not.toContain("reel");
 });
 
 test("at the end the film stands paused with the controls up", async () => {

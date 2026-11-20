@@ -2,7 +2,7 @@ import { expect, test } from "nsh/test";
 import { ENGINE, NATIVE, openApp } from "./testEngine";
 
 /** The core's settings with the menu and the loader where a test puts them. */
-const appearance = (navPosition: string, loader = "logo") => ({
+const appearance = (navPosition: string, loader = "none") => ({
   "Settings.load": JSON.stringify({
     language: "en", bufferMB: 256, bufferChoices: [{ mb: 256, default: true }], streamDetails: false, navPosition, loader,
   }),
@@ -53,7 +53,7 @@ test("Settings: on a phone Loading animation is a row of Settings (no Interface 
   expect(app.texts()).toContain("Dinosaur");
 });
 
-test("Settings: Loading animation offers reel (the default) and the dinosaur; picking the dinosaur asks the core", async () => {
+test("Settings: Loading animation offers None (the default) and the dinosaur; picking the dinosaur asks the core", async () => {
   const chosen: string[] = [];
   const app = await openApp({
     modules: { "app/native": { ...NATIVE, "Settings.setLoader": (l: string) => (chosen.push(l), l) } },
@@ -62,8 +62,9 @@ test("Settings: Loading animation offers reel (the default) and the dinosaur; pi
   await app.press("label:Interface");
   await app.press("label:Loading animation");
   expect(app.shows("choice-panel")).toBe(true);
+  expect(app.texts()).toContain("None");
   expect(app.texts()).toContain("Dinosaur");
-  await app.keyboard.press("down"); // from reel to Dinosaur
+  await app.keyboard.press("down"); // from None to Dinosaur
   await app.keyboard.press("enter");
   expect(chosen).toEqual(["dinosaur"]);
   expect(app.texts()).toContain("Dinosaur"); // the row's value
