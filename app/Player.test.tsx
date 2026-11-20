@@ -335,6 +335,15 @@ test("phone: Episodes is a sheet titled with the season and its count, the numbe
   expect(app.shows("scrubber")).toBe(true);
 });
 
+test("phone: an episode picked in the Episodes sheet plays", async () => {
+  const app = await phonePlaying(PORTRAIT, AOT_FIRST, "Resume S3:E2 · 10:00");
+  await app.press("label:Episodes");
+  await app.press("Old Story");
+  await app.wait(600);
+  expect(app.shows("episodes-panel")).toBe(false);
+  expect(app.texts()).toContain("S3:E3 · Pain");
+});
+
 test("phone: Play and ±10 s sit in the middle of the picture, the bottom row keeps the rest", async () => {
   const app = await phonePlaying(PORTRAIT);
   expect(app.shows("player-middle")).toBe(true);

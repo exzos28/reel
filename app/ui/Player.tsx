@@ -738,8 +738,10 @@ export function Player() {
                 season={() => episodeOf()?.season ?? w().season ?? 1}
                 episode={() => episodeOf()?.episode ?? w().episode ?? 1}
                 onPlay={(e) => {
+                  // The show's title first: closing the panel drops `w`.
+                  const title = w().title;
                   episodesOpen.set(false);
-                  play({ id: e.id, season: e.season, episode: e.number, title: w().title });
+                  play({ id: e.id, season: e.season, episode: e.number, title });
                 }}
                 onClose={() => episodesOpen.set(false)}
               />
