@@ -8,6 +8,8 @@ import { t } from "nsh/i18n";
 import { aboutText, genresText, lengthText, titleText, toggleList, yearsText, type Summary } from "../catalog";
 import playIcon from "../icons/play.svg";
 import { ListToggle } from "../layout/ListToggle";
+import { wheelY } from "../layout/Scroller";
+import { stopAll, type ScrollCtl } from "../layout/scrollCtl";
 import { caps } from "../platform";
 import { alpha, colors, ts, u } from "../theme";
 import { Badge } from "./Badge";
@@ -64,12 +66,27 @@ const metaRow = (): ViewStyle => ({ ...row(u(16)), flexWrap: "wrap" });
 const actionsStyle = (): ViewStyle => ({ ...row(u(12)), marginTop: u(6) });
 
 /** What a preview says about `item`, `width` points wide; `onOpen` opens the title's page (the
- * still and the title open it too, not only the button). */
-export function PreviewBody(props: { item: () => Summary; width: number; onOpen: () => void }) {
+ * still and the title open it too, not only the button). `page` lets the wheel over the popup
+ * scroll the page under it: the popup is an overlay, with no scroll view above it. */
+export function PreviewBody(props: {
+  item: () => Summary;
+  width: number;
+  onOpen: () => void;
+  page?: ScrollCtl;
+}) {
   const s = props.item;
   const still = (props.width * 9) / 16;
   return (
-    <View testID="preview" style={{ width: props.width, overflow: "hidden", ...rounded(cardRadius() + u(6)) }}>
+    <View
+      testID="preview"
+      onWheel={(e) => {
+        // Shift + wheel belongs to the row under the pointer, not the page.
+        if (e.modifiers.shift || e.delta.y === 0) return;
+        stopAll();
+        props.page?.nudge(wheelY(e));
+      }}
+      style={{ width: props.width, overflow: "hidden", ...rounded(cardRadius() + u(6)) }}
+    >
       <Pressable onPress={props.onOpen} style={{ height: still }}>
         <Picture item={s} src={() => s().card ?? s().still} titleSize={30} style={{ height: still }} />
         <View style={shadeStyle()} />

@@ -33,6 +33,7 @@ export function SimilarShelf(props: {
               focused={() => props.focusedAt() === win().from + i()}
               width={shelfCardWidth}
               follow={line.follow}
+              page={props.page}
               onPress={() => props.onOpen(win().from + i())}
             />
           )}

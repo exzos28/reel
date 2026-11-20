@@ -231,6 +231,7 @@ export function BrowseScreen(props: { page: Page }) {
               facet={() => data().facet}
               width={() => cellWidth(columns(), GRID_GAP)}
               focused={() => zone() === "grid" && cell() === at()}
+              page={page}
               onPress={() => openCell(at())}
             />
           )}

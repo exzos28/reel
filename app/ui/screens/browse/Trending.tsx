@@ -41,6 +41,7 @@ export function Trending(props: {
               facet={props.facet}
               focused={() => props.focusedAt() === win().from + i()}
               follow={line.follow}
+              page={props.page}
               onPress={() => props.onOpen(win().from + i())}
             />
           )}

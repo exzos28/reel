@@ -41,6 +41,7 @@ export function HomeShelf(props: {
               focused={() => props.focusedAt() === win().from + c()}
               width={shelfCardWidth}
               follow={line.follow}
+              page={props.page}
               onPress={() => props.onOpen(win().from + c())}
             />
           )}

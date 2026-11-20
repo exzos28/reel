@@ -1,6 +1,7 @@
 import { Text, type TextStyle, type ViewRef, windowSize } from "nsh";
 import { facetText, titleText, type Facet, type Summary } from "../../catalog";
 import { Card, cardBox } from "../../kit/Card";
+import type { ScrollCtl } from "../../layout/Scroller";
 import { Picture } from "../../kit/Picture";
 import { CardLine } from "../../kit/Rating";
 import { cardRadius, rounded } from "../../kit/shape";
@@ -25,6 +26,8 @@ export function PosterCard(props: {
   focused: () => boolean;
   follow: (when: () => boolean) => (r: ViewRef) => void;
   onPress: () => void;
+  /** The page's scroll: a wheel over the preview moves it. */
+  page: ScrollCtl;
 }) {
   const s = props.item;
   return (
@@ -33,6 +36,7 @@ export function PosterCard(props: {
       focused={props.focused}
       onPress={props.onPress}
       preview={s}
+      page={props.page}
       style={cardBox(posterWidth(), 3)}
       viewRef={props.follow(props.focused)}
       picture={<Picture item={s} src={() => s().poster} titleSize={22} style={{ height: u(290), ...rounded(cardRadius()) }} />}

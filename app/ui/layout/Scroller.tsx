@@ -1,7 +1,7 @@
 // The scroll view of a `scroller` (scrollCtl.ts): hides the system's
 // indicator; on a Mac a thin bar of our own replaces it, a TV and a phone
 // show none.
-import { Scroll, signal, View, type JSX, type ScrollEvent, type ScrollRef, type ViewRef, type ViewStyle } from "nsh";
+import { Scroll, signal, View, type JSX, type ScrollEvent, type ScrollRef, type ViewRef, type ViewStyle, type WheelEvent } from "nsh";
 import { Scrollbar } from "nsh/base";
 import { alpha, colors, density, u } from "../theme";
 import { chrome } from "./chrome";
@@ -15,6 +15,11 @@ export { scroller, type Follow, type Placement, type ScrollCtl } from "./scrollC
 const OWN_WHEEL = chrome === "windows" || chrome === "linux";
 /** Points a wheel notch moves (it reports lines: three a notch). */
 const POINTS_PER_LINE = 40;
+/** The scale of one event's deltas (mouse notches report lines, a touchpad points). */
+const wheelScale = (e: WheelEvent) => (e.deltaMode === "lines" ? POINTS_PER_LINE : 1);
+/** A wheel's vertical delta in points, the way reel moves a page. A preview's popup has no scroll
+ * ancestor, so it uses this to pass the wheel on to the page it covers. */
+export const wheelY = (e: WheelEvent) => e.delta.y * wheelScale(e);
 
 /** How long the bar stays after the last scroll or pointer move, ms. */
 const BAR_IDLE = 1000;
@@ -94,7 +99,7 @@ export function Scroller(props: {
       onWheel={(e) => {
         stopAll();
         if (!OWN_WHEEL) return; // a Mac turns Shift + wheel sideways on its own
-        const scale = e.deltaMode === "lines" ? POINTS_PER_LINE : 1;
+        const scale = wheelScale(e);
         if (c.horizontal) {
           // A row moves when the wheel is mostly sideways, or with Shift. The wheel
           // up and down is the page's: the row's listener is the nearest one, so it
