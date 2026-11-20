@@ -52,6 +52,13 @@ export function useTabStacks(on: boolean) {
   kept.clear();
 }
 
+/** A tab's stack changed while another tab is shown (its native stack reported a pop late):
+ * kept for when it is shown again. */
+export function keepTab(tab: Destination, routes: Route[]) {
+  if (section() === tab) stack.set(routes);
+  else kept.set(tab, routes);
+}
+
 /** Bumped when the current destination is chosen again: its page scrolls to
  * the top (`layout/Screen`). */
 export const toTop = signal(0);

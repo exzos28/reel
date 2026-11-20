@@ -2,7 +2,7 @@
 // each tab keeping its own stack, a phone's Home with its categories at the
 // top, Settings as a sheet over the page (tablet), Back from a pushed page.
 import { expect, test } from "nsh/test";
-import { NATIVE, SEARCH_DUNE, openApp } from "./testEngine";
+import { INCEPTION_NO_SOURCE, NATIVE, SEARCH_DUNE, openApp } from "./testEngine";
 
 const phone = () => openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": NATIVE } });
 
@@ -98,7 +98,7 @@ test("phone: the player's ✕ closes it", async () => {
 
 /** An iPad held sideways: a headless run reports the phone idiom unless NSH's `platform` says
  * otherwise. Films save here: Inception and Dune say "Saving 5%", and Saving opens Saved. */
-const tablet = () =>
+const tablet = (native: Record<string, unknown> = {}) =>
   openApp({
     platform: "ios",
     width: 1210,
@@ -115,6 +115,7 @@ const tablet = () =>
         "Library.title": JSON.stringify({ state: "saving", progress: 0.05 }),
         "Library.list": JSON.stringify({ saving: [], ready: [], failed: [], space: { saved: 0, free: 10 * 1024 ** 3, folder: null } }),
         "Library.overall": JSON.stringify({ saving: true, progress: 0.05 }),
+        ...native,
       },
     },
   });
@@ -134,9 +135,11 @@ test("tablet: each tab keeps its own pages, Settings is in none of them, the tab
   expect(app.texts()).toContain("Data sources");
   await app.press("label:Close");
   expect(app.shows("settings-sheet")).toBe(false);
-  // Search → a film → Saving: Saved replaces what is shown.
+  // Search → a film, played and closed → Saving: Saved replaces what is shown.
   await app.press("label:Search");
   await app.press("label:Dune >> nth=0");
+  await app.press("Resume 41:12");
+  await app.press("label:Close");
   await app.press("label:Saving 5%");
   expect(TABLET_TABS.some((tab) => app.shows(`top-tab-on-${tab}`))).toBe(false); // Saved is no tab
   // Series → a show → Home: Home's own page, the film left there, Home selected.
@@ -180,6 +183,25 @@ test("tablet: Settings opens as a sheet over the page and closes back to it", as
   expect(app.shows("settings-sheet")).toBe(false);
   await app.keyboard.press("escape"); // then Back leaves the film
   expect(app.texts()).toContain("All movies");
+});
+
+test("tablet: the search source's drawer opens over the sheet, and Back closes it before the sheet", async () => {
+  const app = await tablet();
+  await app.press("label:Settings");
+  await app.press("label:Search source");
+  expect(app.shows("source-close")).toBe(true);
+  await app.keyboard.press("escape");
+  expect(app.shows("source-close")).toBe(false);
+  expect(app.shows("settings-sheet")).toBe(true);
+});
+
+test("tablet: a film whose search source did not answer opens Settings as the sheet over it", async () => {
+  const app = await tablet({ "Catalog.title": JSON.stringify({ ...INCEPTION_NO_SOURCE, releasesState: "failed" }) });
+  await app.press("label:Inception >> nth=0");
+  await app.press("label:Open Settings");
+  expect(app.shows("settings-sheet")).toBe(true);
+  await app.press("settings-sheet-close");
+  expect(app.shows("label:Back to Home")).toBe(true);
 });
 
 test("phone: ⌄ in Play opens the releases in a bottom sheet; ✕ closes it", async () => {

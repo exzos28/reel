@@ -1,7 +1,7 @@
 // The history (ui/nav.ts): destinations as roots, the page's section, a
 // tab's own stack on touch, and Back closing what is open before it leaves.
 import { expect, test } from "nsh/test";
-import { back, canGoBack, go, handleBack, openAbout, openSettings, openTitle, route, section, stack, toTop, useTabStacks } from "./ui/nav";
+import { back, canGoBack, go, handleBack, openAbout, openInterface, openSettings, openTitle, route, section, settingsOpen, sheet, stack, toTop, useSettingsSheet, useTabStacks } from "./ui/nav";
 
 const names = () => stack().map((r) => r.name);
 
@@ -68,4 +68,27 @@ test("choosing the current destination at its root keeps its route: a native sta
   go("home");
   expect(stack()[0]).toBe(root);
   expect(stack().length).toBe(1);
+});
+
+test("a tablet's Settings is a sheet with pages of its own: the tab's stack never holds it", () => {
+  useTabStacks(true);
+  useSettingsSheet(true);
+  go("home");
+  openTitle("tt1");
+  openSettings();
+  openInterface();
+  expect(sheet().map((r) => r.name)).toEqual(["settings", "interface"]);
+  expect(names()).toEqual(["home", "title"]);
+  back(); // Interface, then Settings: the sheet closes
+  expect(sheet().map((r) => r.name)).toEqual(["settings"]);
+  openAbout();
+  back();
+  back();
+  expect(settingsOpen()).toBe(false);
+  expect(names()).toEqual(["home", "title"]);
+  openSettings();
+  go("search"); // a destination closes it
+  expect(settingsOpen()).toBe(false);
+  useSettingsSheet(false);
+  useTabStacks(false);
 });

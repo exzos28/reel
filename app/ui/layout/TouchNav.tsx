@@ -420,7 +420,8 @@ function RowListToggle() {
 /** The tablet's top row: Back (or the logo) | the tabs | Add to list and Settings. */
 export function TabletTopRow() {
   return (
-    <View testID="top-row" style={topRowStyle(frameSolid())}>
+    // Under the Settings sheet the row is out of a screen reader's reach.
+    <View testID="top-row" accessibilityElementsHidden={settingsOpen()} importantForAccessibility={settingsOpen() ? "no-hide-descendants" : "auto"} style={topRowStyle(frameSolid())}>
       <View style={sideStyle(false)}>
         <If when={canGoBack()} else={<Logo />}>
           <TabletBack />

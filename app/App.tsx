@@ -18,7 +18,7 @@ import { InterfaceScreen } from "./ui/screens/interface/InterfaceScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { PersonScreen } from "./ui/screens/person/PersonScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
-import { back, canGoBack, closeFirst, go, handleBack, isRoot, route, section, useHomeTab, useSettingsSheet, useTabStacks } from "./ui/nav";
+import { back, canGoBack, closeFirst, go, handleBack, isRoot, route, section, settingsOpen, useHomeTab, useSettingsSheet, useTabStacks } from "./ui/nav";
 import { screenFor } from "./ui/screens/RouteScreen";
 import { frame } from "./ui/layout/chrome";
 import { caps } from "./ui/platform";
@@ -140,7 +140,8 @@ function App() {
       <If when={setupDone() !== false && !playing()} else={<If when={setupDone() !== false}><PlayerHost><Player /></PlayerHost></If>}>
         <If when={caps.touch} else={<OneScreen />}>
           {/* Right of the phone's rail when it is held sideways. */}
-          <View style={{ flex: 1, marginLeft: railWidth() }}>
+          {/* Under a tablet's Settings sheet the page is out of a screen reader's reach. */}
+          <View style={{ flex: 1, marginLeft: railWidth() }} accessibilityElementsHidden={settingsOpen()} importantForAccessibility={settingsOpen() ? "no-hide-descendants" : "auto"}>
             <TouchStack page={screenFor} />
           </View>
         </If>

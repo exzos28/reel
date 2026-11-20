@@ -44,7 +44,7 @@ away; Search and Settings are nav items but open as deep pages with a back butto
 | Other ways back | — | ⌘[ / ⌘← (mac), Alt+← / Backspace (Win, Linux), mouse button 4, trackpad swipe (mac), Esc | Left-edge swipe (iPad), system back + predictive back (Android) | Edge swipe (iOS), system back + predictive back (Android) |
 | Panels | Side panel 1080 px, no close button | Side panel 460 pt under the bar, ✕ | Floating side sheet 440 pt, ✕ | Bottom sheet with grabber, ✕ |
 | Player exit | Back (twice if the controls are up) | Back in the bar's Back slot, Esc | ✕ top-left, swipe down | ✕ top-left, swipe down |
-| Settings | Nav destination (gear selected) | Nav destination (gear selected) | Pushed on the current tab (gear button) | Pushed on the current tab (gear in the head) |
+| Settings | Nav destination (gear selected) | Nav destination (gear selected) | A sheet in the middle over the current page (gear button) | A tab of its own |
 | Search | Nav destination | Nav destination | Icon tab in the tab bar | Fifth tab |
 
 Why, in one line each:
@@ -159,10 +159,16 @@ Top row 60 pt under the status bar (iPad 24 pt, Android 32 dp; take `safeArea().
   with ← (48 dp touch target), then the logo.
 - Centre: the floating tab bar (44 pt capsule, 36 pt tabs, label 15/500): Home, Movies, Series,
   Anime, Search (icon only).
-- Right: Settings, 40 pt disc; selected fill while Settings or About is open.
+- Right: Settings, 40 pt disc; selected fill while the Settings sheet is open.
 - Scroll: the row stays; solid ink 96% (with the status bar area) once content is under it.
-- Settings is pushed on the current tab ("‹ Home"), large title 34/700 at (32, 100); About on
-  top of it ("‹ Settings").
+- Settings is a sheet in the middle of the window over the current page (iPad's form sheet:
+  540 × 640 pt, less in a smaller window; radius 22, over the page dimmed to 60 %), never a page
+  of a tab: a tab's stack holds only its root, titles and people, so a tab never opens on a
+  Settings page left there and the selected tab is always the one shown. Its head (56 pt): ‹ when
+  a page is open on it (Interface, About: "Back to Settings"), the page's title centred 17/600,
+  ✕ at the right. ✕, a press outside, Escape and the system's back close it (Back first leaves
+  Interface or About); a setting's choices and the search source's drawer open over it, and Back
+  closes them first. Under it the page and the top row are hidden from screen readers.
 - Release panel: floating side sheet 440 pt, inset 12, radius 22, over a dimmed page, ✕; swipe
   right or tap outside closes it.
 - Player: full-screen cover, status bar hidden, ✕ 44 pt at (24, 24) with the title beside it;
@@ -217,8 +223,10 @@ Mockups: `phone.html` frames `ios-home`, `ios-movies-scrolled`, `ios-film`,
 - **TV and desktop:** one stack. A nav destination replaces it (`go`), a title or About is pushed
   on top. Back pops; on a root, see the TV table (desktop: nothing).
 - **Phone and tablet:** one stack per tab (iOS and Material both keep a tab's place). Switching
-  tabs keeps each tab's stack; tapping the selected tab pops it to its root. Settings and About
-  push onto the current tab's stack.
+  tabs keeps each tab's stack; tapping the selected tab pops it to its root. On a phone Settings
+  is a tab with About and Interface pushed on it; on a tablet it is a sheet over the page with
+  pages of its own (`nav.sheet`), outside every tab's stack. Only the shown tab's native stack
+  writes the history; a pop another tab's stack reports late goes to that tab's kept stack.
 - The section of a page is the first route of its stack (`stack[0].name`); for About it is
   Settings.
 

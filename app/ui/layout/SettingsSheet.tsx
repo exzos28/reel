@@ -14,6 +14,7 @@ import { rounded, row } from "../kit/shape";
 import { closeSettings, onBack, sheet, type Route } from "../nav";
 import { alpha, colors, font, iconPt, targetSlop } from "../theme";
 import { InSheet, PageRoute } from "./frameState";
+import { sourceDrawerOpen } from "../screens/source/SourceDrawer";
 
 /** The sheet's size, points: iPad's form sheet, smaller in a window that has less room. */
 const WIDTH = 540;
@@ -92,7 +93,8 @@ function Head() {
 function Sheet(props: { page: (r: Route) => JSX.Element }) {
   // Back (Escape, the system's back) leaves a page of the sheet, then closes it, before the page
   // under it hears it; what the Settings page opens (a setting's choices) is newer and goes first.
-  onBack(() => (handleSheetBack(), true));
+  // The search source's drawer over it is the app's, older than the sheet: Back is left to it.
+  onBack(() => !sourceDrawerOpen() && (handleSheetBack(), true));
   const top = () => sheet()[sheet().length - 1];
   return (
     <View testID="settings-sheet" style={backdropStyle()}>
