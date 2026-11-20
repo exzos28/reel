@@ -125,12 +125,10 @@ const TABLET_TABS = ["home", "movies", "shows", "cartoons", "anime", "search"];
 test("tablet: each tab keeps its own pages, Settings is in none of them, the tab shown is the one selected", async () => {
   const app = await tablet();
   expect(app.shows("top-row")).toBe(true);
-  // Home → a film → Settings, Interface, back, About: all in the sheet over the film.
+  // Home → a film → Settings, About: all in the sheet over the film.
   await app.press("label:Inception >> nth=0");
   await app.press("label:Settings");
-  await app.press("label:Interface");
   expect(app.texts()).toContain("Loading animation");
-  await app.press("label:Back to Settings");
   await app.press("label:About reel");
   expect(app.texts()).toContain("Data sources");
   await app.press("label:Close");
@@ -191,6 +189,7 @@ test("tablet: the search source's drawer opens over the sheet, and Back closes i
   await app.press("label:Search source");
   expect(app.shows("source-close")).toBe(true);
   await app.keyboard.press("escape");
+  await app.wait(600); // the drawer slides away
   expect(app.shows("source-close")).toBe(false);
   expect(app.shows("settings-sheet")).toBe(true);
 });
