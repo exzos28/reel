@@ -29,16 +29,26 @@ The PR's `changeset` check fails when it changes the app (`app/`, `platforms/`, 
 adds none; label the PR `no-changeset` when the viewer sees no difference. Several PRs' entries
 wait in `.changes/` until the next version.
 
+## Branches
+
+- `develop` (the default branch): every PR goes here and merges as soon as it is reviewed, without
+  waiting for its checks; the run on `develop` after the merge says what broke, and it is fixed
+  there.
+- `main`: releases only. It changes through a version PR from `develop` (below), which must pass
+  the checks; after the release, `release.yml` merges `main` back into `develop`.
+
 ## Releasing a version
 
 1. See what is waiting: `build/changes.py status` (the entries and the version they make: the
    biggest bump wins).
 2. Open the version PR: `build/release.sh` (`--dry-run` to only look). In a worktree of its own it
    bumps `version` and `build` in `app/nsh.json`, writes the version's section at the top of
-   `CHANGELOG.md`, removes the entries, commits `Version 0.3.0` on `release/v0.3.0` and opens the PR.
+   `CHANGELOG.md`, removes the entries, commits `Version 0.3.0` on `release/v0.3.0` (from
+   `develop`) and opens the PR into `main`.
 3. The version PR runs the checks and every platform build. Edit `CHANGELOG.md` on its branch if a
    line wants better words. When everything passes, merge it (`gh pr merge --merge`).
-4. The merge changes `app/nsh.json` on main, which starts `.github/workflows/release.yml`: the
+4. The merge changes `app/nsh.json` on main, which starts `.github/workflows/release.yml` (and at
+   its end merges `main` back into `develop`): the
    checks once more, every platform and the Samsung TV package, each package checked
    (`build/package-check.py`), then the release `v0.3.0` on that commit, with the version's
    `CHANGELOG.md` section as its notes, under fixed names:
