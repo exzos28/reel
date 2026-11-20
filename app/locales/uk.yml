@@ -80,6 +80,10 @@ title:
   saved: "Збережено"
   saved_one: "Збережено 1 серію"
   saved_some: "Збережено серій: %{count}"
+  save_size: "Зберегти · %{size}"
+  no_space_title: "Бракує місця"
+  no_space_about: "Потрібно %{needed}, вільно %{free} на цьому пристрої."
+  save_smaller: "Зберегти %{quality} · %{size}"
 
 card:
   left: "Залишилося %{time}"
@@ -558,6 +562,9 @@ saved:
     save_one: "Зберегти 1 серію"
     choose: "Виберіть серії"
     more: "Ще %{size}"
+    free: "Вільно %{free}"
+    more_free: "%{size} · вільно %{free}"
+    no_room: "Бракує місця: потрібно %{size}, вільно %{free}"
     new: "нова"
 
 confirm:

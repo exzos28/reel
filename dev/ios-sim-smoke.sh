@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Installs the simulator build (build/build.sh ios-simulator) on an iOS simulator of the
-# given family, launches it and checks it is still running after a few seconds.
+# given family, launches it and checks it is still running after a few seconds (on failure it
+# prints the app's crash report or its last log lines).
 #
 #   dev/ios-sim-smoke.sh iPhone
 #   dev/ios-sim-smoke.sh iPad
@@ -43,13 +44,27 @@ trap cleanup EXIT
 xcrun simctl bootstatus "$udid" -b > /dev/null
 
 xcrun simctl install "$udid" "$bundle"
-xcrun simctl launch --terminate-running-process "$udid" "$id"
-sleep "${REEL_SMOKE_SECONDS:-10}"
+# A CI simulator just booted is slow: launch it again if the first launch timed out, then the
+# app must still be running after REEL_SMOKE_SECONDS (it has had time to crash by then).
+since="$(date -u +%Y-%m-%dT%H:%M:%S)"
+xcrun simctl launch --terminate-running-process "$udid" "$id" ||
+  { sleep 20; xcrun simctl launch --terminate-running-process "$udid" "$id"; }
+sleep "${REEL_SMOKE_SECONDS:-20}"
 
-if xcrun simctl spawn "$udid" launchctl list | grep -q "UIKitApplication:$id"; then
+running() { xcrun simctl spawn "$udid" launchctl list | grep -q "UIKitApplication:$id"; }
+if running; then
   echo "==> $id is running on ${name//_/ }" >&2
   xcrun simctl io "$udid" screenshot "$repo/app/.nsh/dist/ios-simulator/screenshot-$family.png" > /dev/null 2>&1 || true
 else
   echo "ios-sim-smoke.sh: $id is not running on ${name//_/ } after launch" >&2
+  # Why: the app's crash report (written on the host), else its last log lines.
+  report="$(ls -t "$HOME"/Library/Logs/DiagnosticReports/reel*.ips 2> /dev/null | head -n 1 || true)"
+  if [ -n "$report" ]; then
+    echo "--- $report" >&2
+    head -c 6000 "$report" >&2
+  else
+    xcrun simctl spawn "$udid" log show --start "${since/T/ }" --style compact \
+      --predicate 'process == "reel"' 2> /dev/null | tail -n 60 >&2 || true
+  fi
   exit 1
 fi

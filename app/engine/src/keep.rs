@@ -36,7 +36,7 @@ use crate::{
 use reel_domain::{compat, episode, eta::Eta, ports::KeepRequest, redact::redact, subtitles::files};
 
 /// Kept free on the folder's volume when deciding whether an item fits.
-const RESERVE: u64 = 512 * 1024 * 1024;
+const RESERVE: u64 = reel_domain::fit::RESERVE;
 /// How often the background checks what completed.
 const TICK: Duration = Duration::from_secs(2);
 /// How long getting a torrent may take (the source's link, a magnet's metadata from peers)

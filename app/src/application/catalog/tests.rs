@@ -2,6 +2,7 @@
 //! mapped by its own code): no network.
 
 use super::*;
+use reel_domain::fit;
 use reel_domain::discover::Sort;
 use crate::adapters::metadata::{
     provider::{MapCx, TitleSource},
@@ -887,12 +888,81 @@ fn a_new_source_drops_what_the_old_one_found() {
 #[test]
 fn a_phone_plays_the_best_picture_up_to_1080p_when_one_plays_now() {
     let r = |res: u64, gb: f64, peers: u64| serde_json::json!({ "info": { "resolution": res }, "size": gb * 1e9, "seeders": peers, "peers": peers, "seasonPack": false });
+    let phone = fit::limits(Some("phone"));
+    let any = fit::Limits::NONE;
+    let all = |_: &Value| true;
     let releases = vec![r(2160, 20.0, 161), r(1080, 8.0, 468)];
-    assert_eq!(chosen_within(Some(1080), "film", &releases, 136, 1), Some(1), "a phone: 1080p");
-    assert_eq!(chosen_within(None, "film", &releases, 136, 1), Some(0), "a TV: the 4K, which plays now too");
-    // Nothing under the cap plays now: the best that does.
+    assert_eq!(picked_within(phone, "film", &releases, 136, 1, all), Some(1), "a phone: 1080p");
+    assert_eq!(picked_within(any, "film", &releases, 136, 1, all), Some(0), "a TV: the 4K, which plays now too");
+    // Nothing within the limits that people share: the best that plays now.
     let only_4k = vec![r(2160, 20.0, 300), r(1080, 8.0, 3)];
-    assert_eq!(chosen_within(Some(1080), "film", &only_4k, 136, 1), Some(0));
+    assert_eq!(picked_within(phone, "film", &only_4k, 136, 1, all), Some(0));
+}
+
+#[test]
+fn a_phone_skips_a_remux_for_a_release_of_a_sane_size() {
+    let r = |res: u64, gb: f64, peers: u64| serde_json::json!({ "info": { "resolution": res }, "size": gb * 1e9, "seeders": peers, "peers": peers, "seasonPack": false });
+    let phone = fit::limits(Some("phone"));
+    let all = |_: &Value| true;
+    // Night of the Living Dead, 96 minutes: a 25 GB 1080p remux plays now, a 2.5 GB 1080p WEB-DL too.
+    let releases = vec![r(1080, 25.0, 400), r(1080, 2.5, 120), r(720, 0.7, 300)];
+    assert_eq!(picked_within(phone, "film", &releases, 96, 1, all), Some(1));
+    assert_eq!(picked_within(fit::Limits::NONE, "film", &releases, 96, 1, all), Some(0), "a desktop: the most shared 1080p");
+    // The small ones are slow (under 50 people): still the best within the limits shared by 10 or more.
+    let slow = vec![r(1080, 25.0, 400), r(1080, 2.5, 30), r(720, 0.7, 40)];
+    assert_eq!(picked_within(phone, "film", &slow, 96, 1, all), Some(1), "1080p before 720p");
+    // No runtime from the catalog: a film's usual two hours still keeps the remux out.
+    assert_eq!(picked_within(phone, "film", &releases, 0, 1, all), Some(1));
+    // A season pack's share per episode: 40 GB over 8 episodes of an hour is 5 GB an hour.
+    let pack = |gb: f64, peers: u64| serde_json::json!({ "info": { "resolution": 1080 }, "size": gb * 1e9, "seeders": peers, "peers": peers, "seasonPack": true });
+    let season = "tmdb:tv:1:s1";
+    assert_eq!(picked_within(phone, season, &[pack(120.0, 300), pack(40.0, 200)], 60, 8, all), Some(1));
+    // Its episode count not known: judged by its picture alone (not every pack kept out).
+    assert_eq!(picked_within(phone, season, &[pack(120.0, 300), pack(40.0, 200)], 60, 1, all), Some(0));
+}
+
+#[test]
+fn without_limits_the_pick_is_as_before() {
+    // The old rule: the best that plays now (quality, people, first), else the most shared.
+    let old = |rs: &[Value], minutes: u32| {
+        let now = rs.iter().enumerate().filter(|(_, r)| plays_now(peers(r), mbit(r, minutes, 1)));
+        now.max_by_key(|(i, r)| (quality_rank(r), peers(r), std::cmp::Reverse(*i)))
+            .or_else(|| rs.iter().enumerate().max_by_key(|(i, r)| (peers(r), std::cmp::Reverse(*i))))
+            .map(|(i, _)| i)
+    };
+    let mut seed = 7u64;
+    let mut next = |n: u64| {
+        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        (seed >> 33) % n
+    };
+    for _ in 0..500 {
+        let rs: Vec<Value> = (0..1 + next(6))
+            .map(|_| {
+                let res = [480, 720, 1080, 2160][next(4) as usize];
+                let peers = [0, 3, 12, 49, 50, 80, 400][next(7) as usize];
+                serde_json::json!({ "info": { "resolution": res }, "size": (1 + next(60)) as f64 * 1e9, "seeders": peers, "peers": peers, "seasonPack": false })
+            })
+            .collect();
+        let minutes = [0, 90, 136][next(3) as usize];
+        assert_eq!(picked_within(fit::Limits::NONE, "film", &rs, minutes, 1, |_| true), old(&rs, minutes), "{rs:?}");
+    }
+}
+
+#[test]
+fn save_offers_the_smaller_release_play_would_pick_among_those_that_fit() {
+    let _g = fresh(true, true);
+    seed(Call::Title(MATRIX.into()), json!({ "id": MATRIX, "kind": "movie", "title": "The Matrix", "runtimeMinutes": 136, "release": { "year": 1999 } }));
+    let gib = 1024.0 * 1024.0 * 1024.0;
+    found(MATRIX, vec![release("Matrix.1080p.Remux", Some(1080), "remux", 25.0, 400, false), release("Matrix.720p.WEB", Some(720), "web", 1.4, 200, false), release("Matrix.480p", Some(480), "dvd", 0.7, 300, false)]);
+    assert_eq!(save_size(MATRIX, None), Some((25.0 * gib) as u64), "a desktop saves Play's release");
+    let smaller = smaller_release(MATRIX, |b| b < (19.0 * gib) as u64).unwrap();
+    assert_eq!(smaller["id"], "Matrix.720p.WEB");
+    assert_eq!(smaller["quality"], "720p");
+    assert_eq!(save_size(MATRIX, Some("Matrix.720p.WEB")), Some((1.4 * gib) as u64));
+    assert!(smaller_release(MATRIX, |_| false).is_none(), "none fits");
+    let SaveAsk::Ready(req) = save_request(MATRIX, Some("Matrix.720p.WEB")) else { panic!("ready") };
+    assert_eq!(req.source, "magnet:?xt=urn:btih:Matrix.720p.WEB");
+    assert!(CHOSEN.lock().unwrap().is_empty(), "Play's release stays");
 }
 
 #[test]

@@ -80,6 +80,10 @@ title:
   saved: "Enregistré"
   saved_one: "1 épisode enregistré"
   saved_some: "Épisodes enregistrés : %{count}"
+  save_size: "Enregistrer · %{size}"
+  no_space_title: "Espace insuffisant"
+  no_space_about: "Il faut %{needed}, %{free} libres sur cet appareil."
+  save_smaller: "Enregistrer en %{quality} · %{size}"
 
 card:
   left: "Reste %{time}"
@@ -558,6 +562,9 @@ saved:
     save_one: "Enregistrer 1 épisode"
     choose: "Choisir les épisodes"
     more: "%{size} de plus"
+    free: "%{free} libres"
+    more_free: "%{size} · %{free} libres"
+    no_room: "Espace insuffisant : il faut %{size}, %{free} libres"
     new: "nouveau"
 
 confirm:

@@ -80,6 +80,10 @@ title:
   saved: "Kaydedildi"
   saved_one: "1 bölüm kaydedildi"
   saved_some: "%{count} bölüm kaydedildi"
+  save_size: "Kaydet · %{size}"
+  no_space_title: "Yeterli alan yok"
+  no_space_about: "%{needed} gerekiyor, bu cihazda %{free} boş."
+  save_smaller: "%{quality} kaydet · %{size}"
 
 card:
   left: "%{time} kaldı"
@@ -558,6 +562,9 @@ saved:
     save_one: "1 bölümü kaydet"
     choose: "Bölümleri seç"
     more: "%{size} daha"
+    free: "%{free} boş"
+    more_free: "%{size} · %{free} boş"
+    no_room: "Yeterli alan yok: %{size} gerekiyor, %{free} boş"
     new: "yeni"
 
 confirm:
