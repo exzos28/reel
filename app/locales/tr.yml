@@ -340,6 +340,8 @@ search:
     shows: "Diziler yüklenemedi."
     anime: "Animeler yüklenemedi."
   clear_query: "Aramayı temizle"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "Tümünü göster (%{count})"
 
 compat:
   audio_dts: "Bu sürümde yalnızca DTS ses var ve bu cihaz onu oynatamıyor. Başka bir sürüm seç."

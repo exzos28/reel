@@ -340,6 +340,8 @@ search:
     shows: "No se han podido cargar las series."
     anime: "No se ha podido cargar el anime."
   clear_query: "Borrar búsqueda"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "Ver los %{count}"
 
 compat:
   audio_dts: "Esta versión solo tiene audio DTS, que este dispositivo no puede reproducir. Elige otra versión."

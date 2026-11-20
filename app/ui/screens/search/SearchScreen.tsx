@@ -1,5 +1,6 @@
 // Search, a nav destination: the nav, the page's title and the query field,
-// then the results as rows of 16:9 cards (Movies, Shows, Anime), or the
+// then the results as rows of 16:9 cards (Movies, Shows, Anime; on a tablet a grid of them with
+// Show all), or the
 // recent searches while nothing is typed (before any, what is trending now, the core's row). The core searches once the query
 // rests and answers through the catalog's revision. Remote: the screen opens
 // on the field (with its keyboard up where one types at once; on touch only once the field is
@@ -7,7 +8,7 @@
 // field brings the keyboard (a TV's on-screen one), Up goes to the nav, Down
 // into the recent searches or the results; OK on a card opens its title.
 // Back closes the keyboard, then takes the focus to the nav, then Home.
-import { computed, keymap, signal, Text, View, type InputRef, type ViewStyle } from "nsh";
+import { computed, effect, keymap, signal, Text, untracked, View, type InputRef, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { forgetSearches, rememberSearch, retrySearch, search, type SearchAnswer } from "../../catalog";
 import { byKeys } from "../../focus/keys";
@@ -27,6 +28,8 @@ import { FailedRow } from "./FailedRow";
 import { cols, navAt, query, recentAt, row, zone } from "./focus";
 import { RecentSearches } from "./RecentSearches";
 import { SearchField } from "./SearchField";
+import { SearchGrid } from "./SearchGrid";
+import { searchGrid } from "../../layout/wide";
 
 /** The field under the page's title (the frame's). */
 const topStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(28), gap: u(28) });
@@ -49,6 +52,12 @@ const typesAtOnce = density !== "ten-foot";
 
 export function SearchScreen() {
   const answer = computed(() => search(query()));
+  /** A tablet's rows opened whole (Show all), by id: for this query only. */
+  const opened = signal<Set<string>>(new Set());
+  effect(() => {
+    query();
+    untracked(() => opened().size > 0 && opened.set(new Set()));
+  });
   const sections = () => answer().sections;
   const recent = () => (answer().state === "recent" ? answer().recent : []);
   const rowAt = () => clamp(row(), sections().length - 1);
@@ -215,15 +224,31 @@ export function SearchScreen() {
                 />
               }
             >
-            <HomeShelf
-              shelf={section}
-              title={() => t(`search.section.${section().id}`)}
-              focusedAt={() => (zone() === "results" && rowAt() === r() ? col(r()) : null)}
-              blockRef={page.follow(() => zone() === "results" && rowAt() === r(), "anchor")}
-              onOpen={(c) => open(r(), c)}
-              page={page}
-              eager={r() < 2}
-            />
+            <If
+              when={searchGrid}
+              else={
+                <HomeShelf
+                  shelf={section}
+                  title={() => t(`search.section.${section().id}`)}
+                  focusedAt={() => (zone() === "results" && rowAt() === r() ? col(r()) : null)}
+                  blockRef={page.follow(() => zone() === "results" && rowAt() === r(), "anchor")}
+                  onOpen={(c) => open(r(), c)}
+                  page={page}
+                  eager={r() < 2}
+                />
+              }
+            >
+              <SearchGrid
+                title={() => t(`search.section.${section().id}`)}
+                items={() => section().items}
+                facet={() => section().facet}
+                focusedAt={() => (zone() === "results" && rowAt() === r() ? col(r()) : null)}
+                blockRef={page.follow(() => zone() === "results" && rowAt() === r(), "anchor")}
+                all={() => opened().has(section().id)}
+                onAll={() => opened.set(new Set([...opened(), section().id]))}
+                onOpen={(c) => open(r(), c)}
+              />
+            </If>
             </If>
           )}
         </Each>

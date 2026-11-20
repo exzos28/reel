@@ -340,6 +340,8 @@ search:
     shows: "ドラマを読み込めませんでした。"
     anime: "アニメを読み込めませんでした。"
   clear_query: "検索をクリア"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "すべて表示（%{count}）"
 
 compat:
   audio_dts: "このリリースの音声は DTS のみで、このデバイスでは再生できません。別のリリースを選んでください。"

@@ -340,6 +340,8 @@ search:
     shows: "Не вдалося завантажити серіали."
     anime: "Не вдалося завантажити аніме."
   clear_query: "Очистити пошук"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "Показати всі %{count}"
 
 compat:
   audio_dts: "У цій роздачі звук лише в DTS, а цей пристрій його не відтворює. Виберіть іншу роздачу."

@@ -340,6 +340,8 @@ search:
     shows: Не удалось загрузить сериалы.
     anime: Не удалось загрузить аниме.
   clear_query: "Очистить поиск"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "Показать все %{count}"
 
 compat:
   audio_dts: В этой раздаче звук только в DTS, а это устройство его не воспроизводит. Выберите другую раздачу.
