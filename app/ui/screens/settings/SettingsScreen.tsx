@@ -22,6 +22,8 @@ import {
   source, streamDetails, toggleStreamDetails,
 } from "../../preferences";
 import { row } from "../../kit/shape";
+import { formWidth } from "../../kit/form";
+import { centredForm } from "../../layout/wide";
 import { Fmt } from "../../native";
 import { safe, u } from "../../theme";
 import { audioLanguageChoices, audioLanguageName, bufferChoiceList, languageChoices, languageName, loaderChoices, loaderName, sizeText } from "./choices";
@@ -30,9 +32,10 @@ import { PhoneCard } from "../source/PhoneCard";
 import { openSourceDrawer } from "../source/SourceDrawer";
 import { ChoicePanel } from "../../layout/ChoicePanel";
 
-/** The rows under the page's title (the frame's), the phone card beside them. */
-const pageStyle = (): ViewStyle => ({ ...row(u(96), "flex-start"), paddingHorizontal: safe().x, paddingTop: u(40) });
-const rowsStyle = (): ViewStyle => ({ flex: 1, gap: u(12) });
+/** The rows under the page's title (the frame's), the phone card beside them; on a tablet held
+ * wide a column in the middle (not 650 points at the left of 1100). */
+const pageStyle = (): ViewStyle => ({ ...row(u(96), "flex-start"), paddingHorizontal: safe().x, paddingTop: u(40), ...(centredForm() ? { justifyContent: "center" } : null) });
+const rowsStyle = (): ViewStyle => (centredForm() ? { width: formWidth(), gap: u(12) } : { flex: 1, gap: u(12) });
 const SETTINGS_AT = NAV.findIndex((n) => n.id === "settings");
 
 type Picker = "language" | "audio_language" | "buffer" | "loader";
