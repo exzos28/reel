@@ -24,7 +24,7 @@ import { isSaved, NO_PLAN, save as saveKeys, saveOffer, saveRelease, seasonPlan,
 import { ConfirmDialog, type Confirm } from "../../layout/ConfirmDialog";
 import { Fmt } from "../../native";
 import { SaveDrawer } from "./SaveDrawer";
-import { openSourceDrawer } from "../source/SourceDrawer";
+import { openSourceDrawer, sourceDrawerOpen } from "../source/SourceDrawer";
 import { playGate } from "../source/playGate";
 import { pickReleaseFor, play as startPlay, playing } from "../../playback";
 import { safe, u } from "../../theme";
@@ -215,8 +215,9 @@ export function TitleScreen(props: { id: string }) {
     const row = heroRow();
     action.set(row[clamp(actionAt() + by, row.length - 1)]);
   };
-  /** The focused action as the hero shows it (Play when the row lost it). */
-  const focusedAction = () => (zone() === "actions" ? heroRow()[actionAt()] : null);
+  /** The focused action as the hero shows it (Play when the row lost it; none under the source
+   * drawer, which has the focus while it is open). */
+  const focusedAction = () => (zone() === "actions" && !sourceDrawerOpen() ? heroRow()[actionAt()] : null);
   /** Where the focus lands in a season's episodes: where the viewer is, else the first. */
   const firstItem = () => {
     const r = data().resume;

@@ -54,3 +54,91 @@ test("TV: the split Play is one focus ring; the part with the focus stays white,
   await app.keyboard.press("down"); // off the split: both parts white again
   expect(more()).toBe(onMore);
 });
+
+/** A core that keeps the source it is given (`saved` gets each [address, key]) and finds it works. */
+function sourceCore(url = "") {
+  const saved: string[][] = [];
+  const native = {
+    ...NATIVE,
+    ...(url ? { "Settings.load": JSON.stringify({ language: "en", bufferMB: 256, bufferChoices: [{ mb: 256, default: true }], streamDetails: false, source: { url, hasKey: false } }) } : {}),
+    "Settings.setSource": (u: string, k: string) => (saved.push([u, k]), JSON.stringify({ ok: true, source: { url: u, hasKey: false } })),
+    "Sources.check": 7,
+    "Sources.result": JSON.stringify({ state: "done", caps: { movieImdb: false, tvImdb: false, tvSeasonEp: true } }),
+  };
+  return { native, saved };
+}
+
+/** Settings with the remote, the focus on its Search source row. */
+async function sourceRow(native: Native) {
+  const app = await openApp({ clock: {}, modules: { "app/native": native } });
+  await app.keyboard.press("up"); // the hero
+  await app.keyboard.press("up"); // the nav, on Home
+  for (let i = 0; i < 6; i++) await app.keyboard.press("right"); // Settings
+  await app.keyboard.press("enter");
+  await app.keyboard.press("down"); // Language
+  for (let i = 0; i < 3; i++) await app.keyboard.press("down"); // Audio language, Playback buffer, Search source
+  return app;
+}
+
+test("TV: the source drawer takes the remote's focus: Down walks its fields to Save, OK saves; Back gives the focus back to the row", async () => {
+  const { native, saved } = sourceCore();
+  const app = await sourceRow(native);
+  await app.keyboard.press("enter");
+  expect(app.shows("source-panel")).toBe(true);
+  await app.keyboard.press("enter"); // OK on the address: its keyboard
+  for (const k of ["h", "t"]) await app.keyboard.press(k);
+  expect(app.value("source-url")).toBe("ht");
+  await app.keyboard.press("down"); // the key (the address lets the keyboard go)
+  await app.keyboard.press("down"); // Save (Check)
+  await app.keyboard.press("enter");
+  expect(saved).toEqual([["ht", ""]]);
+  await app.keyboard.press("escape");
+  expect(app.shows("source-panel")).toBe(false);
+  // Settings did not move under the drawer: OK is on Search source still.
+  await app.keyboard.press("enter");
+  expect(app.shows("source-panel")).toBe(true);
+});
+
+test("TV: in the source drawer Remove is right of Save; OK takes the source away", async () => {
+  const { native, saved } = sourceCore("http://old.example/api");
+  const app = await sourceRow(native);
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("Remove source");
+  await app.keyboard.press("down");
+  await app.keyboard.press("down"); // Save
+  await app.keyboard.press("right"); // Remove
+  await app.keyboard.press("enter");
+  expect(saved).toEqual([["", ""]]);
+});
+
+/** The first run's core: the setup shows; the source it is given is kept (`saved`). */
+function firstRun() {
+  const { native, saved } = sourceCore();
+  const languages = [{ tag: "en-US", name: "English" }, { tag: "de-DE", name: "Deutsch" }];
+  const chosen: string[] = [];
+  return {
+    saved,
+    chosen,
+    native: {
+      ...native,
+      "Settings.load": JSON.stringify({ language: "en", contentLanguage: "en-US", setupDone: false, bufferMB: 256, streamDetails: false, contentLanguages: languages, source: { url: "", hasKey: false }, bufferChoices: [{ mb: 256, default: true }] }),
+      "Settings.setContentLanguage": (tag: string) => (chosen.push(tag), tag),
+    },
+  };
+}
+
+test("TV setup, source step: the remote starts on the address, walks to the key and Check; OK on Check checks what was typed", async () => {
+  const { native, saved } = firstRun();
+  const app = await openApp({ clock: {}, modules: { "app/native": native } });
+  await app.waitFor("label:Next");
+  await app.press("label:Next");
+  await app.press("label:Next");
+  expect(app.texts()).toContain("Where should reel find films?");
+  await app.keyboard.press("enter"); // OK on the address: its keyboard
+  for (const k of ["h", "t"]) await app.keyboard.press(k);
+  expect(app.value("source-url")).toBe("ht");
+  await app.keyboard.press("down"); // the key (the address lets the keyboard go)
+  await app.keyboard.press("down"); // Check
+  await app.keyboard.press("enter");
+  expect(saved).toEqual([["ht", ""]]);
+});

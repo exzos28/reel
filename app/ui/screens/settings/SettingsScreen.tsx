@@ -30,7 +30,7 @@ import { safe, u } from "../../theme";
 import { audioLanguageChoices, audioLanguageName, bufferChoiceList, languageChoices, languageName, loaderChoices, loaderName, sizeText } from "./choices";
 import { SettingRow } from "./SettingRow";
 import { PhoneCard } from "../source/PhoneCard";
-import { openSourceDrawer } from "../source/SourceDrawer";
+import { openSourceDrawer, sourceDrawerOpen } from "../source/SourceDrawer";
 import { ChoicePanel } from "../../layout/ChoicePanel";
 
 /** The rows under the page's title (the frame's), the phone card beside them; on a tablet held
@@ -198,7 +198,8 @@ export function SettingsScreen() {
           <SettingRow
             label={t("settings.source.title")}
             value={() => t(source().url ? "settings.rows.connected" : "settings.rows.not_set")}
-            focused={() => at() === SOURCE_AT}
+            // Under the source drawer the row shows no focus: the drawer has it, and gives it back.
+            focused={() => at() === SOURCE_AT && !sourceDrawerOpen()}
             viewRef={page.follow(() => at() === SOURCE_AT)}
             onPress={() => {
               focus.set(SOURCE_AT);

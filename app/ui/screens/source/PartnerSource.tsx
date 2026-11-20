@@ -35,13 +35,23 @@ function Qr(props: { src: string; title: string | null; text: string; children?:
   );
 }
 
+/** Opens the partner's bot (its link fills the source's fields in this app). */
+export function openPartnerApp() {
+  const link = partner()?.app?.url;
+  if (link) openUrl(link).catch((e) => console.warn(`reel: the partner's bot did not open: ${e}`));
+}
+
+/** The bot's button shows (a remote's stop): a partner with an app link, where this device does not
+ * serve the page its QR code brings the source back to. */
+export function partnerButtonShown() {
+  const p = partner();
+  return !!p && !p.tv?.qr && !!p.app;
+}
+
 /** `titled`: false where the place gives it its own heading (the setup's "Or get a ready one"). */
 export function PartnerSource(props: { focused?: () => boolean; titled?: boolean }) {
   const title = () => ((props.titled ?? true) ? t("settings.source.partner_tv_title") : null);
-  const open = () => {
-    const link = partner()?.app?.url;
-    if (link) openUrl(link).catch((e) => console.warn(`reel: the partner's bot did not open: ${e}`));
-  };
+  const open = openPartnerApp;
   const button = () => (
     <View style={row(u(16))}>
       <Button kind="secondary" label={() => t("settings.source.partner_app")} focused={props.focused ?? (() => false)} onPress={open} />

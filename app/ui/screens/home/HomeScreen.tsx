@@ -8,7 +8,7 @@ import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
 import { NAV } from "../../layout/navItems";
 import { PageFrame } from "../../layout/PageFrame";
-import { openSourceDrawer } from "../source/SourceDrawer";
+import { openSourceDrawer, sourceDrawerOpen } from "../source/SourceDrawer";
 import { playGate } from "../source/playGate";
 import { scroller } from "../../layout/Scroller";
 import { showNav } from "../../layout/navState";
@@ -87,7 +87,8 @@ export function HomeScreen() {
       <View ref={page.follow(() => zone() !== "shelves", "start")}>
         <HomeHero
           item={hero}
-          focusedAt={() => (zone() === "hero" ? heroAt() : null)}
+          // Under the source drawer (Play without a source) Play shows no focus: the drawer has it.
+          focusedAt={() => (zone() === "hero" && !sourceDrawerOpen() ? heroAt() : null)}
           onPlay={playFocused}
           onToggle={heroActions[1]}
           onOpen={() => openTitle(hero().id)}
