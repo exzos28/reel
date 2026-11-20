@@ -193,7 +193,7 @@ const firstRun = (result: object) => ({
   }),
 });
 
-test("setup, source step: one button, Check until the source answers, then Finish; an edit makes it Check again", async () => {
+test("setup, source step: one button, Check (Checking… and disabled while it checks) until the source answers, then Finish alone; an edit makes it Check again", async () => {
   let finished = 0;
   const failing = await openApp({ clock: {}, modules: { "app/native": { ...firstRun({ state: "failed", message: "can't reach it" }), "Settings.finishSetup": () => (finished++, null) } } });
   for (const _ of [0, 1]) await failing.press("label:Next");
@@ -208,10 +208,14 @@ test("setup, source step: one button, Check until the source answers, then Finis
   const working = await openApp({ clock: {}, modules: { "app/native": { ...firstRun({ state: "done", caps: { movieImdb: true } }), "Settings.finishSetup": () => (finished++, null) } } });
   for (const _ of [0, 1]) await working.press("label:Next");
   await working.type("source-url", "https://source.example/api");
+  expect(working.shows("source-result")).toBe(true); // its room is there before it says anything
   await working.press("label:Check");
+  expect(working.texts()).toContain("Checking…");
+  expect(working.enabled("label:Checking…")).toBe(false);
   await working.wait(400);
   expect(working.texts()).toContain("Connected. It searches by IMDb id.");
   expect(working.texts()).toContain("Finish");
+  expect(working.texts()).not.toContain("Skip"); // one thing left to press
   await working.type("source-url", "/other"); // an edit: Check again
   expect(working.texts()).toContain("Check");
   await working.press("label:Check");
@@ -220,7 +224,7 @@ test("setup, source step: one button, Check until the source answers, then Finis
   expect(finished).toBe(1);
 });
 
-test("setup, language step: More languages opens them all, and the remote moves in the drawer and picks", async () => {
+test("setup, language step: More languages opens the ones the step does not show, and the remote moves in the drawer and picks", async () => {
   const chosen: string[] = [];
   const tags = ["en-US", "ru-RU", "de-DE", "fr-FR", "es-ES", "it-IT", "ja-JP", "pt-BR"];
   const names = ["English", "Русский", "Deutsch", "Français", "Español", "Italiano", "日本語", "Português"];
@@ -240,7 +244,10 @@ test("setup, language step: More languages opens them all, and the remote moves 
   await app.waitFor("label:More languages  ›");
   await app.press("label:More languages  ›");
   expect(app.shows("choice-panel")).toBe(true);
-  for (let i = 0; i < 7; i++) await app.keyboard.press("down"); // from English to the last
+  // The five shown on the step are not repeated: Italiano, 日本語, Português.
+  expect(app.texts().filter((x) => x === "English")).toHaveLength(1);
+  expect(app.texts()).toContain("Italiano");
+  for (let i = 0; i < 4; i++) await app.keyboard.press("down"); // to the last (and past it: it stays)
   await app.keyboard.press("enter");
   expect(chosen).toEqual(["pt-BR"]);
   expect(app.shows("choice-panel")).toBe(false);

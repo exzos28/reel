@@ -117,7 +117,41 @@ test("first run: the setup takes the screen, Next walks the steps, Skip ends it 
   expect(app.texts()).toContain("How much space can reel use while playing?");
   await app.press("label:Next");
   expect(app.texts()).toContain("Where should reel find films?");
+  expect(app.shows("page-foot")).toBe(true); // Skip and Check pinned above the home indicator
   await app.press("label:Skip");
   expect(finished).toBe(1);
   expect(app.shows("tab-bar")).toBe(true);
+});
+
+test("first run on a phone: Back (the disc, or the system's swipe) goes to the previous step, what was chosen and typed kept", async () => {
+  const chosen: number[] = [];
+  const settings = {
+    language: "en", contentLanguage: "en-US", setupDone: false, bufferMB: 256, streamDetails: false,
+    contentLanguages: [{ tag: "en-US", name: "English" }, { tag: "pl-PL", name: "Polski" }],
+    source: { url: "", hasKey: false },
+    bufferChoices: [{ mb: 256, default: true }, { mb: 512, default: false }],
+  };
+  const app = await openApp({
+    platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 },
+    modules: { "app/native": { ...NATIVE, "Settings.load": JSON.stringify(settings), "Settings.setBufferMb": (mb: number) => (chosen.push(mb), mb) } },
+  });
+  expect(app.shows("label:Back")).toBe(false); // the first step has none
+  await app.press("label:Next");
+  expect(app.texts()).toContain("How much space can reel use while playing?");
+  const bigger = app.texts().find((x) => x.startsWith("512"))!;
+  await app.press(`label:${bigger}`);
+  await app.press("label:Back");
+  expect(app.texts()).toContain("Which language should titles be in?");
+  await app.press("label:Next");
+  await app.press("label:Next");
+  expect(app.texts()).toContain("Where should reel find films?");
+  await app.type("source-url", "https://source.example/api");
+  await app.back(); // iOS's swipe back
+  expect(app.texts()).toContain("How much space can reel use while playing?");
+  await app.back();
+  expect(app.texts()).toContain("Which language should titles be in?");
+  await app.press("label:Next");
+  expect(chosen).toEqual([512]); // the buffer chosen once, still the one in effect
+  await app.press("label:Next");
+  expect(app.value("source-url")).toBe("https://source.example/api"); // what was typed is kept
 });
