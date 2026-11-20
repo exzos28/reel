@@ -519,6 +519,7 @@ export function Player() {
           volume={playVolume()}
           // The film's own subtitles (mpv draws them) rise above the controls while they show.
           subtitleLift={overlay() && !card() ? controlsHeight() / Math.max(1, windowSize().height) : 0}
+          audioLanguages={menu().apply.audioLanguages ?? ""}
           audioTrack={menu().apply.audio}
           subtitleTrack={menu().apply.subtitle}
           onTracks={(json) => embedded.set(json)}
