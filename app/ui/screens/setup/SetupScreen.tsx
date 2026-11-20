@@ -27,6 +27,7 @@ import { partner } from "../../hosted";
 import { SourceForm } from "../source/SourceForm";
 import { linkedSource, sourceForm } from "../source/sourceState";
 import { PartnerSource } from "../source/PartnerSource";
+import { Pressable } from "../../kit/Pressable";
 
 /** How many languages the step lists before "More languages". */
 const SHOWN_LANGUAGES = 5;
@@ -53,7 +54,7 @@ const actionsStyle = (): ViewStyle => ({ ...row(u(20)), marginTop: u(36), flexWr
 function Option(props: { choice: () => Choice; focused: () => boolean; onPress: () => void }) {
   const c = props.choice;
   return (
-    <View
+    <Pressable feedback="row" haptic={!c().selected}
       role="button"
       accessibilityLabel={c().text}
       accessibilityState={{ selected: c().selected }}
@@ -65,7 +66,7 @@ function Option(props: { choice: () => Choice; focused: () => boolean; onPress: 
       <If when={c().selected}>
         <Icon src={() => checkIcon} size={22} />
       </If>
-    </View>
+    </Pressable>
   );
 }
 

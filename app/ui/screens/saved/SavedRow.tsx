@@ -16,6 +16,7 @@ import { SpeedLine } from "../../kit/SpeedLine";
 import pauseIcon from "../../icons/pause.svg";
 import playIcon from "../../icons/play.svg";
 import trashIcon from "../../icons/trash.svg";
+import { Pressable } from "../../kit/Pressable";
 
 /** A phone: the state under the title (no column of its own), a smaller picture, the buttons as
  * wide as they are: a row the screen's width. */
@@ -95,7 +96,7 @@ export function SavedRow(props: {
     </>
   );
   return (
-    <View
+    <Pressable feedback="row"
       ref={props.viewRef}
       role="button"
       accessibilityLabel={i().title}
@@ -142,6 +143,6 @@ export function SavedRow(props: {
           onPress={props.onRemove}
         />
       </View>
-    </View>
+    </Pressable>
   );
 }

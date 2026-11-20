@@ -28,7 +28,7 @@ export function Pressable(
     haptic?: boolean;
   },
 ) {
-  const [own, rest] = split(props, ["feedback", "haptic", "style", "activeStyle", "onPress", "onPressDown", "onPressUp"] as const);
+  const [own, rest] = split(props, ["feedback", "haptic", "style", "activeStyle", "onPress", "onPressDown", "onPressUp", "children"] as const);
   const press = pressFeedback();
   const off = () => !!rest.disabled || !!rest.accessibilityState?.disabled;
   const look = () => (own.feedback === "none" || off() ? null : looks[own.feedback ?? "dim"]());
@@ -64,6 +64,8 @@ export function Pressable(
       // keeps it a moment, so a tap shows.
       style={[own.style, press.on() && look()]}
       activeStyle={[own.activeStyle, look()]}
-    />
+    >
+      {own.children}
+    </View>
   );
 }

@@ -10,6 +10,7 @@ import { Scroller, scroller } from "./layout/Scroller";
 import { byKeys } from "./focus/keys";
 import { onBack } from "./nav";
 import { alpha, colors, focusRing, font, radius, ringRoom, safe, showFocus, ts, type, u } from "./theme";
+import { Pressable } from "./kit/Pressable";
 
 const panelStyle = (): ViewStyle => ({
   // Over the controls (the scrubber, the times, the volume), which come later in the player.
@@ -89,10 +90,10 @@ export function PlayerEpisodes(props: {
           <View style={seasonsRowStyle()}>
           <Each of={seasons()} key={(n) => n}>
             {(n) => (
-              <View ref={seasonRow.follow(() => season() === n(), "nearest")} role="tab" accessibilityLabel={t("series.season", { number: n() })} accessibilityState={{ selected: season() === n() }}
+              <Pressable haptic={season() !== n()} ref={seasonRow.follow(() => season() === n(), "nearest")} role="tab" accessibilityLabel={t("series.season", { number: n() })} accessibilityState={{ selected: season() === n() }}
                 onPress={() => (season.set(n()), at.set(-1))} style={seasonStyle(season() === n(), showFocus() && at() === -1 && season() === n())}>
                 <Text style={{ ...type.label(), color: season() === n() ? colors.ink() : colors.snow() }}>{t("series.season", { number: n() })}</Text>
-              </View>
+              </Pressable>
             )}
           </Each>
           </View>
@@ -104,7 +105,7 @@ export function PlayerEpisodes(props: {
           {(e, i) => {
             const current = () => season() === props.season() && e().number === props.episode();
             return (
-              <View ref={episodeList.follow(() => at() === i())} role="button" accessibilityLabel={`${episodeCode(e().season, e().number)} ${e().title}`}
+              <Pressable feedback="row" ref={episodeList.follow(() => at() === i())} role="button" accessibilityLabel={`${episodeCode(e().season, e().number)} ${e().title}`}
                 onPress={() => pick(e())} hoverStyle={{ backgroundColor: colors.raise() }} style={rowStyle(current(), lit(i()), !playable(e()))}>
                 <View style={thumbStyle()}>
                   <If when={e().thumb}>{(src) => <Image src={src()} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}</If>
@@ -120,7 +121,7 @@ export function PlayerEpisodes(props: {
                     {e().upcoming ? t("series.airs", { date: shortDate(e().date) }) : current() ? t("player.now_playing") : runtime(e().minutes)}
                   </Text>
                 </View>
-              </View>
+              </Pressable>
             );
           }}
         </Each>

@@ -16,6 +16,7 @@ import { Picture } from "./Picture";
 import { Rating } from "./Rating";
 import { cardRadius, cover, rounded, row } from "./shape";
 import { bodyText, fontText, metaText } from "./text";
+import { Pressable } from "./Pressable";
 
 /** A preview opens after the pointer rested this long on the card, ms. */
 export const PREVIEW_DELAY = 600;
@@ -69,14 +70,14 @@ export function PreviewBody(props: { item: () => Summary; width: number; onOpen:
   const still = (props.width * 9) / 16;
   return (
     <View testID="preview" style={{ width: props.width, overflow: "hidden", ...rounded(cardRadius() + u(6)) }}>
-      <View onPress={props.onOpen} style={{ height: still }}>
+      <Pressable onPress={props.onOpen} style={{ height: still }}>
         <Picture item={s} src={() => s().card ?? s().still} titleSize={30} style={{ height: still }} />
         <View style={shadeStyle()} />
-      </View>
+      </Pressable>
       <View style={bodyStyle()}>
-        <View role="link" accessibilityLabel={titleText(s())} onPress={props.onOpen}>
+        <Pressable role="link" accessibilityLabel={titleText(s())} onPress={props.onOpen}>
           <Text style={titleStyle()}>{titleText(s())}</Text>
-        </View>
+        </Pressable>
         <View style={metaRow()}>
           <If when={s().rating}>
             <Rating rating={s().rating} size={22} />

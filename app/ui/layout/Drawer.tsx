@@ -22,6 +22,7 @@ import { alpha, colors, iconPt, safe, targetSlop, u } from "../theme";
 import closeIcon from "../icons/plus.svg";
 import { frame } from "./chrome";
 import { scroller, Scroller, type ScrollCtl } from "./Scroller";
+import { Pressable } from "../kit/Pressable";
 
 const veil = () => alpha(colors.ink(), 0.6);
 
@@ -64,11 +65,11 @@ const contentStyle = (): ViewStyle =>
 /** ✕: the plus turned a quarter. */
 function CloseButton(props: { onPress: () => void }) {
   return (
-    <View role="button" hitSlop={targetSlop(30)} accessibilityLabel={t("player.close")} onPress={props.onPress} style={closeStyle()}>
+    <Pressable role="button" hitSlop={targetSlop(30)} accessibilityLabel={t("player.close")} onPress={props.onPress} style={closeStyle()}>
       <View style={{ transform: "rotate(45deg)" }}>
         <Icon src={() => closeIcon} size={iconPt(14)} />
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -128,7 +129,7 @@ export function Drawer(props: {
       else={
         <If when={props.open()}>
           {[
-            <View testID={`${props.id}-backdrop`} style={tvBackdrop()} onPress={close} />,
+            <Pressable feedback="none" testID={`${props.id}-backdrop`} style={tvBackdrop()} onPress={close} />,
             <View testID={`${props.id}-panel`} style={tvPanel(props.tvWidth ?? 640)}>
               <Body title={props.title} note={props.note} footer={props.footer}>{props.children}</Body>
             </View>,

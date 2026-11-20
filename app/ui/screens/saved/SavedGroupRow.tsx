@@ -16,6 +16,7 @@ import { actionsBlock, compact, stateColumn } from "./SavedRow";
 import pauseIcon from "../../icons/pause.svg";
 import playIcon from "../../icons/play.svg";
 import trashIcon from "../../icons/trash.svg";
+import { Pressable } from "../../kit/Pressable";
 
 const groupStyle = (focused: boolean): ViewStyle => ({
   ...rowStyle(false, focused, u(24)),
@@ -63,7 +64,7 @@ export function SavedGroupRow(props: {
   );
   const line = () => t(g().count === 1 ? "saved.group_line_one" : "saved.group_line", { count: g().count, size: Fmt.size(g().size) });
   return (
-    <View
+    <Pressable feedback="row"
       ref={props.viewRef}
       role="button"
       accessibilityLabel={g().title}
@@ -102,6 +103,6 @@ export function SavedGroupRow(props: {
         </View>
         <IconButton size={44} icon={() => trashIcon} label={() => t("saved.remove_all")} focused={() => props.focusedPart() === 2} background={() => colors.raise()} onPress={props.onRemove} />
       </View>
-    </View>
+    </Pressable>
   );
 }

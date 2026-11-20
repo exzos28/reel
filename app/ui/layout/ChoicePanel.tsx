@@ -1,13 +1,14 @@
 // A list of choices in a drawer (as the filter and release panels are): a title,
 // one row per choice, the chosen one lighter with a check. OK or a click picks;
 // Back (through the page's closer), ✕ or a press outside closes it.
-import { Text, View, type ViewRef, type ViewStyle } from "nsh";
+import { Text, type ViewRef, type ViewStyle } from "nsh";
 import { Icon } from "../kit/Icon";
 import { rowStyle } from "../kit/Row";
 import { labelText } from "../kit/text";
 import { colors, cs, u } from "../theme";
 import checkIcon from "../icons/check.svg";
 import { Drawer } from "./Drawer";
+import { Pressable } from "../kit/Pressable";
 
 const optionStyle = (selected: boolean, focused: boolean): ViewStyle => ({
   ...rowStyle(selected, focused, u(16)),
@@ -25,7 +26,7 @@ export interface Choice {
 function ChoiceRow(props: { choice: () => Choice; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
   const c = props.choice;
   return (
-    <View
+    <Pressable feedback="row" haptic={!c().selected}
       ref={props.viewRef}
       role="button"
       accessibilityLabel={c().text}
@@ -38,7 +39,7 @@ function ChoiceRow(props: { choice: () => Choice; focused: () => boolean; viewRe
       <If when={c().selected}>
         <Icon src={() => checkIcon} size={22} />
       </If>
-    </View>
+    </Pressable>
   );
 }
 

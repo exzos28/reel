@@ -9,6 +9,7 @@ import { SignalBars } from "../../kit/SignalBars";
 import { fontText, oneLine } from "../../kit/text";
 import { colors, cs, density, ts, u } from "../../theme";
 import checkIcon from "../../icons/check.svg";
+import { Pressable } from "../../kit/Pressable";
 
 /** Columns on a TV and a Mac; a phone keeps what decides the choice. */
 const wide = density !== "compact";
@@ -38,7 +39,7 @@ export function ReleaseRow(props: {
   const r = props.release;
   if (props.narrow && density !== "ten-foot") return <NarrowRow {...props} />;
   return (
-    <View
+    <Pressable feedback="row"
       ref={props.viewRef}
       role="button"
       accessibilityLabel={`${r().quality} ${r().source}`}
@@ -69,7 +70,7 @@ export function ReleaseRow(props: {
           <Icon src={() => checkIcon} size={22} />
         </If>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -87,7 +88,7 @@ const narrowStyle = (selected: boolean, focused: boolean): ViewStyle => ({
 function NarrowRow(props: { release: () => Release; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
   const r = props.release;
   return (
-    <View
+    <Pressable feedback="row"
       ref={props.viewRef}
       role="button"
       accessibilityLabel={`${r().quality} ${r().source}`}
@@ -113,6 +114,6 @@ function NarrowRow(props: { release: () => Release; focused: () => boolean; view
       <If when={r().group}>
         <Text style={{ ...oneLine, ...fontText(20, colors.dim()) }}>{r().group}</Text>
       </If>
-    </View>
+    </Pressable>
   );
 }

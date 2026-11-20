@@ -12,6 +12,7 @@ import { scroller } from "../../layout/Scroller";
 import { caps } from "../../platform";
 import { colors, safe, targetSlop, u } from "../../theme";
 import tmdbLogo from "../../brand/tmdb.svg";
+import { Pressable } from "../../kit/Pressable";
 
 /** One source as the core lists it. */
 interface Attribution {
@@ -46,9 +47,9 @@ function Source(props: { source: () => Attribution }) {
         <Text style={noticeStyle()}>{s().notice!}</Text>
       </If>
       <If when={!caps.remote} else={<Text style={metaText()}>{s().url}</Text>}>
-        <View role="link" accessibilityLabel={s().url} onPress={() => open(s().url)} hitSlop={targetSlop(20)} style={{ alignSelf: "flex-start" }}>
+        <Pressable role="link" accessibilityLabel={s().url} onPress={() => open(s().url)} hitSlop={targetSlop(20)} style={{ alignSelf: "flex-start" }}>
           <Text style={linkStyle()}>{s().url}</Text>
-        </View>
+        </Pressable>
       </If>
     </View>
   );

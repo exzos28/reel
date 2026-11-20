@@ -36,7 +36,6 @@ import { onBack } from "./nav";
 import { SubtitleOverlay } from "./SubtitleOverlay";
 import { playerTracks, type TrackOption } from "./tracks";
 import { VideoSurface, videoUnderUi, type SurfaceRef } from "./VideoSurface";
-import { pressFeedback } from "./kit/pressFeedback";
 import playIcon from "./icons/play.svg";
 import pauseIcon from "./icons/pause.svg";
 import rewindIcon from "./icons/rewind.svg";
@@ -48,6 +47,7 @@ import rotateIcon from "./icons/rotate.svg";
 import episodesIcon from "./icons/episodes.svg";
 import { PlayerEpisodes } from "./PlayerEpisodes";
 import checkIcon from "./icons/check.svg";
+import { Pressable } from "./kit/Pressable";
 
 /** How long the overlay stays without input. */
 export const OVERLAY_MS = 5000;
@@ -88,11 +88,11 @@ const closeDisc = (): ViewStyle => ({
 /** ✕ (touch): leaves the player. */
 function CloseButton(props: { onPress: () => void }) {
   return (
-    <View role="button" hitSlop={targetSlop(CLOSE)} accessibilityLabel={t("player.close")} onPress={props.onPress} style={closeDisc()}>
+    <Pressable role="button" hitSlop={targetSlop(CLOSE)} accessibilityLabel={t("player.close")} onPress={props.onPress} style={closeDisc()}>
       <View style={{ transform: "rotate(45deg)" }}>
         <Icon src={() => plusIcon} size={iconPt(17)} />
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -502,7 +502,7 @@ export function Player() {
     : id === "episodes" ? episodesIcon : tracksIcon;
 
   return (
-    <View
+    <Pressable feedback="none"
       testID="player"
       style={{ flex: 1, backgroundColor: screenBackground() }}
       onMouseMove={(e) => {
@@ -573,7 +573,7 @@ export function Player() {
           back, as in other players (on the controls it is not). Told by the presses going down
           (each one comes, with its count), not by onPress (a quick second click may bring none). */}
       <If when={caps.fullscreen}>
-        <View
+        <Pressable feedback="none"
           testID="picture"
           style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
           onPress={() => !card() && poke()}
@@ -651,7 +651,7 @@ export function Player() {
           {(w) => (
             <>
               {/* A tap beside the panel closes it, as the tracks panel's does. */}
-              <View role="button" accessibilityLabel={t("player.close_episodes")} onPress={() => episodesOpen.set(false)} style={panelBackdrop} />
+              <Pressable feedback="none" role="button" accessibilityLabel={t("player.close_episodes")} onPress={() => episodesOpen.set(false)} style={panelBackdrop} />
               <PlayerEpisodes
                 bottom={() => controlsHeight() + safe().y + u(24)}
                 show={() => w().title}
@@ -668,7 +668,7 @@ export function Player() {
         </If>
         <If when={panel()}>
           {/* A tap beside the panel closes it, as a sheet's does. */}
-          <View role="button" accessibilityLabel={t("player.close_tracks")} onPress={() => panel.set(false)} style={panelBackdrop} />
+          <Pressable feedback="none" role="button" accessibilityLabel={t("player.close_tracks")} onPress={() => panel.set(false)} style={panelBackdrop} />
           <TracksPanel
             bottom={() => controlsHeight() + safe().y + u(24)}
             releases={shortReleases}
@@ -744,7 +744,7 @@ export function Player() {
           />
         )}
       </If>
-    </View>
+    </Pressable>
   );
 }
 
@@ -782,7 +782,7 @@ function Scrubber(props: {
   const ranges = computed(() => props.ranges().map(([from, to]) => ({ from, to })));
   const bar = u(8);
   return (
-    <View
+    <Pressable feedback="none"
       testID="scrubber"
       role="adjustable"
       accessibilityLabel={t("player.position")}
@@ -816,7 +816,7 @@ function Scrubber(props: {
           ...focusRing(props.focused()),
         }}
       />
-    </View>
+    </Pressable>
   );
 }
 
@@ -828,25 +828,22 @@ function RoundButton(props: {
   selected: () => boolean;
   onPress: () => void;
 }) {
-  const press = pressFeedback();
   return (
     <View style={{ alignItems: "center" }}>
-      <View
+      <Pressable
         role="button"
         accessibilityLabel={props.label()}
         onPress={props.onPress}
-        onPressDown={press.onPressDown}
-        onPressUp={press.onPressUp}
         hoverStyle={{ backgroundColor: colors.control() }}
         style={{
           width: u(68), height: u(68), borderRadius: 999, borderCurve: "continuous",
           alignItems: "center", justifyContent: "center",
-          backgroundColor: props.selected() || press.on() ? colors.control() : alpha(colors.raise(), 0.85),
+          backgroundColor: props.selected() ? colors.control() : alpha(colors.raise(), 0.85),
           ...focusRing(props.focused()),
         }}
       >
         <Image src={props.icon()} style={{ width: u(34), height: u(34), tintColor: colors.snow() }} />
-      </View>
+      </Pressable>
     </View>
   );
 }
@@ -888,7 +885,7 @@ function TracksPanel(props: {
       <Scroll style={{ flex: 1 }} scrollbar={false}>
       <Each of={options()} key="index">
         {(o, i) => (
-          <View
+          <Pressable feedback="row" haptic={!isSelected(col, i(), o().selected)}
             testID={o().id}
             role="button"
             accessibilityLabel={o().main}
@@ -914,7 +911,7 @@ function TracksPanel(props: {
             <If when={isSelected(col, i(), o().selected)}>
               <Icon src={() => checkIcon} size={24} color={() => (lit(col, i()) ? colors.ink() : colors.snow())} />
             </If>
-          </View>
+          </Pressable>
         )}
       </Each>
       </Scroll>
@@ -940,12 +937,12 @@ function TracksPanel(props: {
       )}
       {/* Touch has no Back key on screen: ✕ closes the panel (a tap beside it does too). */}
       <If when={caps.touch}>
-        <View role="button" accessibilityLabel={t("player.close_tracks")} hitSlop={targetSlop(u(56))} onPress={props.onClose}
+        <Pressable role="button" accessibilityLabel={t("player.close_tracks")} hitSlop={targetSlop(u(56))} onPress={props.onClose}
           style={panelCloseStyle()}>
           <View style={{ transform: "rotate(45deg)" }}>
             <Icon src={() => plusIcon} size={iconPt(15)} />
           </View>
-        </View>
+        </Pressable>
       </If>
     </View>
   );
@@ -1009,7 +1006,7 @@ function UpNext(props: {
         </View>
       </View>
       <View style={{ flexDirection: "row", gap: u(14), marginTop: u(22) }}>
-        <View
+        <Pressable
           role="button"
           accessibilityLabel={t("player.play_now")}
           onPress={props.onPlay}
@@ -1030,8 +1027,8 @@ function UpNext(props: {
               backgroundColor: alpha(colors.ink(), 0.55),
             }}
           />
-        </View>
-        <View
+        </Pressable>
+        <Pressable
           role="button"
           accessibilityLabel={t("player.watch_credits")}
           onPress={props.onCredits}
@@ -1042,7 +1039,7 @@ function UpNext(props: {
           }}
         >
           <Text style={{ ...type.label(), fontWeight: 600, color: colors.snow() }}>{t("player.watch_credits")}</Text>
-        </View>
+        </Pressable>
       </View>
     </View>
   );
