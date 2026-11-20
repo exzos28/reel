@@ -82,6 +82,8 @@ struct Slot {
     meta_rev: u64,
     /// When the last answer had no data: retried after a while.
     failed_at: Option<Instant>,
+    /// The last answer failed for want of a network (`ProviderError::Network`).
+    no_network: bool,
 }
 
 /// Waiting for a first answer on the UI thread, at most: long enough for the local cache
@@ -288,6 +290,7 @@ fn land(call: &Call, envelope: &Value, rev: u64) {
             || (data.is_some() && slot.data != data)
             || (data.is_none() && slot.data.is_none() && slot.failed_at.is_none());
         slot.failed_at = if data.is_none() { Some(Instant::now()) } else { None };
+        slot.no_network = data.is_none() && envelope["error"]["kind"] == "network";
         if data.is_some() {
             slot.data = data;
         }
@@ -1622,13 +1625,34 @@ pub fn home() -> Value {
     json!({ "hero": hero, "shelves": shelves })
 }
 
+/// The trending lists Home's shelves come from (only AniList's without TMDB).
+fn home_kinds(tmdb: bool) -> &'static [&'static str] {
+    if tmdb { &["movie", "tv", "movie-popular", "tv-popular", "anime"] } else { &["anime"] }
+}
+
+/// Whether Home's catalog is out of reach: every list it shows failed for want of a network,
+/// with nothing kept from before (a refused key or a busy server is not that). None while one
+/// has not been answered yet (Home asks for them as it opens).
+pub fn home_unreachable() -> Option<bool> {
+    let calls: Vec<Call> = home_kinds(tmdb_on()).iter().map(|k| Call::Trending(k)).collect();
+    let slots = SLOTS.0.lock().unwrap();
+    let mut offline = true;
+    for c in &calls {
+        let slot = slots.get(&c.key())?;
+        if !slot.loaded {
+            return None;
+        }
+        offline &= slot.data.is_none() && slot.no_network;
+    }
+    Some(offline)
+}
+
 /// The home shelves: `[{"id","facet","items":[summary…]}]`, ids are keys under
 /// `shelf.*`, `facet` what the cards show under their names (see `facet`). Never empty: a
 /// shelf with one notice card (`notice` set) says why when there is nothing to show.
 fn home_shelves() -> Value {
     let tmdb = tmdb_on();
-    let kinds: &[&'static str] =
-        if tmdb { &["movie", "tv", "movie-popular", "tv-popular", "anime"] } else { &["anime"] };
+    let kinds = home_kinds(tmdb);
     let calls: Vec<Call> = kinds.iter().map(|k| Call::Trending(k)).collect();
     let got = meta_all(&calls);
     let by = |k: &str| kinds.iter().position(|x| *x == k).map(|i| cards(&got[i])).unwrap_or_default();

@@ -112,6 +112,7 @@ fn home_shelves_from_meta() {
     seed(Call::Trending("movie-popular"), json!({ "items": [] }));
     seed(Call::Trending("tv-popular"), json!({ "items": [] }));
     seed(Call::Trending("anime"), json!({ "items": [] }));
+    assert_eq!(home_unreachable(), Some(false), "lists answered: the catalog is in reach");
     let shelves = home_shelves();
     let ids: Vec<_> = shelves.as_array().unwrap().iter().map(|s| s["id"].as_str().unwrap()).collect();
     // Empty shelves (Continue watching, nothing popular, no anime) are left out.
@@ -141,6 +142,9 @@ fn home_shelves_from_meta() {
     }
     let shelves = home_shelves();
     assert_eq!(shelves, json!([{ "id": "offline", "facet": "kind", "items": [notice("offline")] }]));
+    assert_eq!(home_unreachable(), Some(true), "no network for any list: the catalog is out of reach");
+    land(&Call::Trending("anime"), &json!({ "data": null, "error": { "kind": "http", "status": 503 } }), u64::MAX);
+    assert_eq!(home_unreachable(), Some(false), "a server that answered is not offline");
     // A notice card alone: the hero says it, and its shelf stays (nothing would be left).
     assert_eq!(home(), json!({ "hero": notice("offline"), "shelves": shelves }));
     assert_eq!(shelves[0]["items"][0]["notice"], "offline");
