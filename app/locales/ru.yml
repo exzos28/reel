@@ -134,6 +134,12 @@ release:
   sharing: "Раздают %{count} чел."
   sharing_short: "%{count} чел."
   pack: "весь сезон, %{size}"
+  voiced: "%{language} (%{voice})"
+  voice:
+    dub: "дубляж"
+    mvo: "многоголосый"
+    dvo: "двухголосый"
+    avo: "одноголосый"
   fast: запустится за секунды
   note:
     starts_fast: Запустится быстро

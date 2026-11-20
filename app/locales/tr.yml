@@ -133,6 +133,12 @@ release:
   sharing: "%{count} kişi paylaşıyor"
   sharing_short: "%{count} kişi"
   pack: "tüm sezon, %{size}"
+  voiced: "%{language} (%{voice})"
+  voice:
+    dub: "dublaj"
+    mvo: "MVO"
+    dvo: "DVO"
+    avo: "AVO"
   fast: "saniyeler içinde başlar"
   note:
     starts_fast: "Hızlı başlar"

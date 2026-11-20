@@ -133,6 +133,12 @@ release:
   sharing: "Partagé par %{count}"
   sharing_short: "Partages : %{count}"
   pack: "saison complète, %{size}"
+  voiced: "%{language} (%{voice})"
+  voice:
+    dub: "doublage"
+    mvo: "MVO"
+    dvo: "DVO"
+    avo: "AVO"
   fast: "démarre en quelques secondes"
   note:
     starts_fast: "Démarre vite"

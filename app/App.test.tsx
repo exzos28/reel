@@ -270,7 +270,7 @@ test("an episode not in its season's release opens the releases of that episode;
     "Catalog.episodes": JSON.stringify(missing),
     "Catalog.episode": JSON.stringify(missing[2]),
     "Catalog.episodeReleases": JSON.stringify({
-      releases: [release(4, "720p", "WEB", "AoT.S03E03.720p", "400 MB", 40, 3, "starts_fast", 2)],
+      releases: [release(4, "720p", "WEB", "AoT.S03E03.720p", "400 MB", 40, "starts_fast", 2)],
       releasesState: "done",
       seasonRelease: { quality: "1080p", source: "WEB", pack: true, size: "22 GB", peers: 90, fast: false },
     }),

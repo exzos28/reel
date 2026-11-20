@@ -133,6 +133,14 @@ release:
   sharing: "%{count} people sharing"
   sharing_short: "%{count} sharing"
   pack: "season pack %{size}"
+  # A voiced audio language: "Russian MVO", "English dub".
+  voiced: "%{language} %{voice}"
+  # How an audio language is voiced: a dub, a voice-over by several, two or one voices.
+  voice:
+    dub: "dub"
+    mvo: "MVO"
+    dvo: "DVO"
+    avo: "AVO"
   fast: starts in seconds
   note:
     starts_fast: Starts fast

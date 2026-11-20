@@ -654,7 +654,7 @@ impl Sources {
 
     /// `{"state":"pending"}`, `{"state":"done","releases":[…]}` (ranked: each
     /// `{"id","title","source","infohash","size","seeders","peers","indexer",
-    /// "info":{resolution,hdr,dolby_vision,codec,source,season,episodes,season_pack},
+    /// "info":{resolution,hdr,dolby_vision,languages,codec,source,season,episodes,season_pack},
     /// "seasonPack"}`), `{"state":"done","caps":{…}}` for a check, or
     /// `{"state":"failed","message"}`.
     pub fn result(id: u32) -> String {

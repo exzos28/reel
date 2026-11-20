@@ -133,6 +133,12 @@ release:
   sharing: "%{count}人が共有中"
   sharing_short: "%{count}人共有"
   pack: "シーズンパック %{size}"
+  voiced: "%{language}（%{voice}）"
+  voice:
+    dub: "吹替"
+    mvo: "MVO"
+    dvo: "DVO"
+    avo: "AVO"
   fast: "すぐに再生"
   note:
     starts_fast: "すぐに再生できます"
