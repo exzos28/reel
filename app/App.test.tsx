@@ -56,6 +56,7 @@ test("Settings: from the nav, the buffer row opens the sizes in a drawer; pick o
   expect(app.texts()).toContain("Playback buffer");
   expect(app.texts()).toContain("2 GB · 10 GB free"); // the row: the size in effect (a new install: the one 10 GB free recommends) and the free space
   await app.keyboard.press("down"); // from the nav to the language row
+  await app.keyboard.press("down"); // the audio language row
   await app.keyboard.press("down"); // to the buffer row
   await app.keyboard.press("enter"); // its sizes in a drawer
   expect(app.shows("id:choice-panel")).toBe(true);
