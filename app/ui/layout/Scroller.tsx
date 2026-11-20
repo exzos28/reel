@@ -70,6 +70,8 @@ export function Scroller(props: {
   onScroll?: (e: ScrollEvent) => void;
   onDragEnd?: (offset: number) => void;
   onContent?: (length: number) => void;
+  /** Off, a drag on it does not scroll it (a bottom sheet at medium takes the drag). */
+  scrollable?: () => boolean;
   children: JSX.Element;
 }) {
   const c = props.ctl;
@@ -103,7 +105,7 @@ export function Scroller(props: {
         testID={c.domId}
         horizontal={c.horizontal}
         // Where reel moves it with the wheel itself, the system's wheel is off (it would move it too).
-        scrollable={!OWN_WHEEL}
+        scrollable={!OWN_WHEEL && (props.scrollable?.() ?? true)}
         scrollbar={false}
         // The platform's overscroll bounce where it has one (iOS, macOS): content springs back at its edges.
         scrollEventThrottle={16}
