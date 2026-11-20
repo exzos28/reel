@@ -175,6 +175,16 @@ export function openSettings() {
   if (route().name !== "settings") push({ name: "settings" });
 }
 
+/** Where Back goes from the root of Saved or Settings, sections of their own (a tablet's): where
+ * it was opened from, else Home. Null on a page with one under it, and without such sections. */
+export function sectionBackTo(): Destination | null {
+  const s = stack();
+  const root = s[0].name as Destination;
+  if (s.length > 1 || !ownSections() || !OWN.includes(root)) return null;
+  const opener = from.get(root);
+  return opener && opener !== root ? opener : "home";
+}
+
 /** One level up. From a destination other than Home, to Home; on a tablet, from Saved's or
  * Settings' root to where it was opened from. On a phone's layout, from Search, Saved or
  * Settings to the Home tab (the category open last), and from a category to All. */

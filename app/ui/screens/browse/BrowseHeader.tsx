@@ -9,7 +9,7 @@ import type { Page } from "./focus";
  * trending row titles itself. */
 export function BrowseHeader(props: { page: Page }) {
   return (
-    <If when={pageTitleShown()}>
+    <If when={pageTitleShown("root")}>
       <View style={{ paddingHorizontal: safe().x }}>
         <Text style={{ ...bodyText(), marginTop: u(8) }}>{t(`browse.${props.page}.lead`)}</Text>
       </View>

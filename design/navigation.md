@@ -154,9 +154,10 @@ Mockups: `desktop.html` frames `mac-home`, `mac-movies-scrolled`, `mac-film`,
 
 Top row 60 pt under the status bar (iPad 24 pt, Android 32 dp; take `safeArea().top`):
 
-- Left (x 24): on a root the logo; on a deeper page the back button in its place — iPad: a
+- Left (x 24): on a root the logo; on a deeper page, and on Saved's and Settings' roots (Back
+  goes where they were opened from, else Home), the back button in its place — iPad: a
   40 pt capsule "‹ Movies" (chevron 20 + previous page's title 16/500); Android: a 40 dp disc
-  with ← (48 dp touch target), then the logo.
+  with ← (48 dp touch target), then the logo. The left edge's swipe goes back on those roots too.
 - Centre: the floating tab bar (44 pt capsule, 36 pt tabs, label 15/500): Home, Movies, Series,
   Anime, Search (icon only).
 - Right: on a title Add to list, then Saved (where the device saves; a ring of the overall saving
@@ -174,7 +175,9 @@ Top row 60 pt under the status bar (iPad 24 pt, Android 32 dp; take `safeArea().
   Settings to the category open last), sheets from the bottom, phone sizes. Only what the device
   decides differs (no Rotate in the player, the window controls' room). Settings opened on a tab
   there (a title's Open Settings) moves to its own section once the window is wide again. In a window that does not fill the screen the system's window
-  controls (●●●) sit at the top left: the logo, Back and the first tab start after them. A hero's
+  controls (●●●) sit at the top left: the logo, Back and the first tab start after them (and
+  the player's ✕). iPadOS reports a safe area at the window's left there (66 pt); the page's
+  margins ignore an iPad's side insets, the controls' room is the only one. A hero's
   Play takes the whole width with Save and Trailer under it where they do not fit in a row; a
   hero's title shrinks rather than break a word.
 - Without a network at start (the core decides), the app opens on Saved when something is saved.

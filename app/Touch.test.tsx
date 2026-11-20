@@ -54,6 +54,21 @@ test("phone: Settings is a tab of its own, without Back; Back from it goes to th
   expect(app.texts()).toContain("All movies");
 });
 
+test("a person opened on a category's tab shows their name and photo, on a phone and in a narrow iPad window", async () => {
+  for (const pad of [false, true]) {
+    const app = await openApp({
+      platform: "ios", width: 390, height: 844, safeArea: { top: 24, bottom: 20, left: 0, right: 0 },
+      modules: { ...(pad ? { nsh: { "platform.idiom": "pad" } } : {}), "app/native": NATIVE },
+    });
+    await app.press("label:Movies");
+    expect(app.texts()).not.toContain("Discover the latest and greatest films"); // the category's root: its tabs say it
+    await app.press("label:Dune >> nth=0");
+    await app.press("label:Leonardo DiCaprio >> nth=0");
+    expect(app.texts()).toContain("Films and series");
+    expect(app.texts()).toContain("Leonardo DiCaprio"); // the page's title, over the films
+  }
+});
+
 test("phone held sideways: the tabs are a rail at the left", async () => {
   const app = await openApp({ platform: "ios", width: 852, height: 393, safeArea: { top: 0, bottom: 21, left: 62, right: 62 }, modules: { "app/native": NATIVE } });
   expect(app.shows("nav-rail")).toBe(true);
@@ -185,6 +200,18 @@ test("tablet: the selected tab chosen again over a page of it goes back to its r
   expect(app.shows("label:Back to Home")).toBe(false);
 });
 
+test("tablet: a page swiped back from just before another tab is chosen stays gone on return", async () => {
+  const app = await tablet();
+  await app.press("label:Inception >> nth=0");
+  await app.press("label:Leonardo DiCaprio >> nth=0");
+  expect(app.texts()).toContain("Films and series");
+  await app.back(); // the system's back (iOS's swipe): the native stack pops
+  await app.press("label:Series");
+  await app.press("label:Home");
+  expect(app.texts()).not.toContain("Films and series");
+  expect(app.shows("label:Back to Home")).toBe(true); // the film, where it was
+});
+
 test("phone: the selected tab chosen again over a page of it goes back to its root", async () => {
   const app = await phone();
   await app.press("label:Movies");
@@ -206,7 +233,7 @@ test("tablet: Settings is a section of its own: selected while open, kept where 
   expect(app.shows("settings-button-on")).toBe(true);
   expect(TABLET_TABS.some((tab) => app.shows(`top-tab-on-${tab}`))).toBe(false);
   expect(app.texts()).toContain("Playback buffer");
-  expect(app.shows("label:Back to Home")).toBe(false); // its root: the logo, not Back
+  expect(app.shows("label:Back to Home")).toBe(true); // its root: Back to where it was opened
   await app.press("label:About reel");
   expect(app.texts()).toContain("Data sources");
   expect(app.shows("label:Back to Settings")).toBe(true);
@@ -242,6 +269,26 @@ test("tablet: Back from Settings' and Saved's roots goes back to where they were
   expect(TABLET_TABS.some((tab) => app.shows(`top-tab-on-${tab}`))).toBe(false); // Saved
   await app.keyboard.press("escape");
   expect(app.shows("top-tab-on-movies")).toBe(true);
+});
+
+test("tablet: Saved's and Settings' roots show Back to where they were opened from; it and the left edge's swipe go there", async () => {
+  const app = await tabletAt();
+  await app.press("label:Movies");
+  expect(app.shows("edge-back")).toBe(false); // a tab's root: nothing to go back to
+  await app.press("label:Saved");
+  expect(app.shows("label:Back to Movies")).toBe(true);
+  await app.drag("edge-back", { x: 120 });
+  expect(app.shows("top-tab-on-movies")).toBe(true);
+  expect(app.shows("label:Back to Movies")).toBe(false);
+  await app.press("settings-button");
+  await app.press("label:Back to Movies");
+  expect(app.shows("top-tab-on-movies")).toBe(true);
+  // Opened again, it goes back once; then Back goes Home.
+  await app.press("label:Saved");
+  await app.press("settings-button");
+  expect(app.shows("label:Back to Saved")).toBe(true);
+  await app.press("label:Back to Saved");
+  expect(app.shows("label:Back to Movies")).toBe(true);
 });
 
 test("tablet: the search source's drawer opens over Settings, and Back closes it before Settings", async () => {
@@ -425,6 +472,24 @@ test("phone: ⌄ in Play opens the releases in a bottom sheet; ✕ closes it", a
   await app.wait(600); // the sheet slides away
   expect(app.texts()).not.toContain("3 found, the best of each quality first");
   await app.press("label:Back to Movies");
+  expect(app.texts()).toContain("All movies");
+});
+
+test("tablet: the releases' sheet open in a narrow window closes once the window widens, and Back leaves the film", async () => {
+  const app = await tabletAt(390, 844);
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  await app.press("label:Other releases");
+  expect(app.shows("releases-close")).toBe(true);
+  await app.setViewport(1180, 820);
+  await app.wait(600);
+  expect(app.shows("releases-close")).toBe(false);
+  expect(app.shows("label:Back to Movies")).toBe(true);
+  // Narrow again: it stays closed; Back is the page's.
+  await app.setViewport(390, 844);
+  await app.wait(600);
+  expect(app.shows("releases-close")).toBe(false);
+  await app.keyboard.press("escape");
   expect(app.texts()).toContain("All movies");
 });
 

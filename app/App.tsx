@@ -24,7 +24,7 @@ import { chrome, frame } from "./ui/layout/chrome";
 import { opening } from "./ui/library";
 import { caps } from "./ui/platform";
 import { railWidth } from "./ui/layout/metrics";
-import { PhoneCategoryBar, PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
+import { PhoneCategoryBar, PhoneTabBar, TabletEdgeBack, TabletTopRow } from "./ui/layout/TouchNav";
 import { SourceDrawer } from "./ui/screens/source/SourceDrawer";
 import { TouchStack } from "./ui/layout/TouchStack";
 import { ExitDialog } from "./ui/layout/ExitDialog";
@@ -177,6 +177,7 @@ function App() {
                 </If>
                 <If when={frame().nav === "top-row"}>
                   <TabletTopRow />
+                  <TabletEdgeBack />
                 </If>
               </View>
             )}
