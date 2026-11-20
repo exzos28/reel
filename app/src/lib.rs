@@ -229,6 +229,12 @@ impl VideoEngine {
         let _ = landscape;
     }
 
+    /// Whether a phone's player starts sideways for a film of this size (the video view's
+    /// `width` and `height` once loaded): 16:9 and wider do (`reel_domain::play::starts_sideways`).
+    pub fn sideways(width: f64, height: f64) -> bool {
+        reel_domain::play::starts_sideways(width, height)
+    }
+
     /// Whether reel's own native views are registered on this device (Android: the Java ones
     /// `build/android-views.sh` adds to the APK; registered on the first call).
     pub fn views() -> bool {

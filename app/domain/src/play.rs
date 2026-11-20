@@ -52,3 +52,36 @@ impl SeekReady {
         }
     }
 }
+
+/// The narrowest picture a phone's player turns sideways for at the start: 16:9, with room for
+/// a few pixels cropped off (1916×1080) or a near-16:9 frame (1.75).
+const SIDEWAYS_FROM: f64 = 1.7;
+
+/// Whether a phone's player starts sideways for a picture this size (the video view's width and
+/// height once loaded, pixels): 16:9 and wider do; a narrower picture, or one not known yet (0),
+/// stays as the phone is held.
+pub fn starts_sideways(width: f64, height: f64) -> bool {
+    width > 0.0 && height > 0.0 && width / height >= SIDEWAYS_FROM
+}
+
+#[cfg(test)]
+mod tests {
+    use super::starts_sideways;
+
+    #[test]
+    fn sixteen_nine_and_wider_turn_sideways() {
+        assert!(starts_sideways(1920.0, 1080.0));
+        assert!(starts_sideways(1916.0, 1080.0));
+        assert!(starts_sideways(1920.0, 800.0));
+        assert!(starts_sideways(3840.0, 1600.0));
+    }
+
+    #[test]
+    fn narrower_or_unknown_stay_upright() {
+        assert!(!starts_sideways(1440.0, 1080.0));
+        assert!(!starts_sideways(720.0, 576.0));
+        assert!(!starts_sideways(1080.0, 1920.0));
+        assert!(!starts_sideways(0.0, 0.0));
+        assert!(!starts_sideways(1920.0, 0.0));
+    }
+}
