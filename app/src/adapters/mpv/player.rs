@@ -367,6 +367,12 @@ impl Player {
                 let sides = value.and_then(Value::as_f64).unwrap_or(0.0).clamp(0.0, 2.0);
                 self.set("sub-margin-x", &format!("{}", margin(sides, SUB_MARGIN_X)));
             }
+            // Larger than their size for the picture (5 % of its height) where that is too
+            // small to read: a phone held upright.
+            "subtitleScale" => {
+                let scale = value.and_then(Value::as_f64).unwrap_or(1.0).clamp(1.0, 3.0);
+                self.set("sub-scale", &format!("{scale}"));
+            }
             "rate" => self.set("speed", &format!("{}", value.and_then(Value::as_f64).unwrap_or(1.0))),
             "progressUpdateInterval" => {
                 let ms = value.and_then(Value::as_f64).unwrap_or(250.0).max(16.0);

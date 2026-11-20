@@ -37,7 +37,7 @@ import { TrackSlider } from "./kit/TrackSlider";
 import { useFullscreen } from "./platform/window";
 import { BarBack, barBackBox } from "./layout/WindowBar";
 import { onBack } from "./nav";
-import { SubtitleOverlay, subtitleFit } from "./SubtitleOverlay";
+import { SubtitleOverlay, subtitleBottom, subtitleFit, subtitleRest, subtitleScale } from "./SubtitleOverlay";
 import { playerTracks } from "./tracks";
 import { trackHeadings, trackRows, TracksSheet, type TrackRow } from "./PlayerTracks";
 import { VideoSurface, videoUnderUi, type SurfaceRef } from "./VideoSurface";
@@ -242,15 +242,33 @@ export function Player() {
   const controlsHeight = signal(0);
   /** The picture's width over its height, once the view says. */
   const pictureAspect = signal<number | undefined>(undefined);
-  /** How far from the window's bottom the subtitles stay above: the controls' top edge and a
-   * gap while they show, else 0. */
-  const subtitlesAbove = () => (overlay() && !card() && controlsHeight() > 0 ? controlsBottom() + controlsHeight() + u(12) : 0);
+  /** The phone's middle buttons show (Play and ±10 s over the picture's centre). */
+  const middleShown = () => middleButtons.length > 0 && ready() && overlay() && !staged() && !panel() && !episodesOpen() && !card();
+  /** How far from the window's bottom the subtitles stay above (`subtitleBottom`): the controls'
+   * top edge while they show, clear of the middle buttons, at the picture's bottom held upright;
+   * 0 where nothing lifts them off their rest. */
+  const subtitlesAbove = () => {
+    const controls = overlay() && !card() && controlsHeight() > 0 ? controlsBottom() + controlsHeight() + u(12) : 0;
+    const bottom = subtitleBottom({
+      window: windowSize(),
+      aspect: pictureAspect(),
+      rest: subtitleRest(),
+      controls,
+      middle: middleShown() ? u(BIG_BUTTON) : 0,
+      size: subtitleFit(windowSize(), pictureAspect(), safe().x, 0, "").size,
+      gap: u(12),
+    });
+    return bottom > subtitleRest() + 0.5 ? bottom : 0;
+  };
   /** The film's own subtitles (mpv draws them) in the box our overlay has: how far up and its
-   * sides, as shares of the picture's height (mpv's margins follow the picture). */
+   * sides, as shares of the picture's height (mpv's margins follow the picture), and how much
+   * larger than mpv's 5 % of it (no smaller than our overlay's least). */
   const filmSubtitles = () => {
     const fit = subtitleFit(windowSize(), pictureAspect(), safe().x, 0, "");
-    const h = Math.max(1, fit.frame);
-    return { lift: subtitlesAbove() / h, sides: fit.side / h };
+    const scale = subtitleScale(windowSize(), pictureAspect());
+    // mpv scales its margins with the subtitles (`sub-scale`): they are given before it.
+    const h = Math.max(1, fit.frame) * scale;
+    return { lift: subtitlesAbove() / h, sides: fit.side / h, scale };
   };
   // Audio and Subtitles: what the core says the video and the release have.
   const { embedded, menu, cue, choose } = playerTracks();
@@ -637,9 +655,11 @@ export function Player() {
           src={url()}
           paused={paused() || leaving()}
           volume={leaving() ? 0 : playVolume()}
-          // The film's own subtitles (mpv draws them) rise above the controls while they show.
+          // The film's own subtitles (mpv draws them) rise above the controls while they show,
+          // clear of the middle buttons, and sit at the picture held upright.
           subtitleLift={filmSubtitles().lift}
           subtitleSides={filmSubtitles().sides}
+          subtitleScale={filmSubtitles().scale}
           audioLanguages={menu().apply.audioLanguages ?? ""}
           audioTrack={menu().apply.audio}
           subtitleTrack={menu().apply.subtitle}
@@ -812,7 +832,7 @@ export function Player() {
         </If>
 
         {/* A phone's middle: −10 s, Play (larger), +10 s over the picture's centre. */}
-        <If when={ready() && middleButtons.length > 0 && !panel() && !episodesOpen() && !card()}>
+        <If when={middleShown()}>
           <View testID="player-middle" style={middleStyle()}>
             <Each of={middleButtons} key="index">
               {(id) => (

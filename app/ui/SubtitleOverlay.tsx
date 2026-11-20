@@ -1,7 +1,7 @@
 // Subtitles we draw ourselves (files from the release, on every platform):
 // bottom-centred on a dark plate so they read over any picture; they stay
-// above the player's controls while those show (`above`: the controls' top
-// edge) so they never sit on the scrubber. Their size follows the picture's
+// above the player's controls while those show, and clear of a phone's middle
+// buttons (`subtitleBottom`), so they never sit on the scrubber or under Play. Their size follows the picture's
 // height, not the window's or the device's type scale: an iPad or a phone held
 // upright shows the frame a third to a half as tall as the window, and its
 // subtitles shrink with it. Two lines (a longer cue gets smaller), with room at the sides.
@@ -63,6 +63,58 @@ export function subtitleFit(window: { width: number; height: number }, aspect: n
   return { size, side, frame, text: shown };
 }
 
+/** mpv's own margin under its subtitles, as a share of the picture's height (22 px at 720). */
+export const MARGIN_OF_FRAME = 22 / 720;
+/** The plate's padding above and below the text, TV pixels. */
+const PLATE_Y = 10;
+
+/** What the subtitles keep clear of, points from the window's bottom. */
+export interface SubtitleRoom {
+  window: { width: number; height: number };
+  /** The picture's width over its height (16:9 when not known). */
+  aspect: number | undefined;
+  /** Where they rest with nothing under them (`subtitleRest`). */
+  rest: number;
+  /** The bottom controls' top edge while they show, 0 while they do not. */
+  controls: number;
+  /** The height of the buttons in the middle of the picture (a phone's Play and ±10 s), centred
+   * in the window, while they show; 0 while they do not. */
+  middle: number;
+  /** The line's size: two lines of it (and the plate's padding) stay clear of the middle buttons. */
+  size: number;
+  /** The room kept between them and what they clear. */
+  gap: number;
+}
+
+/**
+ * Where the subtitles' bottom edge sits, points from the window's bottom: at rest at the bottom;
+ * held upright, at the bottom of the picture (the window's bottom is far below it, in the
+ * home indicator's way); above the controls while they show; and over the middle buttons while
+ * two lines would reach them.
+ */
+export function subtitleBottom(r: SubtitleRoom): number {
+  const { width, height } = r.window;
+  const ratio = r.aspect && r.aspect > 0 ? r.aspect : 16 / 9;
+  const frame = Math.min(height, width / ratio);
+  const bar = (height - frame) / 2;
+  let bottom = Math.max(height > width ? bar + frame * MARGIN_OF_FRAME : 0, r.rest, r.controls);
+  if (r.middle > 0) {
+    const block = 2 * r.size * LINE_HEIGHT + 2 * u(PLATE_Y);
+    const low = height / 2 - r.middle / 2;
+    const high = height / 2 + r.middle / 2;
+    if (bottom + block > low - r.gap && bottom < high + r.gap) bottom = high + r.gap;
+  }
+  return bottom;
+}
+
+/** The share mpv's subtitles grow by so that they are no smaller than `MIN_SIZE` (it sizes them
+ * from the picture's height: a phone held upright shows a frame some 220 pt high). */
+export function subtitleScale(window: { width: number; height: number }, aspect: number | undefined): number {
+  const ratio = aspect && aspect > 0 ? aspect : 16 / 9;
+  const frame = Math.min(window.height, window.width / ratio);
+  return Math.max(1, MIN_SIZE / Math.max(1, frame * SIZE_OF_FRAME));
+}
+
 const place = (side: number, lift: number): ViewStyle => ({
   pointerEvents: "none",
   position: "absolute",
@@ -79,7 +131,7 @@ const place = (side: number, lift: number): ViewStyle => ({
 const plate = (): ViewStyle => ({
   maxWidth: "100%",
   paddingHorizontal: u(22),
-  paddingVertical: u(10),
+  paddingVertical: u(PLATE_Y),
   borderRadius: radius(),
   borderCurve: "continuous",
   backgroundColor: alpha(colors.ink(), 0.72),
@@ -97,8 +149,8 @@ const line = (size: number): TextStyle => ({
 /** Where the subtitles rest when nothing is under them: from the window's bottom. */
 export const subtitleRest = () => safe().y + u(24);
 
-/** `above`: how far from the window's bottom to stay above (the controls' top edge while they
- * show, else 0); `aspect`: the picture's width over its height, when known. */
+/** `above`: how far from the window's bottom to stay above (`subtitleBottom`, or 0: at rest);
+ * `aspect`: the picture's width over its height, when known. */
 export function SubtitleOverlay(props: { text: () => string; above: () => number; aspect: () => number | undefined }) {
   const fit = () => subtitleFit(windowSize(), props.aspect(), safe().x, u(22), props.text());
   return (
