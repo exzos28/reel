@@ -2,10 +2,10 @@
 // (STILL: it plays its first frame at once and stands still, so the time
 // stays where seeks put it); and the stage before the first frame.
 import { expect, test } from "nsh/test";
-import { episode, HOME, NATIVE, STILL, openApp, DUNE_FIRST } from "./testEngine";
+import { episode, HOME, homeOf, NATIVE, STILL, openApp, DUNE_FIRST } from "./testEngine";
 
 /** Home with Attack on Titan watched last: the hero. */
-const AOT_FIRST = { "Catalog.home": JSON.stringify(HOME.map((s) => (s.id === "continue" ? { ...s, items: [...s.items].reverse() } : s))) };
+const AOT_FIRST = { "Catalog.home": homeOf(HOME.map((s) => (s.id === "continue" ? { ...s, items: [...s.items].reverse() } : s))) };
 
 const status = JSON.stringify({
   phase: "ready",

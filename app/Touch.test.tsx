@@ -111,7 +111,8 @@ test("phone: ⌄ in Play opens the releases in a bottom sheet; ✕ closes it", a
 
 test("phone, with a source: Home's Play waits for the source's answer, then opens the drawer when it did not answer", async () => {
   const home = JSON.parse(NATIVE["Catalog.home"] as string);
-  for (const shelf of home) for (const card of shelf.items ?? []) card.release = null;
+  home.hero.release = null;
+  for (const shelf of home.shelves) for (const card of shelf.items ?? []) card.release = null;
   const film = { ...JSON.parse(NATIVE["Catalog.title"] as string), release: null, releases: [], releasesState: "failed" };
   const app = await openApp({
     platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 },

@@ -258,7 +258,14 @@ const read = <T>(key: string, json: () => string): T => {
   return value;
 };
 
-export const home = () => read<Shelf[]>("home", () => Catalog.home());
+/** Home: the hero (the title watched last, else the first card) and the shelves, which do not
+ * show the hero again (the core's). */
+export interface Home {
+  hero: Summary;
+  shelves: Shelf[];
+}
+
+export const home = () => read<Home>("home", () => Catalog.home());
 /** A row of a filter panel: `name` when the source names it (a genre, a
  * country), else `key` under `browse.option.*` with its number `n`. */
 export interface FilterOption {

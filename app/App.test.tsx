@@ -114,7 +114,7 @@ test("without a TMDB key home shows anime and says what is missing", async () =>
     tag: null, playable: false, inList: false, release: null, play: { id: "reel:notice:no_tmdb", start: 0 },
     playAs: { verb: "play", season: null, episode: null, at: null },
   };
-  const app = await app_({ ...NATIVE, "Catalog.home": JSON.stringify([{ id: "no_tmdb", items: [notice] }]) });
+  const app = await app_({ ...NATIVE, "Catalog.home": JSON.stringify({ hero: notice, shelves: [{ id: "no_tmdb", items: [notice] }] }) });
   expect(app.texts()).toContain("Movies and shows need a TMDB key");
   expect(app.texts()).toContain("Movies and shows");
 });

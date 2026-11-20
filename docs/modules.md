@@ -46,8 +46,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/catalog.ts`.
 - `forgetSearches()` (`forget_searches`): Forgets all the recent searches (the history's Clear).
   Called from: `ui/catalog.ts`.
-- `home() -> String`: The home shelves: `[{"id","items":[summary…]}]` (see `catalog::summary`).
-  JSON: `[{"id","items":[summary…]}]`
+- `home() -> String`: Home: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`, the hero not repeated on the shelves (see `catalog::home`, `catalog::summary`).
+  JSON: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`
   Called from: `ui/catalog.ts`.
 - `person(id: String) -> String`: A person's page ("tmdb:person:6384"): `{"id","name","photo","initials","items":[summary…], "state"}` (see `catalog::person`).
   JSON: `{"id","name","photo","initials","items":[summary…], "state"}`

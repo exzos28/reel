@@ -438,7 +438,8 @@ impl Catalog {
         catalog::revision() as f64
     }
 
-    /// The home shelves: `[{"id","items":[summary…]}]` (see `catalog::summary`).
+    /// Home: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`, the hero not repeated
+    /// on the shelves (see `catalog::home`, `catalog::summary`).
     pub fn home() -> String {
         catalog::home().to_string()
     }

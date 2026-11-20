@@ -1594,10 +1594,32 @@ fn continuing() -> Vec<Value> {
     out
 }
 
+/// Home: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`. The hero is the
+/// first card of the first shelf (Continue watching comes first: the title watched last);
+/// Continue watching and the catalog's shelves do not show it again (a shelf left empty
+/// drops out), unless nothing would be left under it (one title, a notice card); the
+/// Watchlist keeps it: it is the viewer's own list, whole.
+pub fn home() -> Value {
+    let shelves = home_shelves();
+    let all = list_of(&shelves);
+    let hero = all.first().map(|s| s["items"][0].clone()).unwrap_or(Value::Null);
+    let rest: Vec<Value> = all
+        .iter()
+        .filter_map(|s| {
+            let mine = s["id"] == "watchlist";
+            let items: Vec<Value> =
+                list_of(&s["items"]).iter().filter(|i| mine || i["id"] != hero["id"]).cloned().collect();
+            (!items.is_empty()).then(|| json!({ "id": s["id"], "items": items }))
+        })
+        .collect();
+    let shelves = if rest.is_empty() { shelves } else { json!(rest) };
+    json!({ "hero": hero, "shelves": shelves })
+}
+
 /// The home shelves: `[{"id","items":[summary…]}]`, ids are keys under
 /// `shelf.*`. Never empty: a shelf with one notice card (`notice` set) says
 /// why when there is nothing to show.
-pub fn home() -> Value {
+fn home_shelves() -> Value {
     let tmdb = tmdb_on();
     let kinds: &[&'static str] =
         if tmdb { &["movie", "tv", "movie-popular", "tv-popular", "anime"] } else { &["anime"] };

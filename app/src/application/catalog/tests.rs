@@ -112,10 +112,14 @@ fn home_shelves_from_meta() {
     seed(Call::Trending("movie-popular"), json!({ "items": [] }));
     seed(Call::Trending("tv-popular"), json!({ "items": [] }));
     seed(Call::Trending("anime"), json!({ "items": [] }));
-    let shelves = home();
+    let shelves = home_shelves();
     let ids: Vec<_> = shelves.as_array().unwrap().iter().map(|s| s["id"].as_str().unwrap()).collect();
     // Empty shelves (Continue watching, nothing popular, no anime) are left out.
     assert_eq!(ids, vec!["trending_movies", "trending_shows"]);
+    // The hero, the first card, is not repeated on its shelf.
+    let h = home();
+    assert_eq!(h["hero"]["id"], shelves[0]["items"][0]["id"]);
+    assert!(h["shelves"][0]["items"].as_array().unwrap().iter().all(|i| i["id"] != h["hero"]["id"]));
     let first = &shelves[0]["items"][0];
     assert_eq!(first["id"], "tmdb:movie:1368337");
     assert_eq!(first["kind"], "movie");
@@ -135,8 +139,10 @@ fn home_shelves_from_meta() {
     for k in ["movie", "tv", "movie-popular", "tv-popular", "anime"] {
         land(&Call::Trending(k), &json!({ "data": null, "error": { "kind": "network" } }), u64::MAX);
     }
-    let shelves = home();
+    let shelves = home_shelves();
     assert_eq!(shelves, json!([{ "id": "offline", "items": [notice("offline")] }]));
+    // A notice card alone: the hero says it, and its shelf stays (nothing would be left).
+    assert_eq!(home(), json!({ "hero": notice("offline"), "shelves": [{ "id": "offline", "items": [notice("offline")] }] }));
     assert_eq!(shelves[0]["items"][0]["notice"], "offline");
 }
 
@@ -145,7 +151,7 @@ fn without_tmdb_anime_and_a_notice() {
     let _g = fresh(false, false);
     let anime = crate::adapters::metadata::anilist::Anilist.map_cards(&fixture("anilist_trending.json"), &cx()).unwrap();
     seed(Call::Trending("anime"), json!({ "items": anime }));
-    let shelves = home();
+    let shelves = home_shelves();
     assert_eq!(shelves[0]["id"], "anime");
     assert!(shelves[0]["items"][0]["id"].as_str().unwrap().starts_with("anilist:"));
     assert_eq!(shelves[0]["items"][0]["rating"], "8.5");
@@ -317,10 +323,16 @@ fn resume_continue_watching_and_up_next() {
     assert_eq!(m["left"], 95);
 
     // Continue watching: latest first.
-    let shelves = home();
+    let shelves = home_shelves();
     assert_eq!(shelves[0]["id"], "continue");
     let ids: Vec<_> = shelves[0]["items"].as_array().unwrap().iter().map(|s| s["id"].as_str().unwrap()).collect();
     assert_eq!(ids, vec![MATRIX, AOT]);
+    // Home's hero is the title watched last; Continue watching goes on from the next one.
+    let h = home();
+    assert_eq!(h["hero"]["id"], MATRIX);
+    assert_eq!(h["shelves"][0]["id"], "continue");
+    let ids: Vec<_> = h["shelves"][0]["items"].as_array().unwrap().iter().map(|s| s["id"].as_str().unwrap()).collect();
+    assert_eq!(ids, vec![AOT]);
 
     // Finished S3:E2: the show moves on to S3:E3; a finished film drops out.
     save_progress("tmdb:tv:1429:s3e2", 1400.0, 1440.0);
@@ -328,7 +340,7 @@ fn resume_continue_watching_and_up_next() {
     let t = title(AOT);
     assert_eq!(t["resume"], json!({ "season": 3, "episode": 3 }));
     assert_eq!(t["play"]["start"], 0.0);
-    let ids: Vec<_> = home()[0]["items"].as_array().unwrap().iter().map(|s| s["id"].as_str().unwrap().to_owned()).collect();
+    let ids: Vec<_> = home_shelves()[0]["items"].as_array().unwrap().iter().map(|s| s["id"].as_str().unwrap().to_owned()).collect();
     assert_eq!(ids, vec![AOT.to_owned()]);
 
     // Up next near the end of an episode; the season fixture holds 5 episodes.
@@ -907,7 +919,7 @@ fn live_home() {
         let text = rt.block_on(crate::adapters::metadata::trending(kind.into(), "en".into()));
         land(&Call::Trending(kind), &serde_json::from_str(&text).unwrap(), u64::MAX);
     }
-    let shelves = home();
+    let shelves = home_shelves();
     for s in shelves.as_array().unwrap() {
         let items = s["items"].as_array().unwrap();
         let first = &items[0];
