@@ -27,8 +27,10 @@ export const PHONE_HEAD = 44;
 export const CATEGORY_ROW = 44;
 /** What the page leaves under them before its own content (a hero's title), points. */
 const CATEGORY_GAP = 28;
-/** A phone's discs over a title's hero: 4 under the status bar, 40 across. */
-export const PHONE_DISCS = 44;
+/** A phone's bar over a scrolled title (Back, the title, Add to list) under the status bar,
+ * points: iOS's navigation bar 44, Material's top app bar 64. The discs over the hero sit
+ * centred in it. */
+export const PHONE_TITLE_BAR = look.system === "material" ? 64 : 44;
 /** A phone's head on a deep page (Back), points. */
 export const PHONE_BACK_HEAD = 52;
 /** A page's title under what is over it, and a hero's text under it, TV pixels. */
@@ -75,7 +77,7 @@ export function computeMetrics(i: MetricsInput): Metrics {
         return i.safeTop + TOP_ROW;
       case "tab-bar":
         // A root page: no logo over it on a phone; a category's has Home's tabs.
-        return i.safeTop + (i.kind === "deep" ? PHONE_BACK_HEAD : i.kind === "title" ? PHONE_DISCS : i.category ? CATEGORY_ROW + CATEGORY_GAP : 0);
+        return i.safeTop + (i.kind === "deep" ? PHONE_BACK_HEAD : i.kind === "title" ? PHONE_TITLE_BAR : i.category ? CATEGORY_ROW + CATEGORY_GAP : 0);
     }
   };
   const headBottom = head();
