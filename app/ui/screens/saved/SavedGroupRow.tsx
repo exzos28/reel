@@ -12,7 +12,7 @@ import type { SavedGroup } from "../../library";
 import { alpha, colors, cs, targetSlop, u } from "../../theme";
 import chevronIcon from "../../icons/chevron.svg";
 import { SpeedLine } from "../../kit/SpeedLine";
-import { actionsBlock, compact, stateColumn } from "./SavedRow";
+import { actionsBlock, compact, savingText, stateColumn } from "./SavedRow";
 import pauseIcon from "../../icons/pause.svg";
 import playIcon from "../../icons/play.svg";
 import trashIcon from "../../icons/trash.svg";
@@ -49,7 +49,7 @@ export function SavedGroupRow(props: {
     <If when={props.saving}>
       <View>
         <Text style={metaText()}>
-          {g().checking ? t("saved.state.checking") : t("saved.state.saving", { percent: Math.floor(g().progress * 100), have: Fmt.size(g().have), size: Fmt.size(g().size) })}
+          {g().checking ? t("saved.state.checking") : savingText(g().progress, g().have, g().size, g().left)}
         </Text>
         <If when={!g().checking}>
           <View style={progressTrack()}>

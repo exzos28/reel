@@ -505,7 +505,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: Saved
-  empty: Nothing saved yet. Save a film or a season from its page to watch it without the internet.
+  empty: "Save a film to watch it offline"
+  browse: "Browse films"
   saving: Saving
   while_open: while reel is open
   ready: Ready to watch
@@ -530,6 +531,8 @@ saved:
     checking: Checking what is saved…
     resolving: Finding people who share it…
     saving: "%{percent}% · %{have} of %{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent}% · %{have} of %{size} · about %{time} left"
     paused: "Paused · %{have} of %{size}"
     waiting: Starts when the film you watch stops
     saved: "Saved · %{size}"

@@ -378,6 +378,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         let (bytes,): (f64,) = args(a)?;
         ret(Fmt::size(bytes))
     })
+    .sync("Fmt", "sizeOf", |a| {
+        let (have, size): (f64, f64) = args(a)?;
+        ret(Fmt::size_of(have, size))
+    })
     .sync("Fmt", "speed", |a| {
         let (mib_per_s,): (f64,) = args(a)?;
         ret(Fmt::speed(mib_per_s))

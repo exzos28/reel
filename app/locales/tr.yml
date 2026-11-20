@@ -504,7 +504,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: "Kaydedilenler"
-  empty: "Henüz kaydedilen bir şey yok. İnternetsiz izlemek için bir filmi veya sezonu kendi sayfasından kaydet."
+  empty: "Çevrimdışı izlemek için bir film kaydet"
+  browse: "Filmlere göz at"
   saving: "Kaydediliyor"
   while_open: "reel açıkken"
   ready: "İzlemeye hazır"
@@ -529,6 +530,8 @@ saved:
     checking: "Kaydedilenler kontrol ediliyor…"
     resolving: "Paylaşanlar aranıyor…"
     saving: "%{percent}% · %{have}/%{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent}% · %{have}/%{size} · yaklaşık %{time} kaldı"
     paused: "Duraklatıldı · %{have}/%{size}"
     waiting: "İzlediğin film durunca başlar"
     saved: "Kaydedildi · %{size}"

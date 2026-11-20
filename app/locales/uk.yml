@@ -504,7 +504,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: "Збережене"
-  empty: "Поки нічого не збережено. Збережіть фільм або сезон на його сторінці, щоб дивитися без інтернету."
+  empty: "Збережіть фільм, щоб дивитися без інтернету"
+  browse: "Вибрати фільм"
   saving: "Зберігається"
   while_open: "поки reel відкрито"
   ready: "Можна дивитися"
@@ -529,6 +530,8 @@ saved:
     checking: "Перевіряється збережене…"
     resolving: "Шукаємо, хто роздає…"
     saving: "%{percent}% · %{have} з %{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent}% · %{have} з %{size} · залишилося близько %{time}"
     paused: "На паузі · %{have} з %{size}"
     waiting: "Почнеться, коли закінчиться поточний перегляд"
     saved: "Збережено · %{size}"
