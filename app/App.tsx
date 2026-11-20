@@ -22,7 +22,7 @@ import { screenFor } from "./ui/screens/RouteScreen";
 import { frame } from "./ui/layout/chrome";
 import { caps } from "./ui/platform";
 import { railWidth } from "./ui/layout/metrics";
-import { PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
+import { PhoneCategoryBar, PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
 import { SourceDrawer } from "./ui/screens/source/SourceDrawer";
 import { TouchStack } from "./ui/layout/TouchStack";
 import { ExitDialog } from "./ui/layout/ExitDialog";
@@ -139,6 +139,7 @@ function App() {
           </View>
         </If>
         <If when={frame.nav === "tab-bar"}>
+          <PhoneCategoryBar />
           <PhoneTabBar />
         </If>
         <If when={frame.nav === "top-row"}>

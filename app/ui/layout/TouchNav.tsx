@@ -177,8 +177,8 @@ function CategoryTabs() {
   );
 }
 
-/** On a category's page the head lies over the hero's still: a dark veil under it (from the
- * screen's top, under the status bar too) keeps the tabs readable. */
+/** On a category's page the head is a bar of its own (the page's ink, a hairline under the tabs):
+ * the hero's still starts under it, and the tabs read over nothing but ink. */
 const headColumnStyle = (veiled: boolean): ViewStyle => ({
   position: "absolute",
   top: 0,
@@ -186,7 +186,7 @@ const headColumnStyle = (veiled: boolean): ViewStyle => ({
   left: 0,
   right: 0,
   zIndex: 3,
-  backgroundColor: veiled ? alpha(colors.ink(), 0.72) : "transparent",
+  backgroundColor: veiled ? colors.ink() : "transparent",
 });
 const headStyle = (): ViewStyle => ({
   ...row(0),
@@ -196,18 +196,33 @@ const headStyle = (): ViewStyle => ({
   paddingRight: 20 + safeArea().right,
 });
 
-/** The top of a phone's root page: the logo, and on a category's page Home's tabs under it; it
- * scrolls away with the page. */
+/** The top of a phone's root page other than a category's (Search, Saved, Settings): the logo;
+ * it scrolls away with the page. A category's has the bar instead (`PhoneCategoryBar`). */
 export function PhoneHead() {
   return (
-    <View style={headColumnStyle(isCategory(section()))}>
-      <View style={headStyle()}>
-        <Logo />
+    <If when={!isCategory(section())}>
+      <View style={headColumnStyle(false)}>
+        <View style={headStyle()}>
+          <Logo />
+        </View>
       </View>
-      <If when={isCategory(section())}>
+    </If>
+  );
+}
+
+/** Over a category's root page: the logo and Home's tabs, a bar that stays (the page scrolls
+ * under it) and stays the same while the category changes: the tabs do not jump. Not over a
+ * page pushed on a category (a title). */
+export function PhoneCategoryBar() {
+  return (
+    <If when={isCategory(section()) && !canGoBack()}>
+      <View testID="category-bar" style={{ ...headColumnStyle(true), zIndex: 10 }}>
+        <View style={headStyle()}>
+          <Logo />
+        </View>
         <CategoryTabs />
-      </If>
-    </View>
+      </View>
+    </If>
   );
 }
 
