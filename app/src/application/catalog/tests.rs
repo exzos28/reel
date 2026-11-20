@@ -739,6 +739,51 @@ fn search_keeps_the_last_results_while_the_next_query_comes() {
     assert_eq!(search::search("offline")["state"], "searching");
 }
 
+/// TMDB's films did not answer, its series and AniList did.
+fn land_without_films(query: &str) {
+    let shows = tmdb().map_cards(&fixture("tmdb_discover_tv.json"), &cx()).unwrap();
+    let data = json!({ "sections": [
+        { "source": "tmdb", "items": shows },
+        { "source": "anilist", "items": [] },
+    ], "failed": ["tmdbMovies"] });
+    search::land(&search::answer_key(query, &settings::content_language()), &json!({ "data": data }));
+}
+
+#[test]
+fn a_row_whose_source_did_not_answer_says_so_and_is_asked_again() {
+    let _g = fresh(true, false);
+    search::search("night");
+    land_without_films("night");
+    let found = search::search("night");
+    assert_eq!(found["state"], "done");
+    let rows: Vec<_> = found["sections"].as_array().unwrap().iter().map(|s| (s["id"].as_str().unwrap(), s["state"].as_str().unwrap())).collect();
+    // Movies did not load: it stays, as failed; Anime found nothing: left out.
+    assert_eq!(rows, [("movies", "failed"), ("shows", "done")]);
+    assert_eq!(found["sections"][0]["items"], json!([]));
+    // Try again: asked again, the rows stay while it searches.
+    search::retry("night");
+    let again = search::search("night");
+    assert_eq!(again["state"], "searching");
+    assert_eq!(again["sections"][1]["id"], "shows");
+    seed_search("night");
+    let ok = search::search("night");
+    assert_eq!(ok["state"], "done");
+    assert!(ok["sections"].as_array().unwrap().iter().all(|s| s["state"] == "done"));
+    // A partial answer is asked again when the query comes back (typed or from the history).
+    land_without_films("day");
+    search::search("other");
+    assert_eq!(search::search("day")["state"], "searching");
+    // A row with something in it shows it, whatever failed.
+    let mut data = json!({ "sections": [
+        { "source": "tmdb", "items": tmdb().map_cards(&fixture("tmdb_search_multi.json"), &cx()).unwrap() },
+    ], "failed": ["anilist"] });
+    search::search("mixed");
+    search::land(&search::answer_key("mixed", &settings::content_language()), &json!({ "data": data.take() }));
+    let mixed = search::search("mixed");
+    let ids: Vec<_> = mixed["sections"].as_array().unwrap().iter().map(|s| (s["id"].as_str().unwrap(), s["state"].as_str().unwrap())).collect();
+    assert_eq!(ids, [("movies", "done"), ("anime", "failed")]);
+}
+
 #[test]
 fn search_without_tmdb_says_so() {
     let _g = fresh(false, false);
