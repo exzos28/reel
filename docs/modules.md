@@ -52,7 +52,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `rememberSearch(query: String)` (`remember_search`): Keeps `query` among the recent searches (submitted, or a title opened from it).
   Called from: `ui/catalog.ts`.
 - `retrySearch(query: String)` (`retry_search`): Asks `query` again (a row that did not load: Try again); read on `revision()`.
-  Called from: nothing in the UI.
+  Called from: `ui/catalog.ts`.
 - `revision() -> f64`: Goes up when anything the catalog shows changed (an answer landed, a search finished, progress was saved): read again.
   Called from: `ui/catalog.ts`.
 - `saveProgress(id: String, position: f64, duration: f64) -> bool` (`save_progress`): The player's report: `position` of `duration` seconds into `id`. Whether it counts as watched now (90%).
