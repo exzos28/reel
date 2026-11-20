@@ -1,5 +1,6 @@
 //! Which file of a multi-file torrent is a given episode.
 
+use crate::numbering::Through;
 use crate::release;
 
 const VIDEO: [&str; 8] = ["mp4", "m4v", "mov", "mkv", "webm", "avi", "ts", "m2ts"];
@@ -18,7 +19,12 @@ pub fn is_video(name: &str) -> bool {
 ///
 /// Extras beside the episodes (openings, endings, specials, trailers, samples) are never an
 /// episode. `files` are (index, path, length).
-pub fn pick(files: &[(usize, String, u64)], episode: Option<(u16, u16)>) -> Option<usize> {
+///
+/// `through` is the season's place in the show's numbering (`Numbering::through_of`): a pack
+/// whose numbers reach past the season's size, up to where the season starts, is numbered
+/// through the show (`Интерны_143` is S8E3), and its numbers are read so. A file in a folder
+/// of another season is never this season's.
+pub fn pick(files: &[(usize, String, u64)], episode: Option<(u16, u16)>, through: Option<Through>) -> Option<usize> {
     let videos: Vec<&(usize, String, u64)> = files.iter().filter(|(_, n, _)| is_video(n)).collect();
     let Some((season, ep)) = episode else {
         return videos.iter().max_by_key(|(_, _, len)| *len).map(|(i, _, _)| *i);
@@ -41,15 +47,31 @@ pub fn pick(files: &[(usize, String, u64)], episode: Option<(u16, u16)>) -> Opti
             .map(|(f, _, _)| f.0);
     }
 
-    // The number that changes from file to file.
+    // The number that changes from file to file: the season's own, or the show's when the pack
+    // numbers through it.
     if let Some(numbers) = varying_numbers(&episodes) {
-        return episodes.iter().zip(numbers).find(|(_, n)| *n == ep).map(|(f, _)| f.0);
+        let most = numbers.iter().copied().max().unwrap_or(0);
+        let wanted = match through {
+            Some(t) if most > t.size && most >= t.start => t.start + ep - 1,
+            _ => ep,
+        };
+        return episodes
+            .iter()
+            .zip(numbers)
+            .find(|(f, n)| *n == wanted && folder_season(&f.1).is_none_or(|s| s == season))
+            .map(|(f, _)| f.0);
     }
 
     // No number anywhere: the n-th video in name order.
     let mut sorted = episodes;
     sorted.sort_by(|a, b| a.1.cmp(&b.1));
     sorted.get(ep.checked_sub(1)? as usize).map(|(i, _, _)| *i)
+}
+
+/// The season a file's folders name ("07 сезон/…", "Season 2/…"), if any.
+fn folder_season(path: &str) -> Option<u16> {
+    let folder = path.rsplit_once(['/', '\\']).map(|(f, _)| f)?;
+    release::parse(folder).season
 }
 
 fn file_name(path: &str) -> &str {
@@ -137,32 +159,32 @@ mod tests {
     fn episodes_named_with_underscores() {
         // A whole show's pack: "Season_01/s01e01_Pilot.avi" (seen on a 327-episode release).
         let f = files(&["Season_13/s13e15_A.Most.Holy.Man.avi", "Season_01/s01e02_Wendigo.avi", "Season_01/s01e01_Pilot.avi", "Season_02/s02e01_In.My.Time.of.Dying.avi"]);
-        assert_eq!(pick(&f, Some((1, 1))), Some(2));
-        assert_eq!(pick(&f, Some((2, 1))), Some(3));
-        assert_eq!(pick(&f, Some((13, 15))), Some(0));
+        assert_eq!(pick(&f, Some((1, 1)), None), Some(2));
+        assert_eq!(pick(&f, Some((2, 1)), None), Some(3));
+        assert_eq!(pick(&f, Some((13, 15)), None), Some(0));
     }
 
     #[test]
     fn film_takes_the_largest_video() {
         let f = vec![(0, "a/sample.mkv".into(), 10), (1, "a/film.mkv".into(), 900), (2, "a/cover.jpg".into(), 5000)];
-        assert_eq!(pick(&f, None), Some(1));
+        assert_eq!(pick(&f, None, None), Some(1));
     }
 
     #[test]
     fn episode_by_sxxeyy() {
         let f = files(&["Show S01/Show.S01E01.mkv", "Show S01/Show.S01E02.mkv", "Show S01/Show.S01E03.mkv", "Show S01/poster.jpg"]);
-        assert_eq!(pick(&f, Some((1, 2))), Some(1));
-        assert_eq!(pick(&f, Some((2, 2))), None, "another season is not in this pack");
-        assert_eq!(pick(&f, Some((1, 9))), None, "a missing episode is not a guess");
+        assert_eq!(pick(&f, Some((1, 2)), None), Some(1));
+        assert_eq!(pick(&f, Some((2, 2)), None), None, "another season is not in this pack");
+        assert_eq!(pick(&f, Some((1, 9)), None), None, "a missing episode is not a guess");
     }
 
     #[test]
     fn episode_by_leading_number_or_order() {
         let f = files(&["Season 1/01 - Planet of Peril.mkv", "Season 1/02 - The Tunnel of Terror.mkv"]);
-        assert_eq!(pick(&f, Some((1, 2))), Some(1));
+        assert_eq!(pick(&f, Some((1, 2)), None), Some(1));
         let plain = files(&["Season 1/a.mkv", "Season 1/b.mkv", "Season 1/c.mkv"]);
-        assert_eq!(pick(&plain, Some((1, 3))), Some(2));
-        assert_eq!(pick(&plain, Some((1, 9))), None);
+        assert_eq!(pick(&plain, Some((1, 3)), None), Some(2));
+        assert_eq!(pick(&plain, Some((1, 9)), None), None);
     }
 
     #[test]
@@ -184,40 +206,61 @@ mod tests {
             "[SOFCJ-Raws] Naruto - 002 (DVDRip 768x576 HEVC VFR 10bit FLAC).mkv",
             "[SOFCJ-Raws] Naruto - 023 (DVDRip 768x576 HEVC VFR 10bit FLAC).mkv",
         ]);
-        assert_eq!(pick(&naruto, Some((1, 1))), Some(2));
-        assert_eq!(pick(&naruto, Some((1, 23))), Some(4));
-        assert_eq!(pick(&naruto, Some((1, 7))), None, "an opening's number is not an episode");
+        assert_eq!(pick(&naruto, Some((1, 1)), None), Some(2));
+        assert_eq!(pick(&naruto, Some((1, 23)), None), Some(4));
+        assert_eq!(pick(&naruto, Some((1, 7)), None), None, "an opening's number is not an episode");
         let frieren = files(&[
             "Special/[Beatrice-Raws] Sousou no Frieren - 01 [BDRip 1080p x265 Dolby TrueHD].mkv",
             "[Beatrice-Raws] Sousou no Frieren - 01 [BDRip 1080p x265 Dolby TrueHD].mkv",
             "[Beatrice-Raws] Sousou no Frieren - 02 [BDRip 1080p x265 Dolby TrueHD].mkv",
         ]);
-        assert_eq!(pick(&frieren, Some((1, 1))), Some(1));
+        assert_eq!(pick(&frieren, Some((1, 1)), None), Some(1));
         let shippuuden = files(&[
             "Creditless OP-ED/[SOFCJ-Raws] Naruto Shippuuden - ED 01 Creditless (DVDRip 768x576 x264 10bit FLAC).mkv",
             "Extras/Naruto Super Hits 2006-2008 Promo [DVDRip].mkv",
             "[SOFCJ-Raws] Naruto Shippuuden - 001 (DVDRip 768x576 x264 VFR 10bit AC3).mkv",
             "[SOFCJ-Raws] Naruto Shippuuden - 002 (DVDRip 768x576 x264 VFR 10bit AC3).mkv",
         ]);
-        assert_eq!(pick(&shippuuden, Some((1, 1))), Some(2));
+        assert_eq!(pick(&shippuuden, Some((1, 1)), None), Some(2));
         // A word like "Ending" in an episode's own title is no extra.
         assert!(!is_extra("Show.S01E10.The.Ending.mkv"));
         assert!(!is_extra("Criminal.Minds.S01E01.mkv"));
     }
 
     #[test]
+    fn a_pack_numbered_through_the_show() {
+        use crate::numbering::Numbering;
+        // Интерны S7–9 (seasons of 20): S8E3 is the show's 143, in "08 сезон".
+        let n = Numbering(vec![20; 14]);
+        let f = files(&["07 сезон/Интерны_121.avi", "07 сезон/Интерны_122.avi", "08 сезон/Интерны_141.avi", "08 сезон/Интерны_143.avi", "09 сезон/Интерны_163.avi"]);
+        assert_eq!(pick(&f, Some((8, 3)), n.through_of(8)), Some(3));
+        assert_eq!(pick(&f, Some((7, 2)), n.through_of(7)), Some(1));
+        // A file numbered so but in another season's folder is not it.
+        let wrong = files(&["07 сезон/Интерны_121.avi", "07 сезон/Интерны_143.avi"]);
+        assert_eq!(pick(&wrong, Some((8, 3)), n.through_of(8)), None);
+        // Naruto, TMDB's five seasons in one pack numbered 001–220: S2E1 is 058.
+        let naruto = Numbering(vec![57, 43, 41, 42, 37]);
+        let f = files(&["[SOFCJ-Raws] Naruto - 001 (DVDRip).mkv", "[SOFCJ-Raws] Naruto - 057 (DVDRip).mkv", "[SOFCJ-Raws] Naruto - 058 (DVDRip).mkv"]);
+        assert_eq!(pick(&f, Some((2, 1)), naruto.through_of(2)), Some(2));
+        assert_eq!(pick(&f, Some((1, 57)), naruto.through_of(1)), Some(1));
+        // A season's own pack keeps its own numbers, even when TMDB counts it one short.
+        let own = files(&["Show - 01.mkv", "Show - 02.mkv", "Show - 24.mkv"]);
+        assert_eq!(pick(&own, Some((3, 2)), Numbering(vec![20, 20, 23]).through_of(3)), Some(1));
+    }
+
+    #[test]
     fn the_number_that_changes_is_the_episode() {
         let raw = files(&["17# War [362-372]/NARUTO Shippuuden 362 RAW.mp4", "17# War [362-372]/NARUTO Shippuuden 363 RAW.mp4"]);
-        assert_eq!(pick(&raw, Some((1, 363))), Some(1));
+        assert_eq!(pick(&raw, Some((1, 363)), None), Some(1));
         let aot = files(&["[SOFCJ-Raws] Shingeki no Kyojin - S3 - P1 - E01 [WEB-DL KP 1080p].mkv", "[SOFCJ-Raws] Shingeki no Kyojin - S3 - P1 - E02 [WEB-DL KP 1080p].mkv"]);
-        assert_eq!(pick(&aot, Some((3, 2))), Some(1));
+        assert_eq!(pick(&aot, Some((3, 2)), None), Some(1));
         let who = files(&["Доктор кто 02 - 00 - Рождественское вторжение.mkv", "Доктор кто 02 - 01 - Новая Земля.mkv", "Доктор кто 02 - 02 - Зуб и коготь.mkv"]);
-        assert_eq!(pick(&who, Some((2, 1))), Some(1), "02 - 01 is the first episode, not the special 00");
+        assert_eq!(pick(&who, Some((2, 1)), None), Some(1), "02 - 01 is the first episode, not the special 00");
         let jjk = files(&["[BudLightSubs] Jujutsu Kaisen S3 - 01 [1080p].mkv", "[BudLightSubs] Jujutsu Kaisen S3 - 02 [1080p].mkv"]);
-        assert_eq!(pick(&jjk, Some((3, 2))), Some(1));
+        assert_eq!(pick(&jjk, Some((3, 2)), None), Some(1));
         // A missing episode is not another one by order.
         let gap = files(&["Show - 01.mkv", "Show - 02.mkv", "Show - 04.mkv"]);
-        assert_eq!(pick(&gap, Some((1, 3))), None);
+        assert_eq!(pick(&gap, Some((1, 3)), None), None);
     }
 }
 

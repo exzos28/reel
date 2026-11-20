@@ -89,7 +89,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/playback.ts`.
 - `open(id: String) -> u32`: Starts playing `id` from the catalog (a title, or an episode `<title>:s<season>e<episode>`) with the release it picks from the user's search source: a job id for `status`, 0 when the engine could not start (see the log).
   Called from: `ui/playback.ts`.
-- `openRelease(source: String, season: u32, episode: u32) -> u32` (`open_release`): Starts playing a release a search found: `source` is its magnet or .torrent URL; `season`/`episode` (0 for a film) pick the episode's file in a pack. A job id for `status`, 0 when the engine could not start.
+- `openRelease(source: String, season: u32, episode: u32) -> u32` (`open_release`): Starts playing a release a search found: `source` is its magnet or .torrent URL; `season`/`episode` (0 for a film) pick the episode's file in a pack, by the pack's own numbers (no show is named here, so no numbering through it: Play's way, `play`, has that). A job id for `status`, 0 when the engine could not start.
   Called from: nothing in the UI.
 - `async seek(job: u32, seconds: f64) -> String`: Gets the place at `seconds` ready before the view seeks there (no player waits in pieces still to come: a TV's AVPlay holds the page meanwhile). `{"state":…}`: `ready` once it is in (at once when it was), `replaced` when a newer seek or `close` came first, `unknown` when the film has no index to tell (seek as it is).
   JSON: `{"state":…}`

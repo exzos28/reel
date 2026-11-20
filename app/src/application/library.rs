@@ -155,6 +155,7 @@ pub fn title(id: &str, show: bool) -> Value {
 /// files are known; `locked`: saved or being saved, so the drawer does not pick it again.
 pub fn plan(show: &str, season: u32) -> Value {
     let files = catalog::season_files(show, season);
+    let through = catalog::through_of(show, season);
     let all = items();
     let episodes: Vec<Value> = catalog::episodes(show, season)
         .as_array()
@@ -166,7 +167,7 @@ pub fn plan(show: &str, season: u32) -> Value {
             let number = e["number"].as_u64().unwrap_or(0) as u32;
             let key = episode_key(show, season, number);
             let from_pack = files.as_ref().and_then(|f| {
-                let i = episode::pick(f, Some((season as u16, number as u16)))?;
+                let i = episode::pick(f, Some((season as u16, number as u16)), through)?;
                 f.iter().find(|x| x.0 == i).map(|x| x.2)
             });
             let saved_size = all.iter().find(|i| i["key"] == key.as_str()).and_then(|i| i["size"].as_u64()).filter(|s| *s > 0);

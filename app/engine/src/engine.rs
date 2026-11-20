@@ -16,6 +16,7 @@ use crate::{buffer, disk, leases};
 use reel_domain::{
     compat, episode,
     container::{Index, NoIndex},
+    numbering::Through,
     play::{PlaySource, SeekReady},
     ports::PlaybackHost,
     timeline,
@@ -80,10 +81,15 @@ fn play_source(key: &str) -> PlaySource {
 }
 
 /// The episode a job plays, (season, episode), when its torrent is a pack.
-static EPISODES: Mutex<Option<HashMap<u32, (u16, u16)>>> = Mutex::new(None);
+/// With its season's place in the show's numbering, when known.
+static EPISODES: Mutex<Option<HashMap<u32, ((u16, u16), Option<Through>)>>> = Mutex::new(None);
 
 fn episode_of(job: u32) -> Option<(u16, u16)> {
-    EPISODES.lock().unwrap().as_ref().and_then(|m| m.get(&job).copied())
+    EPISODES.lock().unwrap().as_ref().and_then(|m| m.get(&job).map(|e| e.0))
+}
+
+fn through_of(job: u32) -> Option<Through> {
+    EPISODES.lock().unwrap().as_ref().and_then(|m| m.get(&job).and_then(|e| e.1))
 }
 
 /// The playback buffer the user chose (Settings), MiB. The UI keeps it across
@@ -237,8 +243,8 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
     match play_source(key) {
         PlaySource::None => Ok(new_job(Job::NoSource)),
         PlaySource::NotInRelease => Ok(new_job(Job::NotInRelease)),
-        PlaySource::Ready(source, episode) => {
-            let job = open_release(&source, episode)?;
+        PlaySource::Ready(source, episode, through) => {
+            let job = open_release(&source, episode, through)?;
             remember_key(job, key);
             Ok(job)
         }
@@ -261,10 +267,10 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
                     }
                     match play_source(&key) {
                         PlaySource::Searching if started.elapsed() < std::time::Duration::from_secs(150) => {}
-                        PlaySource::Ready(source, episode) => {
+                        PlaySource::Ready(source, episode, through) => {
                             time_step(job, "release chosen");
                             if let Some(ep) = episode {
-                                EPISODES.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, ep);
+                                EPISODES.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, (ep, through));
                             }
                             add_to(core, job, &source);
                             return;
@@ -304,8 +310,9 @@ fn new_job(state: Job) -> u32 {
 
 /// Starts playing a release found by a search: `source` is its magnet or
 /// .torrent URL; `episode` (season, episode) picks that episode's file in a
-/// pack. Checks the free space first, as `open`.
-pub fn open_release(source: &str, episode: Option<(u16, u16)>) -> anyhow::Result<u32> {
+/// pack, read with `through` (its season's place in the show's numbering) when the pack numbers
+/// through the show. Checks the free space first, as `open`.
+pub fn open_release(source: &str, episode: Option<(u16, u16)>, through: Option<Through>) -> anyhow::Result<u32> {
     let space = check_space();
     if space["ok"] == false {
         let needed = space["needed"].as_u64().unwrap_or_default();
@@ -313,7 +320,7 @@ pub fn open_release(source: &str, episode: Option<(u16, u16)>) -> anyhow::Result
     }
     let job = add(source)?;
     if let Some(ep) = episode {
-        EPISODES.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, ep);
+        EPISODES.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, (ep, through));
     }
     Ok(job)
 }
@@ -1149,7 +1156,7 @@ fn video_file(handle: &librqbit::ManagedTorrent, job: u32) -> Option<usize> {
                 .collect()
         })
         .ok()?;
-    episode::pick(&files, episode_of(job))
+    episode::pick(&files, episode_of(job), through_of(job))
 }
 
 /// What a ready job plays, for the subtitles: its torrent, the video's
@@ -1167,7 +1174,7 @@ pub(crate) fn playing_files(job: u32) -> Option<(Arc<librqbit::ManagedTorrent>, 
                 .collect()
         })
         .ok()?;
-    let video = episode::pick(&files, episode_of(job))?;
+    let video = episode::pick(&files, episode_of(job), through_of(job))?;
     Some((handle, video, files))
 }
 

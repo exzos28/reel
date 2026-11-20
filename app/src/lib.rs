@@ -99,10 +99,11 @@ impl Engine {
 
     /// Starts playing a release a search found: `source` is its magnet or
     /// .torrent URL; `season`/`episode` (0 for a film) pick the episode's file
-    /// in a pack. A job id for `status`, 0 when the engine could not start.
+    /// in a pack, by the pack's own numbers (no show is named here, so no numbering through
+    /// it: Play's way, `play`, has that). A job id for `status`, 0 when the engine could not start.
     pub fn open_release(source: String, season: u32, episode: u32) -> u32 {
         let ep = (season > 0 && episode > 0).then(|| (season as u16, episode as u16));
-        playback().open_release(&source, ep).unwrap_or_else(|e| {
+        playback().open_release(&source, ep, None).unwrap_or_else(|e| {
             tracing::warn!("reel engine: {e}");
             0
         })
