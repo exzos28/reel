@@ -37,6 +37,15 @@ async fn have_after_add(session: &std::sync::Arc<Session>, torrent: &[u8], files
     have
 }
 
+/// Replaces `file` with `content` through a new file renamed over it: a torrent that just left
+/// the session may still hold the old file open (Linux keeps its writes going to that inode),
+/// so writing in place could be undone by it.
+fn replace(file: &Path, content: &[u8]) {
+    let tmp = file.with_extension("tmp");
+    std::fs::write(&tmp, content).unwrap();
+    std::fs::rename(&tmp, file).unwrap();
+}
+
 async fn wait_for_bitv(file: &Path, content: &[u8]) {
     for _ in 0..500 {
         if std::fs::read(file).ok().as_deref() == Some(content) {
@@ -104,14 +113,14 @@ async fn test_fastresume_folder() {
     // The second file truncated to 1000 bytes: refused before hashing (its first claimed
     // piece, 3, still hashes fine), a full check finds pieces 0-3 (piece 4 runs past them).
     std::fs::write(&bitv, [0xff]).unwrap();
-    std::fs::write(&second, &second_content[..1000]).unwrap();
+    replace(&second, &second_content[..1000]);
     assert_eq!(have_after_add(&session, &torrent, &files, &fr).await, 4096);
     wait_for_bitv(&bitv, &[0b1111_0000]).await;
 
     // The second file rewritten with zeros at its full length: the lengths fit, the hash of its
     // first claimed piece does not, so a full check finds pieces 0-2.
     std::fs::write(&bitv, [0xff]).unwrap();
-    std::fs::write(&second, vec![0u8; 4000]).unwrap();
+    replace(&second, &vec![0u8; 4000]);
     assert_eq!(have_after_add(&session, &torrent, &files, &fr).await, 3072);
     wait_for_bitv(&bitv, &[0b1110_0000]).await;
 
@@ -121,7 +130,7 @@ async fn test_fastresume_folder() {
     assert_eq!(have_after_add(&session, &torrent, &files, &fr).await, 3072);
 
     // A bitfield of another length (another torrent's): a full check.
-    std::fs::write(&second, &second_content).unwrap();
+    replace(&second, &second_content);
     std::fs::write(&bitv, [0x00, 0x00]).unwrap();
     assert_eq!(have_after_add(&session, &torrent, &files, &fr).await, 8000);
     wait_for_bitv(&bitv, &[0xff]).await;

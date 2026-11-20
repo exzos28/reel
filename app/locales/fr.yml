@@ -80,6 +80,10 @@ title:
   saved: "Enregistré"
   saved_one: "1 épisode enregistré"
   saved_some: "Épisodes enregistrés : %{count}"
+  save_size: "Enregistrer · %{size}"
+  no_space_title: "Espace insuffisant"
+  no_space_about: "Il faut %{needed}, %{free} libres sur cet appareil."
+  save_smaller: "Enregistrer en %{quality} · %{size}"
 
 card:
   left: "Reste %{time}"
@@ -307,6 +311,12 @@ search:
     movies: "Films"
     shows: "Séries"
     anime: "Anime"
+  try_again: "Réessayer"
+  # A row of results whose source did not answer.
+  row_failed:
+    movies: "Impossible de charger les films."
+    shows: "Impossible de charger les séries."
+    anime: "Impossible de charger les anime."
 
 compat:
   audio_dts: "Cette version n'a que de l'audio DTS, que cet appareil ne peut pas lire. Choisissez une autre version."
@@ -552,6 +562,9 @@ saved:
     save_one: "Enregistrer 1 épisode"
     choose: "Choisir les épisodes"
     more: "%{size} de plus"
+    free: "%{free} libres"
+    more_free: "%{size} · %{free} libres"
+    no_room: "Espace insuffisant : il faut %{size}, %{free} libres"
     new: "nouveau"
 
 confirm:

@@ -19,7 +19,9 @@ import { scroller } from "../../layout/Scroller";
 import { caps } from "../../platform";
 import { ListToggle } from "../../layout/ListToggle";
 import { go, openTitle } from "../../nav";
-import { isSaved, save as saveKeys, seasonPlan, titleSaveState, watchSaved, type SeasonPlan } from "../../library";
+import { isSaved, NO_PLAN, save as saveKeys, saveOffer, saveRelease, seasonPlan, titleSaveState, watchSaved, type SaveOffer } from "../../library";
+import { ConfirmDialog, type Confirm } from "../../layout/ConfirmDialog";
+import { Fmt } from "../../native";
 import { SaveDrawer } from "./SaveDrawer";
 import { openSourceDrawer } from "../source/SourceDrawer";
 import { playGate } from "../source/playGate";
@@ -73,15 +75,25 @@ export function TitleScreen(props: { id: string }) {
   const saveSeason = signal(1);
   const picked = signal<Set<string>>(new Set());
   const saveAt = signal(0);
-  const NO_PLAN: SeasonPlan = { episodes: [], saved: 0, total: 0, size: null };
   /** Asked only while the drawer is open (the plan reads the season's release and its files). */
-  const plan = computed(() => (zone() === "save" ? seasonPlan(props.id, saveSeason()) : NO_PLAN));
+  const plan = computed(() => (zone() === "save" ? seasonPlan(props.id, saveSeason(), [...picked()]) : NO_PLAN));
+  /** A film's release that does not fit: the question with the smaller one the core names. */
+  const noSpace = signal<Confirm | null>(null);
+  const askNoSpace = (o: SaveOffer): Confirm => ({
+    title: t("title.no_space_title"),
+    about: t("title.no_space_about", { needed: Fmt.size(o.size ?? 0), free: Fmt.size(o.free ?? 0) }),
+    action: o.smaller ? t("title.save_smaller", { quality: o.smaller.quality, size: Fmt.size(o.smaller.size) }) : t("title.other_releases"),
+    onConfirm: () => (o.smaller ? saveRelease(props.id, o.smaller.id) : openPanel()),
+  });
   const saveRows = () => plan().episodes.length + 2;
   const openSave = () => {
     if (!isShow()) {
       const st = titleSaveState(props.id, false).state;
       // Saved or being saved: the Saved screen shows how it goes.
-      return st === "none" || st === "failed" ? saveKeys([props.id]) : go("saved");
+      if (st !== "none" && st !== "failed") return go("saved");
+      // Not started when it cannot fit (design/offline-downloads.md, "Fit").
+      const offer = saveOffer(props.id);
+      return offer.fits === false ? noSpace.set(askNoSpace(offer)) : saveKeys([props.id]);
     }
     saveSeason.set(season());
     picked.set(new Set());
@@ -109,7 +121,7 @@ export function TitleScreen(props: { id: string }) {
   };
   const doSave = () => {
     const keys = [...picked()];
-    if (!keys.length) return;
+    if (!keys.length || plan().picked.fits === false) return;
     saveKeys(keys);
     picked.set(new Set());
     zone.set("actions");
@@ -386,6 +398,7 @@ export function TitleScreen(props: { id: string }) {
         }}
         onClose={closePanel}
       />
+    <ConfirmDialog ask={noSpace} onClose={() => noSpace.set(null)} />
     <If when={isShow()}>
       <SaveDrawer
         open={() => zone() === "save"}

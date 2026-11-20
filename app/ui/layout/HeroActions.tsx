@@ -12,6 +12,7 @@ import chevronIcon from "../icons/chevron.svg";
 import trailerIcon from "../icons/trailer.svg";
 import savedIcon from "../icons/saved.svg";
 import type { SaveState } from "../library";
+import { Fmt } from "../native";
 import type { releaseLine } from "../catalog";
 import { ShortRelease } from "./HeroMeta";
 import { Icon } from "../kit/Icon";
@@ -138,9 +139,10 @@ export function SplitPlay(props: {
 
 const SAVING = new Set(["saving", "searching", "resolving", "waiting"]);
 
-/** Save (design/offline-downloads.md): "Save", then what is saved of the title: "Saving 34%",
- * a show's "Saving 2 of 5", "Paused", "Saved" with a check. */
-export function SaveButton(props: { state: () => SaveState; show: () => boolean; focused: () => boolean; onPress: () => void; disabled?: () => boolean; height?: number; grow?: boolean }) {
+/** Save (design/offline-downloads.md): "Save" (a film's with what it takes: "Save · 700 MB"),
+ * then what is saved of the title: "Saving 34%", a show's "Saving 2 of 5", "Paused", "Saved"
+ * with a check. */
+export function SaveButton(props: { state: () => SaveState; show: () => boolean; size?: () => number | null; focused: () => boolean; onPress: () => void; disabled?: () => boolean; height?: number; grow?: boolean }) {
   const s = props.state;
   const label = () => {
     switch (s().state) {
@@ -157,8 +159,10 @@ export function SaveButton(props: { state: () => SaveState; show: () => boolean;
         return t("title.saved");
       case "some":
         return t(s().saved === 1 ? "title.saved_one" : "title.saved_some", { count: s().saved ?? 0 });
-      default:
-        return t("title.save");
+      default: {
+        const size = props.size?.();
+        return size != null ? t("title.save_size", { size: Fmt.size(size) }) : t("title.save");
+      }
     }
   };
   /** A film's part saved, while it saves (a show's count says how it goes). */

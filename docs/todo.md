@@ -97,3 +97,9 @@ rutracker's anime releases are named "[01-28 из 28]", "[TV] [1-12 из 12]" or
 ## Releases of a whole show, anime numbering, extras
 
 Survey and plan in `docs/release-names.md`. In short: whole-show packs (Supernatural 327, Game of Thrones 73) are never offered for seasons 2+, anime packs numbered through or with OP/ED/specials pick the wrong file, and a tracker's anime season can differ from TMDB's (Bleach TYBW). Steps there: leave extras out, read anime numbers, map S/E to the absolute number with TMDB's season sizes, let the files' season win over the title's.
+
+## Free space on iOS
+
+Save checks the free space with the volume's available bytes (statvfs), which on iOS leaves out
+purgeable space: a phone may say "Not enough space" while Settings → Storage shows more. Use
+`volumeAvailableCapacityForImportantUsageKey` there (design/offline-downloads.md, "Fit").

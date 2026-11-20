@@ -80,6 +80,10 @@ title:
   saved: "已保存"
   saved_one: "已保存 1 集"
   saved_some: "已保存 %{count} 集"
+  save_size: "保存 · %{size}"
+  no_space_title: "空间不足"
+  no_space_about: "需要 %{needed}，此设备可用 %{free}。"
+  save_smaller: "保存 %{quality} · %{size}"
 
 card:
   left: "剩余 %{time}"
@@ -307,6 +311,12 @@ search:
     movies: "电影"
     shows: "剧集"
     anime: "动漫"
+  try_again: "重试"
+  # A row of results whose source did not answer.
+  row_failed:
+    movies: "无法加载电影。"
+    shows: "无法加载剧集。"
+    anime: "无法加载动漫。"
 
 compat:
   audio_dts: "此资源只有 DTS 音频，本设备无法播放。请选择其他资源。"
@@ -552,6 +562,9 @@ saved:
     save_one: "保存 1 集"
     choose: "选择剧集"
     more: "另需 %{size}"
+    free: "可用 %{free}"
+    more_free: "%{size} · 可用 %{free}"
+    no_room: "空间不足：需要 %{size}，可用 %{free}"
     new: "新"
 
 confirm:

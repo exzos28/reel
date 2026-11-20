@@ -80,6 +80,10 @@ title:
   saved: "Guardado"
   saved_one: "1 episodio guardado"
   saved_some: "Episodios guardados: %{count}"
+  save_size: "Guardar · %{size}"
+  no_space_title: "No hay espacio suficiente"
+  no_space_about: "Necesita %{needed}; hay %{free} libres en este dispositivo."
+  save_smaller: "Guardar %{quality} · %{size}"
 
 card:
   left: "Quedan %{time}"
@@ -307,6 +311,12 @@ search:
     movies: "Películas"
     shows: "Series"
     anime: "Anime"
+  try_again: "Reintentar"
+  # A row of results whose source did not answer.
+  row_failed:
+    movies: "No se han podido cargar las películas."
+    shows: "No se han podido cargar las series."
+    anime: "No se ha podido cargar el anime."
 
 compat:
   audio_dts: "Esta versión solo tiene audio DTS, que este dispositivo no puede reproducir. Elige otra versión."
@@ -552,6 +562,9 @@ saved:
     save_one: "Guardar 1 episodio"
     choose: "Elegir episodios"
     more: "%{size} más"
+    free: "%{free} libres"
+    more_free: "%{size} · %{free} libres"
+    no_room: "No hay espacio suficiente: necesita %{size}, hay %{free} libres"
     new: "nuevo"
 
 confirm:

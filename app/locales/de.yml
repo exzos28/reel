@@ -80,6 +80,10 @@ title:
   saved: "Gespeichert"
   saved_one: "1 Folge gespeichert"
   saved_some: "Gespeicherte Folgen: %{count}"
+  save_size: "Speichern · %{size}"
+  no_space_title: "Nicht genug Speicher"
+  no_space_about: "Benötigt %{needed}, frei sind %{free} auf diesem Gerät."
+  save_smaller: "%{quality} speichern · %{size}"
 
 card:
   left: "Noch %{time}"
@@ -307,6 +311,12 @@ search:
     movies: "Filme"
     shows: "Serien"
     anime: "Anime"
+  try_again: "Erneut versuchen"
+  # A row of results whose source did not answer.
+  row_failed:
+    movies: "Filme konnten nicht geladen werden."
+    shows: "Serien konnten nicht geladen werden."
+    anime: "Anime konnten nicht geladen werden."
 
 compat:
   audio_dts: "Dieses Release hat nur DTS-Ton, den dieses Gerät nicht abspielen kann. Wähle ein anderes Release."
@@ -552,6 +562,9 @@ saved:
     save_one: "1 Folge speichern"
     choose: "Folgen auswählen"
     more: "%{size} mehr"
+    free: "%{free} frei"
+    more_free: "%{size} · %{free} frei"
+    no_room: "Nicht genug Speicher: benötigt %{size}, frei %{free}"
     new: "neu"
 
 confirm:
