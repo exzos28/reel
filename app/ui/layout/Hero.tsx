@@ -1,18 +1,18 @@
 // The top of home and title screens: the still filling the top of the
 // screen and fading into the background, the logotype, meta, genres,
 // about and the actions bottom-left.
-import { computed, Image, Text, View, windowSize, type ImageStyle, type JSX, type TextStyle, type ViewStyle } from "nsh";
+import { computed, Image, Text, untracked, View, windowSize, type ImageStyle, type JSX, type TextStyle, type ViewStyle } from "nsh";
 import { aboutText, genresText, shortAboutText, titleText, type Summary } from "../catalog";
 import { cover } from "../kit/shape";
 import { bodyText, metaText } from "../kit/text";
 import { alpha, colors, heroFade, insetMaxWidth, safe, ts, type, u } from "../theme";
 import { MetaLine } from "./HeroMeta";
-import { heroBoxNow, heroFollowsWindow, type HeroBox } from "./metrics";
+import { heroBoxNow, heroFollowsWindow, stillTop, type HeroBox } from "./metrics";
 
 /** The backdrop: from the window's right edge (a wide desktop window's: its content column's), as
  * wide and tall as the hero's box says. */
-const backdropStyle = (box: HeroBox): ViewStyle => ({
-  position: "absolute", top: 0, right: box.stillRight, width: box.stillWidth, height: Math.round(box.height + box.stillBelow), overflow: "hidden",
+const backdropStyle = (box: HeroBox, top: number): ViewStyle => ({
+  position: "absolute", top, right: box.stillRight, width: box.stillWidth, height: Math.round(box.height + box.stillBelow - top), overflow: "hidden",
 });
 const paperStyle = (paper: string): ViewStyle => ({ flex: 1, backgroundColor: paper, opacity: 0.55 });
 // A backdrop is a 16:9 frame, and people's heads sit in its upper part. On a TV and touch the
@@ -96,8 +96,11 @@ const logotypeStyle = (size: number, whole: boolean, title: string): TextStyle =
  * after the window's left edge, it also fades in from there. */
 function Backdrop(props: { item: () => Summary; box: () => HeroBox }) {
   const s = props.item;
+  // Where a fixed bar lies over the page (a phone's Home tabs), the still starts under it: the bar
+  // never cuts it. Taken once, as the page opens: it stays put under a page pushed over it.
+  const top = untracked(stillTop);
   return (
-    <View style={backdropStyle(props.box())}>
+    <View style={backdropStyle(props.box(), top)}>
       <If when={s().still} else={<View style={paperStyle(s().paper)} />}>
         <Image src={s().still!} style={stillStyle} />
       </If>

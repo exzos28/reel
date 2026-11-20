@@ -8,7 +8,7 @@ import { caps } from "../../platform";
 import { IconButton } from "../../kit/IconButton";
 import { t } from "nsh/i18n";
 import { colors } from "../../theme";
-import infoIcon from "../../icons/info.svg";
+import openIcon from "../../icons/arrow-right.svg";
 import heartIcon from "../../icons/heart.svg";
 import heartFilledIcon from "../../icons/heart-filled.svg";
 import { density } from "../../theme";
@@ -18,7 +18,7 @@ import { density } from "../../theme";
 export const HOME_HERO = density === "ten-foot" ? { height: 640, top: 180 } : { height: 780, top: 236 };
 
 
-/** The hero for the focused card: Play, the Watchlist and its page (a round ⓘ) under its release. */
+/** The hero for the focused card: Play, the Watchlist and its page (a round →) under its release. */
 export function HomeHero(props: {
   item: () => Summary;
   focusedAt: () => number | null;
@@ -50,7 +50,7 @@ export function HomeHero(props: {
           />
         </If>
         {/* The title's page: everything about it, its episodes, its releases. */}
-        <IconButton icon={() => infoIcon} label={() => t("home.details")} focused={() => props.focusedAt() === 2} background={() => colors.raise()} onPress={props.onOpen} />
+        <IconButton icon={() => openIcon} label={() => t("home.details")} focused={() => props.focusedAt() === 2} background={() => colors.raise()} onPress={props.onOpen} />
       </View>
     </Hero>
   );
