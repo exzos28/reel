@@ -283,8 +283,11 @@ test("phone: the release sits in Play as one short line (the people sharing a nu
   expect(app.shows("label:Trailer")).toBe(true);
   await app.press("label:Other releases");
   expect(app.texts()).toContain("3 found, the best of each quality first");
-  // A release row: its audio, picture, size and the people sharing, then its own name; said whole.
-  expect(app.texts()).toContain("English, Russian MVO · H.264 · 8 GB · 412");
+  // A release row: its audio, picture, size and the people sharing (the number kept with its icon),
+  // how it starts, then its own name; said whole.
+  expect(app.texts()).toContain("English, Russian MVO · H.264 · 8 GB ·");
+  expect(app.texts()).toContain("412");
+  expect(app.texts()).toContain("Starts fast");
   expect(app.texts()).toContain("Inception.2010.1080p.BluRay.x264");
   expect(app.shows("label:1080p BluRay, English, Russian MVO, H.264, 8 GB, 412 people sharing, Starts fast")).toBe(true);
 });

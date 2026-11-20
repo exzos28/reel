@@ -6,6 +6,7 @@ import { rowStyle } from "../../kit/Row";
 import { row } from "../../kit/shape";
 import { fontText, oneLine } from "../../kit/text";
 import { colors, cs, density, ts, u } from "../../theme";
+import { t } from "nsh/i18n";
 import checkIcon from "../../icons/check.svg";
 import personIcon from "../../icons/person.svg";
 import { Pressable } from "../../kit/Pressable";
@@ -86,9 +87,14 @@ const narrowStyle = (selected: boolean, focused: boolean): ViewStyle => ({
   paddingVertical: u(14),
 });
 
+/** How it starts, in plain words ("Starts fast", "Needs 21 Mbit/s internet"): the core's note. */
+export const noteText = (r: Release) => (r.note ? t(`release.note.${r.note}`, { mbit: r.mbit }) : "");
+const noteStyle = (): TextStyle => ({ ...fontText(20, colors.ash()) });
+
 /** A release in a narrow panel (desktop, touch): quality and where it comes from (a check when
  * it is the one Play uses); its audio, picture, size and people sharing ("English, Russian MVO ·
- * H.264 · 700 MB · 3 👤"); the release's own name, small, up to two lines. */
+ * H.264 · 700 MB · 3 👤", the icon kept with the number when the line wraps); how it starts ("Starts
+ * fast"); the release's own name, small, up to two lines. */
 function NarrowRow(props: { release: () => Release; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
   const r = props.release;
   const details = () => releaseDetails(r());
@@ -109,12 +115,18 @@ function NarrowRow(props: { release: () => Release; focused: () => boolean; view
           <Icon src={() => checkIcon} size={22} />
         </If>
       </View>
-      <View style={{ ...row(u(6)), minWidth: 0 }}>
-        <Text style={{ ...fontText(22, colors.ash()), flexShrink: 1 }}>
-          {details() ? `${details()} · ${r().peers}` : `${r().peers}`}
-        </Text>
-        <Icon src={() => personIcon} size={20} color={() => colors.ash()} />
+      <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: u(6), minWidth: 0 }}>
+        <If when={details()}>
+          <Text style={{ ...fontText(22, colors.ash()), flexShrink: 1 }}>{`${details()} ·`}</Text>
+        </If>
+        <View style={{ ...row(u(6)), flexShrink: 0 }}>
+          <Text style={fontText(22, colors.ash())}>{`${r().peers}`}</Text>
+          <Icon src={() => personIcon} size={20} color={() => colors.ash()} />
+        </View>
       </View>
+      <If when={noteText(r())}>
+        <Text style={noteStyle()}>{noteText(r())}</Text>
+      </If>
       <If when={r().group}>
         <Text style={nameStyle(2)}>{r().group}</Text>
       </If>
