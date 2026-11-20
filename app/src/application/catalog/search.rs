@@ -28,9 +28,20 @@ pub(super) const RECENT_MAX: usize = 10;
 
 #[derive(Clone)]
 enum Answer {
-    /// `Meta.search`'s `data`: `{"sections":[{source, items}]}`.
+    /// `Meta.search`'s `data`: `{"sections":[{source, items}],"failed":[source…]}`.
     Found(Value),
     Failed,
+}
+
+impl Answer {
+    /// Asked again when the query is typed or picked again: it failed, or a
+    /// source in it did not answer.
+    fn retried(&self) -> bool {
+        match self {
+            Answer::Failed => true,
+            Answer::Found(data) => !list_of(&data["failed"]).is_empty(),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -63,8 +74,10 @@ pub(super) fn answer_key(query: &str, lang: &str) -> String {
 /// "searching" (`sections` still show the previous query's results),
 /// "done" (`sections` empty: nothing found), "failed" (the sources did not
 /// answer). `tmdb`: whether films and shows are searched (without a key
-/// only anime is). `sections`: `[{"id":"movies"|"shows"|"anime","items":
-/// [summary…]}]`, empty ones left out, each title once.
+/// only anime is). `sections`: `[{"id":"movies"|"shows"|"anime","state":
+/// "done"|"failed","items":[summary…]}]`, each title once; an empty row is
+/// left out unless its source did not answer ("failed": the screen says
+/// so and offers `retry`).
 pub fn search(query: &str) -> Value {
     let q = clean(query);
     let tmdb = tmdb_on();
@@ -87,8 +100,8 @@ pub fn search(query: &str) -> Value {
             if let Some(job) = st.job.take() {
                 job.abort();
             }
-            // A query that failed is asked again when it is typed again.
-            if matches!(st.answers.get(&key), Some(Answer::Failed)) {
+            // A query that failed (all or in part) is asked again when it is typed again.
+            if st.answers.get(&key).is_some_and(Answer::retried) {
                 st.answers.remove(&key);
             }
             if !st.answers.contains_key(&key) {
@@ -106,6 +119,29 @@ pub fn search(query: &str) -> Value {
     };
     let sections = data.as_ref().map(sections).unwrap_or_default();
     json!({ "query": q, "state": state, "tmdb": tmdb, "recent": [], "sections": sections })
+}
+
+/// Asks `query` again (the Try again of a row that did not load): its rows
+/// stay while it searches.
+pub fn retry(query: &str) {
+    let q = clean(query);
+    if q.is_empty() {
+        return;
+    }
+    let lang = settings::content_language();
+    let key = answer_key(&q, &lang);
+    let mut st = STATE.lock().unwrap();
+    if let Some(job) = st.job.take() {
+        job.abort();
+    }
+    if let Some(Answer::Found(data)) = st.answers.remove(&key) {
+        st.shown = Some(data);
+    }
+    st.order.retain(|k| *k != key);
+    st.wanted = key.clone();
+    st.job = start(q, lang, key);
+    drop(st);
+    bump();
 }
 
 /// Waits for the query to rest, then asks `Meta`; the abort handle cancels both.
@@ -153,8 +189,10 @@ pub(super) fn land(key: &str, envelope: &Value) {
 }
 
 /// The rows of an answer: Movies, Shows (TMDB's, not anime) and Anime (what
-/// TMDB knows as anime, then AniList's), each title once.
+/// TMDB knows as anime, then AniList's), each title once. A row whose source
+/// did not answer and that has nothing else is "failed".
 fn sections(data: &Value) -> Vec<Value> {
+    let failed = |source: &str| list_of(&data["failed"]).iter().any(|f| f == source);
     let mut seen = HashSet::new();
     let (mut movies, mut shows, mut anime) = (Vec::new(), Vec::new(), Vec::new());
     for section in list_of(&data["sections"]) {
@@ -174,10 +212,16 @@ fn sections(data: &Value) -> Vec<Value> {
             row.push(summary(&card_info(card)));
         }
     }
-    [("movies", movies), ("shows", shows), ("anime", anime)]
+    [("movies", "tmdbMovies", movies), ("shows", "tmdbShows", shows), ("anime", "anilist", anime)]
         .into_iter()
-        .filter(|(_, items)| !items.is_empty())
-        .map(|(id, items)| json!({ "id": id, "items": items }))
+        .filter_map(|(id, source, items)| {
+            let state = match (items.is_empty(), failed(source)) {
+                (false, _) => "done",
+                (true, true) => "failed",
+                (true, false) => return None,
+            };
+            Some(json!({ "id": id, "state": state, "items": items }))
+        })
         .collect()
 }
 

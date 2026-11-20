@@ -32,7 +32,7 @@ import { PlayerHost } from "./ui/layout/PlayerHost";
 import { playerUp, status } from "./ui/playback";
 import { loadSettings, setupDone } from "./ui/preferences";
 import { SetupScreen } from "./ui/screens/setup/SetupScreen";
-import { Hosted, Sources } from "./ui/native";
+import { Hosted } from "./ui/native";
 import { linkedSource } from "./ui/screens/source/sourceState";
 import { openSourceDrawer } from "./ui/screens/source/SourceDrawer";
 import { watchSettings } from "./ui/hosted";
@@ -45,8 +45,6 @@ setColorScheme("dark");
 // Keys the platform sends that the keymap does not know (a Samsung TV remote's Back).
 mapPlatformKeys();
 startDiagnostics();
-// A phone or a tablet shows no more than 1080p: Play picks no 4K by itself there (the core decides).
-Sources.setPictureCap(caps.touch ? 1080 : 0);
 // A phone and a tablet keep a stack per tab (design/navigation.md, "History model").
 useTabStacks(caps.touch);
 // A phone's Home tab holds the categories (design/navigation.md, "Phone").

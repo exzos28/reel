@@ -8,7 +8,7 @@ import { Hero } from "../../layout/Hero";
 import { wholeAboutInHero } from "./AboutBlock";
 import { heroTop } from "../../layout/metrics";
 import { actionsRow, PlayButton, SaveButton, SPLIT_HEIGHT, SplitPlay, TrailerButton } from "../../layout/HeroActions";
-import { librarySupported, titleSaveState } from "../../library";
+import { librarySupported, saveOffer, titleSaveState } from "../../library";
 import { density, u } from "../../theme";
 import type { HeroAction } from "./focus";
 
@@ -63,6 +63,8 @@ export function TitleHero(props: {
   const show = () => props.data().kind === "show";
   /** Asked once per second (and per change), not once per place that shows it. */
   const saveState = computed(() => titleSaveState(props.data().id, show()));
+  /** A film's Save names what it takes ("Save · 700 MB"); a show's opens the drawer. */
+  const saveSize = computed(() => (librarySupported && !show() ? saveOffer(props.data().id).size : null));
   const release = () => (props.data().release ? releaseLine(props.data().release!, false) : null);
   const focused = (a: HeroAction) => () => props.focused() === a;
   const height = stacked ? HALF_HEIGHT : SPLIT_HEIGHT;
@@ -92,6 +94,7 @@ export function TitleHero(props: {
         <SaveButton
           state={saveState}
           show={show}
+          size={saveSize}
           focused={focused("save")}
           onPress={props.onSave}
           // Nothing to save until a release is known (a film's search found none, or still runs);

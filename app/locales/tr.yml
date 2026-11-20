@@ -80,6 +80,10 @@ title:
   saved: "Kaydedildi"
   saved_one: "1 bölüm kaydedildi"
   saved_some: "%{count} bölüm kaydedildi"
+  save_size: "Kaydet · %{size}"
+  no_space_title: "Yeterli alan yok"
+  no_space_about: "%{needed} gerekiyor, bu cihazda %{free} boş."
+  save_smaller: "%{quality} kaydet · %{size}"
 
 card:
   left: "%{time} kaldı"
@@ -307,6 +311,12 @@ search:
     movies: "Filmler"
     shows: "Diziler"
     anime: "Anime"
+  try_again: "Yeniden dene"
+  # A row of results whose source did not answer.
+  row_failed:
+    movies: "Filmler yüklenemedi."
+    shows: "Diziler yüklenemedi."
+    anime: "Animeler yüklenemedi."
 
 compat:
   audio_dts: "Bu sürümde yalnızca DTS ses var ve bu cihaz onu oynatamıyor. Başka bir sürüm seç."
@@ -320,6 +330,9 @@ player:
   close_tracks: "Ses ve altyazıyı kapat"
   episodes: "Bölümler"
   close_episodes: "Bölümleri kapat"
+  season_episodes:
+    one: "%{number}. Sezon · %{count} bölüm"
+    other: "%{number}. Sezon · %{count} bölüm"
   now_playing: "Şimdi oynatılıyor"
   fullscreen: "Tam ekran"
   mute: "Sesi kapat"
@@ -549,6 +562,9 @@ saved:
     save_one: "1 bölümü kaydet"
     choose: "Bölümleri seç"
     more: "%{size} daha"
+    free: "%{free} boş"
+    more_free: "%{size} · %{free} boş"
+    no_room: "Yeterli alan yok: %{size} gerekiyor, %{free} boş"
     new: "yeni"
 
 confirm:

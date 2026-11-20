@@ -8,7 +8,7 @@
 // Back closes the keyboard, then takes the focus to the nav, then Home.
 import { computed, keymap, signal, Text, View, type InputRef, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
-import { forgetSearches, rememberSearch, search, type SearchAnswer } from "../../catalog";
+import { forgetSearches, rememberSearch, retrySearch, search, type SearchAnswer } from "../../catalog";
 import { byKeys } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
 import { metaText } from "../../kit/text";
@@ -22,6 +22,7 @@ import { scroller } from "../../layout/Scroller";
 import { go, goFromNav, handleBack, onBack, openTitle } from "../../nav";
 import { density, safe, u } from "../../theme";
 import { HomeShelf } from "../home/HomeShelf";
+import { FailedRow } from "./FailedRow";
 import { cols, navAt, query, recentAt, row, zone } from "./focus";
 import { RecentSearches } from "./RecentSearches";
 import { SearchField } from "./SearchField";
@@ -51,7 +52,9 @@ export function SearchScreen() {
   const recent = () => (answer().state === "recent" ? answer().recent : []);
   const rowAt = () => clamp(row(), sections().length - 1);
   const col = (r: number) => cols.at(r);
-  const setCol = (r: number, c: number) => cols.set(r, c, sections()[r].items.length - 1);
+  /** A row whose source did not answer: no cards, a Try again. */
+  const failed = (r: number) => sections()[r]?.state === "failed";
+  const setCol = (r: number, c: number) => !failed(r) && cols.set(r, c, sections()[r].items.length - 1);
 
   let input: InputRef | undefined;
   /** The field has the input's focus: a keyboard is up (a TV's on-screen one) or typing goes to it. */
@@ -78,7 +81,13 @@ export function SearchScreen() {
   if (zone() === "results" && !sections().length) zone.set("field");
   if (zone() === "recent" && !recent().length) zone.set("field");
 
+  const retry = (r: number) => {
+    zone.set("results");
+    row.set(r);
+    retrySearch(query());
+  };
   const open = (r: number, c: number) => {
+    if (failed(r)) return retry(r);
     const item = sections()[r].items[c];
     zone.set("results");
     row.set(r);
@@ -182,6 +191,17 @@ export function SearchScreen() {
       <View style={{ gap: u(40), marginTop: u(36) }}>
         <Each of={sections()} key={(s) => s.id}>
           {(section, r) => (
+            <If
+              when={section().state !== "failed"}
+              else={
+                <FailedRow
+                  id={() => section().id}
+                  focused={() => zone() === "results" && rowAt() === r()}
+                  blockRef={page.follow(() => zone() === "results" && rowAt() === r(), "anchor")}
+                  onRetry={() => retry(r())}
+                />
+              }
+            >
             <HomeShelf
               shelf={section}
               title={() => t(`search.section.${section().id}`)}
@@ -191,6 +211,7 @@ export function SearchScreen() {
               page={page}
               eager={r() < 2}
             />
+            </If>
           )}
         </Each>
       </View>

@@ -27,14 +27,15 @@ const PHONE_CONTROLS = density === "compact" ? 1.5 : 1;
 const PHONE_TEXT = density === "compact" ? 1.25 : 1;
 const u = (px: number) => layoutU(px) * PHONE_CONTROLS;
 const ts = (px: number) => layoutTs(px) * PHONE_TEXT;
-import { chrome } from "./layout/chrome";
+import { chrome, frame } from "./layout/chrome";
 import { caps } from "./platform";
 import { playVolume, PlayerVolume, toggleMute, volumeDragEnd, volumeDragMove, volumeShown } from "./PlayerVolume";
 import { useFullscreen } from "./platform/window";
 import { BarBack, barBackBox } from "./layout/WindowBar";
 import { onBack } from "./nav";
 import { SubtitleOverlay } from "./SubtitleOverlay";
-import { playerTracks, type TrackOption } from "./tracks";
+import { playerTracks } from "./tracks";
+import { trackHeadings, trackRows, TracksSheet, type TrackRow } from "./PlayerTracks";
 import { VideoSurface, videoUnderUi, type SurfaceRef } from "./VideoSurface";
 import playIcon from "./icons/play.svg";
 import pauseIcon from "./icons/pause.svg";
@@ -64,6 +65,9 @@ const SCRUB_IDLE_MS = 600;
 const STALL_MS = 300;
 
 type Row = "scrubber" | "buttons";
+/** A phone: the tracks and the episodes are sheets (bottom, or at the right held sideways), not
+ * panels over the picture, which would be three narrow columns there and cover the ✕. */
+const SHEETS = frame.panel === "bottom-sheet";
 /** The desktop's Back over the picture: the bar's, on a dark fill. */
 const PLAYER_BACK_FILL = "#2A2A2AD9";
 /** Where it sits: the bar's Back slot, or (20, 12) in full screen. */
@@ -200,6 +204,11 @@ export function Player() {
    * the one playing), so a quality shows once. */
   const shortReleases = computed(() => tracks().releases.filter((r) => r.top || r.selected));
   const columns = computed(() => [menu().audio.length, menu().subtitles.length, shortReleases().length]);
+  /** Row `i` of list `col` is the chosen one: the release picked here, else what the core says. */
+  const isSelected = (col: number, i: number, fromCore: boolean) => {
+    const p = col === 2 ? picked()[col] : undefined;
+    return p != null ? p === i : fromCore;
+  };
   const pick = (col: number, row: number) => {
     const option = col === 0 ? menu().audio[row] : col === 1 ? menu().subtitles[row] : undefined;
     if (col === 2) picked.set({ ...picked(), [col]: row });
@@ -215,6 +224,10 @@ export function Player() {
   });
   const dismissed = signal(false);
   const card = computed(() => next() != null && !dismissed());
+  // Up next takes the keys and the screen: the panels and sheets close under it.
+  effect(() => {
+    if (card()) untracked(() => (panel.set(false), episodesOpen.set(false)));
+  });
   const cardButton = signal(0);
   const countdown = signal(UP_NEXT_MS);
   let tick: ReturnType<typeof setInterval> | undefined;
@@ -516,7 +529,8 @@ export function Player() {
       }}
 
       // Touch: a swipe down closes the player, as a full-screen cover does.
-      onPanEnd={(e) => caps.touch && !e.cancelled && (e.translation.y > 120 || e.velocity.y > 800) && leave()}
+      // Not while a sheet is open: its own swipe (or its list's scroll) closes only the sheet.
+      onPanEnd={(e) => caps.touch && !panel() && !episodesOpen() && !e.cancelled && (e.translation.y > 120 || e.velocity.y > 800) && leave()}
       focusable={false}
     >
       <If when={ready()}>
@@ -667,15 +681,24 @@ export function Player() {
             </>
           )}
         </If>
-        <If when={panel()}>
+        <If when={panel() && SHEETS}>
+          <TracksSheet
+            col={panelCol}
+            onCol={(col) => { poke(); panelCol.set(col); panelRow.set(0); }}
+            rows={() => trackRows(panelCol(), menu().audio, menu().subtitles, shortReleases())}
+            focused={(i) => panelRow() === i}
+            isSelected={(i, fromCore) => isSelected(panelCol(), i, fromCore)}
+            onPick={(i) => { poke(); panelRow.set(i); pick(panelCol(), i); }}
+            onClose={() => panel.set(false)}
+          />
+        </If>
+        <If when={panel() && !SHEETS}>
           {/* A tap beside the panel closes it, as a sheet's does. */}
           <Pressable feedback="none" role="button" accessibilityLabel={t("player.close_tracks")} onPress={() => panel.set(false)} style={panelBackdrop} />
           <TracksPanel
             bottom={() => controlsHeight() + safe().y + u(24)}
-            releases={shortReleases}
-            audio={() => menu().audio}
-            subtitles={() => menu().subtitles}
-            picked={picked}
+            rows={(col) => trackRows(col, menu().audio, menu().subtitles, shortReleases())}
+            isSelected={isSelected}
             focused={(col, i) => panelCol() === col && panelRow() === i}
             onPick={(col, i) => { poke(); panelCol.set(col); panelRow.set(i); pick(col, i); }}
             onClose={() => panel.set(false)}
@@ -860,10 +883,8 @@ const panelCloseStyle = (): ViewStyle => ({
 });
 
 function TracksPanel(props: {
-  releases: () => Release[];
-  audio: () => TrackOption[];
-  subtitles: () => TrackOption[];
-  picked: () => Record<number, number>;
+  rows: (col: number) => TrackRow[];
+  isSelected: (col: number, i: number, fromCore: boolean) => boolean;
   focused: (col: number, i: number) => boolean;
   onPick: (col: number, i: number) => void;
   onClose: () => void;
@@ -872,12 +893,8 @@ function TracksPanel(props: {
 }) {
   /** The focus fill shows only while the keys drive (as the ring does everywhere); a tap only picks. */
   const lit = (col: number, i: number) => props.focused(col, i) && showFocus();
-  const isSelected = (col: number, i: number, fromCore: boolean) => {
-    const p = col === 2 ? props.picked()[col] : undefined;
-    return p != null ? p === i : fromCore;
-  };
-  /** `id` names a row for tests (`testID`): `audio-<key>`, `subtitles-<key>` (the core's keys), `release-<index>`. */
-  const column = (col: number, heading: string, options: () => { id: string; main: string; sub?: string; selected: boolean }[]) => (
+  const isSelected = props.isSelected;
+  const column = (col: number, heading: string, options: () => TrackRow[]) => (
     <View style={{ flex: col === 2 ? 1.25 : 1, paddingHorizontal: u(18), borderLeftWidth: col > 0 ? 1 : 0, borderColor: colors.raise() }}>
       <Text style={{ fontFamily: font, fontSize: ts(21), fontWeight: 500, color: colors.ash(), marginLeft: u(16), marginBottom: u(10) }}>
         {heading}
@@ -926,16 +943,9 @@ function TracksPanel(props: {
         flexDirection: "row", padding: u(26), borderRadius: radius() + u(26), borderCurve: "continuous", backgroundColor: colors.card(),
       }}
     >
-      {column(0, t("player.audio"), () => props.audio().map((a, i) => ({ id: `audio-${a.key}`, main: trackName(a, i + 1), sub: trackNote(a), selected: a.selected })))}
-      {column(1, t("player.subtitles"), () => props.subtitles().map((s, i) => ({ id: `subtitles-${s.key}`, main: trackName(s, i), sub: trackNote(s), selected: s.selected })))}
-      {column(2, t("player.release"), () =>
-        props.releases().map((r, i) => ({
-          id: `release-${i}`,
-          main: `${r.quality} ${r.source}`,
-          sub: `${r.size} · ${t("release.sharing_short", { count: r.peers })}`,
-          selected: r.selected,
-        })),
-      )}
+      {column(0, trackHeadings()[0], () => props.rows(0))}
+      {column(1, trackHeadings()[1], () => props.rows(1))}
+      {column(2, trackHeadings()[2], () => props.rows(2))}
       {/* Touch has no Back key on screen: ✕ closes the panel (a tap beside it does too). */}
       <If when={caps.touch}>
         <Pressable role="button" accessibilityLabel={t("player.close_tracks")} hitSlop={targetSlop(u(56))} onPress={props.onClose}
@@ -947,28 +957,6 @@ function TracksPanel(props: {
       </If>
     </View>
   );
-}
-
-/** A track's name in the panel: its language, else its title, else its number. */
-function trackName(o: TrackOption, number: number) {
-  if (o.kind === "original") return t("tracks.audio.original");
-  if (o.kind === "off") return t("tracks.subtitles.off");
-  // The core gives ISO 639-1 codes for the languages it knows (`languages.*`).
-  if (o.language && o.language.length === 2) return t(`languages.${o.language}`);
-  if (o.language) return o.language.toUpperCase();
-  return o.title || t("tracks.number", { number });
-}
-
-/** The line under a track's name: its title, forced, where it comes from or its format. */
-function trackNote(o: TrackOption) {
-  if (o.kind === "original" || o.kind === "off") return undefined;
-  const parts = [
-    o.language ? o.title : null,
-    o.forced ? t("tracks.forced") : null,
-    // The core words the technical part ("AC3 5.1", "SRT").
-    o.kind === "external" ? t("tracks.from_torrent") : o.detail,
-  ].filter((p): p is string => !!p);
-  return parts.length ? parts.join(" · ") : undefined;
 }
 
 /** Near the end of an episode: the next one, Play now with its countdown,

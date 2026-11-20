@@ -98,3 +98,24 @@ test("searching, nothing found, failed and without a TMDB key say so", async () 
   app = await searchScreen({ ...SEARCH_DUNE, state: "failed", sections: [] });
   expect(app.texts()).toContain("TMDB and AniList did not answer. Check the connection and try again.");
 });
+
+test("a row whose source did not answer says so; OK on it, or a click, tries again", async () => {
+  const asked: string[] = [];
+  const answer = { ...SEARCH_DUNE, sections: [{ id: "movies", state: "failed", items: [] }, SEARCH_DUNE.sections[1]] };
+  const app = await searchScreen(answer, { "Catalog.retrySearch": (q: string) => void asked.push(q) });
+  await app.type("search-field", "dune");
+  expect(app.texts()).toContain("Movies");
+  expect(app.texts()).toContain("Could not load films.");
+  expect(app.texts()).toContain("Severance");
+  expect(app.texts()).not.toContain("TMDB and AniList did not answer. Check the connection and try again.");
+  await app.keyboard.press("down"); // Movies: its Try again
+  await app.keyboard.press("right"); // nothing to the side
+  await app.keyboard.press("enter");
+  expect(asked).toEqual(["dune"]);
+  await app.keyboard.press("down"); // Series still opens
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("Your mind is the scene of the crime.");
+  await app.keyboard.press("escape");
+  await app.press("label:Try again");
+  expect(asked).toEqual(["dune", "dune"]);
+});
