@@ -26,8 +26,8 @@ The catalog the UI shows: TMDB and AniList titles through `Meta`, releases from 
 
 Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 
-- `browse(page: String) -> String`: `"movies"`, `"shows"` or `"anime"`: `{"trending":[summary…],"all":[summary…], "filters":[group…],"allState"}` (see `catalog::browse`).
-  JSON: `{"trending":[summary…],"all":[summary…], "filters":[group…],"allState"}`
+- `browse(page: String) -> String`: `"movies"`, `"shows"` or `"anime"`: `{"trending":[summary…],"all":[summary…], "filters":[group…],"allState","facet","filtered"}` (see `catalog::browse`).
+  JSON: `{"trending":[summary…],"all":[summary…], "filters":[group…],"allState","facet","filtered"}`
   Called from: `ui/catalog.ts`.
 - `browseMore(page: String) -> bool` (`browse_more`): The next page of a browse page's grid (`"movies"`, `"shows"`, `"anime"`): whether one is on its way now (`browse`'s `moreState` says when it is in).
   Called from: `ui/catalog.ts`.
@@ -46,8 +46,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/catalog.ts`.
 - `forgetSearches()` (`forget_searches`): Forgets all the recent searches (the history's Clear).
   Called from: `ui/catalog.ts`.
-- `home() -> String`: The home shelves: `[{"id","items":[summary…]}]` (see `catalog::summary`).
-  JSON: `[{"id","items":[summary…]}]`
+- `home() -> String`: Home: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`, the hero not repeated on the shelves (see `catalog::home`, `catalog::summary`).
+  JSON: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`
   Called from: `ui/catalog.ts`.
 - `person(id: String) -> String`: A person's page ("tmdb:person:6384"): `{"id","name","photo","initials","items":[summary…], "state"}` (see `catalog::person`).
   JSON: `{"id","name","photo","initials","items":[summary…], "state"}`
@@ -245,6 +245,9 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `load(data_dir: String, languages: String) -> String`: Loads the settings from `data_dir` (the app's data directory, empty when the host has none) and configures the engine from them; JSON `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`. `languages`: the system's preferred languages, a JSON array of BCP 47 tags; a new install starts with the first one reel has titles in (`contentLanguage`), else English.
   JSON: `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`
   Called from: `ui/preferences.ts`.
+- `project() -> String`: What About says of reel itself: `{"license","repository"}` (the license's name, the source code's address).
+  JSON: `{"license","repository"}`
+  Called from: `ui/screens/about/AboutScreen.tsx`.
 - `revision() -> f64`: Goes up when the settings change (here or on the hosted page) and when the hosted page's pairing code appears or goes: read `current` and `Hosted.pairing` again.
   Called from: `ui/hosted.ts`.
 - `setAudioLanguage(code: String) -> String` (`set_audio_language`): Saves the audio language tracks are looked for in (ISO 639-1, one of `audioLanguages` from `load`; empty: the app's language); the setting in effect ("" for the app's). A pick in the tracks panel sets it too (`Engine.chooseTrack`).

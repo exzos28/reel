@@ -1,5 +1,5 @@
 import { View, type ViewRef } from "nsh";
-import { airsText, type Summary } from "../../catalog";
+import { airsText, type Facet, type Summary } from "../../catalog";
 import { scroller } from "../../layout/Scroller";
 import { Rail, railLead } from "../../layout/Rail";
 import { RowGap, rowWindow } from "../../layout/reach";
@@ -14,6 +14,7 @@ export function Trending(props: {
   /** The row's title ("Trending"). */
   title: () => string;
   items: () => Summary[];
+  facet: () => Facet;
   airs: boolean;
   focusedAt: () => number | null;
   blockRef: (r: ViewRef) => void;
@@ -35,6 +36,7 @@ export function Trending(props: {
             <PosterCard
               item={item}
               sub={() => (props.airs ? airsText(item()) : null)}
+              facet={props.facet}
               focused={() => props.focusedAt() === win().from + i()}
               follow={line.follow}
               onPress={() => props.onOpen(win().from + i())}

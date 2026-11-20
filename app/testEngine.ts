@@ -12,6 +12,7 @@ export const ENGINE = {
   "Engine.seek": async () => JSON.stringify({ state: "ready" }),
   "Engine.checkSpace": JSON.stringify({ ok: true, free: 10 * 1024 ** 3, needed: 306 * 1024 ** 2, buffer: 256 }),
   "Engine.timeline": JSON.stringify({ ranges: [], ahead: 0 }),
+  "Settings.project": JSON.stringify({ license: "PolyForm Noncommercial 1.0.0", repository: "https://github.com/exzos28/reel" }),
   /** The sources About names, as the core lists them. */
   "Meta.attribution": JSON.stringify([
     { provider: "tmdb", name: "TMDB", url: "https://www.themoviedb.org", logoRequired: true, license: null,
@@ -62,6 +63,9 @@ const ARRIVAL = summary({ id: "tmdb:movie:329865", title: "Arrival", year: 2016,
 const DUNE = summary({ id: "tmdb:movie:438631", title: "Dune", year: 2021, minutes: 155, rating: "7.8" });
 export const SEVERANCE = summary({ id: "tmdb:tv:95396", kind: "show", title: "Severance", year: 2022, seasons: 2 });
 const FRIEREN = summary({ id: "anilist:154587", kind: "show", title: "Frieren: Beyond Journey's End", anime: true, year: 2023 });
+
+/** Home as the core answers it: the first card is the hero (the stand-in keeps it on its shelf too). */
+export const homeOf = (shelves: { id: string; items: unknown[] }[]) => JSON.stringify({ hero: shelves[0].items[0], shelves });
 
 export const HOME = [
   { id: "continue", items: [INCEPTION, AOT] },
@@ -204,7 +208,7 @@ export const browseCards = (n: number, from = 0) =>
 /** The catalog as most tests see it: Home, Browse, Inception's screen. */
 export const CATALOG = {
   "Catalog.revision": 1,
-  "Catalog.home": JSON.stringify(HOME),
+  "Catalog.home": homeOf(HOME),
   "Catalog.browse": JSON.stringify({ trending: BROWSE_TRENDING, all: BROWSE_ALL, filters: browseFilters(), allState: "done", more: false, moreState: "idle" }),
   "Catalog.browseMore": false,
   "Catalog.chooseFilter": false,
@@ -235,7 +239,7 @@ export const STILL = { "VideoEngine.kind": "still" };
 export const NATIVE = { ...ENGINE, ...CATALOG };
 
 /** Home with nothing begun: the first card, and so the hero, is Dune (Trending movies). */
-export const DUNE_FIRST = { "Catalog.home": JSON.stringify(HOME.filter((s) => s.id !== "continue" && s.id !== "watchlist")) };
+export const DUNE_FIRST = { "Catalog.home": homeOf(HOME.filter((s) => s.id !== "continue" && s.id !== "watchlist")) };
 
 /** Search as the core answers it: nothing typed (two recent searches), and "dune" found. */
 export const SEARCH_RECENT = { query: "", state: "recent", tmdb: true, recent: ["dune", "frieren"], sections: [] };

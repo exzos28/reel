@@ -12,7 +12,7 @@ design/concept/navigation/render.sh <out-dir> [tv|desktop|tablet|phone ...]
 
 Back was patched in per screen: a round button floating over the hero (title), beside the page
 title (Settings, About, Search), in the Mac title bar beside the traffic lights (every deep page
-on macOS), another one in the player; the nav exists only on Home/Movies/Shows/Anime and scrolls
+on macOS), another one in the player; the nav exists only on Home/Movies/Series/Anime and scrolls
 away; Search and Settings are nav items but open as deep pages with a back button; on the TV a
 "back" focus zone sits above the title's actions; no phone or tablet layout at all.
 
@@ -24,7 +24,7 @@ away; Search and Settings are nav items but open as deep pages with a back butto
 2. **The nav answers "where am I".** The current destination is always shown in the selected
    fill (`nav` token, `#333`), on deep pages too where the nav is visible: a title opened from
    Movies keeps Movies selected (the page's *section*).
-3. **Destinations are roots.** Home, Movies, Shows, Anime, Search, Settings are nav
+3. **Destinations are roots.** Home, Movies, Series, Anime, Search, Settings are nav
    destinations (Settings on touch is the exception, see below). A root has nothing to go back
    to on desktop and touch; Back is disabled (macOS) or absent (others).
 4. **Back closes before it leaves**, in this order: keyboard/text input → open panel or sheet
@@ -72,8 +72,8 @@ what the page is for:
 
 | | Where Add to list is | Look | Added state |
 |---|---|---|---|
-| TV | top-right of the safe area (right 96, top 54), alone (no nav on a title) | pill 62 px, `#1A1A1AD1`, + icon 24 + "Add to list" 24/500 | ✓ + "In my list", selected fill `#333` |
-| Desktop | window bar, right part, before the nav pills (gap 10) | pill 34 pt, + 15 + "Add to list" 13/500 | ✓ + "In my list", selected fill |
+| TV | top-right of the safe area (right 96, top 54), alone (no nav on a title) | pill 62 px, `#1A1A1AD1`, + icon 24 + "Add to list" 24/500 | ✓ + "In list", selected fill `#333` |
+| Desktop | window bar, right part, before the nav pills (gap 10) | pill 34 pt, + 15 + "Add to list" 13/500 | ✓ + "In list", selected fill |
 | Tablet | top row, a 40 pt disc left of Settings | + icon only (row is busy), label as accessibility name | ✓, selected fill |
 | Phone | a 40 pt disc at the top-right over the hero, mirroring the back disc; scrolled: the nav bar's right button | + icon only | ✓, selected fill |
 
@@ -92,14 +92,14 @@ Mockups: `tv.html` `film`, `film-add-to-list`, `show` (in my list); `desktop.htm
 ## TV (1920×1080, ten-foot; safe area 96 / 54)
 
 Nav: `NavBar` as today, logo at (96, 50), pills right, row 62 px; only on root pages
-(Home, Movies, Shows, Anime, Search, Settings). Deep pages (title, About) and the player have no
+(Home, Movies, Series, Anime, Search, Settings). Deep pages (title, About) and the player have no
 nav and no back button; their top-left corner is the page's own content. A title's top-right
 holds Add to list (see above).
 
 | Page | Focus lands on | Back does |
 |---|---|---|
 | Home | first card of the first shelf (focus memory after that) | focus not on the nav → page scrolls to top, focus on Home in the nav; on the nav → **Exit reel?** dialog |
-| Movies, Shows, Anime | first Trending poster | not on the nav → top + focus on the current item; on the nav → Home, focus on Home in the nav |
+| Movies, Series, Anime | first Trending poster | not on the nav → top + focus on the current item; on the nav → Home, focus on Home in the nav |
 | Search | the search field | keyboard up → closes it; else as Movies |
 | Settings | the chosen language | as Movies (the "OK chooses, Back closes." hint goes) |
 | About | nothing focusable | Settings, focus on "About reel and its data sources" |
@@ -137,7 +137,7 @@ content; the empty parts drag the window (double click zooms). Left to right:
   the hero has scrolled past 52 pt: `ink` 96% + `inset 0 -1px 0 #FFFFFF14`. No blur.
 - Shortcuts: Back ⌘[ / ⌘← (mac), Alt+← and Backspace outside text fields (Win, Linux), mouse
   button 4 (`MouseButton "back"`), two-finger swipe right (mac), Esc. ⌘/Ctrl+1–4 Home, Movies,
-  Shows, Anime; ⌘/Ctrl+F Search; ⌘/Ctrl+, Settings. Esc never goes past a root.
+  Series, Anime; ⌘/Ctrl+F Search; ⌘/Ctrl+, Settings. Esc never goes past a root.
 - Release panel: right side panel 460 pt, top at 52 (the bar stays usable), radius 14 top-left,
   ✕ 30 pt; Esc, ✕, a click on the dimmed page, and Back all close it first.
 - Player: no nav; Back keeps its slot (same x as on pages) with a `#2A2A2AD9` fill, the title
@@ -157,7 +157,7 @@ Top row 60 pt under the status bar (iPad 24 pt, Android 32 dp; take `safeArea().
 - Left (x 24): on a root the logo; on a deeper page the back button in its place — iPad: a
   40 pt capsule "‹ Movies" (chevron 20 + previous page's title 16/500); Android: a 40 dp disc
   with ← (48 dp touch target), then the logo.
-- Centre: the floating tab bar (44 pt capsule, 36 pt tabs, label 15/500): Home, Movies, Shows,
+- Centre: the floating tab bar (44 pt capsule, 36 pt tabs, label 15/500): Home, Movies, Series,
   Anime, Search (icon only).
 - Right: Settings, 40 pt disc; selected fill while Settings or About is open.
 - Scroll: the row stays; solid ink 96% (with the status bar area) once content is under it.

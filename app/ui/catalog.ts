@@ -213,9 +213,14 @@ export interface EpisodeReleases {
   seasonRelease: ReleaseLine | null;
 }
 
+/** What a list's cards show under their names (the core's): the year (a list of films only),
+ * or the kind ("Movie", "3 seasons"). */
+export type Facet = "year" | "kind";
+
 export interface Shelf {
   /** Also the translation key `shelf.<id>`. */
   id: string;
+  facet: Facet;
   items: Summary[];
 }
 
@@ -258,7 +263,14 @@ const read = <T>(key: string, json: () => string): T => {
   return value;
 };
 
-export const home = () => read<Shelf[]>("home", () => Catalog.home());
+/** Home: the hero (the title watched last, else the first card) and the shelves, which do not
+ * show the hero again (the core's). */
+export interface Home {
+  hero: Summary;
+  shelves: Shelf[];
+}
+
+export const home = () => read<Home>("home", () => Catalog.home());
 /** A row of a filter panel: `name` when the source names it (a genre, a
  * country), else `key` under `browse.option.*` with its number `n`. */
 export interface FilterOption {
@@ -272,7 +284,7 @@ export interface FilterOption {
 /** A filter of a browse page and its panel; `id` is also the key under
  * `browse.filter.*`. `multi`: OK toggles; `clear`: the panel has a Clear row. */
 export interface FilterGroup {
-  id: "genres" | "years" | "countries" | "sort";
+  id: "genres" | "years" | "countries" | "format" | "sort";
   multi: boolean;
   clear: boolean;
   options: FilterOption[];
@@ -289,6 +301,9 @@ export interface Browse {
   more: boolean;
   /** The next page: "loading" on its way, "failed" (asking again retries). */
   moreState: "idle" | "loading" | "failed";
+  facet: Facet;
+  /** A filter narrows the grid (not the order): the bar offers Clear. */
+  filtered: boolean;
 }
 
 export type BrowsePage = "movies" | "shows" | "cartoons" | "anime";
@@ -316,7 +331,7 @@ export interface SearchAnswer {
   recent: string[];
   /** `id` is also the translation key `search.section.<id>`. `state` "failed":
    * the row's source did not answer (no items); `retrySearch` asks again. */
-  sections: { id: "movies" | "shows" | "anime"; state: "done" | "failed"; items: Summary[] }[];
+  sections: { id: "movies" | "shows" | "anime" | "trending"; state: "done" | "failed"; facet: Facet; items: Summary[] }[];
 }
 
 export const search = (query: string) => read<SearchAnswer>("search", () => Catalog.search(query));
@@ -339,6 +354,8 @@ export function browseMore(page: BrowsePage) {
 export function chooseFilter(page: BrowsePage, group: string, id: string) {
   if (Catalog.chooseFilter(page, group, id)) version.set(version() + 1);
 }
+/** The bar's Clear: every filter of the page, not its order. */
+export const clearFilters = (page: BrowsePage) => chooseFilter(page, "all", "");
 export function chooseRelease(id: string, index: number) {
   Catalog.chooseRelease(id, index);
   version.set(version() + 1);
@@ -370,7 +387,7 @@ export const episodeCode = (season: number, episode: number) => t("fmt.episode",
 export const yearsText = (s: Summary) =>
   s.year == null ? "" : s.yearEnd ? t("fmt.years", { from: s.year, to: s.yearEnd }) : String(s.year);
 
-/** "Movie", "Short", "3 Seasons" ("Show" while the seasons are not known). */
+/** "Movie", "Short", "3 seasons" ("Series" while the seasons are not known). */
 export function kindText(s: Summary) {
   if (s.kind !== "show") return t(`kind.${s.kind}`);
   if (!s.seasons) return t("kind.show");
@@ -380,20 +397,23 @@ export function kindText(s: Summary) {
 /** Runtime of a film, seasons of a show. */
 export const lengthText = (s: Summary) => (s.kind === "show" ? kindText(s) : s.minutes ? runtime(s.minutes) : "");
 
-/** Under a card: "★ 7.9 · 1963 · Movie" without the star (drawn red, `CardMeta`), what is not
- * known left out ("1963 · Movie"). */
-export const cardMeta = (s: Summary) => [s.rating, s.year == null ? "" : String(s.year), kindText(s)].filter((x) => x).join(" · ");
+/** Under a card's name, beside its rating: the one value its list says matters (`Facet`), "1963"
+ * or "Movie" / "3 seasons"; a film without a year says its kind; a notice card nothing. */
+export function facetText(s: Summary, facet: Facet) {
+  if (s.notice) return "";
+  return facet === "year" && s.year != null ? String(s.year) : kindText(s);
+}
 
-/** Under a Continue watching card: "1 h 12 min left", "S3:E4 · 7 min left". */
+/** Under a Continue watching card: "1 h 12 min left", "S3:E4 · 7 min left" (null: not begun). */
 export function leftText(s: Summary) {
-  if (s.left == null) return cardMeta(s);
+  if (s.left == null) return null;
   const left = t("card.left", { time: runtime(s.left) });
   return s.resume ? `${episodeCode(s.resume.season, s.resume.episode)} · ${left}` : left;
 }
 
-/** Under a show's poster: "S3:E5 · Nov 20". */
+/** Under a show's poster: "S3:E5 · Nov 20" (null: no episode is coming). */
 export const airsText = (s: Summary) =>
-  s.airs ? `${episodeCode(s.airs.season, s.airs.episode)} · ${t("fmt.day", { month: t(`month.${s.airs.month}`), day: s.airs.day })}` : cardMeta(s);
+  s.airs ? `${episodeCode(s.airs.season, s.airs.episode)} · ${t("fmt.day", { month: t(`month.${s.airs.month}`), day: s.airs.day })}` : null;
 
 /** What Play says (the core's `playAs`): "Play", "Resume 41:12", "Play S1:E1", "Resume S2:E3 · 14:30". */
 export function playLabel(s: Summary) {

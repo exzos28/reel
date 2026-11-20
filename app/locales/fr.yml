@@ -68,10 +68,10 @@ title:
   resume_episode: "Reprendre %{episode} à %{at}"
   about_more: "Afficher toute la description"
   about_less: "Afficher moins"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: "Ma liste"
-  add_to_list: "Ma liste"
+  my_list: "Ajouter à ma liste"
+  add_to_list: "Ajouter à ma liste"
   in_list: "Dans ma liste"
   add_to_list_spoken: "Ajouter à ma liste"
   remove_from_list_spoken: "Retirer de ma liste"
@@ -300,6 +300,7 @@ browse:
     countries: "Pays"
     sort: "Trier par"
     picked: "%{filter} : %{picked}"
+    format: "Format"
   sort: "Trier par :"
   option:
     decade: "Années %{n}"
@@ -308,11 +309,15 @@ browse:
     top_rated: "Les mieux notés"
     newest: "Les plus récents"
     any: "Tous"
+    format_tv: "Séries"
+    format_movie: "Films"
+    format_special: "OVA et spéciaux"
   state:
     loading: "Chargement…"
     empty: "Aucun titre ne correspond à ces filtres."
     offline: "Impossible de charger cette liste. Vérifiez la connexion."
     more_failed: "Impossible de charger plus de titres. Descendez pour réessayer."
+  clear: "Effacer"
 
 search:
   title: "Recherche"
@@ -321,19 +326,21 @@ search:
   recent: "Recherches récentes"
   clear: "Effacer l'historique"
   searching: "Recherche…"
-  none: "Rien trouvé pour « %{query} »."
+  none: "Rien trouvé pour « %{query} ». Essayez le titre original ou moins de mots."
   failed: "TMDB et AniList ne répondent pas. Vérifiez la connexion et réessayez."
   no_tmdb: "Cette version n'a pas de clé TMDB : la recherche porte uniquement sur les anime."
   section:
     movies: "Films"
     shows: "Séries"
     anime: "Anime"
+    trending: "Tendances"
   try_again: "Réessayer"
   # A row of results whose source did not answer.
   row_failed:
     movies: "Impossible de charger les films."
     shows: "Impossible de charger les séries."
     anime: "Impossible de charger les anime."
+  clear_query: "Effacer la recherche"
 
 compat:
   audio_dts: "Cette version n'a que de l'audio DTS, que cet appareil ne peut pas lire. Choisissez une autre version."
@@ -420,7 +427,7 @@ settings:
     key: "Clé API (facultative)"
     key_placeholder: "Seulement si votre source en a une"
     key_saved: "Clé enregistrée. Saisissez-en une nouvelle pour la remplacer"
-    save: "Enregistrer et vérifier"
+    save: "Vérifier"
     remove: "Supprimer la source"
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: "Obtenir une source prête"
@@ -458,11 +465,11 @@ settings:
     missing_title: "Ajoutez une source de recherche"
     missing_about: "reel lit les versions qu'il trouve dans votre propre source de recherche, et vous n'en avez pas encore. Saisissez une adresse Torznab et sa clé API ; Lecture fonctionnera une fois la source connectée."
     failed_title: "Votre source de recherche n'a pas répondu"
-    failed_about: "reel n'a pas pu y chercher de versions. Vérifiez son adresse et sa clé API, puis choisissez Enregistrer et vérifier ; Lecture fonctionnera une fois la source connectée."
+    failed_about: "reel n'a pas pu y chercher de versions. Vérifiez son adresse et sa clé API, puis choisissez Vérifier ; Lecture fonctionnera une fois la source connectée."
     edit_title: "Source de recherche"
     edit_about: "Une adresse Torznab et sa clé API."
     link_title: "Utiliser cette source ?"
-    link_about: "Un lien a rempli cette source. Choisissez Enregistrer et vérifier pour l'utiliser, ou Retour pour garder la vôtre."
+    link_about: "Un lien a rempli cette source. Choisissez Vérifier pour l'utiliser, ou Retour pour garder la vôtre."
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: "Connectée"
@@ -480,13 +487,15 @@ settings:
     data: "Sources de données"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "Version %{version} (%{build})"
+    license: "Code source disponible · %{license}"
+    repository: "Code source de reel"
   details:
     title: "Détails du flux"
     about: "Pendant la lecture ou l'attente d'un film, afficher la vitesse, le nombre de personnes qui partagent et l'avance chargée."
     show: "Afficher les détails du flux"
   buffer:
     title: "Mémoire tampon"
-    about: "Quelle part du film reel garde pendant la lecture. Plus elle est grande, mieux elle résiste aux partages lents et aux longs sauts."
+    about: "L'espace que reel utilise pendant la lecture d'un film. Plus elle est grande, mieux elle résiste aux partages lents et aux longs sauts."
     free: "%{free} libres sur cet appareil"
     default: "(par défaut)"
 
@@ -500,8 +509,8 @@ setup:
     help: "reel s'en sert aussi pour chercher les versions."
     more: "Autres langues"
   buffer:
-    title: "Combien d'espace reel peut-il utiliser pendant la lecture ?"
-    help: "Une mémoire tampon plus grande résiste mieux aux partages lents et aux longs sauts."
+    title: "Mémoire tampon"
+    help: "L'espace que reel peut utiliser pendant la lecture d'un film. Une mémoire tampon plus grande résiste mieux aux partages lents et aux longs sauts."
     recommended: "Recommandé"
   source:
     title: "Où reel doit-il trouver les films ?"

@@ -9,7 +9,8 @@
 // core is asked for its next page, which lands under the rows shown; the focus stays.
 import { computed, effect, Text, untracked, View } from "nsh";
 import { t } from "nsh/i18n";
-import { browse, browseMore, chooseFilter, type Summary } from "../../catalog";
+import { browse, browseMore, chooseFilter, clearFilters, type Summary } from "../../catalog";
+import { caps } from "../../platform";
 import { clamp } from "../../focus/memory";
 import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
@@ -77,9 +78,19 @@ export function BrowseScreen(props: { page: Page }) {
     const o = panelRows(g)[at];
     if (!o) return;
     chooseFilter(props.page, g.id, o.id);
-    // A single choice is made: back to the pills; genres stay open to toggle more.
-    if (!g.multi) closePanel();
+    // A choice is made: the sheet closes at once. A remote's panel keeps genres open to toggle
+    // several (each is a walk back to the pill there).
+    if (!g.multi || !caps.remote) closePanel();
   };
+  /** The bar's Clear (the focus on it: -1); the focus goes on to the first pill, as Clear goes. */
+  const clearAll = () => {
+    clearFilters(props.page);
+    pill.set(0);
+  };
+  // Clear goes once nothing is filtered: the focus stays on the bar.
+  effect(() => {
+    if (!data().filtered && untracked(pill) < 0) pill.set(0);
+  });
   /** The core's next page, unless one is on its way or there is none. */
   const askMore = () =>
     untracked(() => {
@@ -127,11 +138,12 @@ export function BrowseScreen(props: { page: Page }) {
         enter: () => openTitle(data().trending[trend()].id),
       },
       filters: {
-        left: () => pill.set(clamp(pill() - 1, groups().length - 1)),
+        // Left of the first pill: Clear, while a filter is on.
+        left: () => pill.set(Math.max(pill() - 1, data().filtered ? -1 : 0)),
         right: () => pill.set(clamp(pill() + 1, groups().length - 1)),
         up: () => zone.set("trending"),
         down: toGrid,
-        enter: () => openPanel(clamp(pill(), groups().length - 1)),
+        enter: () => (pill() < 0 ? clearAll() : openPanel(clamp(pill(), groups().length - 1))),
       },
       panel: {
         up: () => row.set(clamp(row() - 1, panelCount() - 1)),
@@ -183,6 +195,7 @@ export function BrowseScreen(props: { page: Page }) {
         <Trending
           title={() => t(`browse.${props.page}.trending`)}
           items={() => data().trending}
+          facet={() => data().facet}
           airs={props.page !== "movies"}
           focusedAt={() => (zone() === "trending" ? trend() : null)}
           blockRef={page.follow(() => zone() === "trending", "nearest")}
@@ -191,6 +204,8 @@ export function BrowseScreen(props: { page: Page }) {
         <FilterBar
           title={() => t(`browse.${props.page}.all`)}
           groups={groups}
+          filtered={() => data().filtered}
+          onClear={clearAll}
           focusedAt={() => (zone() === "filters" ? pill() : null)}
           openAt={() => (panelOpen() ? pill() : null)}
           blockRef={page.follow(() => zone() === "filters" || zone() === "panel", "nearest")}
@@ -211,6 +226,7 @@ export function BrowseScreen(props: { page: Page }) {
           cell={(item, at) => (
             <GridCard
               item={item}
+              facet={() => data().facet}
               width={() => cellWidth(columns(), GRID_GAP)}
               focused={() => zone() === "grid" && cell() === at()}
               onPress={() => openCell(at())}

@@ -28,6 +28,7 @@ fn filter(genres: &[&str], years: Option<&str>, country: Option<&str>, sort: Sor
         genres: genres.iter().map(|g| g.to_string()).collect(),
         years: years.map(str::to_owned),
         country: country.map(str::to_owned),
+        format: None,
         sort,
     }
 }
@@ -127,6 +128,7 @@ fn anilist_variables() {
     assert_eq!(variables["from"], 20_099_999);
     assert_eq!(variables["until"], 20_200_000);
     assert_eq!(variables["country"], "JP");
+    assert!(variables.get("formats").is_none());
     assert_eq!(variables["minPopularity"], 5000);
     assert!(req.key.starts_with("anilist:discover:"));
 
@@ -136,6 +138,12 @@ fn anilist_variables() {
     assert_eq!(variables["statusNot"], "NOT_YET_RELEASED");
     assert!(variables.get("from").is_none());
     assert_eq!(variables["until"], 19_600_000);
+    // A format option: AniList's formats it takes.
+    let req = Anilist.discover_request(&Filter { format: Some("tv".into()), ..Filter::default() }, 1);
+    let Call::Graphql { query, variables, .. } = &req.call else { panic!("GraphQL") };
+    assert!(query.contains("format_in: $formats"));
+    assert_eq!(variables["formats"], json!(["TV", "TV_SHORT", "ONA"]));
+    assert!(req.key.ends_with(";f=tv"));
     let req = Anilist.discover_request(&Filter::default(), 1);
     let Call::Graphql { variables, .. } = &req.call else { panic!("GraphQL") };
     assert_eq!(*variables, json!({ "page": 1, "sort": ["POPULARITY_DESC"] }));

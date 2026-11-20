@@ -79,7 +79,7 @@ test("Settings: the source row opens its drawer; saving checks it and says how i
   await app.press("label:Settings");
   await app.press("label:Search source");
   expect(app.shows("source-panel")).toBe(true);
-  await app.press("Save and check");
+  await app.press("Check");
   await app.wait(400);
   expect(app.texts()).toContain("Connected. It searches by title.");
 });
@@ -90,7 +90,7 @@ test("Settings: a bad address is refused with the core's message", async () => {
   });
   await app.press("label:Settings");
   await app.press("label:Search source");
-  await app.press("Save and check");
+  await app.press("Check");
   await app.waitFor("text:not an address"); // the core's answer comes a moment after the press
 });
 
@@ -105,6 +105,10 @@ test("Settings: About reel, past the buffer sizes, shows the TMDB logo and notic
     "This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.",
   );
   for (const s of ["AniList", "Jikan (MyAnimeList)", "Fribb/anime-lists"]) expect(app.texts()).toContain(s);
+  // reel itself: its license and its source code (a TV shows the address, it opens no links).
+  expect(app.texts()).toContain("Source-available · PolyForm Noncommercial 1.0.0");
+  expect(app.texts()).toContain("reel's source code");
+  expect(app.texts()).toContain("https://github.com/exzos28/reel");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Playback buffer");
   await app.keyboard.press("enter"); // the focus is back on About

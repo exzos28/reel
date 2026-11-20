@@ -60,7 +60,7 @@ test("Settings: from the nav, the buffer row opens the sizes in a drawer; pick o
   await app.keyboard.press("down"); // to the buffer row
   await app.keyboard.press("enter"); // its sizes in a drawer
   expect(app.shows("id:choice-panel")).toBe(true);
-  expect(app.texts()).toContain("How much of the film reel keeps while it plays. Bigger copes better with slow peers and long jumps.");
+  expect(app.texts()).toContain("How much space reel uses while a film plays. A bigger buffer copes better with slow peers and long jumps.");
   await app.keyboard.press("down");
   await app.keyboard.press("enter"); // picks one and closes
   expect(app.shows("id:choice-panel")).toBe(false);
@@ -114,7 +114,7 @@ test("without a TMDB key home shows anime and says what is missing", async () =>
     tag: null, playable: false, inList: false, release: null, play: { id: "reel:notice:no_tmdb", start: 0 },
     playAs: { verb: "play", season: null, episode: null, at: null },
   };
-  const app = await app_({ ...NATIVE, "Catalog.home": JSON.stringify([{ id: "no_tmdb", items: [notice] }]) });
+  const app = await app_({ ...NATIVE, "Catalog.home": JSON.stringify({ hero: notice, shelves: [{ id: "no_tmdb", items: [notice] }] }) });
   expect(app.texts()).toContain("Movies and shows need a TMDB key");
   expect(app.texts()).toContain("Movies and shows");
 });
@@ -215,7 +215,7 @@ test("Mac: Back in the window bar is disabled on a root, goes back from a title;
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
   expect(app.shows("label:1080p BluRay · 8 GB · 412 people sharing")).toBe(true);
-  expect(app.shows("label:Add to Watchlist")).toBe(true); // the page's action, in the bar
+  expect(app.shows("label:Add to list")).toBe(true); // the page's action, in the bar
   await app.press("label:Back to Movies");
   expect(app.texts()).toContain("All movies");
   await app.press("label:Dune >> nth=0");
@@ -245,12 +245,12 @@ test("the nav opens Anime after Series and Cartoons: its trending row and all an
   await app.keyboard.press("up");
   for (let i = 0; i < 4; i++) await app.keyboard.press("right"); // Movies, Series, Cartoons, Anime
   await app.keyboard.press("enter");
-  expect(app.texts()).toContain("Seasonal hits and all-time favourites");
+  expect(app.texts()).toContain("Seasonal hits and all-time favorites");
   expect(app.texts()).toContain("Trending this season");
   expect(app.texts()).toContain("All anime");
   await app.keyboard.press("down"); // from the nav into the row
   await app.keyboard.press("enter"); // the first in the row
-  expect(app.texts()).toContain("Watchlist");
+  expect(app.texts()).toContain("Add to list");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("All anime");
   await app.keyboard.press("escape"); // the nav

@@ -83,8 +83,15 @@ pub const COUNTRIES: [&str; 20] = [
     "TR",
 ];
 
-/// Origin countries offered for anime (AniList's `countryOfOrigin`).
-pub const ANIME_COUNTRIES: [&str; 4] = ["JP", "CN", "KR", "TW"];
+/// Anime formats offered (AniList's `format_in`): an option's id and the formats it takes.
+/// Web series (ONA) are series; OVAs and specials go together.
+pub const ANIME_FORMATS: [(&str, &[&str]); 3] =
+    [("tv", &["TV", "TV_SHORT", "ONA"]), ("movie", &["MOVIE"]), ("special", &["OVA", "SPECIAL"])];
+
+/// The AniList formats of a format option ("tv"), None for one not offered.
+pub fn formats_of(option: &str) -> Option<&'static [&'static str]> {
+    ANIME_FORMATS.iter().find(|(id, _)| *id == option).map(|(_, f)| *f)
+}
 
 /// AniList's genres (its `GenreCollection`, without the adult one). AniList
 /// names them in English only.
@@ -117,28 +124,41 @@ pub struct Filter {
     /// A decade option (see `years_of`).
     pub years: Option<String>,
     pub country: Option<String>,
+    /// An anime format option (see `ANIME_FORMATS`).
+    pub format: Option<String>,
     pub sort: Sort,
 }
 
 impl Filter {
-    /// Identifies the filter in cache keys: "g=18,80;y=2010;c=FR;s=popular".
+    /// Identifies the filter in cache keys: "g=18,80;y=2010;c=FR;s=popular", ";f=movie" after it
+    /// with a format (keys without one stay as they were).
     pub fn key(&self) -> String {
-        format!(
+        let key = format!(
             "g={};y={};c={};s={}",
             self.genres.join(","),
             self.years.as_deref().unwrap_or(""),
             self.country.as_deref().unwrap_or(""),
             self.sort.as_str()
-        )
+        );
+        match &self.format {
+            Some(f) => format!("{key};f={f}"),
+            None => key,
+        }
     }
 
     pub fn is_default(&self) -> bool {
         *self == Filter::default()
     }
 
-    /// Applies one choice: `group` "genres" toggles `id`; "years" and
-    /// "countries" pick `id` (or drop it when it was picked); "sort" sets it.
-    /// An empty `id` clears the group. Whether the filter changed.
+    /// Whether anything narrows the list (the order is not a filter): the Clear of the filters.
+    pub fn is_filtered(&self) -> bool {
+        !self.genres.is_empty() || self.years.is_some() || self.country.is_some() || self.format.is_some()
+    }
+
+    /// Applies one choice: `group` "genres" toggles `id`; "years", "countries" and "format"
+    /// pick `id` (or drop it when it was picked); "sort" sets it. An empty `id` clears the
+    /// group; group "all" with an empty `id` clears every filter but the order. Whether the
+    /// filter changed.
     pub fn choose(&mut self, group: &str, id: &str) -> bool {
         let before = self.clone();
         let pick = |slot: &mut Option<String>| {
@@ -154,6 +174,8 @@ impl Filter {
             },
             "years" if id.is_empty() || years_of(id).is_some() => pick(&mut self.years),
             "countries" => pick(&mut self.country),
+            "format" if id.is_empty() || formats_of(id).is_some() => pick(&mut self.format),
+            "all" if id.is_empty() => *self = Filter { sort: self.sort, ..Filter::default() },
             "sort" => self.sort = Sort::parse(id).unwrap_or_default(),
             _ => {}
         }
@@ -186,6 +208,18 @@ mod tests {
         assert!(f.choose("countries", ""));
         assert!(f.choose("sort", "popular"));
         assert!(f.is_default());
+        assert!(f.choose("format", "movie"));
+        assert!(!f.choose("format", "music"), "not a format offered");
+        assert_eq!(f.key(), "g=;y=;c=;s=popular;f=movie");
+        assert!(f.is_filtered());
+        // Clear: every filter goes, the order stays.
+        assert!(f.choose("genres", "Drama"));
+        assert!(f.choose("sort", "newest"));
+        assert!(f.choose("all", ""));
+        assert!(!f.is_filtered());
+        assert_eq!(f.sort, Sort::Newest);
+        assert!(!f.choose("all", ""), "nothing left to clear");
+        assert_eq!(formats_of("tv"), Some(&["TV", "TV_SHORT", "ONA"][..]));
         assert_eq!(years_of("1960"), Some((Some(1960), Some(1969))));
         assert_eq!(years_of(OLDER), Some((None, Some(1959))));
     }

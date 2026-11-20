@@ -34,15 +34,20 @@ export function RatingChip(props: { rating: () => string }) {
   );
 }
 
-/** Under a card: a red star, then "7.9 · 1963 · Movie". */
-/** `rated`: the line starts with a rating (the star goes before it). */
-export function CardMeta(props: { text: () => string; rated?: () => boolean; size?: number }) {
+/** Under a card's name: the one value its list cares about ("2026", "Movie", "3 seasons") and,
+ * at the line's end, the rating as a small red star and its number. No dots between them: two
+ * values, apart. */
+export function CardLine(props: { text: () => string; rating: () => string; size?: number }) {
+  const size = props.size ?? 22;
   return (
-    <Text style={{ ...oneLine, ...type.meta(), fontSize: ts(props.size ?? 22), color: colors.ash() }}>
-      <If when={props.rated?.() ?? true}>
-        <Text style={{ color: colors.red() }}>★ </Text>
+    <View style={{ ...row(u(12)), justifyContent: "space-between" }}>
+      <Text style={{ ...oneLine, ...type.meta(), fontSize: ts(size), color: colors.ash(), flexShrink: 1 }}>{props.text()}</Text>
+      <If when={props.rating()}>
+        <View style={row(u(5))}>
+          <Text style={fontText(size - 4, colors.red())}>★</Text>
+          <Text style={fontText(size, colors.ash())}>{props.rating()}</Text>
+        </View>
       </If>
-      {props.text()}
-    </Text>
+    </View>
   );
 }

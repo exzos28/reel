@@ -3,6 +3,7 @@
 // like a row of cards; OK on it is Try again.
 import { Text, View, type ViewRef } from "nsh";
 import { t } from "nsh/i18n";
+import type { SearchAnswer } from "../../catalog";
 import { Button } from "../../kit/Button";
 import { row } from "../../kit/shape";
 import { metaText } from "../../kit/text";
@@ -12,7 +13,7 @@ import { safe, u } from "../../theme";
 const lineStyle = () => ({ ...row(u(24)), paddingHorizontal: safe().x });
 
 export function FailedRow(props: {
-  id: () => "movies" | "shows" | "anime";
+  id: () => SearchAnswer["sections"][number]["id"];
   focused: () => boolean;
   blockRef: (r: ViewRef) => void;
   onRetry: () => void;

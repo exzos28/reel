@@ -38,7 +38,7 @@ hosted:
 
 shelf:
   continue: Continue watching
-  watchlist: Watchlist
+  watchlist: "My list"
   trending_movies: Trending movies
   trending_shows: Trending series
   popular: Popular
@@ -68,13 +68,13 @@ title:
   resume_episode: "Resume %{episode} · %{at}"
   about_more: "Show the whole description"
   about_less: "Show less"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: Watchlist
-  add_to_list: Watchlist
-  in_list: In Watchlist
-  add_to_list_spoken: Add to Watchlist
-  remove_from_list_spoken: Remove from Watchlist
+  my_list: "Add to list"
+  add_to_list: "Add to list"
+  in_list: "In list"
+  add_to_list_spoken: "Add to list"
+  remove_from_list_spoken: "Remove from list"
   trailer: Trailer
   other_releases: Other releases
   save: Save
@@ -97,8 +97,8 @@ kind:
   movie: Movie
   short: Short
   show: Series
-  season_one: 1 Season
-  seasons: "%{count} Seasons"
+  season_one: "1 season"
+  seasons: "%{count} seasons"
 
 fmt:
   minutes: "%{m} min"
@@ -293,7 +293,7 @@ browse:
     all: All cartoons
   anime:
     title: Anime
-    lead: Seasonal hits and all-time favourites
+    lead: Seasonal hits and all-time favorites
     trending: Trending this season
     all: All anime
   filter:
@@ -302,6 +302,7 @@ browse:
     countries: Countries
     sort: Sort by
     picked: "%{filter}: %{picked}"
+    format: "Format"
   sort: "Sort by:"
   option:
     decade: "%{n}s"
@@ -310,11 +311,15 @@ browse:
     top_rated: Top rated
     newest: Newest
     any: Any
+    format_tv: "Series"
+    format_movie: "Movies"
+    format_special: "OVA and specials"
   state:
     loading: Loading…
     empty: Nothing matches these filters.
     offline: Could not load this list. Check the connection.
     more_failed: Could not load more titles. Move down to try again.
+  clear: "Clear"
 
 search:
   title: Search
@@ -323,24 +328,26 @@ search:
   recent: Recent searches
   clear: Clear history
   searching: Searching…
-  none: "Nothing found for “%{query}”."
+  none: "Nothing found for “%{query}”. Try the original title or fewer words."
   failed: TMDB and AniList did not answer. Check the connection and try again.
   no_tmdb: This build has no TMDB key, so only anime is searched.
   section:
     movies: Movies
     shows: Series
     anime: Anime
+    trending: "Trending now"
   try_again: Try again
   # A row of results whose source did not answer.
   row_failed:
     movies: Could not load films.
     shows: Could not load series.
     anime: Could not load anime.
+  clear_query: "Clear search"
 
 compat:
   audio_dts: This release has only DTS audio, which this device cannot play. Choose another release.
   audio_truehd: This release has only TrueHD audio, which this device cannot play. Choose another release.
-  dolby_vision_only: This release is Dolby Vision without an HDR10 layer; this device would show wrong colours. Choose another release.
+  dolby_vision_only: This release is Dolby Vision without an HDR10 layer; this device would show wrong colors. Choose another release.
   container: This file's format does not play on this device. Choose another release.
 
 player:
@@ -423,7 +430,7 @@ settings:
     key: API key (optional)
     key_placeholder: Only if your source has one
     key_saved: Key saved. Type a new one to replace it
-    save: Save and check
+    save: "Check"
     remove: Remove source
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: Get a ready source
@@ -461,11 +468,11 @@ settings:
     missing_title: Add a search source
     missing_about: reel plays from releases it finds on your own search source, and there is none yet. Enter a Torznab address and its API key; Play works once it connects.
     failed_title: Your search source did not answer
-    failed_about: reel could not search it for releases. Check its address and API key, then Save and check; Play works once it connects.
+    failed_about: "reel could not search it for releases. Check its address and API key, then press Check; Play works once it connects."
     edit_title: Search source
     edit_about: A Torznab address and its API key.
     link_title: Use this source?
-    link_about: A link filled in this source. Save and check to use it, or Back to leave yours as it is.
+    link_about: "A link filled in this source. Press Check to use it, or Back to leave yours as it is."
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: Connected
@@ -483,13 +490,15 @@ settings:
     data: Data sources
     tmdb_logo: The Movie Database (TMDB)
     version: "Version %{version} (%{build})"
+    license: "Source-available · %{license}"
+    repository: "reel's source code"
   details:
     title: Stream details
     about: While a film plays or waits, show how fast it comes, from how many people, and how much is ready ahead.
     show: Show stream details
   buffer:
     title: Playback buffer
-    about: How much of the film reel keeps while it plays. Bigger copes better with slow peers and long jumps.
+    about: "How much space reel uses while a film plays. A bigger buffer copes better with slow peers and long jumps."
     free: "%{free} free on this device"
     default: (default)
 
@@ -503,8 +512,8 @@ setup:
     help: reel also searches releases by this title.
     more: More languages
   buffer:
-    title: How much space can reel use while playing?
-    help: A bigger buffer copes better with slow peers and long jumps.
+    title: "Playback buffer"
+    help: "How much space reel may use while a film plays. A bigger buffer copes better with slow peers and long jumps."
     recommended: Recommended
   source:
     title: Where should reel find films?

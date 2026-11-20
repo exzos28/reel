@@ -1,5 +1,5 @@
-// Home: the nav, a hero for the title watched last (the first card: the core puts Continue
-// watching first; with nothing begun, the first of what follows), then shelves of 16:9 cards.
+// Home: the nav, a hero for the title watched last (the core's: Continue watching's first; with
+// nothing begun, the first of what follows), then shelves of 16:9 cards that do not repeat it.
 // Remote: the focus starts on the first card; Up goes to the hero's
 // buttons, then to the nav. OK on a card opens its title; on Play, plays.
 import { computed, View } from "nsh";
@@ -20,16 +20,16 @@ import { HOME_HERO, HomeHero } from "./HomeHero";
 import { HomeShelf } from "./HomeShelf";
 
 export function HomeScreen() {
-  const shelves = computed(() => home());
+  const data = computed(() => home());
+  const shelves = () => data().shelves;
   const col = (r: number) => cols.at(r);
   const setCol = (r: number, c: number) => cols.set(r, c, shelves()[r].items.length - 1);
   const focused = computed<Summary>(() => {
     const s = shelves()[row()];
     return s.items[Math.min(col(row()), s.items.length - 1)];
   });
-  /** The hero stays on the title watched last, wherever the focus goes: the first card of the
-   * first shelf (Continue watching, as the core orders the shelves). */
-  const hero = computed<Summary>(() => shelves()[0].items[0]);
+  /** The hero stays on the title watched last, wherever the focus goes (the core picks it). */
+  const hero = computed<Summary>(() => data().hero);
   /** The hero's title as its page has it: asking for it (once Play is pressed) starts the search for its release. */
   const heroTitle = () => title(hero().id);
   /** Play waits for the source's answer (`playGate`); a release the card already knows plays at once. */

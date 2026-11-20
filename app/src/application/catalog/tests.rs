@@ -112,10 +112,14 @@ fn home_shelves_from_meta() {
     seed(Call::Trending("movie-popular"), json!({ "items": [] }));
     seed(Call::Trending("tv-popular"), json!({ "items": [] }));
     seed(Call::Trending("anime"), json!({ "items": [] }));
-    let shelves = home();
+    let shelves = home_shelves();
     let ids: Vec<_> = shelves.as_array().unwrap().iter().map(|s| s["id"].as_str().unwrap()).collect();
     // Empty shelves (Continue watching, nothing popular, no anime) are left out.
     assert_eq!(ids, vec!["trending_movies", "trending_shows"]);
+    // The hero, the first card, is not repeated on its shelf.
+    let h = home();
+    assert_eq!(h["hero"]["id"], shelves[0]["items"][0]["id"]);
+    assert!(h["shelves"][0]["items"].as_array().unwrap().iter().all(|i| i["id"] != h["hero"]["id"]));
     let first = &shelves[0]["items"][0];
     assert_eq!(first["id"], "tmdb:movie:1368337");
     assert_eq!(first["kind"], "movie");
@@ -135,8 +139,10 @@ fn home_shelves_from_meta() {
     for k in ["movie", "tv", "movie-popular", "tv-popular", "anime"] {
         land(&Call::Trending(k), &json!({ "data": null, "error": { "kind": "network" } }), u64::MAX);
     }
-    let shelves = home();
-    assert_eq!(shelves, json!([{ "id": "offline", "items": [notice("offline")] }]));
+    let shelves = home_shelves();
+    assert_eq!(shelves, json!([{ "id": "offline", "facet": "kind", "items": [notice("offline")] }]));
+    // A notice card alone: the hero says it, and its shelf stays (nothing would be left).
+    assert_eq!(home(), json!({ "hero": notice("offline"), "shelves": shelves }));
     assert_eq!(shelves[0]["items"][0]["notice"], "offline");
 }
 
@@ -145,7 +151,7 @@ fn without_tmdb_anime_and_a_notice() {
     let _g = fresh(false, false);
     let anime = crate::adapters::metadata::anilist::Anilist.map_cards(&fixture("anilist_trending.json"), &cx()).unwrap();
     seed(Call::Trending("anime"), json!({ "items": anime }));
-    let shelves = home();
+    let shelves = home_shelves();
     assert_eq!(shelves[0]["id"], "anime");
     assert!(shelves[0]["items"][0]["id"].as_str().unwrap().starts_with("anilist:"));
     assert_eq!(shelves[0]["items"][0]["rating"], "8.5");
@@ -317,10 +323,16 @@ fn resume_continue_watching_and_up_next() {
     assert_eq!(m["left"], 95);
 
     // Continue watching: latest first.
-    let shelves = home();
+    let shelves = home_shelves();
     assert_eq!(shelves[0]["id"], "continue");
     let ids: Vec<_> = shelves[0]["items"].as_array().unwrap().iter().map(|s| s["id"].as_str().unwrap()).collect();
     assert_eq!(ids, vec![MATRIX, AOT]);
+    // Home's hero is the title watched last; Continue watching goes on from the next one.
+    let h = home();
+    assert_eq!(h["hero"]["id"], MATRIX);
+    assert_eq!(h["shelves"][0]["id"], "continue");
+    let ids: Vec<_> = h["shelves"][0]["items"].as_array().unwrap().iter().map(|s| s["id"].as_str().unwrap()).collect();
+    assert_eq!(ids, vec![AOT]);
 
     // Finished S3:E2: the show moves on to S3:E3; a finished film drops out.
     save_progress("tmdb:tv:1429:s3e2", 1400.0, 1440.0);
@@ -328,7 +340,7 @@ fn resume_continue_watching_and_up_next() {
     let t = title(AOT);
     assert_eq!(t["resume"], json!({ "season": 3, "episode": 3 }));
     assert_eq!(t["play"]["start"], 0.0);
-    let ids: Vec<_> = home()[0]["items"].as_array().unwrap().iter().map(|s| s["id"].as_str().unwrap().to_owned()).collect();
+    let ids: Vec<_> = home_shelves()[0]["items"].as_array().unwrap().iter().map(|s| s["id"].as_str().unwrap().to_owned()).collect();
     assert_eq!(ids, vec![AOT.to_owned()]);
 
     // Up next near the end of an episode; the season fixture holds 5 episodes.
@@ -584,10 +596,22 @@ fn anime_filters_are_anilists() {
     );
     let page = browse("shows");
     assert_eq!(selected(&page, "genres"), ["Mecha"]);
-    let countries: Vec<&str> =
-        list_of(&group(&page, "countries")["options"]).iter().map(|o| o["id"].as_str().unwrap()).collect();
-    assert_eq!(countries, ["JP", "CN", "KR", "TW"]);
-    assert_eq!(group(&page, "countries")["options"][0]["name"], "Japan");
+    // Anime is filtered by its format, not its country.
+    let ids: Vec<&str> = list_of(&page["filters"]).iter().map(|g| g["id"].as_str().unwrap()).collect();
+    assert_eq!(ids, ["genres", "years", "format", "sort"]);
+    let formats: Vec<&str> =
+        list_of(&group(&page, "format")["options"]).iter().map(|o| o["key"].as_str().unwrap()).collect();
+    assert_eq!(formats, ["format_tv", "format_movie", "format_special"]);
+    assert!(choose_filter("anime", "format", "movie"));
+    assert_eq!(selected(&browse("anime"), "format"), ["movie"]);
+    assert_eq!(browse("anime")["filtered"], true);
+    // Clear: the filters go, the order stays.
+    assert!(choose_filter("anime", "sort", "newest"));
+    assert!(choose_filter("anime", "all", ""));
+    let page = browse("anime");
+    assert_eq!(page["filtered"], false);
+    assert!(selected(&page, "genres").is_empty());
+    assert_eq!(selected(&page, "sort"), ["newest"]);
     // Movies has nothing to filter without TMDB.
     assert_eq!(browse("movies")["filters"], json!([]));
     assert!(!choose_filter("movies", "genres", "18"));
@@ -871,11 +895,21 @@ fn an_empty_query_lists_the_recent_searches_kept_in_the_data_dir() {
     let empty = search::search("   ");
     assert_eq!(empty["state"], "recent");
     assert_eq!(empty["recent"], json!([]));
+    assert_eq!(empty["sections"], json!([]), "nothing trending came yet");
+    // Before anything was searched: what is trending, to start from.
+    seed_trending("movie", "tmdb_trending_movie.json");
+    seed_trending("tv", "tmdb_discover_tv.json");
+    let start = search::search("");
+    assert_eq!(start["sections"][0]["id"], "trending");
+    assert_eq!(start["sections"][0]["facet"], "kind");
+    let kinds: Vec<_> = list_of(&start["sections"][0]["items"]).iter().take(2).map(|s| s["kind"].clone()).collect();
+    assert_eq!(kinds, [json!("movie"), json!("show")], "films and series in turn");
     for q in ["dune", "Arrival", "  frieren  ", "DUNE"] {
         search::remember(q);
     }
     search::remember(" ");
     assert_eq!(search::search("")["recent"], json!(["DUNE", "frieren", "Arrival"]));
+    assert_eq!(search::search("")["sections"], json!([]), "the recent searches instead");
     for i in 0..15 {
         search::remember(&format!("q{i}"));
     }
@@ -907,7 +941,7 @@ fn live_home() {
         let text = rt.block_on(crate::adapters::metadata::trending(kind.into(), "en".into()));
         land(&Call::Trending(kind), &serde_json::from_str(&text).unwrap(), u64::MAX);
     }
-    let shelves = home();
+    let shelves = home_shelves();
     for s in shelves.as_array().unwrap() {
         let items = s["items"].as_array().unwrap();
         let first = &items[0];

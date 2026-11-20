@@ -37,6 +37,7 @@ export function HomeShelf(props: {
             <WideCard
               item={item}
               continuing={props.shelf().id === "continue"}
+              facet={() => props.shelf().facet}
               focused={() => props.focusedAt() === win().from + c()}
               width={shelfCardWidth}
               follow={line.follow}

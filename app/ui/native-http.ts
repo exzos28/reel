@@ -169,6 +169,7 @@ export const Catalog: CatalogModule = {
 export const Settings: SettingsModule = {
   load: s("Settings", "load"),
   device: s("Settings", "device"),
+  project: s("Settings", "project"),
   // The core serving the web build knows its device already (a TV's profile, a development
   // host's stand-in): the family the page lays itself out for adds nothing.
   setFamily: () => true,

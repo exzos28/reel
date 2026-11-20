@@ -357,6 +357,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         no_args(&a)?;
         ret(Meta::attribution())
     })
+    .sync("Settings", "project", |a| {
+        no_args(&a)?;
+        ret(Settings::project())
+    })
     .r#async("Catalog", "changed", |a| async move {
         let (after,): (f64,) = args(a)?;
         ret(Catalog::changed(after).await)

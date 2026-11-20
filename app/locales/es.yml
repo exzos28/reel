@@ -68,13 +68,13 @@ title:
   resume_episode: "Seguir %{episode} desde %{at}"
   about_more: "Mostrar toda la descripción"
   about_less: "Mostrar menos"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: "Mi lista"
-  add_to_list: "Mi lista"
+  my_list: "Añadir a mi lista"
+  add_to_list: "Añadir a mi lista"
   in_list: "En mi lista"
-  add_to_list_spoken: "Añadir a Mi lista"
-  remove_from_list_spoken: "Quitar de Mi lista"
+  add_to_list_spoken: "Añadir a mi lista"
+  remove_from_list_spoken: "Quitar de mi lista"
   trailer: "Tráiler"
   other_releases: "Otras versiones"
   save: "Guardar"
@@ -300,6 +300,7 @@ browse:
     countries: "Países"
     sort: "Ordenar por"
     picked: "%{filter}: %{picked}"
+    format: "Formato"
   sort: "Ordenar por:"
   option:
     decade: "Años %{n}"
@@ -308,11 +309,15 @@ browse:
     top_rated: "Mejor valorados"
     newest: "Más recientes"
     any: "Todos"
+    format_tv: "Series"
+    format_movie: "Películas"
+    format_special: "OVA y especiales"
   state:
     loading: "Cargando…"
     empty: "Nada coincide con estos filtros."
     offline: "No se ha podido cargar esta lista. Comprueba la conexión."
     more_failed: "No se han podido cargar más títulos. Baja para volver a intentarlo."
+  clear: "Borrar"
 
 search:
   title: "Buscar"
@@ -321,19 +326,21 @@ search:
   recent: "Búsquedas recientes"
   clear: "Borrar historial"
   searching: "Buscando…"
-  none: "No se ha encontrado nada para «%{query}»."
+  none: "No se ha encontrado nada para «%{query}». Prueba con el título original o con menos palabras."
   failed: "TMDB y AniList no responden. Comprueba la conexión y vuelve a intentarlo."
   no_tmdb: "Esta versión no tiene clave de TMDB, así que solo se busca anime."
   section:
     movies: "Películas"
     shows: "Series"
     anime: "Anime"
+    trending: "Tendencias"
   try_again: "Reintentar"
   # A row of results whose source did not answer.
   row_failed:
     movies: "No se han podido cargar las películas."
     shows: "No se han podido cargar las series."
     anime: "No se ha podido cargar el anime."
+  clear_query: "Borrar búsqueda"
 
 compat:
   audio_dts: "Esta versión solo tiene audio DTS, que este dispositivo no puede reproducir. Elige otra versión."
@@ -420,7 +427,7 @@ settings:
     key: "Clave API (opcional)"
     key_placeholder: "Solo si tu fuente tiene una"
     key_saved: "Clave guardada. Escribe una nueva para sustituirla"
-    save: "Guardar y comprobar"
+    save: "Comprobar"
     remove: "Quitar fuente"
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: "Consigue una fuente lista"
@@ -458,11 +465,11 @@ settings:
     missing_title: "Añade una fuente de búsqueda"
     missing_about: "reel reproduce las versiones que encuentra en tu propia fuente de búsqueda, y aún no tienes ninguna. Introduce una dirección Torznab y su clave API; Reproducir funcionará en cuanto se conecte."
     failed_title: "Tu fuente de búsqueda no ha respondido"
-    failed_about: "reel no ha podido buscar versiones en ella. Comprueba su dirección y su clave API y luego pulsa Guardar y comprobar; Reproducir funcionará en cuanto se conecte."
+    failed_about: "reel no ha podido buscar versiones en ella. Comprueba su dirección y su clave API y luego pulsa Comprobar; Reproducir funcionará en cuanto se conecte."
     edit_title: "Fuente de búsqueda"
     edit_about: "Una dirección Torznab y su clave API."
     link_title: "¿Usar esta fuente?"
-    link_about: "Un enlace ha rellenado esta fuente. Pulsa Guardar y comprobar para usarla, o Atrás para dejar la tuya como está."
+    link_about: "Un enlace ha rellenado esta fuente. Pulsa Comprobar para usarla, o Atrás para dejar la tuya como está."
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: "Conectada"
@@ -480,13 +487,15 @@ settings:
     data: "Fuentes de datos"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "Versión %{version} (%{build})"
+    license: "Código disponible · %{license}"
+    repository: "Código fuente de reel"
   details:
     title: "Detalles de la transmisión"
     about: "Mientras una película se reproduce o espera, muestra a qué velocidad llega, cuántas personas la comparten y cuánto hay listo por delante."
     show: "Mostrar detalles de la transmisión"
   buffer:
     title: "Búfer de reproducción"
-    about: "Cuánto de la película guarda reel mientras se reproduce. Cuanto más grande, mejor aguanta conexiones lentas y saltos largos."
+    about: "Cuánto espacio usa reel mientras se reproduce una película. Cuanto más grande, mejor aguanta conexiones lentas y saltos largos."
     free: "%{free} libres en este dispositivo"
     default: "(predeterminado)"
 
@@ -500,8 +509,8 @@ setup:
     help: "reel también busca versiones por este título."
     more: "Más idiomas"
   buffer:
-    title: "¿Cuánto espacio puede usar reel al reproducir?"
-    help: "Un búfer más grande aguanta mejor conexiones lentas y saltos largos."
+    title: "Búfer de reproducción"
+    help: "Cuánto espacio puede usar reel mientras se reproduce una película. Un búfer más grande aguanta mejor conexiones lentas y saltos largos."
     recommended: "Recomendado"
   source:
     title: "¿Dónde debe buscar películas reel?"

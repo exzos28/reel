@@ -1506,6 +1506,12 @@ fn play_as(info: &Info, w: &Where) -> Value {
     json!({ "verb": if at.is_some() { "resume" } else { "play" }, "season": season, "episode": episode, "at": at })
 }
 
+/// What a list's cards show under their names (`facet`): "year" where every card is the same
+/// kind (films: the kind would say nothing), else "kind" ("Movie", "3 seasons").
+fn facet(films_only: bool) -> &'static str {
+    if films_only { "year" } else { "kind" }
+}
+
 /// A stand-in card that says something instead of a title (`notice`, a key
 /// under `empty.*`): no TMDB key, still loading, nothing came.
 fn notice(key: &str) -> Value {
@@ -1594,10 +1600,32 @@ fn continuing() -> Vec<Value> {
     out
 }
 
-/// The home shelves: `[{"id","items":[summary…]}]`, ids are keys under
-/// `shelf.*`. Never empty: a shelf with one notice card (`notice` set) says
-/// why when there is nothing to show.
+/// Home: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`. The hero is the
+/// first card of the first shelf (Continue watching comes first: the title watched last);
+/// Continue watching and the catalog's shelves do not show it again (a shelf left empty
+/// drops out), unless nothing would be left under it (one title, a notice card); the
+/// Watchlist keeps it: it is the viewer's own list, whole.
 pub fn home() -> Value {
+    let shelves = home_shelves();
+    let all = list_of(&shelves);
+    let hero = all.first().map(|s| s["items"][0].clone()).unwrap_or(Value::Null);
+    let rest: Vec<Value> = all
+        .iter()
+        .filter_map(|s| {
+            let mine = s["id"] == "watchlist";
+            let items: Vec<Value> =
+                list_of(&s["items"]).iter().filter(|i| mine || i["id"] != hero["id"]).cloned().collect();
+            (!items.is_empty()).then(|| json!({ "id": s["id"], "facet": s["facet"], "items": items }))
+        })
+        .collect();
+    let shelves = if rest.is_empty() { shelves } else { json!(rest) };
+    json!({ "hero": hero, "shelves": shelves })
+}
+
+/// The home shelves: `[{"id","facet","items":[summary…]}]`, ids are keys under
+/// `shelf.*`, `facet` what the cards show under their names (see `facet`). Never empty: a
+/// shelf with one notice card (`notice` set) says why when there is nothing to show.
+fn home_shelves() -> Value {
     let tmdb = tmdb_on();
     let kinds: &[&'static str] =
         if tmdb { &["movie", "tv", "movie-popular", "tv-popular", "anime"] } else { &["anime"] };
@@ -1612,13 +1640,17 @@ pub fn home() -> Value {
     }
     shelves.push(("anime", shelf_items(&by("anime"))));
     let mut out: Vec<Value> =
-        shelves.into_iter().filter(|(_, items)| !items.is_empty()).map(|(id, items)| json!({ "id": id, "items": items })).collect();
+        shelves
+            .into_iter()
+            .filter(|(_, items)| !items.is_empty())
+            .map(|(id, items)| json!({ "id": id, "facet": facet(id == "trending_movies"), "items": items }))
+            .collect();
     let pending = calls.iter().any(|c| !answered(c));
     if !tmdb {
-        out.push(json!({ "id": "no_tmdb", "items": [notice("no_tmdb")] }));
+        out.push(json!({ "id": "no_tmdb", "facet": "kind", "items": [notice("no_tmdb")] }));
     } else if out.is_empty() {
         let key = if pending { "loading" } else { "offline" };
-        out.push(json!({ "id": key, "items": [notice(key)] }));
+        out.push(json!({ "id": key, "facet": "kind", "items": [notice(key)] }));
     }
     json!(out)
 }
@@ -1629,7 +1661,8 @@ static SHOWN: LazyLock<Mutex<HashMap<DiscoverKind, Filter>>> = LazyLock::new(Def
 
 /// A browse page (`"movies"`, `"shows"` (Series), `"cartoons"`, `"anime"`):
 /// `{"trending":[summary…],"all":[summary…],"filters":[group…],"allState",
-/// "more","moreState"}`.
+/// "more","moreState","facet","filtered"}` (`facet`: what its cards show under their names, see
+/// `facet`; `filtered`: a filter narrows the grid, the bar offers to clear them).
 /// `all` is the catalog through the page's filters (see `filters::groups`
 /// for `filters`), the pages asked for so far (see `paging`); `allState` is
 /// "done", "loading" (a new filter's answer is on its way: `all` is still the
@@ -1639,7 +1672,7 @@ static SHOWN: LazyLock<Mutex<HashMap<DiscoverKind, Filter>>> = LazyLock::new(Def
 /// again retries). Without TMDB, Shows lists anime and Movies a notice card.
 pub fn browse(page: &str) -> Value {
     let Some(kind) = filters::page_kind(page, tmdb_on()) else {
-        return json!({ "trending": [notice("no_tmdb")], "all": [], "filters": [], "allState": "done", "more": false, "moreState": "idle" });
+        return json!({ "trending": [notice("no_tmdb")], "all": [], "filters": [], "allState": "done", "more": false, "moreState": "idle", "facet": "kind", "filtered": false });
     };
     let trending = Call::Trending(match kind {
         DiscoverKind::Movie => "movie",
@@ -1688,9 +1721,11 @@ pub fn browse(page: &str) -> Value {
     let groups = filters::groups(kind, &filter, got[1].as_ref());
     if t.is_empty() && a.is_empty() && filter.is_default() {
         let key = if answered(&trending) { "offline" } else { "loading" };
-        return json!({ "trending": [notice(key)], "all": [], "filters": groups, "allState": state, "more": false, "moreState": "idle" });
+        return json!({ "trending": [notice(key)], "all": [], "filters": groups, "allState": state, "more": false, "moreState": "idle", "facet": "kind", "filtered": false });
     }
-    json!({ "trending": t, "all": a, "filters": groups, "allState": state, "more": more, "moreState": more_state })
+    let facet = facet(kind == DiscoverKind::Movie);
+    let filtered = filter.is_filtered();
+    json!({ "trending": t, "all": a, "filters": groups, "allState": state, "more": more, "moreState": more_state, "facet": facet, "filtered": filtered })
 }
 
 /// Asks for the next page of a browse page's grid (see `paging::more`):
@@ -1701,9 +1736,9 @@ pub fn browse_more(page: &str) -> bool {
 }
 
 /// One choice in a browse page's filter panel: `group` "genres" toggles
-/// genre `id`, "years" and "countries" pick `id` or drop it when it was
-/// picked, "sort" sets the order; an empty `id` clears the group. Whether
-/// the filter changed.
+/// genre `id`, "years", "countries" and "format" pick `id` or drop it when it was
+/// picked, "sort" sets the order; an empty `id` clears the group, and group "all"
+/// every filter but the order (the bar's Clear). Whether the filter changed.
 pub fn choose_filter(page: &str, group: &str, id: &str) -> bool {
     let Some(kind) = filters::page_kind(page, tmdb_on()) else { return false };
     let changed = filters::choose(kind, group, id);

@@ -91,7 +91,7 @@ test("searching, nothing found, failed and without a TMDB key say so", async () 
   let app = await searchScreen({ ...SEARCH_DUNE, state: "searching", sections: [] });
   expect(app.texts()).toContain("Searching…");
   app = await searchScreen({ ...SEARCH_DUNE, query: "zzz", sections: [] });
-  expect(app.texts()).toContain("Nothing found for “zzz”.");
+  expect(app.texts()).toContain("Nothing found for “zzz”. Try the original title or fewer words.");
   app = await searchScreen({ ...SEARCH_DUNE, tmdb: false, sections: [SEARCH_DUNE.sections[2]] });
   expect(app.texts()).toContain("This build has no TMDB key, so only anime is searched.");
   expect(app.texts()).toContain("Frieren: Beyond Journey's End");
@@ -118,4 +118,27 @@ test("a row whose source did not answer says so; OK on it, or a click, tries aga
   await app.keyboard.press("escape");
   await app.press("label:Try again");
   expect(asked).toEqual(["dune", "dune"]);
+});
+
+test("nothing searched yet: what is trending now, to start from; OK opens a title", async () => {
+  const trending = { ...SEARCH_DUNE.sections[0], id: "trending", facet: "kind" };
+  const app = await searchScreen({ ...SEARCH_RECENT, recent: [], sections: [trending] });
+  expect(app.texts()).toContain("Trending now");
+  expect(app.texts()).not.toContain("Recent searches");
+  await app.keyboard.press("down"); // the row
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("Your mind is the scene of the crime.");
+});
+
+test("phone: the field's ✕ empties it (a TV's keyboard deletes instead)", async () => {
+  const app = await openApp({
+    platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 },
+    modules: { "app/native": { ...NATIVE, "Catalog.search": JSON.stringify(SEARCH_DUNE), "Catalog.rememberSearch": null } },
+  });
+  await app.press("label:Search");
+  expect(app.shows("search-field-clear")).toBe(false);
+  await app.type("search-field", "dune");
+  expect(app.shows("search-field-clear")).toBe(true);
+  await app.press("id:search-field-clear");
+  expect(app.shows("search-field-clear")).toBe(false);
 });

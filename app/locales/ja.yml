@@ -38,7 +38,7 @@ hosted:
 
 shelf:
   continue: "続きを観る"
-  watchlist: "ウォッチリスト"
+  watchlist: "マイリスト"
   trending_movies: "話題の映画"
   trending_shows: "話題のドラマ"
   popular: "人気"
@@ -68,13 +68,13 @@ title:
   resume_episode: "%{episode}を%{at}から再生"
   about_more: "説明をすべて表示"
   about_less: "表示を減らす"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: "ウォッチリスト"
-  add_to_list: "ウォッチリスト"
-  in_list: "ウォッチリスト追加済み"
-  add_to_list_spoken: "ウォッチリストに追加"
-  remove_from_list_spoken: "ウォッチリストから削除"
+  my_list: "リストに追加"
+  add_to_list: "リストに追加"
+  in_list: "リストに追加済み"
+  add_to_list_spoken: "リストに追加"
+  remove_from_list_spoken: "リストから削除"
   trailer: "予告編"
   other_releases: "ほかのリリース"
   save: "保存"
@@ -300,6 +300,7 @@ browse:
     countries: "国"
     sort: "並べ替え"
     picked: "%{filter}: %{picked}"
+    format: "形式"
   sort: "並べ替え："
   option:
     decade: "%{n}年代"
@@ -308,11 +309,15 @@ browse:
     top_rated: "評価順"
     newest: "新しい順"
     any: "すべて"
+    format_tv: "シリーズ"
+    format_movie: "映画"
+    format_special: "OVA・スペシャル"
   state:
     loading: "読み込み中…"
     empty: "条件に合う作品はありません。"
     offline: "リストを読み込めませんでした。接続を確認してください。"
     more_failed: "続きを読み込めませんでした。下に移動すると再試行します。"
+  clear: "クリア"
 
 search:
   title: "検索"
@@ -321,19 +326,21 @@ search:
   recent: "最近の検索"
   clear: "履歴を消去"
   searching: "検索中…"
-  none: "「%{query}」は見つかりませんでした。"
+  none: "「%{query}」は見つかりませんでした。原題で探すか、言葉を減らしてみてください。"
   failed: "TMDB と AniList から応答がありません。接続を確認して、もう一度お試しください。"
   no_tmdb: "この reel には TMDB キーがないため、アニメだけを検索します。"
   section:
     movies: "映画"
     shows: "ドラマ"
     anime: "アニメ"
+    trending: "いま話題"
   try_again: "再試行"
   # A row of results whose source did not answer.
   row_failed:
     movies: "映画を読み込めませんでした。"
     shows: "ドラマを読み込めませんでした。"
     anime: "アニメを読み込めませんでした。"
+  clear_query: "検索をクリア"
 
 compat:
   audio_dts: "このリリースの音声は DTS のみで、このデバイスでは再生できません。別のリリースを選んでください。"
@@ -420,7 +427,7 @@ settings:
     key: "API キー（任意）"
     key_placeholder: "ソースにキーがある場合のみ"
     key_saved: "キーは保存済みです。新しいキーを入力すると置き換わります"
-    save: "保存して確認"
+    save: "確認"
     remove: "ソースを削除"
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: "すぐ使えるソースを入手"
@@ -458,11 +465,11 @@ settings:
     missing_title: "検索ソースを追加"
     missing_about: "reel はご自身の検索ソースで見つけたリリースを再生しますが、まだソースがありません。Torznab のアドレスと API キーを入力してください。接続すると再生できるようになります。"
     failed_title: "検索ソースから応答がありません"
-    failed_about: "reel はこのソースでリリースを検索できませんでした。アドレスと API キーを確認し、「保存して確認」を押してください。接続すると再生できるようになります。"
+    failed_about: "reel はこのソースでリリースを検索できませんでした。アドレスと API キーを確認し、「確認」を押してください。接続すると再生できるようになります。"
     edit_title: "検索ソース"
     edit_about: "Torznab のアドレスと API キー。"
     link_title: "このソースを使いますか？"
-    link_about: "リンクからソースが入力されました。使う場合は「保存して確認」、今のソースのままにする場合は「戻る」を押してください。"
+    link_about: "リンクからソースが入力されました。使う場合は「確認」、今のソースのままにする場合は「戻る」を押してください。"
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: "接続済み"
@@ -480,13 +487,15 @@ settings:
     data: "データソース"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "バージョン %{version} (%{build})"
+    license: "ソース公開 · %{license}"
+    repository: "reel のソースコード"
   details:
     title: "ストリーム情報"
     about: "映画の再生中や待機中に、受信速度、共有している人数、先読みできている量を表示します。"
     show: "ストリーム情報を表示"
   buffer:
     title: "再生バッファ"
-    about: "再生中に reel が保持する映画の量です。大きいほど、相手の回線が遅いときや大きく移動したときに強くなります。"
+    about: "映画の再生中に reel が使う容量です。大きいほど、相手の回線が遅いときや大きく移動したときに強くなります。"
     free: "このデバイスの空き容量: %{free}"
     default: "（標準）"
 
@@ -500,8 +509,8 @@ setup:
     help: "reel はこのタイトルでもリリースを検索します。"
     more: "ほかの言語"
   buffer:
-    title: "再生中に reel が使える容量は？"
-    help: "バッファが大きいほど、相手の回線が遅いときや大きく移動したときに強くなります。"
+    title: "再生バッファ"
+    help: "映画の再生中に reel が使える容量です。バッファが大きいほど、相手の回線が遅いときや大きく移動したときに強くなります。"
     recommended: "おすすめ"
   source:
     title: "reel はどこで映画を探しますか？"

@@ -107,6 +107,7 @@ export function Scroller(props: {
         scrollbar={false}
         // The platform's overscroll bounce where it has one (iOS, macOS): content springs back at its edges.
         scrollEventThrottle={16}
+        keyboardShouldPersistTaps={c.keepsKeyboard ? "handled" : "never"}
         onScroll={(e: ScrollEvent) => {
           c.remember(c.horizontal ? e.offset.x : e.offset.y);
           poke();

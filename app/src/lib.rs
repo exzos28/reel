@@ -253,6 +253,12 @@ pub struct Settings;
 #[cfg(not(target_arch = "wasm32"))]
 #[module]
 impl Settings {
+    /// What About says of reel itself: `{"license","repository"}` (the license's name, the
+    /// source code's address).
+    pub fn project() -> String {
+        serde_json::json!({ "license": "PolyForm Noncommercial 1.0.0", "repository": "https://github.com/exzos28/reel" }).to_string()
+    }
+
     /// The kind of device, when the host knows better than the system ("tv" on a
     /// Samsung TV, whose web view NSH takes for a desktop browser; a development host's stand-in,
     /// `compat::set_device`); empty otherwise.
@@ -438,13 +444,14 @@ impl Catalog {
         catalog::revision() as f64
     }
 
-    /// The home shelves: `[{"id","items":[summary…]}]` (see `catalog::summary`).
+    /// Home: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`, the hero not repeated
+    /// on the shelves (see `catalog::home`, `catalog::summary`).
     pub fn home() -> String {
         catalog::home().to_string()
     }
 
     /// `"movies"`, `"shows"` or `"anime"`: `{"trending":[summary…],"all":[summary…],
-    /// "filters":[group…],"allState"}` (see `catalog::browse`).
+    /// "filters":[group…],"allState","facet","filtered"}` (see `catalog::browse`).
     pub fn browse(page: String) -> String {
         catalog::browse(&page).to_string()
     }
