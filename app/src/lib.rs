@@ -164,8 +164,9 @@ impl Engine {
         tracks::menu(job, &id, embedded.as_ref()).to_string()
     }
 
-    /// The viewer picked `choice` (a key of `tracks`); subtitles are
-    /// remembered for the title. The columns after it (as `tracks`).
+    /// The viewer picked `choice` (a key of `tracks`); subtitles and audio are
+    /// remembered for the title, and an audio pick's language becomes the one
+    /// audio is looked for in (`tracks::choose`). The columns after it (as `tracks`).
     pub fn choose_track(job: u32, id: String, embedded: String, choice: String) -> String {
         let embedded = parse_embedded(&embedded);
         tracks::choose(job, &id, embedded.as_ref(), &choice).to_string()
@@ -313,6 +314,13 @@ impl Settings {
         let now = settings::set_content_language(&tag);
         catalog::language_changed();
         now
+    }
+
+    /// Saves the audio language tracks are looked for in (ISO 639-1, one of `audioLanguages`
+    /// from `load`; empty: the app's language); the setting in effect ("" for the app's). A pick
+    /// in the tracks panel sets it too (`Engine.chooseTrack`).
+    pub fn set_audio_language(code: String) -> String {
+        settings::set_audio_language(&code)
     }
 
     /// Saves the UI language (a BCP 47 tag).
