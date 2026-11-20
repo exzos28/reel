@@ -443,3 +443,22 @@ test("phone: Up next plays the next episode in the same player", async () => {
   await app.press("label:Watch credits"); // the next one's card: the controls come back
   expect(app.shows("scrubber")).toBe(true);
 });
+
+test("phone: leaving the player turns it upright, even after Rotate upright and the phone turned sideways", async () => {
+  const turns: boolean[] = [];
+  const app = await phonePlaying(SIDEWAYS, { "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } });
+  await app.press("label:Rotate screen"); // upright
+  expect(turns).toEqual([false]);
+  await app.press("label:Close");
+  await app.wait(600);
+  expect(turns).toEqual([false, false]);
+});
+
+test("phone: back from the background, the player keeps the orientation it had", async () => {
+  const turns: boolean[] = [];
+  const app = await phonePlaying(SIDEWAYS, { "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } });
+  await app.setLifecycle("background");
+  await app.setViewport(PORTRAIT.width, PORTRAIT.height); // iOS turned it as the phone is held
+  await app.setLifecycle("active");
+  expect(turns).toEqual([true]);
+});

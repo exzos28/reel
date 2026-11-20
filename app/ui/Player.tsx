@@ -9,7 +9,7 @@
 // buttons on the buttons row), Up/Down switch rows, Escape closes the
 // panel, then hides the overlay, then leaves. Near the end of an episode
 // the Up next card (tv-player-end.html) takes the remote instead.
-import { cleanup, computed, createAnimatedValue, effect, Image, keymap, safeArea, Scroll, signal, Text, untracked, View, windowSize, type ImageAsset, type ViewStyle } from "nsh";
+import { cleanup, computed, createAnimatedValue, effect, Image, keymap, lifecycle, safeArea, Scroll, signal, Text, untracked, View, windowSize, type ImageAsset, type ViewStyle } from "nsh";
 import { BufferingNote, PlayerStage, type StageLine } from "./PlayerStage";
 import { t } from "nsh/i18n";
 import { Catalog, Fmt, VideoEngine } from "./native";
@@ -194,15 +194,32 @@ export function Player() {
   const episodesOpen = signal(false);
   /** The window fills the screen (desktops). Left as it was found when the player closes. */
   const { on: fullscreen, set: setFullscreen } = useFullscreen();
-  /** Rotate: to the other orientation than the window's now. The player turned it: upright again
-   * when the player closes (else the app stays sideways with the rotation lock on). */
-  let turned = false;
+  /** Rotate: to the other orientation than the window's now. */
   const turn = () => {
     const { width, height } = windowSize();
-    turned = width <= height;
-    VideoEngine.turn(turned);
+    VideoEngine.turn(width <= height);
   };
-  if (caps.rotate) cleanup(() => turned && VideoEngine.turn(false));
+  // A phone is upright again when the player closes, however it came to be sideways (Rotate,
+  // the film's own turn, the phone turned in the hand after Rotate upright): else the app
+  // stayed sideways with the rotation lock on.
+  if (caps.rotate) cleanup(() => VideoEngine.turn(false));
+  /** The phone's orientation as the app left for the background (null: in front). iOS brings it
+   * back as the phone is held, which undid a turn the player asked for (Rotate, the film's own):
+   * back in front, the player keeps the orientation it had. */
+  let leftSideways: boolean | null = null;
+  if (caps.rotate)
+    effect(() => {
+      const state = lifecycle();
+      untracked(() => {
+        if (state !== "active") {
+          if (leftSideways == null) leftSideways = windowSize().width > windowSize().height;
+        } else if (leftSideways != null) {
+          // Asked whatever the window says now: iOS may turn it a moment after the app is back.
+          VideoEngine.turn(leftSideways);
+          leftSideways = null;
+        }
+      });
+    });
   /** A phone held upright turns sideways for a wide film (the core says which) once, on the
    * player's first load: not again for the next episode, which keeps what the viewer chose. */
   let mayTurnSideways = PHONE() && caps.rotate;
@@ -211,7 +228,6 @@ export function Player() {
     mayTurnSideways = false;
     const w = windowSize();
     if (!width || !height || w.width > w.height || leaving() || !VideoEngine.sideways(width, height)) return;
-    turned = true;
     VideoEngine.turn(true);
   };
 
