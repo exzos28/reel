@@ -42,7 +42,8 @@ type Entry =
   | { kind: "group"; section: Section; group: SavedGroup; key: string }
   | { kind: "item"; section: Section; item: SavedItem; nested: boolean; key: string };
 
-/** "21.6 GB saved · 212 GB free · ~/Movies/reel". */
+/** "21.6 GB saved · 212 GB free · ~/Movies/reel" (the folder only where it can be opened: a
+ * computer; a phone's is the app's own, a path that says nothing). */
 function spaceLine(saved: number, free: number | null, folder: string | null) {
   const parts = [t("saved.space.saved", { size: Fmt.size(saved) })];
   if (free != null) parts.push(t("saved.space.free", { size: Fmt.size(free) }));
@@ -200,7 +201,7 @@ export function SavedScreen() {
       <PageFrame ctl={page} kind={caps.touch && !caps.settingsTab ? "deep" : "root"} title={() => t("saved.title")}>
         <View style={pageStyle()}>
           <View style={row(u(20))}>
-            <Text style={{ ...metaText(), flexShrink: 1 }}>{spaceLine(used(), free(), list().space.folder)}</Text>
+            <Text style={{ ...metaText(), flexShrink: 1 }}>{spaceLine(used(), free(), caps.touch ? null : list().space.folder)}</Text>
             {/* The folder in Finder / File Explorer: a desktop has a file manager. */}
             <If when={!caps.touch && !caps.remote}>
               <Button kind="secondary" height={44} label={() => t("saved.open_folder")} focused={() => false} onPress={openSavedFolder} />

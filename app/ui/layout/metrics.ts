@@ -26,7 +26,7 @@ export const PHONE_HEAD = 44;
 /** Under it on a category's page (Home's tabs: All, Movies, Series, Cartoons, Anime), points. */
 export const CATEGORY_ROW = 44;
 /** What the page leaves under them before its own content (a hero's title), points. */
-const CATEGORY_GAP = 10;
+const CATEGORY_GAP = 28;
 /** A phone's discs over a title's hero: 4 under the status bar, 40 across. */
 export const PHONE_DISCS = 44;
 /** A phone's head on a deep page (Back), points. */
@@ -74,7 +74,8 @@ export function computeMetrics(i: MetricsInput): Metrics {
       case "top-row":
         return i.safeTop + TOP_ROW;
       case "tab-bar":
-        return i.safeTop + (i.kind === "deep" ? PHONE_BACK_HEAD : i.kind === "title" ? PHONE_DISCS : PHONE_HEAD + (i.category ? CATEGORY_ROW + CATEGORY_GAP : 0));
+        // A root page: no logo over it on a phone; a category's has Home's tabs.
+        return i.safeTop + (i.kind === "deep" ? PHONE_BACK_HEAD : i.kind === "title" ? PHONE_DISCS : i.category ? CATEGORY_ROW + CATEGORY_GAP : 0);
     }
   };
   const headBottom = head();

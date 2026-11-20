@@ -28,15 +28,16 @@ test("a family's pages put their titles at one height (the gap under what is ove
   for (const f of families) {
     const gaps = kinds.map((k) => {
       const m = computeMetrics(input(f, k));
-      return m.titleTop - m.headBottom;
+      return Math.round((m.titleTop - m.headBottom) * 1000);
     });
     expect(new Set(gaps).size).toBe(1);
   }
 });
 
-test("a phone: the head under the status bar; Back's on a deep page; the tab bar under the content", () => {
+test("a phone: nothing over a root page but the status bar (Home's tabs on a category's); Back's on a deep page; the tab bar under the content", () => {
   const phone = families[3];
-  expect(computeMetrics(input(phone, "root")).headBottom).toBe(54 + 44);
+  expect(computeMetrics(input(phone, "root")).headBottom).toBe(54);
+  expect(computeMetrics({ ...input(phone, "root"), category: true }).headBottom).toBe(54 + 44 + 28);
   expect(computeMetrics(input(phone, "deep")).headBottom).toBe(54 + 52);
   expect(computeMetrics(input(phone, "root")).bottomRoom >= 34 + 80).toBe(true);
 });

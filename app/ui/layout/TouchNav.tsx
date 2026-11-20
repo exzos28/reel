@@ -196,30 +196,19 @@ const headStyle = (): ViewStyle => ({
   paddingRight: 20 + safeArea().right,
 });
 
-/** The top of a phone's root page other than a category's (Search, Saved, Settings): the logo;
- * it scrolls away with the page. A category's has the bar instead (`PhoneCategoryBar`). */
+/** The top of a phone's root page: nothing of reel's (no logo: the room is the content's); a
+ * category's has Home's tabs instead (`PhoneCategoryBar`). */
 export function PhoneHead() {
-  return (
-    <If when={!isCategory(section())}>
-      <View style={headColumnStyle(false)}>
-        <View style={headStyle()}>
-          <Logo />
-        </View>
-      </View>
-    </If>
-  );
+  return null;
 }
 
-/** Over a category's root page: the logo and Home's tabs, a bar that stays (the page scrolls
+/** Over a category's root page: Home's tabs, a bar that stays (the page scrolls
  * under it) and stays the same while the category changes: the tabs do not jump. Not over a
  * page pushed on a category (a title). */
 export function PhoneCategoryBar() {
   return (
     <If when={isCategory(section()) && !canGoBack()}>
       <View testID="category-bar" style={{ ...headColumnStyle(true), zIndex: 10 }}>
-        <View style={headStyle()}>
-          <Logo />
-        </View>
         <CategoryTabs />
       </View>
     </If>
