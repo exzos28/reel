@@ -4,7 +4,7 @@ What each version of reel changed for the viewer. Earlier versions: GitHub Relea
 
 ## 0.5.0 (2026-11-20)
 
-- reel speaks Russian. The Language setting now sets the language of the app too, and a new install starts in the device's language when reel has it.
+- reel speaks your language: English, Русский, Українська, Polski, Deutsch, Français, Español, Italiano, Português (Brasil), Türkçe, 日本語 and 中文. The Language setting now sets the language of the app too, and a new install starts in the device's language when reel has it.
 - Episodes of anime packs play the right file: openings, endings and specials beside them are skipped, and the episode number in names like "Title - 05 [1080p]" or "[001-053 из 500]" is read in any language.
 - An episode is found in a release whose files are named with underscores ("s01e01_Pilot.avi").
 - An episode missing from its season's release now finds the season packs that hold it, and releases no longer match a show by a word in their genre list.
