@@ -286,7 +286,7 @@ test("phone: Audio and subtitles is a sheet, one list at a time under Audio, Sub
   const app = await phonePlaying(PORTRAIT);
   await app.press("label:Audio and subtitles");
   expect(app.shows("tracks-panel")).toBe(true);
-  expect(app.shows("label:Show more")).toBe(true); // from the bottom, with a grabber
+  expect(app.shows("tracks-grabber")).toBe(true); // from the bottom
   expect(app.shows("id:audio-original")).toBe(true);
   expect(app.shows("id:subtitles-off")).toBe(false);
   await app.press("id:tracks-tab-1"); // Subtitles
@@ -310,7 +310,7 @@ test("phone held sideways: the tracks are a sheet at the right; Back closes it, 
   const app = await phonePlaying(SIDEWAYS);
   await app.press("label:Audio and subtitles");
   expect(app.shows("tracks-panel")).toBe(true);
-  expect(app.shows("label:Show more")).toBe(false); // at the right, the full height
+  expect(app.shows("tracks-grabber")).toBe(false); // at the right, the full height
   await app.keyboard.press("escape");
   await app.wait(600);
   expect(app.shows("tracks-panel")).toBe(false);

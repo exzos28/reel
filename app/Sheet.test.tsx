@@ -56,20 +56,18 @@ test("phone: a drag down closes a sheet; so do ✕ and Back", async () => {
   expect(app.texts()).toContain("Audio language"); // Settings, not left
 });
 
-test("phone: a short list is one detent: a drag up keeps it where it is", async () => {
+test("phone: a short list is one detent: a drag up keeps it where it is, a drag down closes it", async () => {
   const app = await openApp({ ...PHONE, modules: { "app/native": NATIVE } });
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
   await app.press("label:Other releases");
   await app.wait(600);
   expect(app.shows("releases-panel")).toBe(true);
-  expect(app.shows("label:Show more")).toBe(true);
+  expect(app.shows("releases-grabber")).toBe(true);
+  expect(app.shows("label:Show more")).toBe(false); // nothing to grow to: no control for a screen reader
   await app.drag("text:3 found, the best of each quality first", { y: -200 });
   await app.wait(600);
   expect(app.shows("releases-panel")).toBe(true);
-  expect(app.shows("label:Show less")).toBe(false);
-  await app.press("label:Show more"); // one detent: nowhere to go
-  await app.wait(600);
   expect(app.shows("label:Show less")).toBe(false);
   await app.drag("text:3 found, the best of each quality first", { y: 400 });
   await app.wait(600);

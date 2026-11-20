@@ -63,12 +63,11 @@ function Bar(props: { ctl: ScrollCtl; shown: () => boolean }) {
 }
 
 /** `style` is the outer view's (size, background); `onScroll` hears where
- * the content is, `onDragEnd` where a finger let it go, `onContent` how long the content is. */
+ * the content is, `onContent` how long the content is. */
 export function Scroller(props: {
   ctl: ScrollCtl;
   style?: ViewStyle;
   onScroll?: (e: ScrollEvent) => void;
-  onDragEnd?: (offset: number) => void;
   onContent?: (length: number) => void;
   /** Off, a drag on it does not scroll it (a bottom sheet at medium takes the drag). */
   scrollable?: () => boolean;
@@ -116,7 +115,6 @@ export function Scroller(props: {
           props.onScroll?.(e);
         }}
         onScrollDragStart={stopAll}
-        onScrollDragEnd={(e) => props.onDragEnd?.(c.horizontal ? e.offset.x : e.offset.y)}
         style={c.horizontal ? undefined : { flex: 1 }}
       >
         <View
