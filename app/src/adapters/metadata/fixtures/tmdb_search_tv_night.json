@@ -1,0 +1,11 @@
+{
+  "page": 1, "total_results": 1256,
+  "results": [
+    {"genre_ids":[35,10763],"id":1667,"origin_country":["US"],"original_language":"en","original_name":"Saturday Night Live","poster_path":"/s1cZBqbMwAF3w8S3Yo0j5nr2Yuo.jpg","first_air_date":"1975-10-11","name":"Saturday Night Live","vote_average":6.87},
+    {"genre_ids":[10767,35],"id":61818,"origin_country":["US"],"original_language":"en","original_name":"Late Night with Seth Meyers","poster_path":"/qKFP9Se7LJtBaxrMS41iu63dtK3.jpg","first_air_date":"2014-02-25","name":"Late Night with Seth Meyers","vote_average":5.107},
+    {"genre_ids":[35],"id":162,"origin_country":["US"],"original_language":"en","original_name":"Night Court","poster_path":"/bpEVtr4NCkbmTdponemKSjt9POc.jpg","first_air_date":"1984-01-04","name":"Night Court","vote_average":7.3},
+    {"genre_ids":[10764],"id":1549,"origin_country":["US"],"original_language":"en","original_name":"WWE Friday Night SmackDown","poster_path":"/nO1dO7DjG9A3FyiJWSMo0GoaKQW.jpg","first_air_date":"1999-04-29","name":"WWE Friday Night SmackDown","vote_average":7.4},
+    {"genre_ids":[10759,18,9648],"id":129552,"origin_country":["US"],"original_language":"en","original_name":"The Night Agent","poster_path":"/4c5yUNcaff4W4aPrkXE6zr7papX.jpg","first_air_date":"2023-03-23","name":"The Night Agent","vote_average":7.7},
+    {"genre_ids":[35,10767],"id":4467,"origin_country":["US"],"original_language":"en","original_name":"Late Night with David Letterman","poster_path":"/kSraSPTeNoiR60ti9amNqLvM3Em.jpg","first_air_date":"1982-02-01","name":"Late Night with David Letterman","vote_average":6.143}
+  ]
+}

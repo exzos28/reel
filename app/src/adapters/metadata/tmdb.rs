@@ -165,6 +165,20 @@ impl Tmdb {
         })
     }
 
+    /// Search, films and series apart (`/search/movie`, `/search/tv`: the
+    /// first page of each, by relevance), so neither crowds the other out:
+    /// (films, series).
+    pub fn search_requests(&self, query: &str, lang: &str) -> Result<(Request, Request), ProviderError> {
+        let ask = |path| {
+            self.get(
+                path,
+                vec![("query", query.trim().to_owned()), ("language", lang.to_owned()), ("include_adult", "false".into())],
+                CacheKind::Search,
+            )
+        };
+        Ok((ask("/search/movie")?, ask("/search/tv")?))
+    }
+
     pub fn configuration_request(&self) -> Result<Request, ProviderError> {
         self.get("/configuration", vec![], CacheKind::Config)
     }
@@ -541,12 +555,11 @@ impl TitleSource for Tmdb {
         }
     }
 
-    fn search_request(&self, query: &str, lang: &str) -> Result<Request, ProviderError> {
-        self.get(
-            "/search/multi",
-            vec![("query", query.trim().to_owned()), ("language", lang.to_owned()), ("include_adult", "false".into())],
-            CacheKind::Search,
-        )
+    /// Not one list for TMDB: `/search/multi` ranks films and series together
+    /// by popularity, so for a common word ("night") its first page is all
+    /// talk shows. Search asks `search_requests` instead.
+    fn search_request(&self, _query: &str, _lang: &str) -> Result<Request, ProviderError> {
+        Err(ProviderError::Unsupported)
     }
 
     fn title_request(&self, id: MetaId, lang: &str) -> Result<Request, ProviderError> {

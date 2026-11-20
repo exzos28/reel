@@ -1,0 +1,11 @@
+{
+  "page": 1, "total_results": 10000,
+  "results": [
+    {"genre_ids":[28,35,14],"id":899112,"title":"Violent Night","original_language":"en","original_title":"Violent Night","poster_path":"/e8CpMgdyihz9Td7amQDqubPuzfN.jpg","release_date":"2022-11-30","vote_average":7.2},
+    {"genre_ids":[10749,35],"id":1433367,"title":"One Night Only","original_language":"en","original_title":"One Night Only","poster_path":"/f1v8IcYcQggeq1N0unoMJMrzTd9.jpg","release_date":"2026-08-06","vote_average":6.453},
+    {"genre_ids":[9648,35,80],"id":445571,"title":"Game Night","original_language":"en","original_title":"Game Night","poster_path":"/85R8LMyn9f2Lev2YPBF8Nughrkv.jpg","release_date":"2018-02-15","vote_average":6.849},
+    {"genre_ids":[35,27],"id":11797,"title":"Fright Night","original_language":"en","original_title":"Fright Night","poster_path":"/euIh75MwNDrYkTEVSkw7VXWGXoE.jpg","release_date":"1985-08-02","vote_average":7.1},
+    {"genre_ids":[28,35,14],"id":1078446,"title":"Violent Night 2","original_language":"en","original_title":"Violent Night 2","poster_path":"/7HPvgItDw9NgW3iy4tFRRuGNbuN.jpg","release_date":"2026-12-02","vote_average":0.0},
+    {"genre_ids":[14,10751,35],"id":1593,"title":"Night at the Museum","original_language":"en","original_title":"Night at the Museum","poster_path":"/pDsAAYf6Zn0yiAGJ6lYGs6hoZ4E.jpg","release_date":"2006-12-20","vote_average":6.6}
+  ]
+}

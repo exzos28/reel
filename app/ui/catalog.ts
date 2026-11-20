@@ -282,11 +282,14 @@ export interface SearchAnswer {
   /** Films and shows are searched (a TMDB key); without one only anime is. */
   tmdb: boolean;
   recent: string[];
-  /** `id` is also the translation key `search.section.<id>`. */
-  sections: { id: "movies" | "shows" | "anime"; items: Summary[] }[];
+  /** `id` is also the translation key `search.section.<id>`. `state` "failed":
+   * the row's source did not answer (no items); `retrySearch` asks again. */
+  sections: { id: "movies" | "shows" | "anime"; state: "done" | "failed"; items: Summary[] }[];
 }
 
 export const search = (query: string) => read<SearchAnswer>("search", () => Catalog.search(query));
+/** Asks `query` again (a row that did not load). */
+export const retrySearch = (query: string) => Catalog.retrySearch(query);
 /** Keeps `query` among the recent searches. */
 export const rememberSearch = (query: string) => Catalog.rememberSearch(query);
 /** Clears the recent searches. */

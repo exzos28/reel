@@ -307,6 +307,12 @@ search:
     movies: "Фільми"
     shows: "Серіали"
     anime: "Аніме"
+  try_again: "Спробувати знову"
+  # A row of results whose source did not answer.
+  row_failed:
+    movies: "Не вдалося завантажити фільми."
+    shows: "Не вдалося завантажити серіали."
+    anime: "Не вдалося завантажити аніме."
 
 compat:
   audio_dts: "У цій роздачі звук лише в DTS, а цей пристрій його не відтворює. Виберіть іншу роздачу."
