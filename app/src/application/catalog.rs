@@ -1571,10 +1571,17 @@ pub fn title(id: &str) -> Value {
         v["seasonList"] = info
             .seasons
             .iter()
-            .map(|(n, y, eps, name)| json!({ "number": n, "year": y.or(info.year).unwrap_or(0), "episodes": eps, "name": name }))
+            .map(|(n, y, eps, name)| json!({ "number": n, "year": y.or_else(|| first_aired(id, *n)), "episodes": eps, "name": name }))
             .collect();
     }
     v
+}
+
+/// The year a season's first episode aired, from its episodes when the catalog has them (never
+/// asking the network): TMDB leaves some seasons without a date of their own (Naruto's 2–4).
+fn first_aired(show: &str, season: u32) -> Option<u16> {
+    let s = peek(&Call::Season(show.to_owned(), season))?;
+    s["episodes"].as_array()?.iter().filter_map(|e| year(&e["airDate"])).min()
 }
 
 /// Whose releases `key` plays from: an episode its own when the viewer picked
