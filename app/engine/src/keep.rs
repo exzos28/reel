@@ -77,6 +77,9 @@ pub struct Item {
     pub cover: String,
     #[serde(default)]
     pub episode: Option<(u16, u16)>,
+    /// Its season's place in the show's numbering, for a pack numbered through it.
+    #[serde(default)]
+    pub through: Option<reel_domain::numbering::Through>,
     /// Its torrent's folder (`<folder>/<Title (year)>`; before the torrent is known, the one it
     /// would take).
     pub dir: PathBuf,
@@ -461,6 +464,7 @@ pub fn add(req: KeepRequest) -> Result<u32, String> {
             image: req.image.clone(),
             cover: req.cover.clone(),
             episode: req.episode,
+            through: req.through,
             dir,
             infohash: None,
             video: None,
@@ -536,7 +540,7 @@ async fn open_source(source: &str) -> Result<(AddTorrent<'static>, Option<String
 /// Adds the item's torrent (or finds it in the session) into the torrent's own folder, and
 /// selects its files.
 async fn resolve(id: u32, source: String) {
-    let Some((base, ep)) = with(|lib| lib.item_mut(id).map(|i| (i.dir.clone(), i.episode))).flatten() else { return };
+    let Some((base, ep, through)) = with(|lib| lib.item_mut(id).map(|i| (i.dir.clone(), i.episode, i.through))).flatten() else { return };
     let Ok(core) = engine::core() else { return };
     let started = std::time::Instant::now();
     let step = |what: &str| engine::log_line(&format!("saved {id} +{} ms {what}", started.elapsed().as_millis()));
@@ -628,7 +632,7 @@ async fn resolve(id: u32, source: String) {
         Ok(all) => all,
         Err(e) => return fail(&format!("{e:#}")),
     };
-    let Some(video) = episode::pick(&all, ep) else {
+    let Some(video) = episode::pick(&all, ep, through) else {
         return fail(if ep.is_some() { "not_in_release" } else { "no_video" });
     };
     if compat::file_ok(&all[video].1, compat::profile()).is_err() {
@@ -1009,6 +1013,7 @@ mod tests {
             image: String::new(),
             cover: String::new(),
             episode: Some((1, 2)),
+            through: None,
             dir: PathBuf::from("/films/Show"),
             infohash: Some("ab".into()),
             video: Some(3),
@@ -1138,6 +1143,7 @@ mod tests {
             image: String::new(),
             cover: String::new(),
             episode: None,
+            through: None,
             dir: PathBuf::from(dir),
             infohash: Some(hash.into()),
             video: Some(0),

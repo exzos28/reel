@@ -36,7 +36,7 @@ pub trait Playback: Send + Sync {
     fn open(&self, key: &str) -> Result<u32, String>;
     /// Starts playing a release (its magnet or .torrent URL); `episode` picks the file in a
     /// pack. A job id for `status`. Err: the engine could not start.
-    fn open_release(&self, source: &str, episode: Option<(u16, u16)>) -> Result<u32, String>;
+    fn open_release(&self, source: &str, episode: Option<(u16, u16)>, through: Option<crate::numbering::Through>) -> Result<u32, String>;
     /// What the player shows for the job, JSON with a `phase` (`no_source`,
     /// `not_in_release`, `no_space`, `resolving`, `ready`, `unsupported`, `failed`).
     fn status(&self, job: u32) -> Value;
@@ -125,6 +125,8 @@ pub struct KeepRequest {
     pub source: String,
     /// The episode to pick in a pack.
     pub episode: Option<(u16, u16)>,
+    /// Its season's place in the show's numbering (`episode::pick`).
+    pub through: Option<crate::numbering::Through>,
     /// The film or the show ("Metropolis", "Flash Gordon"); also the folder's name.
     pub title: String,
     /// The year, for the folder's name (`Metropolis (1927)`).

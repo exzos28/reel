@@ -60,8 +60,8 @@ impl Playback for Local {
         engine::open(key).map_err(|e| format!("{e:#}"))
     }
 
-    fn open_release(&self, source: &str, episode: Option<(u16, u16)>) -> Result<u32, String> {
-        engine::open_release(source, episode).map_err(|e| format!("{e:#}"))
+    fn open_release(&self, source: &str, episode: Option<(u16, u16)>, through: Option<reel_domain::numbering::Through>) -> Result<u32, String> {
+        engine::open_release(source, episode, through).map_err(|e| format!("{e:#}"))
     }
 
     fn status(&self, job: u32) -> Value {

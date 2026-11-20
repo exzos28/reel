@@ -24,4 +24,8 @@ pub struct Request {
     /// Set (with `episode`) for an episode of a show.
     pub season: Option<u16>,
     pub episode: Option<u16>,
+    /// A show's episodes per regular season (TMDB's), to read packs numbered through the show
+    /// ("S1E1-327 of 327", "S7E121-180"); empty for a film or when not known.
+    #[serde(default)]
+    pub season_sizes: Vec<u16>,
 }

@@ -241,7 +241,7 @@ fn releases_from_the_search_best_quality_first() {
     assert_eq!(t["release"]["quality"], "1080p");
     assert_eq!(t["release"]["size"], "8 GB");
     match play_source(MATRIX) {
-        PlaySource::Ready(s, None) => assert_eq!(s, "magnet:?xt=urn:btih:The.Matrix.1999.1080p.BluRay.x264"),
+        PlaySource::Ready(s, None, _) => assert_eq!(s, "magnet:?xt=urn:btih:The.Matrix.1999.1080p.BluRay.x264"),
         _ => panic!("a release plays"),
     }
 
@@ -357,7 +357,7 @@ fn an_episode_plays_from_its_seasons_release() {
     assert!(SEARCHES.lock().unwrap().contains_key(&season), "playing searches the season");
     found(&season, vec![release("Attack.on.Titan.S03.1080p.WEB", Some(1080), "web", 22.0, 90, true)]);
     match play_source(key) {
-        PlaySource::Ready(_, Some((3, 2))) => {}
+        PlaySource::Ready(_, Some((3, 2)), _) => {}
         _ => panic!("the pack plays episode 2"),
     }
     // 22 GB over 22 episodes of 24 min: 6 Mbit/s.
@@ -378,7 +378,7 @@ fn an_episode_not_in_its_seasons_release_asks_for_another() {
         episodes_release("AoT.S03E01-05.1080p", 3, &[1, 2, 3, 4, 5], 60),
         episodes_release("AoT.S03E14.1080p", 3, &[14], 300),
     ]);
-    assert!(matches!(play_source("tmdb:tv:1429:s3e2"), PlaySource::Ready(s, Some((3, 2))) if s.contains("E01-05")));
+    assert!(matches!(play_source("tmdb:tv:1429:s3e2"), PlaySource::Ready(s, Some((3, 2)), _) if s.contains("E01-05")));
     assert!(matches!(play_source("tmdb:tv:1429:s3e13"), PlaySource::NotInRelease));
     // The fixture's season lists episodes 1, 2, 3, 13 and 14.
     let eps = episodes(AOT, 3);
@@ -393,9 +393,9 @@ fn an_episode_not_in_its_seasons_release_asks_for_another() {
     assert_eq!(mine["seasonRelease"]["quality"], "1080p");
     found(thirteen, vec![episodes_release("AoT.S03E13.720p", 3, &[13], 40)]);
     assert!(choose_release(thirteen, 0));
-    assert!(matches!(play_source(thirteen), PlaySource::Ready(s, _) if s.contains("E13")));
+    assert!(matches!(play_source(thirteen), PlaySource::Ready(s, ..) if s.contains("E13")));
     assert_eq!(episodes(AOT, 3)[3]["inRelease"], "own");
-    assert!(matches!(play_source("tmdb:tv:1429:s3e3"), PlaySource::Ready(s, _) if s.contains("E01-05")), "the others keep the season's");
+    assert!(matches!(play_source("tmdb:tv:1429:s3e3"), PlaySource::Ready(s, ..) if s.contains("E01-05")), "the others keep the season's");
 }
 
 #[test]
@@ -906,4 +906,28 @@ fn a_failed_search_is_asked_again_a_while_after() {
     assert!(!search_wanted(Some(&Search { releases: Some(vec![]), ended: Some(now), ..Default::default() }), now), "found nothing: stays");
     assert!(!search_wanted(Some(&failed(Duration::from_secs(5))), now), "failed just now: not again at once");
     assert!(search_wanted(Some(&failed(RETRY_FAILED_AFTER)), now), "failed a while ago: again");
+}
+
+#[test]
+fn a_whole_show_labelled_season_one_plays_any_season() {
+    let _g = fresh(true, true);
+    seed_aot();
+    TORRENT_FILES.lock().unwrap().clear();
+    // TMDB's AoT: seasons of 25, 12, 22 and 28, 87 episodes; S3E2 is the show's 39.
+    let title = "Атака титанов / Attack on Titan / S1E1-87 of 87 [2013-2023]";
+    let mut r = episodes_release(title, 1, &(1..=87).collect::<Vec<_>>(), 90);
+    r["size"] = json!(87.0 * 1024.0 * 1024.0 * 1024.0);
+    found(&season_key(AOT, 3), vec![r]);
+    match play_source("tmdb:tv:1429:s3e2") {
+        PlaySource::Ready(_, Some((3, 2)), Some(t)) => assert_eq!((t.start, t.size), (38, 22)),
+        _ => panic!("the whole show's pack plays season 3"),
+    }
+    assert_eq!(episodes(AOT, 3)[1]["inRelease"], "yes", "its name says it holds the show's 39");
+    // Its size is shared out over its own 87 episodes, not season 3's 22.
+    assert_eq!(tracks("tmdb:tv:1429:s3e2")["releases"][0]["mbit"], 6);
+    // Once its files are known, they decide: numbered through, 039 is S3E2.
+    let files = (1..=87).map(|n| (n as usize - 1, format!("[Group] Shingeki no Kyojin - {n:03} [1080p].mkv"), 1)).collect();
+    TORRENT_FILES.lock().unwrap().insert(format!("magnet:?xt=urn:btih:{title}"), files);
+    assert_eq!(episodes(AOT, 3)[1]["inRelease"], "yes");
+    assert!(matches!(play_source("tmdb:tv:1429:s3e2"), PlaySource::Ready(..)));
 }
