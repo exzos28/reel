@@ -47,6 +47,7 @@ import rotateIcon from "./icons/rotate.svg";
 import episodesIcon from "./icons/episodes.svg";
 import { PlayerEpisodes } from "./PlayerEpisodes";
 import checkIcon from "./icons/check.svg";
+import { Pressable } from "./kit/Pressable";
 
 /** How long the overlay stays without input. */
 export const OVERLAY_MS = 5000;
@@ -87,11 +88,11 @@ const closeDisc = (): ViewStyle => ({
 /** ✕ (touch): leaves the player. */
 function CloseButton(props: { onPress: () => void }) {
   return (
-    <View role="button" hitSlop={targetSlop(CLOSE)} accessibilityLabel={t("player.close")} onPress={props.onPress} style={closeDisc()}>
+    <Pressable role="button" hitSlop={targetSlop(CLOSE)} accessibilityLabel={t("player.close")} onPress={props.onPress} style={closeDisc()}>
       <View style={{ transform: "rotate(45deg)" }}>
         <Icon src={() => plusIcon} size={iconPt(17)} />
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -126,6 +127,13 @@ export function Player() {
   const lowSpace = computed(() => { const s = core(); return s.phase === "ready" && s.low_space; });
 
   let surface: SurfaceRef | undefined;
+  /** Leaving: the view goes quiet at once (it is torn down a moment later, after the screen
+   * changed: on iOS the player's dialog fades out first, and its sound went on meanwhile). */
+  const leaving = signal(false);
+  const leave = () => {
+    leaving.set(true);
+    setTimeout(stop, 0);
+  };
   const paused = signal(false);
   const loaded = signal(false);
   /** What `onBuffer` last said. */
@@ -394,7 +402,7 @@ export function Player() {
     else if (caps.remote && started() && overlay() && !failed()) hide();
     // A window that fills the screen is left first (as Escape does in macOS apps).
     else if (fullscreen()) setFullscreen(false);
-    else stop();
+    else leave();
     return true;
   });
 
@@ -494,7 +502,7 @@ export function Player() {
     : id === "episodes" ? episodesIcon : tracksIcon;
 
   return (
-    <View
+    <Pressable feedback="none"
       testID="player"
       style={{ flex: 1, backgroundColor: screenBackground() }}
       onMouseMove={(e) => {
@@ -508,15 +516,15 @@ export function Player() {
       }}
 
       // Touch: a swipe down closes the player, as a full-screen cover does.
-      onPanEnd={(e) => caps.touch && !e.cancelled && (e.translation.y > 120 || e.velocity.y > 800) && stop()}
+      onPanEnd={(e) => caps.touch && !e.cancelled && (e.translation.y > 120 || e.velocity.y > 800) && leave()}
       focusable={false}
     >
       <If when={ready()}>
         <VideoSurface
           surfaceRef={(r) => (surface = r)}
           src={url()}
-          paused={paused()}
-          volume={playVolume()}
+          paused={paused() || leaving()}
+          volume={leaving() ? 0 : playVolume()}
           // The film's own subtitles (mpv draws them) rise above the controls while they show.
           subtitleLift={overlay() && !card() ? controlsHeight() / Math.max(1, windowSize().height) : 0}
           audioLanguages={menu().apply.audioLanguages ?? ""}
@@ -566,7 +574,7 @@ export function Player() {
           back, as in other players (on the controls it is not). Told by the presses going down
           (each one comes, with its count), not by onPress (a quick second click may bring none). */}
       <If when={caps.fullscreen}>
-        <View
+        <Pressable feedback="none"
           testID="picture"
           style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
           onPress={() => !card() && poke()}
@@ -597,7 +605,7 @@ export function Player() {
       <If when={caps.windowBar && (staged() || (overlay() && !card()))}>
         <View style={barBackSlot(fullscreen())}>
           <BarBack
-            onPress={stop}
+            onPress={leave}
             enabled={() => true}
             tip={() => (what() ? t("nav.back_to", { page: titleText(what()!.title) }) : t("player.back"))}
             background={PLAYER_BACK_FILL}
@@ -607,7 +615,7 @@ export function Player() {
       {/* A TV has no Back on screen: the remote's Back key is it. */}
       <If when={staged() && caps.touch}>
         <View style={{ position: "absolute", ...touchCorner() }}>
-          <CloseButton onPress={stop} />
+          <CloseButton onPress={leave} />
         </View>
       </If>
 
@@ -624,7 +632,7 @@ export function Player() {
         {/* Top: back, title, the episode or release, what the engine is doing. */}
         <View style={topRowStyle(fullscreen())}>
           <If when={caps.touch}>
-            <CloseButton onPress={stop} />
+            <CloseButton onPress={leave} />
           </If>
           {/* The title's first line centred on the ✕ (a TV's at the safe area's corner); more lines go below. */}
           <View style={{ gap: u(4), flexShrink: 1, marginTop: caps.touch ? (CLOSE - u(34) * 1.25) / 2 : 0 }}>
@@ -644,7 +652,7 @@ export function Player() {
           {(w) => (
             <>
               {/* A tap beside the panel closes it, as the tracks panel's does. */}
-              <View role="button" accessibilityLabel={t("player.close_episodes")} onPress={() => episodesOpen.set(false)} style={panelBackdrop} />
+              <Pressable feedback="none" role="button" accessibilityLabel={t("player.close_episodes")} onPress={() => episodesOpen.set(false)} style={panelBackdrop} />
               <PlayerEpisodes
                 bottom={() => controlsHeight() + safe().y + u(24)}
                 show={() => w().title}
@@ -661,7 +669,7 @@ export function Player() {
         </If>
         <If when={panel()}>
           {/* A tap beside the panel closes it, as a sheet's does. */}
-          <View role="button" accessibilityLabel={t("player.close_tracks")} onPress={() => panel.set(false)} style={panelBackdrop} />
+          <Pressable feedback="none" role="button" accessibilityLabel={t("player.close_tracks")} onPress={() => panel.set(false)} style={panelBackdrop} />
           <TracksPanel
             bottom={() => controlsHeight() + safe().y + u(24)}
             releases={shortReleases}
@@ -737,7 +745,7 @@ export function Player() {
           />
         )}
       </If>
-    </View>
+    </Pressable>
   );
 }
 
@@ -775,7 +783,7 @@ function Scrubber(props: {
   const ranges = computed(() => props.ranges().map(([from, to]) => ({ from, to })));
   const bar = u(8);
   return (
-    <View
+    <Pressable feedback="none"
       testID="scrubber"
       role="adjustable"
       accessibilityLabel={t("player.position")}
@@ -809,7 +817,7 @@ function Scrubber(props: {
           ...focusRing(props.focused()),
         }}
       />
-    </View>
+    </Pressable>
   );
 }
 
@@ -823,7 +831,7 @@ function RoundButton(props: {
 }) {
   return (
     <View style={{ alignItems: "center" }}>
-      <View
+      <Pressable
         role="button"
         accessibilityLabel={props.label()}
         onPress={props.onPress}
@@ -836,7 +844,7 @@ function RoundButton(props: {
         }}
       >
         <Image src={props.icon()} style={{ width: u(34), height: u(34), tintColor: colors.snow() }} />
-      </View>
+      </Pressable>
     </View>
   );
 }
@@ -878,7 +886,7 @@ function TracksPanel(props: {
       <Scroll style={{ flex: 1 }} scrollbar={false}>
       <Each of={options()} key="index">
         {(o, i) => (
-          <View
+          <Pressable feedback="row" haptic={!isSelected(col, i(), o().selected)}
             testID={o().id}
             role="button"
             accessibilityLabel={o().main}
@@ -904,7 +912,7 @@ function TracksPanel(props: {
             <If when={isSelected(col, i(), o().selected)}>
               <Icon src={() => checkIcon} size={24} color={() => (lit(col, i()) ? colors.ink() : colors.snow())} />
             </If>
-          </View>
+          </Pressable>
         )}
       </Each>
       </Scroll>
@@ -930,12 +938,12 @@ function TracksPanel(props: {
       )}
       {/* Touch has no Back key on screen: ✕ closes the panel (a tap beside it does too). */}
       <If when={caps.touch}>
-        <View role="button" accessibilityLabel={t("player.close_tracks")} hitSlop={targetSlop(u(56))} onPress={props.onClose}
+        <Pressable role="button" accessibilityLabel={t("player.close_tracks")} hitSlop={targetSlop(u(56))} onPress={props.onClose}
           style={panelCloseStyle()}>
           <View style={{ transform: "rotate(45deg)" }}>
             <Icon src={() => plusIcon} size={iconPt(15)} />
           </View>
-        </View>
+        </Pressable>
       </If>
     </View>
   );
@@ -999,7 +1007,7 @@ function UpNext(props: {
         </View>
       </View>
       <View style={{ flexDirection: "row", gap: u(14), marginTop: u(22) }}>
-        <View
+        <Pressable
           role="button"
           accessibilityLabel={t("player.play_now")}
           onPress={props.onPlay}
@@ -1020,8 +1028,8 @@ function UpNext(props: {
               backgroundColor: alpha(colors.ink(), 0.55),
             }}
           />
-        </View>
-        <View
+        </Pressable>
+        <Pressable
           role="button"
           accessibilityLabel={t("player.watch_credits")}
           onPress={props.onCredits}
@@ -1032,7 +1040,7 @@ function UpNext(props: {
           }}
         >
           <Text style={{ ...type.label(), fontWeight: 600, color: colors.snow() }}>{t("player.watch_credits")}</Text>
-        </View>
+        </Pressable>
       </View>
     </View>
   );

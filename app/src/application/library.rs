@@ -256,6 +256,7 @@ fn groups(items: Vec<Value>) -> Vec<Value> {
                 "size": size,
                 "have": have,
                 "progress": if size > 0 { have as f64 / size as f64 } else { 0.0 },
+                "checking": items.iter().any(|i| i["checking"] == true),
                 "speed": speed,
                 "peers": peers,
                 "items": items,

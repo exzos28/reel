@@ -1,4 +1,4 @@
-import { computed, Text, View, type TextStyle, type ViewStyle } from "nsh";
+import { computed, View, type ViewStyle } from "nsh";
 import { playLabel, releaseLine, releasesText, type Title } from "../../catalog";
 import { t } from "nsh/i18n";
 import { StateLine } from "../../kit/StateLine";
@@ -7,27 +7,39 @@ import { openSourceDrawer } from "../source/SourceDrawer";
 import { Hero } from "../../layout/Hero";
 import { wholeAboutInHero } from "./AboutBlock";
 import { heroTop } from "../../layout/metrics";
-import { actionsRow, PlayButton, ReleaseButton, SaveButton, TrailerButton } from "../../layout/HeroActions";
+import { actionsRow, PlayButton, SaveButton, SPLIT_HEIGHT, SplitPlay, TrailerButton } from "../../layout/HeroActions";
 import { librarySupported, titleSaveState } from "../../library";
-import { rounded } from "../../kit/shape";
-import { alpha, colors, cs, ts, type, u } from "../../theme";
+import { density, u } from "../../theme";
+import type { HeroAction } from "./focus";
 
-/** The hero's action row, left to right as the remote walks it: Play, then
- * the trailer when there is one. Add to list is the page's header action
- * (`ListToggle`); the release button has its own line under the row. */
-export type HeroAction = "play" | "save" | "trailer";
+export type { HeroAction } from "./focus";
+
+/** The release is still coming: the search runs, or releases are found and
+ * the one Play uses is not picked yet. */
+const releasePending = (title: Title) =>
+  !title.release && (title.releasesState === "searching" || (title.releasesState === "done" && title.releases.length > 0));
+
+/** Play shows the release inside it, with ⌄ for the others: once it is known, and while it comes. */
+const splitPlay = (title: Title) => !!title.release || releasePending(title);
+
+/** The hero's actions, left to right as the remote walks them: Play, its ⌄ (the other
+ * releases, while there is or will be one), Save, Trailer (when there is one). Add to list is
+ * the page's header action (`ListToggle`). */
 export const heroActions = (title: Title): HeroAction[] => [
   "play",
+  ...(splitPlay(title) ? (["releases"] as const) : []),
   // Save, where this device saves films (design/offline-downloads.md).
   ...(librarySupported ? (["save"] as const) : []),
   ...(title.trailer ? (["trailer"] as const) : []),
 ];
 
-/** The release row's place: the button's height and its margin over it, so
- * nothing moves when the release arrives. */
-const rowPlace = (): ViewStyle => ({ height: cs(60), marginTop: u(16), justifyContent: "center" });
-/** The line saying why there is no release: the row's place, taller when it wraps. */
-const notePlace = (): ViewStyle => ({ minHeight: cs(60), marginTop: u(16), justifyContent: "center" });
+/** A phone stacks the block: Play the whole width, Save and Trailer halves under it. */
+const stacked = density === "compact";
+/** The phone's Save and Trailer, TV pixels (48 pt). */
+const HALF_HEIGHT = 64;
+
+/** The line saying why there is no release. */
+const notePlace = (): ViewStyle => ({ marginTop: u(16), justifyContent: "center" });
 /** No release because of the search source: none set (the drawer adds one) or it did not answer (Settings checks it). */
 const sourceAction = (title: Title) =>
   title.releasesState === "no_source"
@@ -35,34 +47,14 @@ const sourceAction = (title: Title) =>
     : title.releasesState === "failed"
       ? { label: t("releases.open_settings"), onPress: openSettings }
       : null;
-/** The release row while the release is not known yet: the button's size,
- * pulsing as the release list's skeleton does. */
-const skeletonStyle = (): ViewStyle => ({
-  ...rowPlace(),
-  width: cs(560),
-  ...rounded(),
-  backgroundColor: alpha(colors.snow(), 0.05),
-  animationName: "pulse",
-  animationDuration: 1400,
-  animationIterationCount: "infinite",
-  animationFrameRate: 30,
-});
 
-const skeletonText = (): TextStyle => ({ ...type.meta(), fontSize: ts(22), color: colors.ash(), paddingHorizontal: cs(24) });
-
-/** The release is still coming: the search runs, or releases are found and
- * the one Play uses is not picked yet. */
-const releasePending = (title: Title) =>
-  !title.release && (title.releasesState === "searching" || (title.releasesState === "done" && title.releases.length > 0));
-
-/** The hero of a film or a show: Play and Trailer (when there is one), then
- * the release Play uses as a button that opens the releases (while searching
- * or with none, a line that says so). `focusedAt`: the index of the focused
- * action in `heroActions`; `releaseFocused`: the release button. */
+/** The hero of a film or a show: Play with the release it plays inside it (⌄ opens the others;
+ * while it is searched, a line that says so), Save and Trailer (when there is one); with no
+ * release, Play alone and under the block a line that says why. `focused`: the focused action,
+ * null when the focus is elsewhere. */
 export function TitleHero(props: {
   data: () => Title;
-  focusedAt: () => number | null;
-  releaseFocused: () => boolean;
+  focused: () => HeroAction | null;
   onPlay: () => void;
   onTrailer: () => void;
   onSave: () => void;
@@ -71,11 +63,49 @@ export function TitleHero(props: {
   const show = () => props.data().kind === "show";
   /** Asked once per second (and per change), not once per place that shows it. */
   const saveState = computed(() => titleSaveState(props.data().id, show()));
-  const line = () => releaseLine(props.data().release!, false);
-  const focused = (a: HeroAction) => () => {
-    const at = props.focusedAt();
-    return at !== null && heroActions(props.data())[at] === a;
-  };
+  const release = () => (props.data().release ? releaseLine(props.data().release!, false) : null);
+  const focused = (a: HeroAction) => () => props.focused() === a;
+  const height = stacked ? HALF_HEIGHT : SPLIT_HEIGHT;
+  const play = () => (
+    <If
+      when={splitPlay(props.data())}
+      else={
+        <PlayButton label={() => playLabel(props.data())} focused={focused("play")} onPress={props.onPlay} height={SPLIT_HEIGHT} grow={stacked} />
+      }
+    >
+      <SplitPlay
+        label={() => playLabel(props.data())}
+        release={release}
+        pending={() => t("releases.state.searching")}
+        progress={() => props.data().progress}
+        playFocused={focused("play")}
+        moreFocused={focused("releases")}
+        onPlay={props.onPlay}
+        onMore={props.onReleases}
+        stretch={stacked}
+      />
+    </If>
+  );
+  const rest = () => (
+    <>
+      <If when={librarySupported}>
+        <SaveButton
+          state={saveState}
+          show={show}
+          focused={focused("save")}
+          onPress={props.onSave}
+          // Nothing to save until a release is known (a film's search found none, or still runs);
+          // what is saved already stays reachable.
+          disabled={() => !show() && !props.data().release && saveState().state === "none"}
+          height={height}
+          grow={stacked}
+        />
+      </If>
+      <If when={props.data().trailer}>
+        <TrailerButton focused={focused("trailer")} onPress={props.onTrailer} height={height} grow={stacked} />
+      </If>
+    </>
+  );
   return (
     <Hero
       item={props.data}
@@ -88,40 +118,23 @@ export function TitleHero(props: {
       wholeAbout={wholeAboutInHero}
       wholeTitle={wholeAboutInHero}
     >
-      <View style={actionsRow(false)}>
-        <PlayButton label={() => playLabel(props.data())} focused={focused("play")} onPress={props.onPlay} />
-        <If when={librarySupported}>
-          <SaveButton
-            state={saveState}
-            show={show}
-            focused={focused("save")}
-            onPress={props.onSave}
-            // Nothing to save until a release is known (a film's search found none, or still runs);
-            // what is saved already stays reachable.
-            disabled={() => !show() && !props.data().release && saveState().state === "none"}
-          />
-        </If>
-        <If when={props.data().trailer}>
-          <TrailerButton focused={focused("trailer")} onPress={props.onTrailer} />
-        </If>
-      </View>
-      {/* Its own row under the actions: the button, a skeleton while it is coming
-          (not focusable), or the line saying why there is none, all the same height. */}
-      <If when={!props.data().release && releasePending(props.data())}>
-        <View testID="release-row-skeleton" style={{ flexDirection: "row" }}>
-          <View style={skeletonStyle()}>
-            <Text style={skeletonText()}>{t("releases.state.searching")}</Text>
+      <If
+        when={stacked}
+        else={
+          <View style={actionsRow(false)}>
+            {play()}
+            {rest()}
           </View>
-        </View>
+        }
+      >
+        <View style={actionsRow(false)}>{play()}</View>
+        <If when={librarySupported || props.data().trailer}>
+          <View style={actionsRow(false)}>{rest()}</View>
+        </If>
       </If>
-      <If when={!props.data().release && !releasePending(props.data())}>
+      <If when={!splitPlay(props.data())}>
         <View style={notePlace()}>
           <StateLine text={() => releasesText(props.data())} action={() => sourceAction(props.data())} />
-        </View>
-      </If>
-      <If when={props.data().release}>
-        <View style={{ flexDirection: "row" }}>
-          <ReleaseButton name={() => line().name} rest={() => line().rest} focused={props.releaseFocused} onPress={props.onReleases} />
         </View>
       </If>
     </Hero>

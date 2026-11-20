@@ -241,7 +241,7 @@ async function previewOpen() {
 test("desktop: the preview's title opens the title, not only its Open button", async () => {
   const app = await previewOpen();
   await app.press("label:Inception >> nth=2"); // the title in the preview (the card's own are the first two)
-  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing"); // Inception's page
+  expect(app.shows("label:1080p BluRay · 8 GB · 412 people sharing")).toBe(true); // Inception's page
 });
 
 test("desktop: scrolling the page closes the preview (the pointer stays still and never leaves)", async () => {

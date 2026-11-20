@@ -12,8 +12,11 @@ nav:
   search: "Пошук"
   settings: "Налаштування"
   saved: "Збережене"
-  # The phone's last tab: the destinations that do not fit in its tab bar.
-  more: "Ще"
+  # The first of Home's categories on a phone: everything.
+  all: "Усе"
+  # Screen-reader names of the phone's two rows of tabs.
+  sections: "Розділи"
+  categories: "Що дивитися"
   back: "Назад"
   # Desktop tooltip of Back and its accessibility label: the page it goes to.
   back_to: "Назад: %{page}"
@@ -69,6 +72,7 @@ title:
   add_to_list_spoken: "Додати до «Буду дивитися»"
   remove_from_list_spoken: "Прибрати з «Буду дивитися»"
   trailer: "Трейлер"
+  other_releases: "Інші роздачі"
   save: "Зберегти"
   saving: "Зберігається %{percent}%"
   saving_some: "Зберігається %{count} з %{total}"
@@ -515,6 +519,8 @@ saved:
     free: "Вільно %{size}"
   state:
     searching: "Шукаємо роздачу…"
+    # Opened again, what is already saved is checked before saving goes on.
+    checking: "Перевіряється збережене…"
     resolving: "Шукаємо, хто роздає…"
     saving: "%{percent}% · %{have} з %{size}"
     paused: "На паузі · %{have} з %{size}"

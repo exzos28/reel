@@ -12,8 +12,11 @@ nav:
   search: "Ara"
   settings: "Ayarlar"
   saved: "Kaydedilenler"
-  # The phone's last tab: the destinations that do not fit in its tab bar.
-  more: "Daha fazla"
+  # The first of Home's categories on a phone: everything.
+  all: "Tümü"
+  # Screen-reader names of the phone's two rows of tabs.
+  sections: "Bölümler"
+  categories: "Ne izlenir"
   back: "Geri"
   # Desktop tooltip of Back and its accessibility label: the page it goes to.
   back_to: "Geri: %{page}"
@@ -69,6 +72,7 @@ title:
   add_to_list_spoken: "Listeme ekle"
   remove_from_list_spoken: "Listemden kaldır"
   trailer: "Fragman"
+  other_releases: "Diğer sürümler"
   save: "Kaydet"
   saving: "Kaydediliyor %{percent}%"
   saving_some: "Kaydediliyor: %{count}/%{total}"
@@ -515,6 +519,8 @@ saved:
     free: "%{size} boş"
   state:
     searching: "Sürüm aranıyor…"
+    # Opened again, what is already saved is checked before saving goes on.
+    checking: "Kaydedilenler kontrol ediliyor…"
     resolving: "Paylaşanlar aranıyor…"
     saving: "%{percent}% · %{have}/%{size}"
     paused: "Duraklatıldı · %{have}/%{size}"

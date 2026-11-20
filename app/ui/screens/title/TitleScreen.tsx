@@ -1,14 +1,14 @@
 // A film or a show. Add to list at the top-right (the page's header
-// action); the hero with Play and Trailer (when there is one), and under them
-// the release Play uses (OK opens the releases in a panel on the right); then
-// for a show the season tabs and the episodes; then About (the whole
-// overview, who made it), the cast, the details and More like this. Remote:
-// the focus starts on Play; Up from the actions reaches Add to list (Down
-// comes back to the button left); Down goes to the release button, then the
-// season tabs; on them Left and Right switch the season; OK on a release
-// makes it the one Play uses, on an episode plays it; Down past the list
-// walks the cast row, then More like this, where OK opens the title. Back
-// closes the release panel, then goes one level up.
+// action); the hero with Play (the release it plays inside it, and ⌄, which
+// opens the releases in a panel on the right), Save and Trailer (when there
+// is one); then for a show the season tabs and the episodes; then About (the
+// whole overview, who made it), the cast, the details and More like this.
+// Remote: the focus starts on Play; Left and Right walk Play, ⌄, Save,
+// Trailer; Up from them reaches Add to list (Down comes back to the button
+// left); Down goes to the season tabs; on them Left and Right switch the
+// season; OK on a release makes it the one Play uses, on an episode plays it;
+// Down past the list walks the cast row, then More like this, where OK opens
+// the title. Back closes the release panel, then goes one level up.
 import { computed, effect, keymap, openUrl, signal, View } from "nsh";
 import { t } from "nsh/i18n";
 import { chooseRelease, episodeCode, episodeReleases, episodes, releaseLine, releasesText, title as titleOf, toggleList, type Episode, type Title } from "../../catalog";
@@ -29,12 +29,12 @@ import { AboutBlock, hasAbout } from "./AboutBlock";
 import { LazyBlock } from "../../layout/LazyBlock";
 import { CastRow } from "./CastRow";
 import { DetailsBlock, hasDetails } from "./DetailsBlock";
-import { action, castAt, focusTitle, item, releaseAt, season, similarAt, zone, type Zone } from "./focus";
+import { action, castAt, focusTitle, item, releaseAt, season, similarAt, zone, type HeroAction, type Zone } from "./focus";
 import { ReleasePanel } from "./ReleasePanel";
 import { SeriesEpisodes } from "./SeriesEpisodes";
 import { shelfCardWidth, wideCardHeight } from "../home/WideCard";
 import { SimilarShelf } from "./SimilarShelf";
-import { heroActions, TitleHero, type HeroAction } from "./TitleHero";
+import { heroActions, TitleHero } from "./TitleHero";
 
 
 export function TitleScreen(props: { id: string }) {
@@ -123,7 +123,10 @@ export function TitleScreen(props: { id: string }) {
   const closePanel = () => {
     const e = panelEpisode();
     if (e) enterList(Math.max(0, eps().findIndex((x) => x.id === e.id)));
-    else zone.set("release");
+    else {
+      action.set("releases");
+      zone.set("actions");
+    }
   };
   /** OK on a release row: choose it and close (an episode's: and play it); on Show more: show the rest. */
   const pressRelease = (i: number) => {
@@ -179,17 +182,23 @@ export function TitleScreen(props: { id: string }) {
     // Play waits for the source's answer: the release plays once known, the drawer opens if there is none.
     // A saved film plays at once, offline too; else Play waits for the source's answer.
     play: () => (isSaved(data().play.id) ? startPlay({ ...data().play, title: data() }) : gate.press()),
+    releases: () => openPanel(),
     save: openSave,
     trailer: openTrailer,
   };
   const toggle = () => toggleList(props.id);
   if (caps.shortcuts) keymap.bind({ "mod+d": toggle });
-  /** The hero's last stop: the release button when there is one, else the actions. */
-  const heroEnd = (): Zone => (data().release ? "release" : "actions");
   /** Down from the hero: a show's season tabs, else the rows below. */
   const underHero = () => (isShow() ? zone.set("tabs") : below(null));
   const heroRow = () => heroActions(data());
-  const actionCount = () => heroRow().length;
+  /** Where the focus is in the row: its action, or Play when the row lost it (the search found no release). */
+  const actionAt = () => Math.max(0, heroRow().indexOf(action()));
+  const stepAction = (by: number) => {
+    const row = heroRow();
+    action.set(row[clamp(actionAt() + by, row.length - 1)]);
+  };
+  /** The focused action as the hero shows it (Play when the row lost it). */
+  const focusedAction = () => (zone() === "actions" ? heroRow()[actionAt()] : null);
   /** Where the focus lands in a season's episodes: where the viewer is, else the first. */
   const firstItem = () => {
     const r = data().resume;
@@ -217,7 +226,7 @@ export function TitleScreen(props: { id: string }) {
     const prev = rows[rows.indexOf(from) - 1];
     if (prev) zone.set(prev);
     else if (listLength() > 0) enterList(clamp(item(), listLength() - 1));
-    else zone.set(isShow() ? "tabs" : heroEnd());
+    else zone.set(isShow() ? "tabs" : "actions");
   };
   const openSimilar = (i: number) => {
     zone.set("similar");
@@ -234,20 +243,12 @@ export function TitleScreen(props: { id: string }) {
       // Add to list: Down returns to the action left; Left and Right stay.
       header: { down: () => zone.set("actions"), enter: toggle },
       actions: {
-        left: () => action.set(Math.max(action() - 1, 0)),
-        right: () => action.set(Math.min(action() + 1, actionCount() - 1)),
+        left: () => stepAction(-1),
+        right: () => stepAction(1),
         // Add to list is above the actions on a TV (a desktop's is in the window bar, ⌘D / Ctrl+D).
         up: () => caps.remote && zone.set("header"),
-        down: () => (data().release ? zone.set("release") : underHero()),
-        enter: () => {
-          const a = heroRow()[clamp(action(), actionCount() - 1)];
-          if (a) run[a]();
-        },
-      },
-      release: {
-        up: () => zone.set("actions"),
         down: underHero,
-        enter: () => openPanel(),
+        enter: () => run[heroRow()[actionAt()]](),
       },
       releases: {
         up: () => releaseAt.set(Math.max(releaseAt() - 1, 0)),
@@ -264,14 +265,14 @@ export function TitleScreen(props: { id: string }) {
       tabs: {
         left: () => season.set(Math.max(season() - 1, 1)),
         right: () => season.set(Math.min(season() + 1, seasonCount())),
-        up: () => zone.set(heroEnd()),
+        up: () => zone.set("actions"),
         down: () => {
           if (listLength() > 0) enterList(firstItem());
           else below(null);
         },
       },
       list: {
-        up: () => (item() > 0 ? item.set(item() - 1) : zone.set(isShow() ? "tabs" : heroEnd())),
+        up: () => (item() > 0 ? item.set(item() - 1) : zone.set(isShow() ? "tabs" : "actions")),
         down: () => (item() < listLength() - 1 ? item.set(item() + 1) : below(null)),
         enter: () => playEpisode(eps()[item()]),
       },
@@ -304,15 +305,17 @@ export function TitleScreen(props: { id: string }) {
       // Add to list: the frame puts it (a desktop's window bar and a tablet's top row carry their own).
       action={<ListToggle inList={() => data().inList} focused={() => zone() === "header"} onPress={toggle} />}
     >
-      <View ref={page.follow(() => zone() === "header" || zone() === "actions" || zone() === "release", "start")}>
+      <View ref={page.follow(() => zone() === "header" || zone() === "actions", "start")}>
         <TitleHero
           data={data}
-          focusedAt={() => (zone() === "actions" ? action() : null)}
-          releaseFocused={() => zone() === "release"}
+          focused={focusedAction}
           onPlay={run.play}
           onTrailer={run.trailer}
           onSave={run.save}
-          onReleases={() => openPanel()}
+          onReleases={() => {
+            action.set("releases");
+            openPanel();
+          }}
         />
       </View>
       <If when={isShow()}>

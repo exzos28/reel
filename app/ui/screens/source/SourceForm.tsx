@@ -10,6 +10,7 @@ import { hostedQr, hostedUrl } from "../../hosted";
 import { source } from "../../preferences";
 import { colors, cs, targetSlop, u } from "../../theme";
 import { sourceForm } from "./sourceState";
+import { Pressable } from "../../kit/Pressable";
 
 const saveStyle = (): ViewStyle => ({ height: cs(60), paddingHorizontal: cs(30), justifyContent: "center", ...rounded(), backgroundColor: colors.snow() });
 const removeStyle = (): ViewStyle => ({ height: cs(60), paddingHorizontal: cs(30), justifyContent: "center", ...rounded(), backgroundColor: colors.raise() });
@@ -47,14 +48,14 @@ export function SourceForm(props: { form: ReturnType<typeof sourceForm>; ownButt
       />
       <If when={props.ownButton ?? true} else={<If when={form.result()}>{(r) => <Text style={resultStyle(r().bad)}>{r().text}</Text>}</If>}>
         <View style={{ ...row(u(20)), marginTop: u(6) }}>
-          <View role="button" accessibilityLabel={t("settings.source.save")} hitSlop={targetSlop(cs(60))} onPress={form.save} hoverStyle={{ backgroundColor: colors.dim() }} style={saveStyle()}>
+          <Pressable role="button" accessibilityLabel={t("settings.source.save")} hitSlop={targetSlop(cs(60))} onPress={form.save} hoverStyle={{ backgroundColor: colors.dim() }} style={saveStyle()}>
             <Text style={labelText(colors.ink())}>{t("settings.source.save")}</Text>
-          </View>
+          </Pressable>
           {/* A source set can be taken away (Save with an empty address did nothing visible). */}
           <If when={source().url}>
-            <View role="button" accessibilityLabel={t("settings.source.remove")} hitSlop={targetSlop(cs(60))} onPress={form.remove} hoverStyle={{ backgroundColor: colors.raise() }} style={removeStyle()}>
+            <Pressable role="button" accessibilityLabel={t("settings.source.remove")} hitSlop={targetSlop(cs(60))} onPress={form.remove} hoverStyle={{ backgroundColor: colors.raise() }} style={removeStyle()}>
               <Text style={labelText(colors.snow())}>{t("settings.source.remove")}</Text>
-            </View>
+            </Pressable>
           </If>
         </View>
         {/* Under the buttons, the form's full width: beside them it was squeezed into a column. */}

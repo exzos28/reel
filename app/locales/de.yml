@@ -12,8 +12,11 @@ nav:
   search: "Suche"
   settings: "Einstellungen"
   saved: "Gespeichert"
-  # The phone's last tab: the destinations that do not fit in its tab bar.
-  more: "Mehr"
+  # The first of Home's categories on a phone: everything.
+  all: "Alles"
+  # Screen-reader names of the phone's two rows of tabs.
+  sections: "Bereiche"
+  categories: "Was schauen"
   back: "Zurück"
   # Desktop tooltip of Back and its accessibility label: the page it goes to.
   back_to: "Zurück zu %{page}"
@@ -69,6 +72,7 @@ title:
   add_to_list_spoken: "Zur Merkliste hinzufügen"
   remove_from_list_spoken: "Von der Merkliste entfernen"
   trailer: "Trailer"
+  other_releases: "Andere Releases"
   save: "Speichern"
   saving: "Speichert %{percent} %"
   saving_some: "Speichert %{count} von %{total}"
@@ -515,6 +519,8 @@ saved:
     free: "%{size} frei"
   state:
     searching: "Release wird gesucht…"
+    # Opened again, what is already saved is checked before saving goes on.
+    checking: "Gespeichertes wird geprüft…"
     resolving: "Suche Leute, die es teilen…"
     saving: "%{percent} % · %{have} von %{size}"
     paused: "Pausiert · %{have} von %{size}"

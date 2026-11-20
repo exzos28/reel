@@ -374,12 +374,17 @@ export const dateText = (date: [number, number, number] | null) =>
 export const shortDate = (date: [number, number, number] | null) =>
   date ? t("fmt.month_day", { month: t(`month.${date[1]}`), day: date[2] }) : "";
 
-/** The release line: its name (bold) and the rest. */
+/** The release line: its name (bold) and the rest; `spoken`, the whole line in words. For the
+ * short form (the number of people sharing with a person icon): `size`, `peers` (the number
+ * alone) and `fast` (with `withStart`: how fast it starts, or null). */
 export function releaseLine(r: ReleaseLine, withStart = true) {
   const sharing = t("release.sharing", { count: r.peers });
   const size = r.pack ? t("release.pack", { size: r.size }) : r.size;
-  const rest = [size, sharing, ...(withStart && r.fast ? [t("release.fast")] : [])];
-  return { name: `${r.quality} ${r.source}`, rest: rest.join(" · ") };
+  const fast = withStart && r.fast ? [t("release.fast")] : [];
+  const rest = [size, sharing, ...fast];
+  const name = `${r.quality} ${r.source}`;
+  const restText = rest.join(" · ");
+  return { name, rest: restText, spoken: `${name} · ${restText}`, size, peers: `${r.peers}`, fast: fast[0] ?? null };
 }
 
 /** A filter panel's row: "Drama", "2010s", "Before 1960", "Top rated". */

@@ -1,6 +1,7 @@
 // The nav on touch (design/navigation.md, "Tablet" and "Phone"). The tabs are
-// Home, Movies, Shows, Anime and Search. Phone: a bottom tab bar on every page but the player,
-// Settings its last tab, and a head over a root page (the logo) that scrolls away with it.
+// Home, Movies, Shows, Anime and Search. Phone: a bottom tab bar (Home, Search, Saved, Settings)
+// on every page but the player, and a head over a root page (the logo; on a category's page
+// Home's tabs: All, Movies, Series, Cartoons, Anime) that scrolls away with it.
 // Tablet: Settings is a button that pushes it on the current tab.
 // Tablet: one top row on every page: the logo (Back in its place on a deeper
 // page), the floating tabs centred, Add to list on a title, Settings; solid
@@ -12,15 +13,19 @@ import backIcon from "../icons/back.svg";
 import settingsIcon from "../icons/settings.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
-import { canGoBack, go, handleBack, openSettings, route, section, stack, type Destination, type Route } from "../nav";
+import { canGoBack, CATEGORIES, go, goHomeTab, handleBack, isCategory, openCategory, openSettings, route, section, stack, type Destination, type Route } from "../nav";
 import { look } from "../platform/look";
 import { alpha, colors, font, iconPt, targetSlop, u } from "../theme";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
 import { frameSolid } from "./frameState";
-import { PHONE_BACK_HEAD, phoneRail, railWidth, TAB_ROW, TOP_ROW } from "./metrics";
-import { ChoicePanel, type Choice } from "./ChoicePanel";
-import moreIcon from "../icons/more.svg";
+import { CATEGORY_ROW, PHONE_BACK_HEAD, PHONE_HEAD, phoneRail, railWidth, TAB_ROW, TOP_ROW } from "./metrics";
+import { Rail, railLead } from "./Rail";
+import { scroller } from "./scrollCtl";
+import savedIcon from "../icons/saved.svg";
+import searchIcon from "../icons/search.svg";
+import { librarySupported } from "../library";
+import { Pressable } from "../kit/Pressable";
 
 /** The tabs: the nav's destinations but Settings. */
 const TABS = NAV.filter((n) => n.id !== "settings" && n.id !== "saved");
@@ -52,9 +57,9 @@ function Logo() {
 /** Settings, a round button: it pushes Settings on the current tab (a 44 pt touch area). */
 function SettingsButton(props: { size: number }) {
   return (
-    <View role="button" accessibilityLabel={t("nav.settings")} onPress={openSettings} hitSlop={targetSlop(props.size)} style={disc(props.size, isSettings())}>
+    <Pressable role="button" accessibilityLabel={t("nav.settings")} onPress={openSettings} hitSlop={targetSlop(props.size)} style={disc(props.size, isSettings())}>
       <Icon src={() => settingsIcon} size={pt(props.size * 0.47)} color={() => (isSettings() ? colors.snow() : colors.dim())} />
-    </View>
+    </Pressable>
   );
 }
 
@@ -101,72 +106,113 @@ const indicatorStyle = (on: boolean): ViewStyle => ({
 });
 const tabText = (on: boolean): TextStyle => ({ fontFamily: font, fontSize: android ? 12 : 10.5, fontWeight: 500, color: on ? colors.snow() : colors.ash() });
 
-/** The phone's tabs: the destinations that fit (Home, Movies, Series, Search), More for the
- * others (Cartoons, Anime), which it lists in a sheet, and Settings last. */
-const PHONE_TABS: Destination[] = ["home", "movies", "shows", "search"];
-const MORE = TABS.filter((n) => !PHONE_TABS.includes(n.id));
-const inMore = () => MORE.some((n) => n.id === section());
+/** The phone's tabs: Home (the categories, chosen at the top of its page), Search, Saved where
+ * this device saves, Settings. */
+const PHONE_TABS: { id: Destination; label: string; icon: ImageAsset; on: () => boolean; go: () => void }[] = [
+  { id: "home", label: "nav.home", icon: NAV[0].icon, on: () => isCategory(section()), go: goHomeTab },
+  { id: "search", label: "nav.search", icon: searchIcon, on: () => section() === "search", go: () => go("search") },
+  ...(librarySupported ? [{ id: "saved" as const, label: "nav.saved", icon: savedIcon, on: () => section() === "saved", go: () => go("saved") }] : []),
+  { id: "settings", label: "nav.settings", icon: settingsIcon, on: () => section() === "settings", go: () => go("settings") },
+];
 
 function Tab(props: { label: string; icon: ImageAsset; on: () => boolean; inRail: boolean; onPress: () => void }) {
   return (
-    <View role="tab" accessibilityLabel={props.label} accessibilityState={{ selected: props.on() }} onPress={props.onPress} style={tabStyle(props.inRail)}>
+    <Pressable haptic={!props.on()} role="tab" accessibilityLabel={props.label} accessibilityState={{ selected: props.on() }} onPress={props.onPress} style={tabStyle(props.inRail)}>
       <View style={indicatorStyle(props.on())}>
         <Icon src={() => props.icon} size={pt(21)} color={() => (props.on() ? colors.snow() : colors.ash())} />
       </View>
       <Text style={tabText(props.on())}>{props.label}</Text>
-    </View>
+    </Pressable>
   );
 }
 
 /** The phone's tabs: a bar under the content, or (held sideways) a rail at its left. Tapping
- * the selected tab pops it to its root; More lists the destinations that did not fit. */
+ * the selected tab pops it to its root. */
 export function PhoneTabBar() {
-  const more = signal(false);
-  const tabs = TABS.filter((n) => PHONE_TABS.includes(n.id));
-  const choices = (): Choice[] => MORE.map((n) => ({ key: n.id, text: t(`nav.${n.id}`), selected: section() === n.id }));
   return (
-    <>
-      <View testID={phoneRail() ? "nav-rail" : "tab-bar"} style={phoneRail() ? railStyle() : tabBarStyle()}>
-        <Each of={tabs} key={(n) => n.id}>
-          {(n) => <Tab label={t(`nav.${n().id}`)} icon={n().icon} on={() => section() === n().id} inRail={phoneRail()} onPress={() => go(n().id)} />}
-        </Each>
-        <Tab label={t("nav.more")} icon={moreIcon} on={inMore} inRail={phoneRail()} onPress={() => more.set(true)} />
-        <Tab label={t("nav.settings")} icon={settingsIcon} on={() => section() === "settings"} inRail={phoneRail()} onPress={() => go("settings")} />
-      </View>
-      <If when={more()}>
-        <ChoicePanel
-          id="more"
-          title={() => t("nav.more")}
-          choices={choices}
-          focusedAt={() => -1}
-          onPick={(i) => {
-            more.set(false);
-            go(MORE[i].id);
-          }}
-          onClose={() => more.set(false)}
-        />
-      </If>
-    </>
+    <View
+      testID={phoneRail() ? "nav-rail" : "tab-bar"}
+      role="tablist"
+      accessibilityLabel={t("nav.sections")}
+      style={phoneRail() ? railStyle() : tabBarStyle()}
+    >
+      <Each of={PHONE_TABS} key={(n) => n.id}>
+        {(n) => <Tab label={t(n().label)} icon={n().icon} on={n().on} inRail={phoneRail()} onPress={n().go} />}
+      </Each>
+    </View>
   );
 }
 
+// ---- The categories at the top of a phone's Home ---------------------------------------
+
+/** Their icons: the nav's (All is Home's). */
+const categoryIcon = (id: Destination) => NAV.find((n) => n.id === id)?.icon ?? NAV[0].icon;
+const categoryTabStyle = (on: boolean): ViewStyle => ({
+  ...row(6),
+  height: CATEGORY_ROW,
+  borderBottomWidth: 2,
+  borderBottomColor: on ? colors.red() : "transparent",
+});
+const categoryText = (on: boolean): TextStyle => ({ fontFamily: font, fontSize: 16, fontWeight: on ? 600 : 500, color: on ? colors.snow() : colors.ash() });
+
+/** All, Movies, Series, Cartoons, Anime: what Home shows, the chosen one underlined in red. A row
+ * that scrolls sideways where it does not fit; the chosen one shows. */
+function CategoryTabs() {
+  const tabs = scroller({ horizontal: true, anchor: railLead });
+  return (
+    <View role="tablist" accessibilityLabel={t("nav.categories")} style={{ borderBottomWidth: 1, borderBottomColor: colors.card() }}>
+      <Rail ctl={tabs} gap={40}>
+        <Each of={CATEGORIES} key={(c) => c}>
+          {(c) => {
+            const on = () => section() === c();
+            return (
+              <Pressable haptic={!on()} ref={tabs.follow(on)} role="tab" accessibilityLabel={t(c() === "home" ? "nav.all" : `nav.${c()}`)} accessibilityState={{ selected: on() }} onPress={() => openCategory(c())} style={categoryTabStyle(on())}>
+                <Icon src={() => categoryIcon(c())} size={pt(18)} color={() => (on() ? colors.snow() : colors.ash())} />
+                <Text style={categoryText(on())}>{t(c() === "home" ? "nav.all" : `nav.${c()}`)}</Text>
+              </Pressable>
+            );
+          }}
+        </Each>
+      </Rail>
+    </View>
+  );
+}
+
+/** On a category's page the head is a bar of its own (the page's ink, a hairline under the tabs):
+ * the hero's still starts under it, and the tabs read over nothing but ink. */
+const headColumnStyle = (veiled: boolean): ViewStyle => ({
+  position: "absolute",
+  top: 0,
+  paddingTop: safeArea().top,
+  left: 0,
+  right: 0,
+  zIndex: 3,
+  backgroundColor: veiled ? colors.ink() : "transparent",
+});
 const headStyle = (): ViewStyle => ({
   ...row(0),
   justifyContent: "space-between",
-  position: "absolute",
-  top: safeArea().top,
-  left: 20 + safeArea().left,
-  right: 20 + safeArea().right,
-  height: 44,
-  zIndex: 3,
+  height: PHONE_HEAD,
+  paddingLeft: 20 + safeArea().left,
+  paddingRight: 20 + safeArea().right,
 });
 
-/** The top of a phone's root page: the logo (Settings is a tab); it scrolls away with the page. */
+/** The top of a phone's root page: nothing of reel's (no logo: the room is the content's); a
+ * category's has Home's tabs instead (`PhoneCategoryBar`). */
 export function PhoneHead() {
+  return null;
+}
+
+/** Over a category's root page: Home's tabs, a bar that stays (the page scrolls
+ * under it) and stays the same while the category changes: the tabs do not jump. Not over a
+ * page pushed on a category (a title). */
+export function PhoneCategoryBar() {
   return (
-    <View style={headStyle()}>
-      <Logo />
-    </View>
+    <If when={isCategory(section()) && !canGoBack()}>
+      <View testID="category-bar" style={{ ...headColumnStyle(true), zIndex: 10 }}>
+        <CategoryTabs />
+      </View>
+    </If>
   );
 }
 
@@ -176,9 +222,9 @@ export const phoneDisc = (side: "left" | "right"): ViewStyle => ({ position: "ab
 /** Back, a disc (40 across, a 44 pt touch area). */
 function BackDisc() {
   return (
-    <View role="button" accessibilityLabel={t("nav.back")} onPress={handleBack} hitSlop={targetSlop(40)} style={disc(40)}>
+    <Pressable role="button" accessibilityLabel={t("nav.back")} onPress={handleBack} hitSlop={targetSlop(40)} style={disc(40)}>
       <Icon src={() => backIcon} size={pt(20)} />
-    </View>
+    </Pressable>
   );
 }
 
@@ -272,16 +318,16 @@ function TabletBack() {
     <If
       when={android}
       else={
-        <View role="button" accessibilityLabel={t("nav.back_to", { page: underName() })} onPress={handleBack} style={capsuleStyle()}>
+        <Pressable role="button" accessibilityLabel={t("nav.back_to", { page: underName() })} onPress={handleBack} style={capsuleStyle()}>
           <Icon src={() => backIcon} size={pt(20)} />
           <Text style={capsuleText()}>{underName()}</Text>
-        </View>
+        </Pressable>
       }
     >
       <View style={row(12)}>
-        <View role="button" accessibilityLabel={t("nav.back_to", { page: underName() })} onPress={handleBack} style={disc(44)}>
+        <Pressable role="button" accessibilityLabel={t("nav.back_to", { page: underName() })} onPress={handleBack} style={disc(44)}>
           <Icon src={() => backIcon} size={pt(20)} />
-        </View>
+        </Pressable>
         <Logo />
       </View>
     </If>
@@ -319,12 +365,12 @@ export function TabletTopRow() {
               const on = () => section() === n().id && !isSettings();
               const iconOnly = () => n().id === "search" || iconsOnly();
               return (
-                <View role="tab" accessibilityLabel={t(`nav.${n().id}`)} accessibilityState={{ selected: on() }} onPress={() => go(n().id)} style={topTab(on(), iconOnly())}>
+                <Pressable haptic={!on()} role="tab" accessibilityLabel={t(`nav.${n().id}`)} accessibilityState={{ selected: on() }} onPress={() => go(n().id)} style={topTab(on(), iconOnly())}>
                   <Icon src={() => n().icon} size={pt(17)} color={() => (on() ? colors.snow() : colors.dim())} />
                   <If when={!iconOnly()}>
                     <Text style={topTabText(on())}>{t(`nav.${n().id}`)}</Text>
                   </If>
-                </View>
+                </Pressable>
               );
             }}
           </Each>

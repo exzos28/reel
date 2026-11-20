@@ -10,6 +10,7 @@ import { EpisodeThumb } from "./EpisodeThumb";
 import { itemState } from "../../library";
 import { SaveMark } from "../../kit/SaveMark";
 import checkIcon from "../../icons/check.svg";
+import { Pressable } from "../../kit/Pressable";
 
 const episodeRowStyle = (focused: boolean): ViewStyle => ({
   ...rowStyle(false, focused, u(26)),
@@ -50,7 +51,7 @@ export function EpisodeRow(props: { episode: () => Episode; focused: () => boole
   const saved = computed(() => itemState(e().id));
   const marked = () => !["none", "failed"].includes(saved().state);
   return (
-    <View
+    <Pressable feedback="row"
       ref={props.viewRef}
       role="button"
       accessibilityLabel={e().title}
@@ -74,6 +75,6 @@ export function EpisodeRow(props: { episode: () => Episode; focused: () => boole
           <SaveMark state={() => saved().state} progress={() => saved().progress} background={() => (props.focused() ? colors.raise() : colors.card())} />
         </If>
       </View>
-    </View>
+    </Pressable>
   );
 }

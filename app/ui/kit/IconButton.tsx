@@ -1,7 +1,8 @@
-import { View, type ImageAsset, type ViewStyle } from "nsh";
+import { type ImageAsset, type ViewStyle } from "nsh";
 import { colors, cs, focusRing, targetSlop, u } from "../theme";
 import { Icon } from "./Icon";
 import { rounded } from "./shape";
+import { Pressable } from "./Pressable";
 
 const iconButtonStyle = (size: number, fill: string, focused: boolean): ViewStyle => ({
   width: cs(size),
@@ -28,7 +29,7 @@ export function IconButton(props: {
   const size = props.size ?? 62;
   const fill = () => (props.selected?.() ? colors.control() : props.background ? props.background() : colors.card());
   return (
-    <View
+    <Pressable
       role="button"
       hitSlop={targetSlop(cs(size))}
       accessibilityLabel={props.label()}
@@ -37,6 +38,6 @@ export function IconButton(props: {
       style={iconButtonStyle(size, fill(), props.focused())}
     >
       <Icon src={props.icon} size={size * 0.42} color={props.iconColor} />
-    </View>
+    </Pressable>
   );
 }

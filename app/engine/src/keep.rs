@@ -339,6 +339,20 @@ fn exclude_from_backup(dir: &Path) {
 #[cfg(not(target_os = "ios"))]
 fn exclude_from_backup(_dir: &Path) {}
 
+/// `dir` (an item's folder) when it is gone, but was in a library home of the same name as `home`
+/// (`…/<old container>/…/saved/<Title (year)>`): the same folder under `home`, if it is there.
+fn moved_folder(dir: &Path, home: &Path) -> Option<PathBuf> {
+    if dir.as_os_str().is_empty() || dir.exists() {
+        return None;
+    }
+    let name = dir.file_name()?;
+    if dir.parent()?.file_name()? != home.file_name()? {
+        return None;
+    }
+    let here = home.join(name);
+    here.exists().then_some(here)
+}
+
 fn default_folder(home: &Path, local: Option<std::ffi::OsString>) -> PathBuf {
     match local.filter(|l| !l.is_empty()) {
         Some(local) => PathBuf::from(local).join("reel").join("saved"),
@@ -381,6 +395,13 @@ pub fn init(data_dir: &Path) {
     let stored = load(&home.join("library.json"));
     let films = default_folder(&home, if cfg!(windows) { std::env::var_os("LOCALAPPDATA") } else { None });
     let mut lib = Library { home, films, stored, live: HashMap::new(), revision: 1 };
+    // iOS moves an app's data to a new container path when the app is installed again or
+    // updated: an item's folder stored under the old one is the same folder under the new one.
+    for item in lib.stored.items.iter_mut() {
+        if let Some(moved) = moved_folder(&item.dir, &lib.home) {
+            item.dir = moved;
+        }
+    }
     // Without its link (never stored) an item that had no torrent yet cannot go on.
     for item in lib.stored.items.iter_mut() {
         if item.infohash.is_none() && item.unfinished() || item.state == State::Waiting {
@@ -796,7 +817,11 @@ pub fn list() -> Value {
                     State::Saved => size,
                     _ => have(lib, i).unwrap_or(0),
                 };
-                let live = i.infohash.as_ref().and_then(|h| lib.live.get(h)).and_then(|(_, h)| h.stats().live);
+                let stats = i.infohash.as_ref().and_then(|h| lib.live.get(h)).map(|(_, h)| h.stats());
+                // Opened again, the torrent checks what is on the disk first: how much is saved
+                // is not known until it is done (it says 0 meanwhile).
+                let checking = matches!(stats.as_ref().map(|s| &s.state), Some(librqbit::TorrentStatsState::Initializing { .. }));
+                let live = stats.and_then(|s| s.live);
                 let state = if i.state == State::Saved && !i.video_path().is_some_and(|p| p.exists()) { "unavailable" } else { state_name(i.state) };
                 json!({
                     "id": i.id,
@@ -811,6 +836,7 @@ pub fn list() -> Value {
                     "size": size,
                     "have": have,
                     "progress": if size > 0 { have as f64 / size as f64 } else { 0.0 },
+                    "checking": checking,
                     "speed": live.as_ref().map(|l| l.download_speed.mbps),
                     "peers": live.as_ref().map(|l| l.snapshot.peer_stats.live),
                     "message": i.message,
@@ -968,6 +994,25 @@ pub fn remove(id: u32) {
                 delete_files(&dir, gone);
             });
         }
+    }
+}
+
+#[cfg(test)]
+mod moved {
+    use super::moved_folder;
+
+    #[test]
+    fn a_folder_under_an_old_container_is_found_under_the_new_one() {
+        let base = std::env::temp_dir().join(format!("reel-moved-{}", std::process::id()));
+        let home = base.join("NEW/saved");
+        std::fs::create_dir_all(home.join("Film (2026)")).unwrap();
+        let old = base.join("OLD/saved/Film (2026)");
+        assert_eq!(moved_folder(&old, &home), Some(home.join("Film (2026)")));
+        // There still, or not a library's folder, or not under the new home: left as it is.
+        assert_eq!(moved_folder(&home.join("Film (2026)"), &home), None);
+        assert_eq!(moved_folder(&base.join("OLD/elsewhere/Film (2026)"), &home), None);
+        assert_eq!(moved_folder(&base.join("OLD/saved/Other (1999)"), &home), None);
+        let _ = std::fs::remove_dir_all(&base);
     }
 }
 

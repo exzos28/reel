@@ -9,6 +9,7 @@ import { Icon } from "./kit/Icon";
 import { row } from "./kit/shape";
 import { chrome } from "./layout/chrome";
 import { alpha, colors, iconPt, targetSlop, u } from "./theme";
+import { Pressable } from "./kit/Pressable";
 
 /** Volume shows on the desktops only. */
 export const volumeShown = chrome === "mac" || chrome === "windows" || chrome === "linux";
@@ -56,7 +57,7 @@ export function PlayerVolume(props: { onUse: () => void }) {
   };
   return (
     <View style={row(u(6))}>
-      <View
+      <Pressable
         role="button"
         accessibilityLabel={t(muted() ? "player.unmute" : "player.mute")}
         hitSlop={targetSlop(u(64))}
@@ -65,8 +66,8 @@ export function PlayerVolume(props: { onUse: () => void }) {
         style={discStyle()}
       >
         <Icon src={() => (muted() || volume() === 0 ? volumeOffIcon : volumeIcon)} size={iconPt(18)} />
-      </View>
-      <View
+      </Pressable>
+      <Pressable feedback="none"
         role="adjustable"
         accessibilityLabel={t("player.volume")}
         accessibilityValue={{ min: 0, max: 100, now: Math.round(playVolume() * 100) }}
@@ -85,7 +86,7 @@ export function PlayerVolume(props: { onUse: () => void }) {
         <View style={trackStyle()}>
           <View style={{ height: "100%", width: `${playVolume() * 100}%`, backgroundColor: colors.snow() }} />
         </View>
-      </View>
+      </Pressable>
     </View>
   );
 }

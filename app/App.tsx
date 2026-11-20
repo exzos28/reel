@@ -17,12 +17,12 @@ import { AboutScreen } from "./ui/screens/about/AboutScreen";
 import { InterfaceScreen } from "./ui/screens/interface/InterfaceScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
-import { canGoBack, closeFirst, go, handleBack, isRoot, route, section, useTabStacks } from "./ui/nav";
+import { back, canGoBack, closeFirst, go, handleBack, isRoot, route, section, useHomeTab, useTabStacks } from "./ui/nav";
 import { screenFor } from "./ui/screens/RouteScreen";
 import { frame } from "./ui/layout/chrome";
 import { caps } from "./ui/platform";
 import { railWidth } from "./ui/layout/metrics";
-import { PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
+import { PhoneCategoryBar, PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
 import { SourceDrawer } from "./ui/screens/source/SourceDrawer";
 import { TouchStack } from "./ui/layout/TouchStack";
 import { ExitDialog } from "./ui/layout/ExitDialog";
@@ -49,6 +49,8 @@ startDiagnostics();
 Sources.setPictureCap(caps.touch ? 1080 : 0);
 // A phone and a tablet keep a stack per tab (design/navigation.md, "History model").
 useTabStacks(caps.touch);
+// A phone's Home tab holds the categories (design/navigation.md, "Phone").
+useHomeTab(caps.settingsTab);
 // A link that opens the app (reel://s?t=<key>&u=<address>, from a partner's bot): its source
 // fills the source's fields (the setup's step, else the drawer); nothing is saved until the
 // viewer saves it. Any other link is dropped (anyone can make one).
@@ -76,7 +78,7 @@ function systemBack(): boolean {
   if (closeFirst()) return true;
   if (canGoBack()) return false;
   if (section() !== "home") {
-    go("home");
+    back();
     return true;
   }
   return false;
@@ -137,6 +139,7 @@ function App() {
           </View>
         </If>
         <If when={frame.nav === "tab-bar"}>
+          <PhoneCategoryBar />
           <PhoneTabBar />
         </If>
         <If when={frame.nav === "top-row"}>

@@ -12,8 +12,11 @@ nav:
   search: "検索"
   settings: "設定"
   saved: "保存済み"
-  # The phone's last tab: the destinations that do not fit in its tab bar.
-  more: "その他"
+  # The first of Home's categories on a phone: everything.
+  all: "すべて"
+  # Screen-reader names of the phone's two rows of tabs.
+  sections: "セクション"
+  categories: "見るもの"
   back: "戻る"
   # Desktop tooltip of Back and its accessibility label: the page it goes to.
   back_to: "%{page}に戻る"
@@ -69,6 +72,7 @@ title:
   add_to_list_spoken: "ウォッチリストに追加"
   remove_from_list_spoken: "ウォッチリストから削除"
   trailer: "予告編"
+  other_releases: "ほかのリリース"
   save: "保存"
   saving: "保存中 %{percent}%"
   saving_some: "保存中 %{count}/%{total}"
@@ -515,6 +519,8 @@ saved:
     free: "空き %{size}"
   state:
     searching: "リリースを探しています…"
+    # Opened again, what is already saved is checked before saving goes on.
+    checking: "保存済みのデータを確認しています…"
     resolving: "共有している人を探しています…"
     saving: "%{percent}% · %{have}/%{size}"
     paused: "一時停止中 · %{have}/%{size}"

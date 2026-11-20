@@ -7,6 +7,7 @@ import { labelText, metaText } from "../../kit/text";
 import { Rail, railLead } from "../../layout/Rail";
 import { scroller, type Follow } from "../../layout/Scroller";
 import { colors, safe, selectedFill, type, u } from "../../theme";
+import { Pressable } from "../../kit/Pressable";
 
 /** `year` is null when neither the season nor its episodes say it. */
 type Season = { number: number; year: number | null; episodes: number };
@@ -30,7 +31,7 @@ export function SeasonTabs(props: {
       <Rail ctl={tabs} gap={6} top={36}>
           <Each of={props.seasons()} key={(s) => s.number}>
             {(s) => (
-              <View
+              <Pressable haptic={!chosen(s())}
                 ref={tabs.follow(() => props.focused() && chosen(s()))}
                 role="tab"
                 accessibilityLabel={t("series.season", { number: s().number })}
@@ -43,7 +44,7 @@ export function SeasonTabs(props: {
                 <If when={s().year != null}>
                   <Text style={{ ...type.small(), color: colors.ash() }}>{String(s().year)}</Text>
                 </If>
-              </View>
+              </Pressable>
             )}
           </Each>
       </Rail>

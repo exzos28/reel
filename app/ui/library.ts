@@ -27,6 +27,8 @@ export interface SavedItem {
   size: number;
   have: number;
   progress: number;
+  /** What is on the disk is being checked (after a restart): `have` is not known yet. */
+  checking?: boolean;
   /** MiB/s while saving. */
   speed: number | null;
   peers: number | null;
@@ -50,6 +52,8 @@ export interface SavedGroup {
   size: number;
   have: number;
   progress: number;
+  /** An item of it is being checked (after a restart): `have` is not known yet. */
+  checking?: boolean;
   /** MiB/s of its torrents while saving, null when none saves; people sharing them. */
   speed: number | null;
   peers: number;

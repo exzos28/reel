@@ -173,17 +173,25 @@ Mockups: `tablet.html` frames `ipad-home`, `ipad-film`, `ipad-film-scrolled`,
 
 ## Phone (393×852; margin 20)
 
-- Bottom tab bar: Home, Movies, Shows, Anime, Search. iOS 49 pt + 34 pt home-indicator area;
-  Android 80 dp navigation bar with a 64×32 pill indicator, over the gesture area. Visible on
-  every page except the player and while a sheet is up.
-- Root pages: a head under the status bar (y = `safeArea().top`, 44 pt): logo left, Settings
-  36 pt disc right; it scrolls away with the page and an inline nav bar takes over (title centred
-  17/600 on iOS, left-aligned on Android) once the large title has passed.
+- Bottom tab bar: Home, Search, Saved (where the device saves), Settings. iOS 49 pt + 34 pt
+  home-indicator area; Android 80 dp navigation bar with a 64×32 pill indicator, over the gesture
+  area. Visible on every page except the player and while a sheet is up. Home opens the category
+  open last; chosen again, its page goes to its top.
+- Home's categories: under the head of a category's root page, a row of tabs with icons (All,
+  Movies, Series, Cartoons, Anime), the chosen one in snow with a 2 pt red underline, the others
+  ash; it scrolls sideways where it does not fit, over a dark veil where the hero's still is under
+  it. A category picked there opens from its top (a filter of what to watch, not a place kept).
+- Root pages: a head under the status bar (y = `safeArea().top`, 44 pt): the logo; on a
+  category's page Home's tabs under it (44 pt); it scrolls away with the page.
+- Back (Android's system back, Escape): from Search, Saved or Settings to the Home tab; from a
+  category to All; from All the app leaves.
+- Phones are upright everywhere but in the player (iOS: the root controller allows landscape
+  only while a player is on screen).
 - Title pages (over a hero): a 40 pt disc (44 pt touch area) at (16, `safeArea().top` + 4) with
   ‹ (iOS) / ← (Android); scrolled past the hero it becomes the standard bar: "‹ Movies" + title
   (iOS), ← + title (Android). The same corner either way.
-- Settings: pushed from the gear on the current tab ("‹ Home"), large title 34/700 collapsing
-  into the bar on scroll. About on top.
+- Settings: a tab of its own (its root page, no Back), large title 34/700. About and Interface
+  are pushed on it with Back.
 - Release panel: bottom sheet (top at ~40% of the height), grabber 36×5, ✕ 30 pt; swipe down,
   tap above or system back closes it; picking a release closes it.
 - Player: landscape; ✕ 40 pt at the landscape safe-area left (x 62 on a Dynamic Island phone),

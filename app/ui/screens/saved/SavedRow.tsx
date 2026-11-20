@@ -10,23 +10,28 @@ import { cover, rounded, row } from "../../kit/shape";
 import { labelText, metaText, oneLine } from "../../kit/text";
 import { Fmt } from "../../native";
 import type { SavedItem } from "../../library";
-import { alpha, colors, cs, targetSlop, u } from "../../theme";
+import { alpha, colors, cs, density, targetSlop, u } from "../../theme";
 import { episodeCode } from "../../catalog";
 import { SpeedLine } from "../../kit/SpeedLine";
 import pauseIcon from "../../icons/pause.svg";
 import playIcon from "../../icons/play.svg";
 import trashIcon from "../../icons/trash.svg";
+import { Pressable } from "../../kit/Pressable";
+
+/** A phone: the state under the title (no column of its own), a smaller picture, the buttons as
+ * wide as they are: a row the screen's width. */
+export const compact = density === "compact";
 
 const itemStyle = (focused: boolean, nested: boolean): ViewStyle => ({
   ...rowStyle(false, focused, u(24)),
-  height: cs(nested ? 92 : 108),
+  ...(compact ? { minHeight: cs(nested ? 92 : 108), paddingVertical: cs(12) } : { height: cs(nested ? 92 : 108) }),
   paddingLeft: cs(10),
   paddingRight: cs(22),
   marginLeft: nested ? cs(56) : 0,
 });
-const thumbStyle = (): ViewStyle => ({ width: cs(128), height: cs(72), ...rounded(u(8)), overflow: "hidden", backgroundColor: colors.raise() });
+const thumbStyle = (): ViewStyle => ({ width: cs(compact ? 96 : 128), height: cs(compact ? 54 : 72), ...rounded(u(8)), overflow: "hidden", backgroundColor: colors.raise() });
 const imageStyle = () => ({ ...cover(), objectFit: "cover" }) as ViewStyle;
-const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", marginTop: u(8), width: cs(300) });
+const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", marginTop: u(8), width: compact ? "100%" : cs(300) });
 /** What is on the device: the player's "ready" tone, not the watched one. */
 const progressFill = (p: number): ViewStyle => ({ height: "100%", width: `${Math.round(p * 100)}%`, backgroundColor: alpha(colors.snow(), 0.45) });
 
@@ -35,7 +40,7 @@ const progressFill = (p: number): ViewStyle => ({ height: "100%", width: `${Math
 export const STATE_W = 340;
 export const ACTIONS_W = 44 * 3 + 12 * 2;
 export const stateColumn = (): ViewStyle => ({ width: cs(STATE_W) });
-export const actionsBlock = (): ViewStyle => ({ ...row(u(12)), width: cs(ACTIONS_W), justifyContent: "flex-end" });
+export const actionsBlock = (): ViewStyle => ({ ...row(u(12)), ...(compact ? {} : { width: cs(ACTIONS_W) }), justifyContent: "flex-end" });
 
 /** "S3:E5 · The Palace of Terror", or nothing for a film. */
 function episodeLine(i: SavedItem) {
@@ -46,6 +51,7 @@ function episodeLine(i: SavedItem) {
 /** The state in words: "34% · 1.2 GB of 3.4 GB", "Paused", "Saved · 2.1 GB", why it failed. */
 export function stateLine(i: SavedItem): string {
   const size = Fmt.size(i.size);
+  if (i.checking && (i.state === "saving" || i.state === "paused")) return t("saved.state.checking");
   switch (i.state) {
     case "saving":
       return t("saved.state.saving", { percent: Math.floor(i.progress * 100), have: Fmt.size(i.have), size });
@@ -75,8 +81,22 @@ export function SavedRow(props: {
 }) {
   const i = props.item;
   const unfinished = () => ["saving", "paused", "waiting", "resolving"].includes(i().state);
+  const state = () => (
+    <>
+      <Text style={metaText(i().state === "failed" ? colors.soft() : colors.ash())}>{stateLine(i())}</Text>
+      <If when={unfinished() && !i().checking}>
+        <View style={progressTrack()}>
+          <View style={progressFill(i().progress)} />
+        </View>
+      </If>
+      {/* An episode's torrent is its show's: its speed shows on the show's row. */}
+      <If when={!props.nested && i().state === "saving" && i().speed != null}>
+        <SpeedLine speed={() => i().speed!} peers={() => i().peers ?? 0} />
+      </If>
+    </>
+  );
   return (
-    <View
+    <Pressable feedback="row"
       ref={props.viewRef}
       role="button"
       accessibilityLabel={i().title}
@@ -95,19 +115,11 @@ export function SavedRow(props: {
         <If when={!props.nested && episodeLine(i())}>
           <Text style={{ ...metaText(), ...oneLine }}>{episodeLine(i())}</Text>
         </If>
+        <If when={compact}>{state()}</If>
       </View>
-      <View style={stateColumn()}>
-        <Text style={metaText(i().state === "failed" ? colors.soft() : colors.ash())}>{stateLine(i())}</Text>
-        <If when={unfinished()}>
-          <View style={progressTrack()}>
-            <View style={progressFill(i().progress)} />
-          </View>
-        </If>
-        {/* An episode's torrent is its show's: its speed shows on the show's row. */}
-        <If when={!props.nested && i().state === "saving" && i().speed != null}>
-          <SpeedLine speed={() => i().speed!} peers={() => i().peers ?? 0} />
-        </If>
-      </View>
+      <If when={!compact}>
+        <View style={stateColumn()}>{state()}</View>
+      </If>
       <View style={actionsBlock()}>
         <If when={i().state === "saved"}>
           <IconButton size={44} icon={() => playIcon} label={() => t("title.play")} focused={() => props.focusedPart() === 1} background={() => colors.raise()} onPress={props.onPlay} />
@@ -131,6 +143,6 @@ export function SavedRow(props: {
           onPress={props.onRemove}
         />
       </View>
-    </View>
+    </Pressable>
   );
 }

@@ -14,6 +14,7 @@ import { navPosition } from "../preferences";
 import { colors, density, font, radius, safe, ts, u } from "../theme";
 import { NAV_ROW, NAV_TOP } from "./metrics";
 import { NAV } from "./navItems";
+import { Pressable } from "../kit/Pressable";
 
 /** Where the nav sits from the top and how tall its row is (`metrics`, TV pixels). */
 const NAV_BOTTOM = NAV_TOP + NAV_ROW;
@@ -48,7 +49,7 @@ function NavPills(props: Props) {
     <View style={groupStyle()}>
       <Each of={pills} key={(n) => n.id}>
         {(n, i) => (
-          <View
+          <Pressable
             role="button"
             accessibilityLabel={t(`nav.${n().id}`)}
             onPress={() => props.onPick(i())}
@@ -59,7 +60,7 @@ function NavPills(props: Props) {
             <If when={density !== "compact"}>
               <Text style={labelText(tint(n().id))}>{t(`nav.${n().id}`)}</Text>
             </If>
-          </View>
+          </Pressable>
         )}
       </Each>
     </View>

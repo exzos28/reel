@@ -81,8 +81,8 @@ test("the nav opens Movies; a poster opens its film with the releases found; Bac
   await app.keyboard.press("down"); // from the nav into Trending
   await app.keyboard.press("right");
   await app.keyboard.press("enter");
-  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
-  await app.keyboard.press("down"); // the release button, under the actions
+  expect(app.shows("label:1080p BluRay · 8 GB · 412 people sharing")).toBe(true);
+  await app.keyboard.press("right"); // ⌄ in Play, the other releases
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Releases");
   expect(app.texts()).toContain("3 found, the best of each quality first");
@@ -177,8 +177,8 @@ test("in a Mac window the screens lay out with all their columns", async () => {
   await app.press("label:Movies");
   expect(app.texts()).toContain("All movies");
   await app.press("label:Dune >> nth=0");
-  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
-  await app.keyboard.press("down"); // the release button
+  expect(app.shows("label:1080p BluRay · 8 GB · 412 people sharing")).toBe(true);
+  await app.keyboard.press("right"); // ⌄ in Play, the other releases
   await app.keyboard.press("enter"); // the releases panel, with all its columns
   expect(app.texts()).toContain("60 GB");
   await app.keyboard.press("escape");
@@ -212,7 +212,7 @@ test("Mac: Back in the window bar is disabled on a root, goes back from a title;
   await expect(app.press("label:Back")).rejects.toMatchObject({ code: "ERR_NSH_TEST_DISABLED" });
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
-  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
+  expect(app.shows("label:1080p BluRay · 8 GB · 412 people sharing")).toBe(true);
   expect(app.shows("label:Add to Watchlist")).toBe(true); // the page's action, in the bar
   await app.press("label:Back to Movies");
   expect(app.texts()).toContain("All movies");
@@ -343,7 +343,7 @@ test("Mac: the releases open in a sheet under the window bar; Esc closes it, the
   const app = await app_(NATIVE, { platform: "macos", width: 1440, height: 900 });
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
-  await app.keyboard.press("down"); // the release button
+  await app.keyboard.press("right"); // ⌄ in Play, the other releases
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("3 found, the best of each quality first");
   expect(app.shows("label:Close")).toBe(true);

@@ -12,15 +12,21 @@ import type { SavedGroup } from "../../library";
 import { alpha, colors, cs, targetSlop, u } from "../../theme";
 import chevronIcon from "../../icons/chevron.svg";
 import { SpeedLine } from "../../kit/SpeedLine";
-import { actionsBlock, stateColumn } from "./SavedRow";
+import { actionsBlock, compact, stateColumn } from "./SavedRow";
 import pauseIcon from "../../icons/pause.svg";
 import playIcon from "../../icons/play.svg";
 import trashIcon from "../../icons/trash.svg";
+import { Pressable } from "../../kit/Pressable";
 
-const groupStyle = (focused: boolean): ViewStyle => ({ ...rowStyle(false, focused, u(24)), height: cs(108), paddingLeft: cs(10), paddingRight: cs(22) });
-const thumbStyle = (): ViewStyle => ({ width: cs(160), height: cs(90), ...rounded(u(8)), overflow: "hidden", backgroundColor: colors.raise() });
+const groupStyle = (focused: boolean): ViewStyle => ({
+  ...rowStyle(false, focused, u(24)),
+  ...(compact ? { minHeight: cs(108), paddingVertical: cs(12) } : { height: cs(108) }),
+  paddingLeft: cs(10),
+  paddingRight: cs(22),
+});
+const thumbStyle = (): ViewStyle => ({ width: cs(compact ? 96 : 160), height: cs(compact ? 54 : 90), ...rounded(u(8)), overflow: "hidden", backgroundColor: colors.raise() });
 const imageStyle = () => ({ ...cover(), objectFit: "cover" }) as ViewStyle;
-const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", marginTop: u(8), width: cs(300) });
+const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", marginTop: u(8), width: compact ? "100%" : cs(300) });
 const progressFill = (p: number): ViewStyle => ({ height: "100%", width: `${Math.round(p * 100)}%`, backgroundColor: alpha(colors.snow(), 0.45) });
 
 export function SavedGroupRow(props: {
@@ -39,9 +45,26 @@ export function SavedGroupRow(props: {
   onRemove: () => void;
 }) {
   const g = props.group;
+  const state = () => (
+    <If when={props.saving}>
+      <View>
+        <Text style={metaText()}>
+          {g().checking ? t("saved.state.checking") : t("saved.state.saving", { percent: Math.floor(g().progress * 100), have: Fmt.size(g().have), size: Fmt.size(g().size) })}
+        </Text>
+        <If when={!g().checking}>
+          <View style={progressTrack()}>
+            <View style={progressFill(g().progress)} />
+          </View>
+        </If>
+        <If when={g().speed != null}>
+          <SpeedLine speed={() => g().speed!} peers={() => g().peers} />
+        </If>
+      </View>
+    </If>
+  );
   const line = () => t(g().count === 1 ? "saved.group_line_one" : "saved.group_line", { count: g().count, size: Fmt.size(g().size) });
   return (
-    <View
+    <Pressable feedback="row"
       ref={props.viewRef}
       role="button"
       accessibilityLabel={g().title}
@@ -59,20 +82,11 @@ export function SavedGroupRow(props: {
       <View style={{ flex: 1, gap: u(4) }}>
         <Text style={{ ...labelText(), ...oneLine }}>{g().title}</Text>
         <Text style={{ ...metaText(), ...oneLine }}>{line()}</Text>
+        <If when={compact}>{state()}</If>
       </View>
-      <View style={stateColumn()}>
-      <If when={props.saving}>
-        <View>
-          <Text style={metaText()}>{t("saved.state.saving", { percent: Math.floor(g().progress * 100), have: Fmt.size(g().have), size: Fmt.size(g().size) })}</Text>
-          <View style={progressTrack()}>
-            <View style={progressFill(g().progress)} />
-          </View>
-          <If when={g().speed != null}>
-            <SpeedLine speed={() => g().speed!} peers={() => g().peers} />
-          </If>
-        </View>
+      <If when={!compact}>
+        <View style={stateColumn()}>{state()}</View>
       </If>
-      </View>
       <View style={actionsBlock()}>
         <If when={props.onPause}>
           <IconButton
@@ -89,6 +103,6 @@ export function SavedGroupRow(props: {
         </View>
         <IconButton size={44} icon={() => trashIcon} label={() => t("saved.remove_all")} focused={() => props.focusedPart() === 2} background={() => colors.raise()} onPress={props.onRemove} />
       </View>
-    </View>
+    </Pressable>
   );
 }
