@@ -85,8 +85,11 @@ let generation = 0;
 
 // Engine calls are awaited: the native module answers at once, a test's
 // stand-in (`open`'s `modules`) with a promise.
+// Another film or episode while one plays (Up next, the Episodes panel) goes straight from the
+// one to the other: `playing` and `status` never pass through "nothing plays" on the way, which
+// closed the player's screen (iOS: its dialog) and opened it again over the one still leaving.
 export async function play(what: Playing) {
-  stop();
+  end();
   const gen = generation;
   playing.set(what);
   status.set({ phase: "resolving" });
@@ -133,17 +136,23 @@ export function firstFrame() {
   if (job) Engine.firstFrame(job);
 }
 
-export function stop() {
+/** What plays now ends: its place saved, its job closed, its answers dropped. */
+function end() {
   saveProgress();
   generation++;
   clearInterval(poll);
   poll = undefined;
   if (job) Engine.close(job);
   job = 0;
-  playing.set(null);
-  status.set({ phase: "idle" });
   timeline.set({ ranges: [], ahead: 0 });
   position.set(0);
   duration.set(0);
   startAt.set(0);
+}
+
+/** Nothing plays: the player goes. */
+export function stop() {
+  end();
+  playing.set(null);
+  status.set({ phase: "idle" });
 }

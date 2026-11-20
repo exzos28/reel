@@ -416,3 +416,30 @@ test("Mac: a drag on the volume keeps the controls up until it is let go", async
   await app.wait(5100);
   expect(app.shows("volume")).toBe(false);
 });
+
+// Another episode plays in the same player: on iOS the player is a dialog of its own, and going
+// through "nothing plays" closed it and opened another over the one leaving (a blank screen).
+test("phone: an episode picked in the Episodes sheet plays in the same player, which stays up", async () => {
+  const turns: boolean[] = [];
+  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } }, "Resume S3:E2 · 10:00");
+  await app.press("label:Episodes");
+  await app.press("Old Story");
+  expect(app.shows("player-host")).toBe(true); // never closed on the way
+  await app.wait(600);
+  expect(app.shows("player-host")).toBe(true);
+  expect(app.shows("scrubber")).toBe(true);
+  expect(turns).toEqual([]); // the player was not torn down (it turns upright as it goes)
+});
+
+test("phone: Up next plays the next episode in the same player", async () => {
+  const turns: boolean[] = [];
+  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, "Catalog.upNext": nextEpisode, "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } }, "Resume S3:E2 · 10:00");
+  expect(app.texts()).toContain("Next episode · S3:E3");
+  await app.press("label:Play now");
+  expect(app.shows("player-host")).toBe(true);
+  await app.wait(600);
+  expect(app.shows("player-host")).toBe(true);
+  expect(turns).toEqual([]);
+  await app.press("label:Watch credits"); // the next one's card: the controls come back
+  expect(app.shows("scrubber")).toBe(true);
+});

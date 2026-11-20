@@ -262,6 +262,21 @@ export function Player() {
   });
   const dismissed = signal(false);
   const card = computed(() => next() != null && !dismissed());
+  // Another episode (Up next, the Episodes panel) in the same player: it plays, its Up next
+  // comes, the release picked for the last one is not its, and the controls show a moment (as
+  // they do when a player opens).
+  let playingId = untracked(what)?.id;
+  effect(() => {
+    const id = what()?.id;
+    if (id == null || id === playingId) return;
+    playingId = id;
+    untracked(() => {
+      paused.set(false);
+      dismissed.set(false);
+      picked.set({});
+      poke();
+    });
+  });
   // Up next takes the keys and the screen: the panels and sheets close under it.
   effect(() => {
     if (card()) untracked(() => (panel.set(false), episodesOpen.set(false)));
