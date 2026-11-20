@@ -80,11 +80,13 @@ releases: `docs/releasing.md`.
 
 ## Git
 
-- Nothing is pushed to main directly. Work on a branch, in your own worktree (never switch
-  branches or pull in the main checkout another agent may use), commit after every working step,
-  push the branch and open a PR. Never turn on auto-merge (`gh pr merge --auto`): a PR merges
-  only when the user says so, after they have checked it by hand where it needs that. A red
-  check is fixed on the branch.
+- Two branches: `develop` (default) takes every PR; `main` takes only version PRs from `develop`
+  and each merge into it publishes a release (`docs/releasing.md`). Nothing is pushed to either
+  directly. Work on a branch, in your own worktree (never switch branches or pull in the main
+  checkout another agent may use), commit after every working step, push the branch and open a
+  PR into `develop`. Never turn on auto-merge (`gh pr merge --auto`). A PR into `develop` merges
+  when the user says so without waiting for its checks; a red check on `develop` afterwards is
+  fixed on `develop`.
 - A PR that changes what the viewer sees adds an entry to `.changes/` (`.changes/README.md`);
   otherwise label it `no-changeset`. Versions and releases come from those entries
   (`build/release.sh`, `docs/releasing.md`); never bump `app/nsh.json` by hand.

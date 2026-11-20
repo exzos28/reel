@@ -22,11 +22,12 @@ The version and build come from `app/nsh.json` only (`docs/releasing.md`). `REEL
 
 ## Workflows
 
-- `ci.yml`: on PRs and on main. Calls `checks.yml`, which main's branch protection requires before
+- `ci.yml`: on PRs, on develop and on main. Calls `checks.yml`, which main's branch protection requires before
   a PR merges (merged by hand, `gh pr merge --merge`; never auto-merge). The platform builds
   (`build.yml` and `tizen.yml`) run only on a PR with the `build` label, on a version PR (branch
   `release/*`) and by hand (`workflow_dispatch`, input `build`). A newer push to a PR cancels its
-  older run; on main every commit keeps its run.
+  older run; on develop and main every commit keeps its run. A PR into develop does not wait for it (develop has
+  no required checks); main requires it (`docs/releasing.md`, "Branches").
 - `checks.yml`: `ui-rules`, `changeset` (a PR that changes the app adds an entry to `.changes/`,
   `build/changes.py check`; the `no-changeset` label skips it), `test-crates`, `app` (the steps
   `typecheck`, `no-engine`, `test-rust` and the first third of the `*.test.tsx`) and `ui 2`, `ui 3`
