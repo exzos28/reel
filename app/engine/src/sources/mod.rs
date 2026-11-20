@@ -388,7 +388,8 @@ fn rank(items: &[Item], query: &Query, numbering: &Numbering) -> (Vec<Value>, Ve
                 "indexer": it.indexer,
                 "info": info,
                 // More than one episode (or a season without numbers): its size is shared out.
-                "seasonPack": info.episodes.len() != 1,
+                // A film's release has no episodes and is never a pack.
+                "seasonPack": !matches!(query, Query::Movie { .. }) && info.episodes.len() != 1,
             }),
         ));
     }
@@ -442,6 +443,14 @@ mod tests {
         let show = ["Сверхъестественное".to_owned()];
         assert!(!is_about("Экстрасенсы. 3 S6 выпуск [2026, мистика, сверхъестественное, HDTV 1080p]", &show, None, false), "a genre in the tags is not the title");
         assert!(is_about("Сверхъестественное / Supernatural / S6E1-22 (22) [2010, США, мистика, BDRip 720p]", &show, None, false));
+    }
+
+    #[test]
+    fn a_film_release_is_not_a_season_pack() {
+        let items = torznab::parse(include_str!("fixtures/torznab-sintel.xml")).unwrap();
+        let q = Query::Movie { imdb: None, title: "Sintel".into(), year: Some(2010) };
+        let r = rank(&items, &q, &Numbering::default()).0;
+        assert!(r.iter().all(|r| r["seasonPack"] == false), "{r:?}");
     }
 
     #[test]
