@@ -326,19 +326,21 @@ search:
   recent: "Son aramalar"
   clear: "Geçmişi temizle"
   searching: "Aranıyor…"
-  none: "“%{query}” için hiçbir şey bulunamadı."
+  none: "“%{query}” için hiçbir şey bulunamadı. Orijinal adı ya da daha az kelime dene."
   failed: "TMDB ve AniList yanıt vermedi. Bağlantını kontrol edip yeniden dene."
   no_tmdb: "Bu sürümde TMDB anahtarı yok, bu yüzden yalnızca anime aranıyor."
   section:
     movies: "Filmler"
     shows: "Diziler"
     anime: "Anime"
+    trending: "Şu an trend"
   try_again: "Yeniden dene"
   # A row of results whose source did not answer.
   row_failed:
     movies: "Filmler yüklenemedi."
     shows: "Diziler yüklenemedi."
     anime: "Animeler yüklenemedi."
+  clear_query: "Aramayı temizle"
 
 compat:
   audio_dts: "Bu sürümde yalnızca DTS ses var ve bu cihaz onu oynatamıyor. Başka bir sürüm seç."

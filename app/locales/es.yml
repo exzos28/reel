@@ -326,19 +326,21 @@ search:
   recent: "Búsquedas recientes"
   clear: "Borrar historial"
   searching: "Buscando…"
-  none: "No se ha encontrado nada para «%{query}»."
+  none: "No se ha encontrado nada para «%{query}». Prueba con el título original o con menos palabras."
   failed: "TMDB y AniList no responden. Comprueba la conexión y vuelve a intentarlo."
   no_tmdb: "Esta versión no tiene clave de TMDB, así que solo se busca anime."
   section:
     movies: "Películas"
     shows: "Series"
     anime: "Anime"
+    trending: "Tendencias"
   try_again: "Reintentar"
   # A row of results whose source did not answer.
   row_failed:
     movies: "No se han podido cargar las películas."
     shows: "No se han podido cargar las series."
     anime: "No se ha podido cargar el anime."
+  clear_query: "Borrar búsqueda"
 
 compat:
   audio_dts: "Esta versión solo tiene audio DTS, que este dispositivo no puede reproducir. Elige otra versión."

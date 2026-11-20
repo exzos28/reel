@@ -1,6 +1,6 @@
 // Search, a nav destination: the nav, the page's title and the query field,
 // then the results as rows of 16:9 cards (Movies, Shows, Anime), or the
-// recent searches while nothing is typed. The core searches once the query
+// recent searches while nothing is typed (before any, what is trending now, the core's row). The core searches once the query
 // rests and answers through the catalog's revision. Remote: the screen opens
 // on the field (with its keyboard up where one types at once); OK on the
 // field brings the keyboard (a TV's on-screen one), Up goes to the nav, Down
@@ -95,11 +95,20 @@ export function SearchScreen() {
     rememberSearch(query());
     openTitle(item.id);
   };
+  /** A recent search searches at once (a tap with the keyboard up too: the page keeps it for the
+   * tap), the keyboard down so its results show. */
   const pickRecent = (i: number) => {
     const q = recent()[i];
     rememberSearch(q);
     query.set(q);
+    input?.blur();
+    typing.set(false);
     toField(false);
+  };
+  /** The field's ✕: an empty query (the recent searches again), still typing. */
+  const clearQuery = () => {
+    query.set("");
+    type();
   };
   const clearRecent = () => {
     forgetSearches();
@@ -152,7 +161,7 @@ export function SearchScreen() {
   onBack(() => typing() && (input?.blur(), typing.set(false), true));
 
   /** The page puts the focused row in its upper third. */
-  const page = scroller({ anchor: (viewport) => viewport / 3, memory: "search" });
+  const page = scroller({ anchor: (viewport) => viewport / 3, memory: "search", keepsKeyboard: true });
   showNav(() => (zone() === "nav" ? navAt() : null));
   useRootBack({ ctl: page, onNav: () => zone() === "nav", toNav });
 
@@ -164,6 +173,7 @@ export function SearchScreen() {
             value={query}
             focused={() => zone() === "field"}
             onChange={(text) => query.set(text)}
+            onClear={clearQuery}
             onSubmit={submit}
             onFocus={() => {
               zone.set("field");

@@ -326,19 +326,21 @@ search:
   recent: "最近搜索"
   clear: "清除历史记录"
   searching: "正在搜索…"
-  none: "没有找到与“%{query}”相关的内容。"
+  none: "没有找到与“%{query}”相关的内容。试试原名或更少的关键词。"
   failed: "TMDB 和 AniList 没有响应。请检查网络连接后重试。"
   no_tmdb: "此版本没有 TMDB 密钥，因此只能搜索动漫。"
   section:
     movies: "电影"
     shows: "剧集"
     anime: "动漫"
+    trending: "当前热门"
   try_again: "重试"
   # A row of results whose source did not answer.
   row_failed:
     movies: "无法加载电影。"
     shows: "无法加载剧集。"
     anime: "无法加载动漫。"
+  clear_query: "清除搜索"
 
 compat:
   audio_dts: "此资源只有 DTS 音频，本设备无法播放。请选择其他资源。"

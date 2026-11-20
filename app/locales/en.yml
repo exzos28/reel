@@ -328,19 +328,21 @@ search:
   recent: Recent searches
   clear: Clear history
   searching: Searching…
-  none: "Nothing found for “%{query}”."
+  none: "Nothing found for “%{query}”. Try the original title or fewer words."
   failed: TMDB and AniList did not answer. Check the connection and try again.
   no_tmdb: This build has no TMDB key, so only anime is searched.
   section:
     movies: Movies
     shows: Series
     anime: Anime
+    trending: "Trending now"
   try_again: Try again
   # A row of results whose source did not answer.
   row_failed:
     movies: Could not load films.
     shows: Could not load series.
     anime: Could not load anime.
+  clear_query: "Clear search"
 
 compat:
   audio_dts: This release has only DTS audio, which this device cannot play. Choose another release.

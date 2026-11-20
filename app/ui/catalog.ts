@@ -331,7 +331,7 @@ export interface SearchAnswer {
   recent: string[];
   /** `id` is also the translation key `search.section.<id>`. `state` "failed":
    * the row's source did not answer (no items); `retrySearch` asks again. */
-  sections: { id: "movies" | "shows" | "anime"; state: "done" | "failed"; facet: Facet; items: Summary[] }[];
+  sections: { id: "movies" | "shows" | "anime" | "trending"; state: "done" | "failed"; facet: Facet; items: Summary[] }[];
 }
 
 export const search = (query: string) => read<SearchAnswer>("search", () => Catalog.search(query));

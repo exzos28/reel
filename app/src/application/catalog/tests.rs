@@ -895,11 +895,21 @@ fn an_empty_query_lists_the_recent_searches_kept_in_the_data_dir() {
     let empty = search::search("   ");
     assert_eq!(empty["state"], "recent");
     assert_eq!(empty["recent"], json!([]));
+    assert_eq!(empty["sections"], json!([]), "nothing trending came yet");
+    // Before anything was searched: what is trending, to start from.
+    seed_trending("movie", "tmdb_trending_movie.json");
+    seed_trending("tv", "tmdb_discover_tv.json");
+    let start = search::search("");
+    assert_eq!(start["sections"][0]["id"], "trending");
+    assert_eq!(start["sections"][0]["facet"], "kind");
+    let kinds: Vec<_> = list_of(&start["sections"][0]["items"]).iter().take(2).map(|s| s["kind"].clone()).collect();
+    assert_eq!(kinds, [json!("movie"), json!("show")], "films and series in turn");
     for q in ["dune", "Arrival", "  frieren  ", "DUNE"] {
         search::remember(q);
     }
     search::remember(" ");
     assert_eq!(search::search("")["recent"], json!(["DUNE", "frieren", "Arrival"]));
+    assert_eq!(search::search("")["sections"], json!([]), "the recent searches instead");
     for i in 0..15 {
         search::remember(&format!("q{i}"));
     }

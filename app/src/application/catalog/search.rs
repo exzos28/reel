@@ -70,7 +70,8 @@ pub(super) fn answer_key(query: &str, lang: &str) -> String {
 }
 
 /// The search screen: `{"query","state","tmdb","recent","sections"}`.
-/// `state`: "recent" (nothing typed: `recent` lists the last searches),
+/// `state`: "recent" (nothing typed: `recent` lists the last searches; with none yet,
+/// `sections` holds one row, "trending", of what is trending to start from),
 /// "searching" (`sections` still show the previous query's results),
 /// "done" (`sections` empty: nothing found), "failed" (the sources did not
 /// answer). `tmdb`: whether films and shows are searched (without a key
@@ -89,7 +90,9 @@ pub fn search(query: &str) -> Value {
             job.abort();
         }
         drop(st);
-        return json!({ "query": "", "state": "recent", "tmdb": tmdb, "recent": recent(), "sections": [] });
+        let recent = recent();
+        let sections = if recent.is_empty() { trending_row(tmdb) } else { Vec::new() };
+        return json!({ "query": "", "state": "recent", "tmdb": tmdb, "recent": recent, "sections": sections });
     }
     let lang = settings::content_language();
     let key = answer_key(&q, &lang);
@@ -119,6 +122,17 @@ pub fn search(query: &str) -> Value {
     };
     let sections = data.as_ref().map(sections).unwrap_or_default();
     json!({ "query": q, "state": state, "tmdb": tmdb, "recent": [], "sections": sections })
+}
+
+/// The start screen's row before anything was searched: Home's trending films and series in
+/// turn (the same calls, so the same cache), or anime without TMDB; none while nothing came.
+fn trending_row(tmdb: bool) -> Vec<Value> {
+    let by = |k: &'static str| cards(&meta(&Call::Trending(k)));
+    let items = if tmdb { shelf_items(&interleave(by("movie"), by("tv"))) } else { shelf_items(&by("anime")) };
+    if items.is_empty() {
+        return Vec::new();
+    }
+    vec![json!({ "id": "trending", "state": "done", "facet": "kind", "items": items })]
 }
 
 /// Asks `query` again (the Try again of a row that did not load): its rows

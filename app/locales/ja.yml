@@ -326,19 +326,21 @@ search:
   recent: "最近の検索"
   clear: "履歴を消去"
   searching: "検索中…"
-  none: "「%{query}」は見つかりませんでした。"
+  none: "「%{query}」は見つかりませんでした。原題で探すか、言葉を減らしてみてください。"
   failed: "TMDB と AniList から応答がありません。接続を確認して、もう一度お試しください。"
   no_tmdb: "この reel には TMDB キーがないため、アニメだけを検索します。"
   section:
     movies: "映画"
     shows: "ドラマ"
     anime: "アニメ"
+    trending: "いま話題"
   try_again: "再試行"
   # A row of results whose source did not answer.
   row_failed:
     movies: "映画を読み込めませんでした。"
     shows: "ドラマを読み込めませんでした。"
     anime: "アニメを読み込めませんでした。"
+  clear_query: "検索をクリア"
 
 compat:
   audio_dts: "このリリースの音声は DTS のみで、このデバイスでは再生できません。別のリリースを選んでください。"
