@@ -234,3 +234,48 @@ test("phone: the release sits in Play as one short line (the people sharing a nu
   await app.press("label:Other releases");
   expect(app.texts()).toContain("3 found, the best of each quality first");
 });
+
+test("Save names the film's size; when it does not fit it asks, and saves the smaller release the core names", async () => {
+  const GB = 1024 * 1024 * 1024;
+  const saved: string[][] = [];
+  const offer = { size: 25 * GB, free: 19 * GB, fits: false, smaller: { id: "web720", quality: "720p", source: "WEB", size: 1.4 * GB } };
+  const app = await openApp({
+    platform: "macos", width: 1440, height: 900,
+    modules: {
+      "app/native": {
+        ...NATIVE,
+        "Library.supported": true,
+        "Library.title": '{"state":"none","progress":0}',
+        "Library.item": '{"state":"none","progress":0}',
+        "Library.offer": JSON.stringify(offer),
+        "Library.save": (keys: string) => (saved.push(JSON.parse(keys)), true),
+        "Library.saveRelease": (key: string, release: string) => (saved.push([key, release]), true),
+      },
+    },
+  });
+  await app.press("label:Inception >> nth=0");
+  expect(app.shows("text:Save · 25 GB")).toBe(true);
+  await app.press("text:Save · 25 GB");
+  expect(app.texts()).toContain("Not enough space");
+  expect(app.texts()).toContain("Needs 25 GB, 19 GB free on this device.");
+  await app.press("text:Save 720p · 1.4 GB");
+  expect(saved).toEqual([["tmdb:movie:27205", "web720"]]);
+});
+
+test("the Save drawer of a series shows the free space, and says so when the ticked episodes do not fit", async () => {
+  const GB = 1024 * 1024 * 1024;
+  const ep = (n: number) => ({ key: `tmdb:tv:1429:s3e${n}`, number: n, title: `Episode ${n}`, size: 5 * GB, state: "none", progress: 0, locked: false });
+  const drawer = async (picked: { count: number; size: number; fits: boolean | null }) => {
+    const plan = { episodes: [ep(1), ep(2)], saved: 0, total: 2, size: 10 * GB, free: 19 * GB, picked };
+    const app = await openApp({
+      platform: "macos", width: 1440, height: 900,
+      modules: { "app/native": { ...ENGINE, ...SHOW, "Library.supported": true, "Library.title": '{"state":"none","saved":0,"saving":0,"progress":0}', "Library.item": '{"state":"none","progress":0}', "Library.plan": JSON.stringify(plan) } },
+    });
+    await app.press("label:Attack on Titan >> nth=0");
+    await app.press("text:Save");
+    return app;
+  };
+  expect((await drawer({ count: 0, size: 0, fits: true })).texts()).toContain("19 GB free");
+  expect((await drawer({ count: 1, size: 5 * GB, fits: true })).texts()).toContain("5 GB · 19 GB free");
+  expect((await drawer({ count: 8, size: 40 * GB, fits: false })).texts()).toContain("Not enough space: needs 40 GB, 19 GB free");
+});

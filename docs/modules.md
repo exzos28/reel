@@ -114,7 +114,7 @@ Formatting shared by every platform.
 - `position(seconds: u32) -> String`: Playback position in seconds as "1:12:40" / "4:05".
   Called from: `ui/Player.tsx`, `ui/catalog.ts`.
 - `size(bytes: f64) -> String`: A size in bytes as "256 MB", "1 GB", "1.4 GB".
-  Called from: `ui/Player.tsx`, `ui/screens/saved/SavedGroupRow.tsx`, `ui/screens/saved/SavedRow.tsx`, `ui/screens/saved/SavedScreen.tsx`, `ui/screens/settings/SettingsScreen.tsx`, `ui/screens/settings/choices.ts`, `ui/screens/title/SaveDrawer.tsx`.
+  Called from: `ui/Player.tsx`, `ui/layout/HeroActions.tsx`, `ui/screens/saved/SavedGroupRow.tsx`, `ui/screens/saved/SavedRow.tsx`, `ui/screens/saved/SavedScreen.tsx`, `ui/screens/settings/SettingsScreen.tsx`, `ui/screens/settings/choices.ts`, `ui/screens/title/SaveDrawer.tsx`, `ui/screens/title/TitleScreen.tsx`.
 - `speed(mib_per_s: f64) -> String`: A download speed in MiB/s as "3.4 MB/s" (one decimal under 10, whole above).
   Called from: `ui/Player.tsx`, `ui/kit/SpeedLine.tsx`.
 
@@ -161,7 +161,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/library.ts`.
 - `offer(key: String) -> String`: Save on a film's page: `{"size","free","fits","smaller":{"id","quality","source","size"}}` (see `library::offer`): the size for its button, and whether it fits the free space.
   JSON: `{"size","free","fits","smaller":{"id","quality","source","size"}}`
-  Called from: nothing in the UI.
+  Called from: `ui/library.ts`.
 - `openFolder() -> bool` (`open_folder`): Opens the folder saved films go into in the system's file manager (desktops); false where there is none or it did not open.
   Called from: `ui/library.ts`.
 - `pause(id: u32)`: Pauses saving the item (its whole torrent: episodes of one pack pause together).
@@ -178,7 +178,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `save(keys: String) -> bool`: Saves the catalog keys in `keys` (a JSON array: a film, or episodes) once their release is known; what is saved already stays. False when this device saves nothing.
   Called from: `ui/library.ts`.
 - `saveRelease(key: String, release: String) -> bool` (`save_release`): Saves film `key` from release `release` (the id `offer`'s `smaller` gives) instead of the one Play uses, which stays as it is.
-  Called from: nothing in the UI.
+  Called from: `ui/library.ts`.
 - `setFolder(folder: String) -> String` (`set_folder`): Saves new items into `folder` from now on: "" when done, else why not.
   Called from: nothing in the UI.
 - `supported() -> bool`: Whether this device saves films (false on TVs and without the engine): no Save control shows when it does not.
@@ -244,7 +244,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `setContentLanguage(tag: String) -> String` (`set_content_language`): Saves the content language (titles, descriptions, episode names; one of `contentLanguages` from `load`) and drops what was asked in the old one; the language in effect.
   Called from: `ui/preferences.ts`.
 - `setFamily(name: String) -> bool` (`set_family`): Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows", "linux", "tablet", "phone"), once at start: what Play and Save pick by themselves follows from it (a phone keeps to 1080p and a size per hour, `fit::limits`). False for an unknown name.
-  Called from: nothing in the UI.
+  Called from: `ui/platform/index.ts`.
 - `setLanguage(tag: String)` (`set_language`): Saves the UI language (a BCP 47 tag).
   Called from: nothing in the UI.
 - `setLoader(loader: String) -> String` (`set_loader`): Saves the loading animation ("logo" or "dinosaur"; another value is refused); the one in effect.

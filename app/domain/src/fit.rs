@@ -53,10 +53,10 @@ pub fn within(limits: Limits, lines: Option<u32>, bytes: f64, minutes: u32) -> b
 pub const RESERVE: u64 = 1024 * 1024 * 1024;
 
 /// Whether saving `needed` bytes fits in `free` with `pending` (what is left of the items
-/// still saving) and a margin: a tenth of it (the pieces at a file's edges write into the files
-/// beside it, subtitles come along) and `RESERVE`.
+/// still saving) and a margin: a fiftieth of it (the pieces at a file's edges write into the files
+/// beside it, a few MB each; subtitles come along) and `RESERVE`.
 pub fn fits(needed: u64, free: u64, pending: u64) -> bool {
-    needed.saturating_add(needed / 10).saturating_add(pending).saturating_add(RESERVE) <= free
+    needed.saturating_add(needed / 50).saturating_add(pending).saturating_add(RESERVE) <= free
 }
 
 #[cfg(test)]
@@ -85,12 +85,13 @@ mod tests {
     }
 
     #[test]
-    fn saving_leaves_a_tenth_and_the_reserve() {
+    fn saving_leaves_a_fiftieth_and_the_reserve() {
         let gib = 1024 * 1024 * 1024u64;
         assert!(!fits(25 * gib, 19 * gib, 0), "25 GB in 19 GB free");
         assert!(fits(10 * gib, 19 * gib, 0));
         assert!(!fits(10 * gib, 19 * gib, 8 * gib), "with 8 GB still to come");
-        assert!(!fits(17 * gib, 19 * gib, 0), "17 GB + a tenth + the reserve is over 19");
+        assert!(fits(17 * gib, 19 * gib, 0), "17 GB + a fiftieth + the reserve is under 19");
+        assert!(!fits(18 * gib, 19 * gib, 0), "18 GB + a fiftieth + the reserve is over 19");
         assert!(!fits(u64::MAX, 19 * gib, 0));
     }
 }

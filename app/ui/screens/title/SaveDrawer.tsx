@@ -94,12 +94,22 @@ export function SaveDrawer(props: {
 }) {
   const eps = () => props.plan().episodes;
   const fresh = () => eps().filter((e) => !e.locked && props.picked().has(e.key));
-  const more = () => fresh().reduce((s, e) => s + (e.size ?? 0), 0);
+  /** The ticked episodes do not fit the free space (the core says; null: not known yet). */
+  const tooBig = () => props.plan().picked.fits === false;
   /** Whole season: ticked when every episode is saved or ticked, a dash when some are. */
   const allOn = () => eps().length > 0 && eps().every((e) => e.locked || props.picked().has(e.key));
   const someOn = () => !allOn() && eps().some((e) => e.locked || props.picked().has(e.key));
   /** The season tabs scroll sideways (a show may have a dozen), the chosen one kept in view. */
   const tabs = scroller({ horizontal: true, anchor: () => 0 });
+  /** Under the list: "4.5 GB · 19 GB free", "19 GB free" with nothing ticked, and when it does not
+   * fit "Not enough space: needs 25 GB, 19 GB free". */
+  const spaceLine = () => {
+    const { size } = props.plan().picked;
+    const free = props.plan().free;
+    if (free == null) return size > 0 ? t("saved.drawer.more", { size: Fmt.size(size) }) : "";
+    if (tooBig()) return t("saved.drawer.no_room", { size: Fmt.size(size), free: Fmt.size(free) });
+    return size > 0 ? t("saved.drawer.more_free", { size: Fmt.size(size), free: Fmt.size(free) }) : t("saved.drawer.free", { free: Fmt.size(free) });
+  };
   const saveLabel = () => (fresh().length === 0 ? t("saved.drawer.choose") : fresh().length === 1 ? t("saved.drawer.save_one") : t("saved.drawer.save_n", { count: fresh().length }));
   return (
     <Drawer
@@ -112,10 +122,10 @@ export function SaveDrawer(props: {
       // Save stays in view at the foot, whatever row the list is scrolled to.
       footer={() => (
         <View style={{ gap: u(10) }}>
-          <If when={more() > 0}>
-            <Text style={metaText()}>{t("saved.drawer.more", { size: Fmt.size(more()) })}</Text>
+          <If when={spaceLine()}>
+            <Text style={metaText(tooBig() ? colors.red() : undefined)}>{spaceLine()}</Text>
           </If>
-          <Button kind="primary" label={saveLabel} focused={() => props.focusedAt() === eps().length + 1} disabled={() => fresh().length === 0} onPress={props.onSave} />
+          <Button kind="primary" label={saveLabel} focused={() => props.focusedAt() === eps().length + 1} disabled={() => fresh().length === 0 || tooBig()} onPress={props.onSave} />
         </View>
       )}
     >

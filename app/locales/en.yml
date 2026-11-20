@@ -80,6 +80,10 @@ title:
   saved: Saved
   saved_one: 1 episode saved
   saved_some: "%{count} episodes saved"
+  save_size: "Save · %{size}"
+  no_space_title: "Not enough space"
+  no_space_about: "Needs %{needed}, %{free} free on this device."
+  save_smaller: "Save %{quality} · %{size}"
 
 card:
   left: "%{time} left"
@@ -550,6 +554,9 @@ saved:
     save_one: Save 1 episode
     choose: Choose episodes
     more: "%{size} more"
+    free: "%{free} free"
+    more_free: "%{size} · %{free} free"
+    no_room: "Not enough space: needs %{size}, %{free} free"
     new: new
 
 confirm:
