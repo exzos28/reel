@@ -4,7 +4,8 @@
 //   head (root pages, scrolling away), its Back head (deep pages, fixed), its discs over a
 //   title's hero; a desktop's window bar and the tablet's top row are the app's, over all
 //   pages, and turn solid by this page's scroll (`frameSolid`, the page on top only);
-// - the page's title, at the same place on every page of a family;
+// - the page's title, at the same place on every page of a family (none on a phone's category
+//   page: its tabs say where you are);
 // - a title's header action (Add to list): a TV's top-right, a phone's disc across from Back,
 //   in the bar a scrolled title turns into (a desktop and a tablet carry it in their bars);
 // - the room under the content (the system's area, the tab bar, a TV's tail);
@@ -14,7 +15,7 @@
 //   indicator, within the thumb's reach (`footPinned`; elsewhere the screen keeps it inline).
 import { computed, effect, safeArea, Text, View, windowSize, type JSX, type TextStyle, type ViewRef, type ViewStyle } from "nsh";
 import { pageTitle } from "../kit/text";
-import { go, section, toTop } from "../nav";
+import { go, isCategory, section, toTop } from "../nav";
 import { caps } from "../platform";
 import { alpha, colors, safe, u } from "../theme";
 import { frame } from "./chrome";
@@ -57,6 +58,10 @@ const scrimStyle = (solid: boolean): ViewStyle => ({
     ? { backgroundColor: alpha(colors.ink(), 0.96) }
     : { backgroundImage: `linear-gradient(180deg, ${alpha(colors.ink(), 0.7)} 0%, ${alpha(colors.ink(), 0)} 100%)` }),
 });
+
+/** Whether the page shows its title (and a screen its lead under it): not on a phone's category
+ * page (Home's tabs over it already say where you are, and the room goes to the content). */
+export const pageTitleShown = () => !(phoneTitle && isCategory(section()));
 
 /** Whether a page's `foot` is pinned under its content (a phone); elsewhere the frame does not
  * show it and the screen lays its actions out inline. */
@@ -134,10 +139,10 @@ export function PageFrame(props: {
             <If when={props.hero == null}>
               <View style={{ height: m().headBottom }} />
             </If>
-            <If when={props.title && !props.titleLead}>
+            <If when={props.title && !props.titleLead && pageTitleShown()}>
               <Text style={titleStyle(m().titleTop - m().headBottom)}>{props.title!()}</Text>
             </If>
-            <If when={props.title && props.titleLead}>
+            <If when={props.title && props.titleLead && pageTitleShown()}>
               <View style={leadRowStyle(m().titleTop - m().headBottom)}>
                 {props.titleLead!()}
                 <Text style={{ ...pageTitle(), flexShrink: 1 }}>{props.title!()}</Text>

@@ -293,7 +293,7 @@ browse:
     all: All cartoons
   anime:
     title: Anime
-    lead: Seasonal hits and all-time favourites
+    lead: Seasonal hits and all-time favorites
     trending: Trending this season
     all: All anime
   filter:
@@ -340,7 +340,7 @@ search:
 compat:
   audio_dts: This release has only DTS audio, which this device cannot play. Choose another release.
   audio_truehd: This release has only TrueHD audio, which this device cannot play. Choose another release.
-  dolby_vision_only: This release is Dolby Vision without an HDR10 layer; this device would show wrong colours. Choose another release.
+  dolby_vision_only: This release is Dolby Vision without an HDR10 layer; this device would show wrong colors. Choose another release.
   container: This file's format does not play on this device. Choose another release.
 
 player:

@@ -14,6 +14,9 @@ test("phone: Home, Search and Settings at the bottom; the categories at the top 
   expect(app.shows("label:More")).toBe(false);
   await app.press("label:Movies");
   expect(app.texts()).toContain("All movies");
+  // The tab says where you are: no page title or lead over the row.
+  expect(app.texts()).not.toContain("Discover the latest and greatest films");
+  expect(app.texts().filter((x) => x === "Movies").length).toBe(1);
   await app.press("label:Dune >> nth=0");
   expect(app.shows("label:1080p BluRay · 8 GB · 412 people sharing")).toBe(true);
   expect(app.shows("tab-bar")).toBe(true); // on a pushed page too

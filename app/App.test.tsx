@@ -245,7 +245,7 @@ test("the nav opens Anime after Series and Cartoons: its trending row and all an
   await app.keyboard.press("up");
   for (let i = 0; i < 4; i++) await app.keyboard.press("right"); // Movies, Series, Cartoons, Anime
   await app.keyboard.press("enter");
-  expect(app.texts()).toContain("Seasonal hits and all-time favourites");
+  expect(app.texts()).toContain("Seasonal hits and all-time favorites");
   expect(app.texts()).toContain("Trending this season");
   expect(app.texts()).toContain("All anime");
   await app.keyboard.press("down"); // from the nav into the row
