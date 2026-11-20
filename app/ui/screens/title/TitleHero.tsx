@@ -4,7 +4,7 @@ import { t } from "nsh/i18n";
 import { StateLine } from "../../kit/StateLine";
 import { openSettings } from "../../nav";
 import { openSourceDrawer } from "../source/SourceDrawer";
-import { Hero } from "../../layout/Hero";
+import { Hero, TITLE_ABOUT_LINES } from "../../layout/Hero";
 import { aboutExpandsInHero, wholeAboutInHero } from "./AboutBlock";
 import { heroTop } from "../../layout/metrics";
 import { actionsRow, PlayButton, SaveButton, SPLIT_HEIGHT, SplitPlay, TrailerButton } from "../../layout/HeroActions";
@@ -118,7 +118,8 @@ export function TitleHero(props: {
       titleSize={88}
       top={heroTop("title", show() ? 150 : 176)}
       fit
-      wholeAbout={wholeAboutInHero}
+      wholeAbout={false}
+      aboutLines={wholeAboutInHero ? TITLE_ABOUT_LINES : undefined}
       expandAbout={aboutExpandsInHero}
       wholeTitle={wholeAboutInHero}
     >

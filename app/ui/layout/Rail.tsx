@@ -41,11 +41,19 @@ const fadeStyle = (side: "left" | "right"): ViewStyle => ({
   backgroundImage: `linear-gradient(${side === "left" ? 90 : 270}deg, ${colors.ink()} 0%, ${alpha(colors.ink(), 0)} 100%)`,
 });
 
-/** `gap` between items and the room above and below them (`top`, `bottom`), TV pixels. */
-export function Rail(props: { ctl: ScrollCtl; gap: number; top?: number; bottom?: number; children: JSX.Element }) {
+/** `gap` between items and the room above and below them (`top`, `bottom`), TV pixels.
+ * `page` is the page the row sits in: the wheel up and down over the row moves it. */
+export function Rail(props: {
+  ctl: ScrollCtl;
+  page?: ScrollCtl;
+  gap: number;
+  top?: number;
+  bottom?: number;
+  children: JSX.Element;
+}) {
   return (
     <View style={outerStyle()}>
-      <Scroller ctl={props.ctl}>
+      <Scroller ctl={props.ctl} page={props.page}>
         <View style={rowStyle(props.gap, props.top ?? 0, props.bottom ?? 0)}>{props.children}</View>
       </Scroller>
       <View style={fadeStyle("left")} />

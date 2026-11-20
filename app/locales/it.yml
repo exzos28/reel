@@ -66,7 +66,7 @@ title:
   resume: "Riprendi da %{at}"
   play_episode: "Riproduci %{episode}"
   resume_episode: "Riprendi %{episode} da %{at}"
-  about_more: "Mostra tutta la descrizione"
+  about_more: "Espandi"
   about_less: "Mostra meno"
   # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.

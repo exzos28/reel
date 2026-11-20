@@ -99,7 +99,13 @@ export function PersonScreen(props: { id: string }) {
         page={page}
         focusRow={() => Math.floor(focusedAt() / columns())}
         cell={(item, at) => (
-          <GridCard item={item} width={() => cellWidth(columns(), GRID_GAP)} focused={() => focusedAt() === at()} onPress={() => open(at())} />
+          <GridCard
+            item={item}
+            width={() => cellWidth(columns(), GRID_GAP)}
+            focused={() => focusedAt() === at()}
+            page={page}
+            onPress={() => open(at())}
+          />
         )}
       />
     </PageFrame>

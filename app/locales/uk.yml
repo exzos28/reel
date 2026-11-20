@@ -66,7 +66,7 @@ title:
   resume: "Продовжити з %{at}"
   play_episode: "Дивитися %{episode}"
   resume_episode: "Продовжити %{episode} з %{at}"
-  about_more: "Показати весь опис"
+  about_more: "Розгорнути"
   about_less: "Згорнути"
   # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.

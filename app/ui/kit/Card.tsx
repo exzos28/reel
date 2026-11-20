@@ -1,7 +1,7 @@
 import { effect, signal, untracked, View, type JSX, type ViewRef, type ViewStyle } from "nsh";
 import { HoverCard } from "nsh/base";
 import { type Summary } from "../catalog";
-import { scrolled } from "../layout/scrollCtl";
+import { scrolled, type ScrollCtl } from "../layout/scrollCtl";
 import { focusRing, hoverRing, u } from "../theme";
 import { PREVIEW_DELAY, PREVIEW_LIFT, PreviewBody, previewOn, previewPopup, previewStarting, previewWidth } from "./HoverPreview";
 import { cardRadius, rounded } from "./shape";
@@ -24,6 +24,8 @@ interface CardProps {
   testID?: string;
   picture: JSX.Element;
   preview?: () => Summary;
+  /** The page under the card: a wheel over the preview scrolls it. */
+  page?: ScrollCtl;
   children: JSX.Element;
 }
 
@@ -89,7 +91,7 @@ function PreviewCard(props: CardProps & { preview: () => Summary }) {
         popupStartingStyle={previewStarting(width(), size().width)}
         trigger={card()}
       >
-        <PreviewBody item={props.preview} width={width()} onOpen={props.onPress} />
+        <PreviewBody item={props.preview} width={width()} onOpen={props.onPress} page={props.page} />
       </HoverCard>
     </If>
   );

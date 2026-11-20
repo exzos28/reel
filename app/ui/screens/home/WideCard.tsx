@@ -6,6 +6,7 @@ import { CardLine } from "../../kit/Rating";
 import { cardRadius, rounded } from "../../kit/shape";
 import { labelText, metaText, oneLine } from "../../kit/text";
 import { GRID_GAP, gridCardWidth } from "../../layout/Grid";
+import type { ScrollCtl } from "../../layout/Scroller";
 import { density, u } from "../../theme";
 
 /** A 16:9 card's still height for its width (198 of 352). */
@@ -34,6 +35,8 @@ export function WideCard(props: {
   onPress: () => void;
   /** Its width, points; 352 TV pixels unless the shelf says. */
   width?: () => number;
+  /** The page's scroll: a wheel over the preview moves it. */
+  page: ScrollCtl;
 }) {
   const s = props.item;
   const width = () => props.width?.() ?? u(352);
@@ -43,6 +46,7 @@ export function WideCard(props: {
       focused={props.focused}
       onPress={props.onPress}
       preview={s}
+      page={props.page}
       style={cardBox(width(), 4)}
       viewRef={props.follow(props.focused)}
       picture={[

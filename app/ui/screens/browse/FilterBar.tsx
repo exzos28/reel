@@ -11,7 +11,7 @@ import { row } from "../../kit/shape";
 import { metaText, oneLine, sectionTitle } from "../../kit/text";
 import { colors, density, safe, u } from "../../theme";
 import { Rail, railLead } from "../../layout/Rail";
-import { scroller } from "../../layout/Scroller";
+import { scroller, type ScrollCtl } from "../../layout/Scroller";
 import chevronIcon from "../../icons/chevron.svg";
 import { Pressable } from "../../kit/Pressable";
 
@@ -70,6 +70,8 @@ export function FilterBar(props: {
   openAt: () => number | null;
   blockRef: (r: ViewRef) => void;
   onOpen: (i: number) => void;
+  /** The page's scroll: the wheel up and down over the pills moves it. */
+  page: ScrollCtl;
 }) {
   const line = scroller({ horizontal: true, anchor: railLead });
   const sortAt = () => props.groups().findIndex((g) => g.id === "sort");
@@ -119,7 +121,7 @@ export function FilterBar(props: {
     >
       <View ref={props.blockRef} style={{ marginTop: u(26), gap: u(4) }}>
         <Text style={{ ...sectionTitle(), paddingHorizontal: safe().x }}>{props.title()}</Text>
-        <Rail ctl={line} gap={12}>
+        <Rail ctl={line} page={props.page} gap={12}>
           {clearPill()}
           {groupPills()}
           {sortPill()}

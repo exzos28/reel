@@ -1,7 +1,7 @@
 // The scroll view of a `scroller` (scrollCtl.ts): hides the system's
 // indicator; on a Mac a thin bar of our own replaces it, a TV and a phone
 // show none.
-import { Scroll, signal, View, type JSX, type ScrollEvent, type ScrollRef, type ViewRef, type ViewStyle } from "nsh";
+import { Scroll, signal, View, type JSX, type ScrollEvent, type ScrollRef, type ViewRef, type ViewStyle, type WheelEvent } from "nsh";
 import { Scrollbar } from "nsh/base";
 import { alpha, colors, density, u } from "../theme";
 import { chrome } from "./chrome";
@@ -15,6 +15,11 @@ export { scroller, type Follow, type Placement, type ScrollCtl } from "./scrollC
 const OWN_WHEEL = chrome === "windows" || chrome === "linux";
 /** Points a wheel notch moves (it reports lines: three a notch). */
 const POINTS_PER_LINE = 40;
+/** The scale of one event's deltas (mouse notches report lines, a touchpad points). */
+const wheelScale = (e: WheelEvent) => (e.deltaMode === "lines" ? POINTS_PER_LINE : 1);
+/** A wheel's vertical delta in points, the way reel moves a page. A preview's popup has no scroll
+ * ancestor, so it uses this to pass the wheel on to the page it covers. */
+export const wheelY = (e: WheelEvent) => e.delta.y * wheelScale(e);
 
 /** How long the bar stays after the last scroll or pointer move, ms. */
 const BAR_IDLE = 1000;
@@ -63,9 +68,12 @@ function Bar(props: { ctl: ScrollCtl; shown: () => boolean }) {
 }
 
 /** `style` is the outer view's (size, background); `onScroll` hears where
- * the content is, `onDragEnd` where a finger let it go, `onContent` how long the content is. */
+ * the content is, `onDragEnd` where a finger let it go, `onContent` how long the content is.
+ * `page` is the page a row sits in: a wheel the row cannot use (up and down, no Shift)
+ * moves the page, as it would in a browser. */
 export function Scroller(props: {
   ctl: ScrollCtl;
+  page?: ScrollCtl;
   style?: ViewStyle;
   onScroll?: (e: ScrollEvent) => void;
   onDragEnd?: (offset: number) => void;
@@ -91,11 +99,19 @@ export function Scroller(props: {
       onWheel={(e) => {
         stopAll();
         if (!OWN_WHEEL) return; // a Mac turns Shift + wheel sideways on its own
-        const scale = e.deltaMode === "lines" ? POINTS_PER_LINE : 1;
-        // A row moves with a sideways wheel, or the wheel with Shift; a page with
-        // the wheel, not with Shift (that one is the row's under the pointer).
-        const delta = c.horizontal ? (e.delta.x || (e.modifiers.shift ? e.delta.y : 0)) : e.modifiers.shift ? 0 : e.delta.y;
-        if (delta !== 0) c.nudge(delta * scale);
+        const scale = wheelScale(e);
+        if (c.horizontal) {
+          // A row moves when the wheel is mostly sideways, or with Shift. The wheel
+          // up and down is the page's: the row's listener is the nearest one, so it
+          // passes that wheel on instead of swallowing it (a trackpad's slight
+          // sideways drift still counts as up and down).
+          const sideways = e.modifiers.shift ? e.delta.y : Math.abs(e.delta.x) > Math.abs(e.delta.y) ? e.delta.x : 0;
+          if (sideways !== 0) c.nudge(sideways * scale);
+          else if (e.delta.y !== 0) props.page?.nudge(e.delta.y * scale);
+        } else if (!e.modifiers.shift) {
+          // A page moves with the wheel, not with Shift (that one is the row's under the pointer).
+          c.nudge(e.delta.y * scale);
+        }
       }}
     >
       <Scroll

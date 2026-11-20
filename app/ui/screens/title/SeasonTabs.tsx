@@ -5,7 +5,7 @@ import { t } from "nsh/i18n";
 import { pillStyle } from "../../kit/Pill";
 import { labelText, metaText } from "../../kit/text";
 import { Rail, railLead } from "../../layout/Rail";
-import { scroller, type Follow } from "../../layout/Scroller";
+import { scroller, type Follow, type ScrollCtl } from "../../layout/Scroller";
 import { colors, safe, selectedFill, type, u } from "../../theme";
 import { Pressable } from "../../kit/Pressable";
 
@@ -22,13 +22,15 @@ export function SeasonTabs(props: {
   follow: Follow;
   onPick: (n: number) => void;
   sub: () => string;
+  /** The page's scroll: the wheel up and down over the tabs moves it. */
+  page: ScrollCtl;
 }) {
   /** The tabs put the focused season at the inset. */
   const tabs = scroller({ horizontal: true, anchor: railLead });
   const chosen = (s: Season) => props.season() === s.number;
   return (
     <View ref={props.follow(props.focused)}>
-      <Rail ctl={tabs} gap={6} top={36}>
+      <Rail ctl={tabs} page={props.page} gap={6} top={36}>
           <Each of={props.seasons()} key={(s) => s.number}>
             {(s) => (
               <Pressable haptic={!chosen(s())}

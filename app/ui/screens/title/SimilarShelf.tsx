@@ -3,13 +3,19 @@ import { View } from "nsh";
 import { t } from "nsh/i18n";
 import type { Summary } from "../../catalog";
 import { SectionTitle } from "../../layout/Section";
-import { scroller } from "../../layout/Scroller";
+import { scroller, type ScrollCtl } from "../../layout/Scroller";
 import { Rail, railLead } from "../../layout/Rail";
 import { RowGap, rowWindow } from "../../layout/reach";
 import { u } from "../../theme";
 import { SHELF_GAP, shelfCardWidth, shelfStep, WideCard } from "../home/WideCard";
 
-export function SimilarShelf(props: { items: () => Summary[]; focusedAt: () => number | null; onOpen: (i: number) => void }) {
+export function SimilarShelf(props: {
+  items: () => Summary[];
+  focusedAt: () => number | null;
+  onOpen: (i: number) => void;
+  /** The page's scroll: the wheel up and down over the row moves it. */
+  page: ScrollCtl;
+}) {
   /** The row puts the focused card at the left edge of its inset. */
   const line = scroller({ horizontal: true, anchor: railLead, step: () => step() });
   const step = shelfStep;
@@ -17,7 +23,7 @@ export function SimilarShelf(props: { items: () => Summary[]; focusedAt: () => n
   return (
     <View style={{ gap: u(22) }}>
       <SectionTitle text={() => t("about.similar")} inset rail={line} />
-      <Rail ctl={line} gap={SHELF_GAP} top={0} bottom={24}>
+      <Rail ctl={line} page={props.page} gap={SHELF_GAP} top={0} bottom={24}>
         <RowGap window={win} step={step} gap={SHELF_GAP} />
         <Each of={props.items().slice(win().from, win().to)} key={(s) => s.id}>
           {(item, i) => (
@@ -27,6 +33,7 @@ export function SimilarShelf(props: { items: () => Summary[]; focusedAt: () => n
               focused={() => props.focusedAt() === win().from + i()}
               width={shelfCardWidth}
               follow={line.follow}
+              page={props.page}
               onPress={() => props.onOpen(win().from + i())}
             />
           )}

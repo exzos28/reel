@@ -80,6 +80,9 @@ const steadyBlockStyle = (top: number, design: number, height: number): ViewStyl
 /** The hero's own height (points): at least the backdrop's, or (`fit`) only what its text needs. */
 const heroStyle = (height: number, fit: boolean): ViewStyle => (fit ? {} : { minHeight: height });
 const ABOUT_LINES = 3;
+/** A title page's about shows nine lines at most, with an ellipsis on the ninth, and a button
+ * under it that reveals the rest. */
+export const TITLE_ABOUT_LINES = 9;
 /** A steady about's room past its three lines, in lines: exactly three lines' height lets the
  * system's rounding (a Mac's, at some window widths) drop the third, so it jumped between two and
  * three as the window resized. The limit stays three lines. */
@@ -87,12 +90,20 @@ const ABOUT_SLACK = 0.25;
 /** A steady hero's text block, from `top` to its actions' bottom (TV pixels): a one-line
  * title, the meta, genres, three lines of about and the actions. */
 const HERO_TEXT_ROOM = 444;
-/** `steady`: always the height of its three lines, so what is under it stays put as the text changes.
- * `whole`: every line (a desktop's title page), else three. */
-const aboutStyle = (steady: boolean, whole: boolean): TextStyle => {
+/** `steady`: always the height of its lines, so what is under it stays put as the text changes.
+ * `whole`: every line, else `lines` (three, or nine on a title page). */
+const aboutStyle = (steady: boolean, whole: boolean, lines: number = ABOUT_LINES): TextStyle => {
   const body = bodyText(colors.soft());
-  return { ...(whole ? {} : { numberOfLines: ABOUT_LINES }), ...body, maxWidth: u(980), ...(steady ? { height: (body.lineHeight as number) * (ABOUT_LINES + ABOUT_SLACK) } : {}) };
+  return {
+    ...(whole ? {} : { numberOfLines: lines, textOverflow: "ellipsis" as const }),
+    ...body,
+    maxWidth: u(980),
+    ...(steady ? { height: (body.lineHeight as number) * (lines + ABOUT_SLACK) } : {}),
+  };
 };
+/** The reveal button sits a little below the clamped about, at the text's left edge. */
+const aboutButtonStyle = (): ViewStyle => ({ alignSelf: "flex-start", marginTop: u(10) });
+const aboutButtonText = (): TextStyle => ({ ...bodyText(colors.soft()), fontSize: ts(22), fontWeight: 500 });
 /** The title: two lines on a TV and touch; a desktop's whole, however many lines (its hero grows
  * with its text, Home's too). */
 const logotypeStyle = (size: number, whole: boolean, title: string): TextStyle => ({
@@ -146,6 +157,8 @@ export function Hero(props: {
   steadyAbout?: boolean;
   /** The whole about, not three lines (a desktop's title page: nothing under it repeats it). */
   wholeAbout?: boolean;
+  /** Clamp the about to this many lines (a title page's nine) and offer a button to reveal it. */
+  aboutLines?: number;
   /** The whole title, however many lines (a desktop's title page: the hero grows with its text). */
   wholeTitle?: boolean;
   /** A tap on the about shows it whole, another folds it back to three lines (a title's page on
@@ -155,9 +168,12 @@ export function Hero(props: {
 }) {
   const s = props.item;
   const whole = signal(false);
+  // A clamped about shows the full text cut to its lines; the old three-line hero uses the
+  // core's short text, which already fits those three lines.
+  const fullAbout = !!props.wholeAbout || !!props.aboutLines;
   const about = () => (
-    <Text style={aboutStyle(!!props.steadyAbout, !!props.wholeAbout || whole())}>
-      {props.wholeAbout || whole() ? aboutText(s()) : shortAboutText(s())}
+    <Text style={aboutStyle(!!props.steadyAbout, !!props.wholeAbout || whole(), props.aboutLines)}>
+      {fullAbout || whole() ? aboutText(s()) : shortAboutText(s())}
     </Text>
   );
   const box = computed(() => heroBoxNow(props.height, props.backdropLeft ?? 0));
@@ -186,6 +202,17 @@ export function Hero(props: {
             onPress={() => whole.set(!whole())}
           >
             {about()}
+          </Pressable>
+        </If>
+        <If when={props.aboutLines}>
+          <Pressable
+            role="button"
+            accessibilityLabel={t(whole() ? "title.about_less" : "title.about_more")}
+            accessibilityState={{ expanded: whole() }}
+            onPress={() => whole.set(!whole())}
+            style={aboutButtonStyle()}
+          >
+            <Text style={aboutButtonText()}>{t(whole() ? "title.about_less" : "title.about_more")}</Text>
           </Pressable>
         </If>
         {props.children}
