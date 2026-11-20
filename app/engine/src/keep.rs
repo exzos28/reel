@@ -334,6 +334,20 @@ fn exclude_from_backup(dir: &Path) {
 #[cfg(not(target_os = "ios"))]
 fn exclude_from_backup(_dir: &Path) {}
 
+/// `dir` (an item's folder) when it is gone, but was in a library home of the same name as `home`
+/// (`…/<old container>/…/saved/<Title (year)>`): the same folder under `home`, if it is there.
+fn moved_folder(dir: &Path, home: &Path) -> Option<PathBuf> {
+    if dir.as_os_str().is_empty() || dir.exists() {
+        return None;
+    }
+    let name = dir.file_name()?;
+    if dir.parent()?.file_name()? != home.file_name()? {
+        return None;
+    }
+    let here = home.join(name);
+    here.exists().then_some(here)
+}
+
 fn default_folder(home: &Path, local: Option<std::ffi::OsString>) -> PathBuf {
     match local.filter(|l| !l.is_empty()) {
         Some(local) => PathBuf::from(local).join("reel").join("saved"),
@@ -376,6 +390,13 @@ pub fn init(data_dir: &Path) {
     let stored = load(&home.join("library.json"));
     let films = default_folder(&home, if cfg!(windows) { std::env::var_os("LOCALAPPDATA") } else { None });
     let mut lib = Library { home, films, stored, live: HashMap::new(), revision: 1 };
+    // iOS moves an app's data to a new container path when the app is installed again or
+    // updated: an item's folder stored under the old one is the same folder under the new one.
+    for item in lib.stored.items.iter_mut() {
+        if let Some(moved) = moved_folder(&item.dir, &lib.home) {
+            item.dir = moved;
+        }
+    }
     // Without its link (never stored) an item that had no torrent yet cannot go on.
     for item in lib.stored.items.iter_mut() {
         if item.infohash.is_none() && item.unfinished() || item.state == State::Waiting {
@@ -958,6 +979,25 @@ pub fn remove(id: u32) {
                 delete_files(&dir, gone);
             });
         }
+    }
+}
+
+#[cfg(test)]
+mod moved {
+    use super::moved_folder;
+
+    #[test]
+    fn a_folder_under_an_old_container_is_found_under_the_new_one() {
+        let base = std::env::temp_dir().join(format!("reel-moved-{}", std::process::id()));
+        let home = base.join("NEW/saved");
+        std::fs::create_dir_all(home.join("Film (2026)")).unwrap();
+        let old = base.join("OLD/saved/Film (2026)");
+        assert_eq!(moved_folder(&old, &home), Some(home.join("Film (2026)")));
+        // There still, or not a library's folder, or not under the new home: left as it is.
+        assert_eq!(moved_folder(&home.join("Film (2026)"), &home), None);
+        assert_eq!(moved_folder(&base.join("OLD/elsewhere/Film (2026)"), &home), None);
+        assert_eq!(moved_folder(&base.join("OLD/saved/Other (1999)"), &home), None);
+        let _ = std::fs::remove_dir_all(&base);
     }
 }
 

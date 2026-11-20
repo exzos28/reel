@@ -103,8 +103,9 @@ export function SavedScreen() {
       action: t("saved.remove"),
       onConfirm: () => ids.forEach(removeSaved),
     });
-  const removeItem = (i: SavedItem) => askRemove([i.id], itemName(i), i.have || i.size);
-  const removeGroup = (g: SavedGroup) => askRemove(g.items.map((i) => i.id), g.title, g.have || g.size);
+  // What is on the device now (an unfinished one holds only what came), not the release's size.
+  const removeItem = (i: SavedItem) => askRemove([i.id], itemName(i), i.have);
+  const removeGroup = (g: SavedGroup) => askRemove(g.items.map((i) => i.id), g.title, g.have);
 
   const open = (i: SavedItem) => openTitle(titleOf(i.key));
   /** Plays the saved file (the core opens it, no network), titled from the catalog's cache;
