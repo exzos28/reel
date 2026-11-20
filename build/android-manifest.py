@@ -13,6 +13,8 @@ Rewrites the APK in place (align and sign it after this):
 - Android TV: the launcher's entry (`LEANBACK_LAUNCHER`), the banner (`android:banner`, from
   `<res dir>`: `drawable/banner`), and no touchscreen or leanback required, so the same APK
   installs on a phone and a TV;
+- the app's links (nsh.json `schemes`) go to reel's own activity (`app.reel.views.Link`):
+  NSH 0.6.1's Android runtime drops them (it does not read the schemes app.json claims);
 - `<res dir>`'s resources are linked with the APK's own (aapt2), its resource ids kept.
 
 The manifest is edited as it is in the APK (Android's binary XML), so everything NSH wrote stays
@@ -37,8 +39,13 @@ UTF8 = 0x100
 # Value types.
 TYPE_REFERENCE, TYPE_STRING, TYPE_INT_HEX, TYPE_INT_BOOLEAN = 0x01, 0x03, 0x11, 0x12
 
-# Attributes reel sets (android.R.attr).
+# Attributes reel sets (android.R.attr), and the theme of an activity with nothing to show.
 ATTR_NAME, ATTR_CONFIG_CHANGES, ATTR_REQUIRED, ATTR_BANNER = 0x01010003, 0x0101001F, 0x0101028E, 0x0101031F
+ATTR_THEME, ATTR_EXPORTED, ATTR_EXCLUDE_FROM_RECENTS, ATTR_NO_HISTORY = 0x01010000, 0x01010010, 0x01010017, 0x0101022D
+THEME_NO_DISPLAY = 0x01030055  # @android:style/Theme.NoDisplay
+TRUE = 0xFFFFFFFF
+# reel's activity for the app's links (app/android/java/app/reel/views/Link.java).
+LINK_ACTIVITY = "app.reel.views.Link"
 
 # android:configChanges values (ActivityInfo.CONFIG_*) the activity takes as well as NSH's.
 CONFIG_CHANGES = {
@@ -254,6 +261,13 @@ def serialize(root, utf8):
 # --- reel's changes --------------------------------------------------------------------------
 
 
+def is_link(intent_filter):
+    """A filter for links of the app's schemes (VIEW, BROWSABLE, `<data android:scheme>`)."""
+    names = {(c.name, a.data) for c in intent_filter.elements() for a in c.attrs if a.resid == ATTR_NAME}
+    schemes = [d for d in intent_filter.elements("data") if any(a.name == "scheme" for a in d.attrs)]
+    return ("action", "android.intent.action.VIEW") in names and ("category", "android.intent.category.BROWSABLE") in names and bool(schemes)
+
+
 def is_launcher(activity):
     for f in activity.elements("intent-filter"):
         names = {(c.name, a.data) for c in f.elements() for a in c.attrs if a.resid == ATTR_NAME}
@@ -297,6 +311,20 @@ def edit(root, banner):
             at += 1
 
     set_attr(app, Attr(ANDROID, "banner", ATTR_BANNER, None, TYPE_REFERENCE, banner))
+
+    links = [f for f in activity.elements("intent-filter") if is_link(f)]
+    if links and not any(a.data == LINK_ACTIVITY for x in app.elements("activity") for a in x.attrs if a.resid == ATTR_NAME):
+        for f in links:
+            activity.children.remove(f)
+        link = element("activity", [
+            Attr(ANDROID, "theme", ATTR_THEME, None, TYPE_REFERENCE, THEME_NO_DISPLAY),
+            android_name(LINK_ACTIVITY),
+            Attr(ANDROID, "exported", ATTR_EXPORTED, None, TYPE_INT_BOOLEAN, TRUE),
+            Attr(ANDROID, "excludeFromRecents", ATTR_EXCLUDE_FROM_RECENTS, None, TYPE_INT_BOOLEAN, TRUE),
+            Attr(ANDROID, "noHistory", ATTR_NO_HISTORY, None, TYPE_INT_BOOLEAN, TRUE),
+        ], links[0].line)
+        link.children = links
+        app.children.insert(app.children.index(activity) + 1, link)
     return manifest
 
 
@@ -383,7 +411,7 @@ def main(argv):
                     # resources.arsc stays stored (Android maps it), as aapt2 wrote it.
                     dst.writestr(e, resz.read(e))
         os.replace(out, apk)
-    print(f"android-manifest: TV launcher, banner and configuration changes in {os.path.basename(apk)}", file=sys.stderr)
+    print(f"android-manifest: TV launcher, banner, configuration changes and links in {os.path.basename(apk)}", file=sys.stderr)
     return 0
 
 

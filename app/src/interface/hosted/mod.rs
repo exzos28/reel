@@ -103,6 +103,21 @@ pub fn link_source(link: &str) -> Value {
     }
 }
 
+/// A link that opened the app (`reel://s?t=&u=`) offered as a phone's offer is: the screen asks
+/// (`offered`), a yes saves it. Android's way in: NSH 0.6.1's Android runtime drops the app's
+/// links (it does not read the schemes `app.json` claims), so reel's own activity takes them
+/// (`app/android/java/app/reel/views/Link.java`). False when the link carries no source.
+#[cfg_attr(not(any(target_os = "android", test)), allow(dead_code))]
+pub fn offer_link(link: &str) -> bool {
+    let Some((url, key)) = offer::from_link(link) else { return false };
+    if OFFERS.lock().unwrap().offer(Instant::now(), &url, &key, &mut random).is_err() {
+        return false;
+    }
+    settings::bump();
+    expire_offer_later();
+    true
+}
+
 /// The source a phone offers, waiting for the viewer: `{"host":"jackett.example.com"}`, or
 /// `{"host":null}`.
 pub fn offered() -> Value {

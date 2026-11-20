@@ -148,3 +148,22 @@ unsafe fn install_class(env: *mut JNIEnv) -> Result<jobject, String> {
     unsafe { check(env, "loading app.reel.views.Install (is the APK built with build/android-views.sh?)")? };
     Ok(install)
 }
+
+/// `Link.nativeOpen(String)`: a link that opened the app, offered to the screen
+/// (`hosted::offer_link`; `app/android/java/app/reel/views/Link.java` says why).
+#[unsafe(no_mangle)]
+extern "system" fn Java_app_reel_views_Link_nativeOpen(env: *mut JNIEnv, _: jobject, url: jobject) {
+    if url.is_null() {
+        return;
+    }
+    let f = unsafe { &**env };
+    let chars = unsafe { (f.v1_6.GetStringUTFChars)(env, url, ptr::null_mut()) };
+    if chars.is_null() {
+        return;
+    }
+    let link = unsafe { CStr::from_ptr(chars) }.to_string_lossy().into_owned();
+    unsafe { (f.v1_6.ReleaseStringUTFChars)(env, url, chars) };
+    if !crate::interface::hosted::offer_link(&link) {
+        tracing::warn!("reel: a link with no source to offer");
+    }
+}
