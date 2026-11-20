@@ -13,7 +13,10 @@ function page(picked: string[] = []) {
   const all = picked.length ? [SEVERANCE] : BROWSE_ALL;
   const native = {
     ...NATIVE,
-    "Catalog.browse": JSON.stringify({ trending: BROWSE_TRENDING, all, filters: browseFilters(picked), allState: "done" }),
+    "Catalog.browse": JSON.stringify({
+      trending: BROWSE_TRENDING, all, filters: browseFilters(picked), allState: "done", facet: "year",
+      filtered: picked.some((id) => !["popular", "top_rated", "newest"].includes(id)),
+    }),
     "Catalog.chooseFilter": (p: string, group: string, id: string) => {
       calls.push([p, group, id]);
       return true;
@@ -81,6 +84,32 @@ test("the pills say what is picked; the panel marks it and focuses it first", as
   await app.keyboard.press("up"); // Clear
   await app.keyboard.press("enter");
   expect(calls[1]).toEqual(["movies", "genres", ""]);
+});
+
+test("a filter on: ✕ Clear comes first; the remote reaches it left of Genres, OK clears them all", async () => {
+  expect((await movies(page().native)).texts()).not.toContain("✕ Clear");
+  const { native, calls } = page(["18", "top_rated"]);
+  const app = await movies(native);
+  expect(app.texts()).toContain("✕ Clear");
+  await app.keyboard.press("down"); // Genres
+  await app.keyboard.press("left"); // Clear
+  await app.keyboard.press("enter");
+  expect(calls).toEqual([["movies", "all", ""]]);
+  expect(app.shows("id:filter-panel")).toBe(false);
+});
+
+test("phone: a pick closes the sheet at once, genres too; Clear is a tap", async () => {
+  const { native, calls } = page(["18"]);
+  const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
+  await app.press("label:Movies");
+  await app.press("id:filter-genres");
+  expect(app.shows("id:filter-panel")).toBe(true);
+  await app.press("label:Crime");
+  expect(calls).toEqual([["movies", "genres", "80"]]);
+  await app.wait(600); // the sheet slides away
+  expect(app.shows("id:filter-panel")).toBe(false);
+  await app.press("id:filter-clear");
+  expect(calls[1]).toEqual(["movies", "all", ""]);
 });
 
 test("a single choice closes its panel; Up from the grid comes back to the pills", async () => {

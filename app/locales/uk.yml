@@ -300,6 +300,7 @@ browse:
     countries: "Країни"
     sort: "Сортування"
     picked: "%{filter}: %{picked}"
+    format: "Формат"
   sort: "Сортування:"
   option:
     decade: "%{n}-ті"
@@ -308,11 +309,15 @@ browse:
     top_rated: "Найкращі за оцінками"
     newest: "Нові"
     any: "Будь-які"
+    format_tv: "Серіали"
+    format_movie: "Фільми"
+    format_special: "OVA та спецвипуски"
   state:
     loading: "Завантаження…"
     empty: "Під ці фільтри нічого не підходить."
     offline: "Не вдалося завантажити список. Перевірте підключення."
     more_failed: "Не вдалося завантажити ще. Спустіться нижче, щоб спробувати знову."
+  clear: "Скинути"
 
 search:
   title: "Пошук"

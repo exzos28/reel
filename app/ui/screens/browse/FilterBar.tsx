@@ -1,6 +1,7 @@
-// "All movies" with the filter pills (Genres, Years, Countries) on the left
+// "All movies" with the filter pills (Genres, Years, Countries; Anime's Format) on the left
 // and the order ("Sort by: Most popular") on the right. Each pill opens its
-// panel; a pill with a pick, or whose panel is open, has the lighter fill.
+// panel; a pill with a pick, or whose panel is open, has the lighter fill. While a filter is
+// on, "✕ Clear" comes first and clears them all (not the order).
 import { Text, View, type JSX, type TextStyle, type ViewRef, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { filterText, sortText, type FilterGroup } from "../../catalog";
@@ -40,11 +41,31 @@ function Pill(props: {
   );
 }
 
-/** `focusedAt`: the pill the focus is on (an index into `groups`), null
+/** "✕ Clear": every filter goes. */
+function ClearPill(props: { focused: () => boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      testID="filter-clear"
+      role="button"
+      hitSlop={pillSlop()}
+      accessibilityLabel={t("browse.clear")}
+      onPress={props.onPress}
+      hoverStyle={{ backgroundColor: colors.raise() }}
+      style={pillStyle(colors.card(), props.focused(), 18)}
+    >
+      <Text style={pillText(false)}>{`✕ ${t("browse.clear")}`}</Text>
+    </Pressable>
+  );
+}
+
+/** `focusedAt`: the pill the focus is on (an index into `groups`, -1 for Clear), null
  * while it is elsewhere; `openAt`: the pill whose panel is open. */
 export function FilterBar(props: {
   title: () => string;
   groups: () => FilterGroup[];
+  /** A filter is on: Clear shows first. */
+  filtered: () => boolean;
+  onClear: () => void;
   focusedAt: () => number | null;
   openAt: () => number | null;
   blockRef: (r: ViewRef) => void;
@@ -58,6 +79,11 @@ export function FilterBar(props: {
     focused: () => props.focusedAt() === i(),
     onPress: () => props.onOpen(i()),
   });
+  const clearPill = () => (
+    <If when={props.filtered()}>
+      <ClearPill focused={() => props.focusedAt() === -1} onPress={props.onClear} />
+    </If>
+  );
   const groupPills = () => (
     <Each of={props.groups().filter((g) => g.id !== "sort")} key={(g) => g.id}>
       {(g, i) => (
@@ -84,6 +110,7 @@ export function FilterBar(props: {
       else={
         <View ref={props.blockRef} style={barStyle()}>
           <Text style={{ ...sectionTitle(), marginRight: u(22) }}>{props.title()}</Text>
+          {clearPill()}
           {groupPills()}
           <View style={{ flex: 1 }} />
           {sortPill()}
@@ -93,6 +120,7 @@ export function FilterBar(props: {
       <View ref={props.blockRef} style={{ marginTop: u(26), gap: u(4) }}>
         <Text style={{ ...sectionTitle(), paddingHorizontal: safe().x }}>{props.title()}</Text>
         <Rail ctl={line} gap={12}>
+          {clearPill()}
           {groupPills()}
           {sortPill()}
         </Rail>

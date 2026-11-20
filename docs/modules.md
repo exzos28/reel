@@ -26,8 +26,8 @@ The catalog the UI shows: TMDB and AniList titles through `Meta`, releases from 
 
 Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 
-- `browse(page: String) -> String`: `"movies"`, `"shows"` or `"anime"`: `{"trending":[summary…],"all":[summary…], "filters":[group…],"allState","facet"}` (see `catalog::browse`).
-  JSON: `{"trending":[summary…],"all":[summary…], "filters":[group…],"allState","facet"}`
+- `browse(page: String) -> String`: `"movies"`, `"shows"` or `"anime"`: `{"trending":[summary…],"all":[summary…], "filters":[group…],"allState","facet","filtered"}` (see `catalog::browse`).
+  JSON: `{"trending":[summary…],"all":[summary…], "filters":[group…],"allState","facet","filtered"}`
   Called from: `ui/catalog.ts`.
 - `browseMore(page: String) -> bool` (`browse_more`): The next page of a browse page's grid (`"movies"`, `"shows"`, `"anime"`): whether one is on its way now (`browse`'s `moreState` says when it is in).
   Called from: `ui/catalog.ts`.

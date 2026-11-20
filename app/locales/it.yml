@@ -300,6 +300,7 @@ browse:
     countries: "Paesi"
     sort: "Ordina per"
     picked: "%{filter}: %{picked}"
+    format: "Formato"
   sort: "Ordina per:"
   option:
     decade: "Anni %{n}"
@@ -308,11 +309,15 @@ browse:
     top_rated: "Più votati"
     newest: "Più recenti"
     any: "Tutti"
+    format_tv: "Serie"
+    format_movie: "Film"
+    format_special: "OVA e speciali"
   state:
     loading: "Caricamento…"
     empty: "Nessun titolo corrisponde a questi filtri."
     offline: "Impossibile caricare questo elenco. Controlla la connessione."
     more_failed: "Impossibile caricare altri titoli. Scendi per riprovare."
+  clear: "Cancella"
 
 search:
   title: "Cerca"

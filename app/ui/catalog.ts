@@ -284,7 +284,7 @@ export interface FilterOption {
 /** A filter of a browse page and its panel; `id` is also the key under
  * `browse.filter.*`. `multi`: OK toggles; `clear`: the panel has a Clear row. */
 export interface FilterGroup {
-  id: "genres" | "years" | "countries" | "sort";
+  id: "genres" | "years" | "countries" | "format" | "sort";
   multi: boolean;
   clear: boolean;
   options: FilterOption[];
@@ -302,6 +302,8 @@ export interface Browse {
   /** The next page: "loading" on its way, "failed" (asking again retries). */
   moreState: "idle" | "loading" | "failed";
   facet: Facet;
+  /** A filter narrows the grid (not the order): the bar offers Clear. */
+  filtered: boolean;
 }
 
 export type BrowsePage = "movies" | "shows" | "cartoons" | "anime";
@@ -352,6 +354,8 @@ export function browseMore(page: BrowsePage) {
 export function chooseFilter(page: BrowsePage, group: string, id: string) {
   if (Catalog.chooseFilter(page, group, id)) version.set(version() + 1);
 }
+/** The bar's Clear: every filter of the page, not its order. */
+export const clearFilters = (page: BrowsePage) => chooseFilter(page, "all", "");
 export function chooseRelease(id: string, index: number) {
   Catalog.chooseRelease(id, index);
   version.set(version() + 1);

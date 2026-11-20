@@ -300,6 +300,7 @@ browse:
     countries: "Länder"
     sort: "Sortierung"
     picked: "%{filter}: %{picked}"
+    format: "Format"
   sort: "Sortieren nach:"
   option:
     decade: "%{n}er"
@@ -308,11 +309,15 @@ browse:
     top_rated: "Bestbewertet"
     newest: "Neueste"
     any: "Alle"
+    format_tv: "Serien"
+    format_movie: "Filme"
+    format_special: "OVAs und Specials"
   state:
     loading: "Wird geladen…"
     empty: "Nichts passt zu diesen Filtern."
     offline: "Diese Liste konnte nicht geladen werden. Prüfe die Verbindung."
     more_failed: "Weitere Titel konnten nicht geladen werden. Geh nach unten, um es erneut zu versuchen."
+  clear: "Zurücksetzen"
 
 search:
   title: "Suche"

@@ -1661,7 +1661,8 @@ static SHOWN: LazyLock<Mutex<HashMap<DiscoverKind, Filter>>> = LazyLock::new(Def
 
 /// A browse page (`"movies"`, `"shows"` (Series), `"cartoons"`, `"anime"`):
 /// `{"trending":[summary…],"all":[summary…],"filters":[group…],"allState",
-/// "more","moreState","facet"}` (`facet`: what its cards show under their names, see `facet`).
+/// "more","moreState","facet","filtered"}` (`facet`: what its cards show under their names, see
+/// `facet`; `filtered`: a filter narrows the grid, the bar offers to clear them).
 /// `all` is the catalog through the page's filters (see `filters::groups`
 /// for `filters`), the pages asked for so far (see `paging`); `allState` is
 /// "done", "loading" (a new filter's answer is on its way: `all` is still the
@@ -1671,7 +1672,7 @@ static SHOWN: LazyLock<Mutex<HashMap<DiscoverKind, Filter>>> = LazyLock::new(Def
 /// again retries). Without TMDB, Shows lists anime and Movies a notice card.
 pub fn browse(page: &str) -> Value {
     let Some(kind) = filters::page_kind(page, tmdb_on()) else {
-        return json!({ "trending": [notice("no_tmdb")], "all": [], "filters": [], "allState": "done", "more": false, "moreState": "idle", "facet": "kind" });
+        return json!({ "trending": [notice("no_tmdb")], "all": [], "filters": [], "allState": "done", "more": false, "moreState": "idle", "facet": "kind", "filtered": false });
     };
     let trending = Call::Trending(match kind {
         DiscoverKind::Movie => "movie",
@@ -1720,10 +1721,11 @@ pub fn browse(page: &str) -> Value {
     let groups = filters::groups(kind, &filter, got[1].as_ref());
     if t.is_empty() && a.is_empty() && filter.is_default() {
         let key = if answered(&trending) { "offline" } else { "loading" };
-        return json!({ "trending": [notice(key)], "all": [], "filters": groups, "allState": state, "more": false, "moreState": "idle", "facet": "kind" });
+        return json!({ "trending": [notice(key)], "all": [], "filters": groups, "allState": state, "more": false, "moreState": "idle", "facet": "kind", "filtered": false });
     }
     let facet = facet(kind == DiscoverKind::Movie);
-    json!({ "trending": t, "all": a, "filters": groups, "allState": state, "more": more, "moreState": more_state, "facet": facet })
+    let filtered = filter.is_filtered();
+    json!({ "trending": t, "all": a, "filters": groups, "allState": state, "more": more, "moreState": more_state, "facet": facet, "filtered": filtered })
 }
 
 /// Asks for the next page of a browse page's grid (see `paging::more`):
@@ -1734,9 +1736,9 @@ pub fn browse_more(page: &str) -> bool {
 }
 
 /// One choice in a browse page's filter panel: `group` "genres" toggles
-/// genre `id`, "years" and "countries" pick `id` or drop it when it was
-/// picked, "sort" sets the order; an empty `id` clears the group. Whether
-/// the filter changed.
+/// genre `id`, "years", "countries" and "format" pick `id` or drop it when it was
+/// picked, "sort" sets the order; an empty `id` clears the group, and group "all"
+/// every filter but the order (the bar's Clear). Whether the filter changed.
 pub fn choose_filter(page: &str, group: &str, id: &str) -> bool {
     let Some(kind) = filters::page_kind(page, tmdb_on()) else { return false };
     let changed = filters::choose(kind, group, id);

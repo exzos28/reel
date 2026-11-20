@@ -302,6 +302,7 @@ browse:
     countries: Countries
     sort: Sort by
     picked: "%{filter}: %{picked}"
+    format: "Format"
   sort: "Sort by:"
   option:
     decade: "%{n}s"
@@ -310,11 +311,15 @@ browse:
     top_rated: Top rated
     newest: Newest
     any: Any
+    format_tv: "Series"
+    format_movie: "Movies"
+    format_special: "OVA and specials"
   state:
     loading: Loading…
     empty: Nothing matches these filters.
     offline: Could not load this list. Check the connection.
     more_failed: Could not load more titles. Move down to try again.
+  clear: "Clear"
 
 search:
   title: Search

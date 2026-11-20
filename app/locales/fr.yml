@@ -300,6 +300,7 @@ browse:
     countries: "Pays"
     sort: "Trier par"
     picked: "%{filter} : %{picked}"
+    format: "Format"
   sort: "Trier par :"
   option:
     decade: "Années %{n}"
@@ -308,11 +309,15 @@ browse:
     top_rated: "Les mieux notés"
     newest: "Les plus récents"
     any: "Tous"
+    format_tv: "Séries"
+    format_movie: "Films"
+    format_special: "OVA et spéciaux"
   state:
     loading: "Chargement…"
     empty: "Aucun titre ne correspond à ces filtres."
     offline: "Impossible de charger cette liste. Vérifiez la connexion."
     more_failed: "Impossible de charger plus de titres. Descendez pour réessayer."
+  clear: "Effacer"
 
 search:
   title: "Recherche"

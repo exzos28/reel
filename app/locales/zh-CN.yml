@@ -300,6 +300,7 @@ browse:
     countries: "国家/地区"
     sort: "排序"
     picked: "%{filter}：%{picked}"
+    format: "类型"
   sort: "排序："
   option:
     decade: "%{n} 年代"
@@ -308,11 +309,15 @@ browse:
     top_rated: "评分最高"
     newest: "最新"
     any: "全部"
+    format_tv: "剧集"
+    format_movie: "电影"
+    format_special: "OVA 和特别篇"
   state:
     loading: "加载中…"
     empty: "没有符合筛选条件的内容。"
     offline: "无法加载此列表，请检查网络连接。"
     more_failed: "无法加载更多内容，向下移动即可重试。"
+  clear: "清除"
 
 search:
   title: "搜索"

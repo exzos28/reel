@@ -10,9 +10,7 @@ use std::sync::{LazyLock, Mutex};
 use serde_json::{Value, json};
 
 use super::details::country;
-use reel_domain::discover::{
-    ANIMATION, ANIME_COUNTRIES, COUNTRIES, DECADES, DiscoverKind, Filter, NOT_SERIES, OLDER, Sort,
-};
+use reel_domain::discover::{ANIMATION, ANIME_FORMATS, COUNTRIES, DECADES, DiscoverKind, Filter, NOT_SERIES, OLDER, Sort};
 
 static FILTERS: LazyLock<Mutex<HashMap<DiscoverKind, Filter>>> = LazyLock::new(Default::default);
 
@@ -49,8 +47,9 @@ fn option(id: &str, name: Option<&str>, key: Option<&str>, n: Option<u16>, selec
 }
 
 /// The panels of `kind` as the UI lists them: `[{"id":"genres"|"years"|
-/// "countries"|"sort","multi","clear","options":[{"id","name","key","n",
-/// "selected"}]}]`. `named` is the filter options' answer (`{"genres":[[id,
+/// "countries"|"format"|"sort","multi","clear","options":[{"id","name","key","n",
+/// "selected"}]}]`. Anime is filtered by its format (series, films, specials) instead of
+/// the country: nearly all of it is Japanese. `named` is the filter options' answer (`{"genres":[[id,
 /// name]…],"countries":[[code,name]…]}`), None while it is not known: the
 /// genres panel is empty then, country names are English.
 pub fn groups(kind: DiscoverKind, filter: &Filter, named: Option<&Value>) -> Value {
@@ -88,14 +87,22 @@ pub fn groups(kind: DiscoverKind, filter: &Filter, named: Option<&Value>) -> Val
     years.push(option(OLDER, None, Some("older"), Some(oldest), picked_years == Some(OLDER)));
 
     let names: HashMap<String, String> = pairs("countries").into_iter().collect();
-    let codes: &[&str] = if kind == DiscoverKind::Anime { &ANIME_COUNTRIES } else { &COUNTRIES };
-    let countries: Vec<Value> = codes
+    let countries: Vec<Value> = COUNTRIES
         .iter()
         .map(|c| {
             let name = names.get(*c).cloned().unwrap_or_else(|| country(c));
             option(c, Some(&name), None, None, filter.country.as_deref() == Some(*c))
         })
         .collect();
+    let formats: Vec<Value> = ANIME_FORMATS
+        .iter()
+        .map(|(id, _)| option(id, None, Some(&format!("format_{id}")), None, filter.format.as_deref() == Some(id)))
+        .collect();
+    let third = if kind == DiscoverKind::Anime {
+        json!({ "id": "format", "multi": false, "clear": true, "options": formats })
+    } else {
+        json!({ "id": "countries", "multi": false, "clear": true, "options": countries })
+    };
 
     let sorts: Vec<Value> =
         Sort::ALL.iter().map(|s| option(s.as_str(), None, Some(s.as_str()), None, filter.sort == *s)).collect();
@@ -103,7 +110,7 @@ pub fn groups(kind: DiscoverKind, filter: &Filter, named: Option<&Value>) -> Val
     json!([
         { "id": "genres", "multi": true, "clear": true, "options": genres },
         { "id": "years", "multi": false, "clear": true, "options": years },
-        { "id": "countries", "multi": false, "clear": true, "options": countries },
+        third,
         { "id": "sort", "multi": false, "clear": false, "options": sorts },
     ])
 }

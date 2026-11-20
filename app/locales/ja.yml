@@ -300,6 +300,7 @@ browse:
     countries: "国"
     sort: "並べ替え"
     picked: "%{filter}: %{picked}"
+    format: "形式"
   sort: "並べ替え："
   option:
     decade: "%{n}年代"
@@ -308,11 +309,15 @@ browse:
     top_rated: "評価順"
     newest: "新しい順"
     any: "すべて"
+    format_tv: "シリーズ"
+    format_movie: "映画"
+    format_special: "OVA・スペシャル"
   state:
     loading: "読み込み中…"
     empty: "条件に合う作品はありません。"
     offline: "リストを読み込めませんでした。接続を確認してください。"
     more_failed: "続きを読み込めませんでした。下に移動すると再試行します。"
+  clear: "クリア"
 
 search:
   title: "検索"

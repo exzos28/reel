@@ -300,6 +300,7 @@ browse:
     countries: "Kraje"
     sort: "Sortowanie"
     picked: "%{filter}: %{picked}"
+    format: "Format"
   sort: "Sortowanie:"
   option:
     decade: "Lata %{n}."
@@ -308,11 +309,15 @@ browse:
     top_rated: "Najwyżej oceniane"
     newest: "Najnowsze"
     any: "Dowolne"
+    format_tv: "Seriale"
+    format_movie: "Filmy"
+    format_special: "OVA i odcinki specjalne"
   state:
     loading: "Ładowanie…"
     empty: "Nic nie pasuje do tych filtrów."
     offline: "Nie udało się wczytać tej listy. Sprawdź połączenie."
     more_failed: "Nie udało się wczytać więcej. Przejdź niżej, aby spróbować ponownie."
+  clear: "Wyczyść"
 
 search:
   title: "Szukaj"

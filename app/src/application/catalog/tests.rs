@@ -596,10 +596,22 @@ fn anime_filters_are_anilists() {
     );
     let page = browse("shows");
     assert_eq!(selected(&page, "genres"), ["Mecha"]);
-    let countries: Vec<&str> =
-        list_of(&group(&page, "countries")["options"]).iter().map(|o| o["id"].as_str().unwrap()).collect();
-    assert_eq!(countries, ["JP", "CN", "KR", "TW"]);
-    assert_eq!(group(&page, "countries")["options"][0]["name"], "Japan");
+    // Anime is filtered by its format, not its country.
+    let ids: Vec<&str> = list_of(&page["filters"]).iter().map(|g| g["id"].as_str().unwrap()).collect();
+    assert_eq!(ids, ["genres", "years", "format", "sort"]);
+    let formats: Vec<&str> =
+        list_of(&group(&page, "format")["options"]).iter().map(|o| o["key"].as_str().unwrap()).collect();
+    assert_eq!(formats, ["format_tv", "format_movie", "format_special"]);
+    assert!(choose_filter("anime", "format", "movie"));
+    assert_eq!(selected(&browse("anime"), "format"), ["movie"]);
+    assert_eq!(browse("anime")["filtered"], true);
+    // Clear: the filters go, the order stays.
+    assert!(choose_filter("anime", "sort", "newest"));
+    assert!(choose_filter("anime", "all", ""));
+    let page = browse("anime");
+    assert_eq!(page["filtered"], false);
+    assert!(selected(&page, "genres").is_empty());
+    assert_eq!(selected(&page, "sort"), ["newest"]);
     // Movies has nothing to filter without TMDB.
     assert_eq!(browse("movies")["filters"], json!([]));
     assert!(!choose_filter("movies", "genres", "18"));
