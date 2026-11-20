@@ -28,9 +28,10 @@ The version and build come from `app/nsh.json` only (`docs/releasing.md`). `REEL
   `release/*`) and by hand (`workflow_dispatch`, input `build`). A newer push to a PR cancels its
   older run; on main every commit keeps its run.
 - `checks.yml`: `ui-rules`, `changeset` (a PR that changes the app adds an entry to `.changes/`,
-  `build/changes.py check`; the `no-changeset` label skips it) and `test-crates` on Ubuntu, and one macOS job `app` with the steps
-  `typecheck`, `no-engine` and `test-app` (one build of reel-app and one Cargo cache; a failed step
-  does not skip the next). Nothing of it has to run locally before a push: the pre-push hook
+  `build/changes.py check`; the `no-changeset` label skips it), `test-crates`, `app` (the steps
+  `typecheck`, `no-engine`, `test-rust` and the first third of the `*.test.tsx`) and `ui 2`, `ui 3`
+  (the rest), all on Ubuntu with one Cargo cache (a failed step does not skip the next). Macs are
+  left for the platform builds. Nothing of it has to run locally before a push: the pre-push hook
   (`.githooks/pre-push`) runs only `dev/ui-rules.sh`; `dev/checks.sh` runs every check here.
 - `build.yml`: builds each platform and uploads it as an artifact:
   - macOS: `.app` zip
