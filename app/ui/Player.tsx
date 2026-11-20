@@ -9,7 +9,7 @@
 // buttons on the buttons row), Up/Down switch rows, Escape closes the
 // panel, then hides the overlay, then leaves. Near the end of an episode
 // the Up next card (tv-player-end.html) takes the remote instead.
-import { cleanup, computed, effect, Image, keymap, safeArea, Scroll, signal, Text, untracked, View, windowSize, type ImageAsset, type ViewStyle } from "nsh";
+import { cleanup, computed, createAnimatedValue, effect, Image, keymap, safeArea, Scroll, signal, Text, untracked, View, windowSize, type ImageAsset, type ViewStyle } from "nsh";
 import { BufferingNote, PlayerStage, type StageLine } from "./PlayerStage";
 import { t } from "nsh/i18n";
 import { Catalog, Fmt, VideoEngine } from "./native";
@@ -32,7 +32,8 @@ const PHONE_TEXT = () => (density() === "compact" ? 1.25 : 1);
 const u = (px: number) => layoutU(px) * PHONE_CONTROLS();
 const ts = (px: number) => layoutTs(px) * PHONE_TEXT();
 import { caps } from "./platform";
-import { playVolume, PlayerVolume, toggleMute, volumeDragEnd, volumeDragMove, volumeShown } from "./PlayerVolume";
+import { playVolume, PlayerVolume, toggleMute, volumeShown } from "./PlayerVolume";
+import { TrackSlider } from "./kit/TrackSlider";
 import { useFullscreen } from "./platform/window";
 import { BarBack, barBackBox } from "./layout/WindowBar";
 import { onBack } from "./nav";
@@ -289,8 +290,17 @@ export function Player() {
   cleanup(() => clearInterval(tick));
 
   // The overlay hides on its own only while the film plays (not paused,
-  // not buffering as `onBuffer` says) and the panel is closed.
-  const mayHide = () => started() && !paused() && !buffering() && !error() && !panel() && !episodesOpen();
+  // not buffering as `onBuffer` says), the panel is closed and no slider is held.
+  /** What the swipe down to close moves (nothing is drawn by it): it makes the player's pan
+   * vertical, so it never takes a sideways drag from the scrubber. */
+  const closeDrag = createAnimatedValue(0);
+  /** A finger or the mouse holds the scrubber or the volume. */
+  const held = signal(false);
+  const holding = (on: boolean) => {
+    held.set(on);
+    if (!on) poke();
+  };
+  const mayHide = () => started() && !paused() && !buffering() && !error() && !panel() && !episodesOpen() && !held();
   let hideTimer: ReturnType<typeof setTimeout> | undefined;
   const scheduleHide = () => {
     clearTimeout(hideTimer);
@@ -344,9 +354,13 @@ export function Player() {
   let scrubSteps = 0;
   let lastScrub = 0;
   cleanup(() => clearTimeout(scrubTimer));
-  /** Where the scrubber and the times show: the arrows' target while they move it. */
-  const shown = () => scrubTo() ?? position();
+  /** Where a drag on the scrubber is, not sent yet (null: none): the video seeks once, on release. */
+  const dragTo = signal<number | null>(null);
+  /** Where the scrubber and the times show: a drag's or the arrows' target while they move it. */
+  const shown = () => dragTo() ?? scrubTo() ?? position();
   const scrubBy = (dir: 1 | -1) => {
+    // A drag on the scrubber has it: the arrows wait for the release.
+    if (held()) return;
     const now = performance.now();
     scrubSteps = now - lastScrub < SCRUB_HOLD_MS ? scrubSteps + 1 : 0;
     lastScrub = now;
@@ -360,10 +374,11 @@ export function Player() {
       seekTo(to);
     }, SCRUB_IDLE_MS);
   };
-  /** A seek at once (a click on the scrubber): what the arrows were moving goes. */
+  /** A seek at once (a click on the scrubber, a drag let go): what the arrows were moving goes. */
   const seekNow = (seconds: number) => {
     clearTimeout(scrubTimer);
     scrubTo.set(null);
+    dragTo.set(null);
     seekTo(seconds);
   };
   /** The whole seconds of the place playing and of the place shown: what asks the core
@@ -562,11 +577,9 @@ export function Player() {
     <Pressable feedback="none"
       testID="player"
       style={{ flex: 1, backgroundColor: screenBackground() }}
-      onMouseMove={(e) => {
-        volumeDragMove(e.pagePosition.x, e.pressedButton != null);
+      onMouseMove={() => {
         if (!card()) poke();
       }}
-      onMouseUp={volumeDragEnd}
       onPress={() => {
         if (card()) return;
         poke();
@@ -574,7 +587,12 @@ export function Player() {
 
       // Touch: a swipe down closes the player, as a full-screen cover does.
       // Not while a sheet is open: its own swipe (or its list's scroll) closes only the sheet.
-      onPanEnd={(e) => caps.touch && !panel() && !episodesOpen() && !e.cancelled && (e.translation.y > 120 || e.velocity.y > 800) && leave()}
+      // Up and down only: sideways drags are the scrubber's.
+      pan={{ y: closeDrag }}
+      onPanEnd={(e) => {
+        closeDrag.set(0);
+        if (caps.touch && !panel() && !episodesOpen() && !e.cancelled && (e.translation.y > 120 || e.velocity.y > 800)) leave();
+      }}
       focusable={false}
     >
       <If when={ready()}>
@@ -787,6 +805,10 @@ export function Player() {
               position={shown}
               duration={duration}
               ranges={() => timeline().ranges}
+              valueText={() => `${Fmt.position(shownSecond())} / ${Fmt.position(Math.ceil(duration()))}`}
+              onDrag={(s) => dragTo.set(s)}
+              onHold={holding}
+              onStep={scrubBy}
               onSeek={(s) => { poke(); seekNow(s); }}
             />
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: u(16) }}>
@@ -801,7 +823,7 @@ export function Player() {
               {/* On the right: the volume (computers). */}
               <If when={volumeShown}>
                 <View style={{ position: "absolute", right: 0 }}>
-                  <PlayerVolume onUse={poke} />
+                  <PlayerVolume onUse={poke} onHold={holding} />
                 </View>
               </If>
               <Each of={bottomButtons} key="index">
@@ -858,32 +880,43 @@ function isDoubleClick(e: { clickCount?: number; pagePosition: { x: number; y: n
 }
 
 /** Watched (snow), ready (snow 45%) and not loaded yet (snow 16%) along the
- * film; a press seeks to where it landed. */
+ * film; a press seeks to where it landed, a drag where it is let go. */
 function Scrubber(props: {
   focused: () => boolean;
   position: () => number;
   duration: () => number;
   /** Ready stretches from the core, [from, to] in 0..1. */
   ranges: () => [number, number][];
+  valueText: () => string;
+  /** While held: the time under the thumb (null: let go with no seek). */
+  onDrag: (seconds: number | null) => void;
+  onHold: (held: boolean) => void;
+  onStep: (dir: 1 | -1) => void;
   onSeek: (seconds: number) => void;
 }) {
-  const width = signal(0);
   const at = () => (props.duration() > 0 ? Math.min(props.position() / props.duration(), 1) : 0);
   const ranges = computed(() => props.ranges().map(([from, to]) => ({ from, to })));
   const bar = u(8);
+  const seconds = (f: number) => f * props.duration();
   return (
-    <Pressable feedback="none"
+    <TrackSlider
       testID="scrubber"
-      role="adjustable"
       accessibilityLabel={t("player.position")}
-      accessibilityValue={{ min: 0, max: Math.round(props.duration()), now: Math.round(props.position()) }}
-      onLayout={(e) => width.set(e.bounds.size.width)}
-      onPress={(e) => {
-        if (width() > 0 && props.duration() > 0) props.onSeek((e.position.x / width()) * props.duration());
-      }}
-      style={{ marginTop: u(10), paddingVertical: u(14), justifyContent: "center" }}
+      valueText={props.valueText}
+      value={at}
+      // Nothing to seek in before the length is known.
+      onScrub={(f) => props.duration() > 0 && props.onDrag(f == null ? null : seconds(f))}
+      onCommit={(f) => props.duration() > 0 && props.onSeek(seconds(f))}
+      onHold={props.onHold}
+      onStep={props.onStep}
+      focused={props.focused}
+      track={bar}
+      thumb={u(26)}
+      empty={alpha(colors.snow(), 0.16)}
+      height={u(36)}
+      style={{ marginTop: u(10) }}
     >
-      <View style={{ height: bar, borderRadius: bar / 2, borderCurve: "continuous", backgroundColor: alpha(colors.snow(), 0.16) }}>
+      {(width) => (
         <Each of={ranges()} key={(r) => r.from}>
           {(r) => (
             <View
@@ -895,18 +928,8 @@ function Scrubber(props: {
             />
           )}
         </Each>
-        <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: at() * width(), borderRadius: bar / 2, borderCurve: "continuous", backgroundColor: colors.snow() }} />
-      </View>
-      <View
-        style={{
-          position: "absolute",
-          left: at() * width() - u(13),
-          width: u(26), height: u(26), borderRadius: 999, borderCurve: "continuous",
-          backgroundColor: colors.snow(),
-          ...focusRing(props.focused()),
-        }}
-      />
-    </Pressable>
+      )}
+    </TrackSlider>
   );
 }
 

@@ -371,3 +371,39 @@ test("phone: a narrow film, or one already sideways, does not turn the screen", 
   await phonePlaying(SIDEWAYS, { ...narrow, "VideoEngine.sideways": true });
   expect(turns).toEqual([]);
 });
+
+// The scrubber and the volume are sliders (ui/kit/TrackSlider): a drag holds the controls up and
+// sideways drags are theirs; a swipe down from the scrubber still closes the player.
+test("phone: a drag on the scrubber keeps the controls up until it is let go", async () => {
+  const app = await phonePlaying(PORTRAIT);
+  await app.dragAndHold("scrubber", { x: 60 });
+  await app.wait(7000); // longer than the controls stay on their own
+  expect(app.shows("scrubber")).toBe(true);
+  await app.drop();
+  expect(app.shows("scrubber")).toBe(true);
+  await app.wait(5100);
+  expect(app.shows("scrubber")).toBe(false);
+});
+
+test("phone: sideways on the scrubber is not the swipe that closes; down is", async () => {
+  const app = await phonePlaying(PORTRAIT);
+  await app.drag("scrubber", { x: -120, y: 30 });
+  await app.wait(600);
+  expect(app.shows("scrubber")).toBe(true);
+  await app.drag("scrubber", { y: 300 });
+  await app.wait(600);
+  expect(app.shows("scrubber")).toBe(false);
+  expect(app.shows("player")).toBe(false);
+});
+
+test("Mac: a drag on the volume keeps the controls up until it is let go", async () => {
+  const app = await openApp({ clock: {}, platform: "macos", width: 1440, height: 900, modules: { "app/native": { ...NATIVE, ...DUNE_FIRST, ...STILL, "Engine.status": status, "Engine.timeline": timeline } } });
+  await app.press("Play");
+  await app.wait(600);
+  await app.dragAndHold("volume", { x: -40 });
+  await app.wait(7000);
+  expect(app.shows("volume")).toBe(true);
+  await app.drop();
+  await app.wait(5100);
+  expect(app.shows("volume")).toBe(false);
+});
