@@ -12,8 +12,11 @@ nav:
   search: "搜索"
   settings: "设置"
   saved: "已保存"
-  # The phone's last tab: the destinations that do not fit in its tab bar.
-  more: "更多"
+  # The first of Home's categories on a phone: everything.
+  all: "全部"
+  # Screen-reader names of the phone's two rows of tabs.
+  sections: "栏目"
+  categories: "看什么"
   back: "返回"
   # Desktop tooltip of Back and its accessibility label: the page it goes to.
   back_to: "返回%{page}"

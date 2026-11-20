@@ -12,8 +12,11 @@ nav:
   search: "検索"
   settings: "設定"
   saved: "保存済み"
-  # The phone's last tab: the destinations that do not fit in its tab bar.
-  more: "その他"
+  # The first of Home's categories on a phone: everything.
+  all: "すべて"
+  # Screen-reader names of the phone's two rows of tabs.
+  sections: "セクション"
+  categories: "見るもの"
   back: "戻る"
   # Desktop tooltip of Back and its accessibility label: the page it goes to.
   back_to: "%{page}に戻る"

@@ -1,41 +1,44 @@
 // Phone and tablet (design/navigation.md, "Tablet" and "Phone"): the tabs,
-// each tab keeping its own stack, Settings pushed on the current tab, Back
-// from a pushed page.
+// each tab keeping its own stack, a phone's Home with its categories at the
+// top, Settings pushed on the current tab (tablet), Back from a pushed page.
 import { expect, test } from "nsh/test";
 import { NATIVE, openApp } from "./testEngine";
 
 const phone = () => openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": NATIVE } });
 
-test("phone: a bottom tab bar; a tab keeps its place; the selected tab chosen again goes to its root", async () => {
+test("phone: Home, Search and Settings at the bottom; the categories at the top of Home, each from its top", async () => {
   const app = await phone();
   expect(app.shows("tab-bar")).toBe(true);
-  for (const tab of ["Home", "Movies", "Series", "Search", "More"]) expect(app.shows(`label:${tab}`)).toBe(true);
+  for (const tab of ["Home", "Search", "Settings"]) expect(app.shows(`label:${tab}`)).toBe(true);
+  for (const category of ["All", "Movies", "Series", "Cartoons", "Anime"]) expect(app.shows(`label:${category}`)).toBe(true);
+  expect(app.shows("label:More")).toBe(false);
   await app.press("label:Movies");
   expect(app.texts()).toContain("All movies");
   await app.press("label:Dune >> nth=0");
   expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
   expect(app.shows("tab-bar")).toBe(true); // on a pushed page too
-  await app.press("label:Series");
-  expect(app.texts()).toContain("All series");
-  await app.press("label:Movies"); // back to Movies: the film is still open
+  await app.press("label:Search");
+  await app.press("label:Home"); // the Home tab: the category open last, where it was left
   expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
-  await app.press("label:Movies"); // chosen again: its root
+  await app.press("label:Home"); // chosen again: its root
   expect(app.texts()).toContain("All movies");
+  await app.press("label:Dune >> nth=0");
+  await app.press("label:Back");
+  await app.press("label:Series"); // a category from the top: from its top
+  expect(app.texts()).toContain("All series");
+  await app.press("label:Anime");
+  expect(app.texts()).toContain("All anime");
 });
 
-test("phone: six tabs, Settings last; More lists the destinations that do not fit and opens one", async () => {
+test("phone: Settings is a tab of its own, without Back; Back from it goes to the Home tab", async () => {
   const app = await phone();
-  expect(app.count("role:tab")).toBe(6);
+  await app.press("label:Movies");
   await app.press("label:Settings");
-  expect(app.shows("label:Settings")).toBe(true);
+  expect(app.texts()).toContain("Playback buffer");
   expect(app.shows("back-head")).toBe(false);
-  await app.press("label:Home");
-  expect(app.shows("label:Cartoons")).toBe(false);
-  await app.press("label:More");
-  expect(app.shows("more-panel")).toBe(true);
-  await app.press("label:Anime");
-  expect(app.shows("more-panel")).toBe(false);
-  expect(app.texts()).toContain("All anime");
+  expect(app.shows("label:Anime")).toBe(false); // no categories over Settings
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("All movies");
 });
 
 test("phone held sideways: the tabs are a rail at the left", async () => {
@@ -53,15 +56,6 @@ test("phone: the back disc over a title's hero goes back; the Watchlist is the d
   expect(app.shows("label:Add to Watchlist")).toBe(true);
   await app.press("label:Back");
   expect(app.texts()).toContain("All movies");
-});
-
-test("phone: Settings opens from the head on the current tab; Back returns to it", async () => {
-  const app = await phone();
-  await app.press("label:Settings");
-  expect(app.texts()).toContain("Playback buffer");
-  expect(app.shows("tab-bar")).toBe(true);
-  await app.keyboard.press("escape");
-  expect(app.texts()).toContain("Continue watching");
 });
 
 test("phone: the player's ✕ closes it", async () => {

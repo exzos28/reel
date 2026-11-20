@@ -12,8 +12,11 @@ nav:
   search: "Suche"
   settings: "Einstellungen"
   saved: "Gespeichert"
-  # The phone's last tab: the destinations that do not fit in its tab bar.
-  more: "Mehr"
+  # The first of Home's categories on a phone: everything.
+  all: "Alles"
+  # Screen-reader names of the phone's two rows of tabs.
+  sections: "Bereiche"
+  categories: "Was schauen"
   back: "Zurück"
   # Desktop tooltip of Back and its accessibility label: the page it goes to.
   back_to: "Zurück zu %{page}"

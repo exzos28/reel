@@ -12,8 +12,11 @@ nav:
   search: "Cerca"
   settings: "Impostazioni"
   saved: "Salvati"
-  # The phone's last tab: the destinations that do not fit in its tab bar.
-  more: "Altro"
+  # The first of Home's categories on a phone: everything.
+  all: "Tutto"
+  # Screen-reader names of the phone's two rows of tabs.
+  sections: "Sezioni"
+  categories: "Cosa guardare"
   back: "Indietro"
   # Desktop tooltip of Back and its accessibility label: the page it goes to.
   back_to: "Torna a: %{page}"

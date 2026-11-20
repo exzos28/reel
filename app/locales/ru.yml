@@ -15,7 +15,11 @@ nav:
   search: Поиск
   settings: Настройки
   saved: Сохранённое
-  more: Ещё
+  # The first of Home's categories on a phone: everything.
+  all: Всё
+  # Screen-reader names of the phone's two rows of tabs.
+  sections: Разделы
+  categories: Что смотреть
   back: Назад
   back_to: "Назад: %{page}"
 

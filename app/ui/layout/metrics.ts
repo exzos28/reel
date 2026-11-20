@@ -6,6 +6,7 @@ import { safeArea, windowSize } from "nsh";
 import { look } from "../platform/look";
 import { u } from "../theme";
 import { centering, frame, sideInset } from "./chrome";
+import { isCategory, section } from "../nav";
 
 /** A root page (a destination: the nav over it), a title (its hero runs under what is
  * over it) or a deep page (Settings on touch, About: Back over it). */
@@ -20,8 +21,10 @@ export const NAV_ROW = 62;
 export const BAR_HEIGHT = 52;
 /** The tablet's top row under the status bar, points. */
 export const TOP_ROW = 60;
-/** A phone's head on a root page (the logo, Settings), points. */
+/** A phone's head on a root page (the logo), points. */
 export const PHONE_HEAD = 44;
+/** Under it on a category's page (Home's tabs: All, Movies, Series, Cartoons, Anime), points. */
+export const CATEGORY_ROW = 44;
 /** A phone's discs over a title's hero: 4 under the status bar, 40 across. */
 export const PHONE_DISCS = 44;
 /** A phone's head on a deep page (Back), points. */
@@ -41,6 +44,8 @@ export interface MetricsInput {
   tabRow: number;
   /** A landscape phone: the tabs are a rail at the left, not a bar under the content. */
   rail?: boolean;
+  /** A category's root page on a phone: Home's tabs under its head. */
+  category?: boolean;
 }
 
 export interface Metrics {
@@ -67,7 +72,7 @@ export function computeMetrics(i: MetricsInput): Metrics {
       case "top-row":
         return i.safeTop + TOP_ROW;
       case "tab-bar":
-        return i.safeTop + (i.kind === "deep" ? PHONE_BACK_HEAD : i.kind === "title" ? PHONE_DISCS : PHONE_HEAD);
+        return i.safeTop + (i.kind === "deep" ? PHONE_BACK_HEAD : i.kind === "title" ? PHONE_DISCS : PHONE_HEAD + (i.category ? CATEGORY_ROW : 0));
     }
   };
   const headBottom = head();
@@ -90,7 +95,8 @@ export const railWidth = () => (phoneRail() ? RAIL + safeArea().left : 0);
 /** This device's metrics for a page of `kind`. */
 export function metrics(kind: PageKind): Metrics {
   const a = safeArea();
-  return computeMetrics({ nav: frame.nav, kind, safeTop: a.top, safeBottom: a.bottom, unit: u(1), tabRow: TAB_ROW, rail: phoneRail() });
+  const category = kind === "root" && isCategory(section());
+  return computeMetrics({ nav: frame.nav, kind, safeTop: a.top, safeBottom: a.bottom, unit: u(1), tabRow: TAB_ROW, rail: phoneRail(), category });
 }
 
 /** Where a hero's text starts, points: its design's place (`design`, TV pixels), or lower

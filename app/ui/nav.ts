@@ -11,6 +11,19 @@ export type Route = { name: Destination } | { name: "title"; id: string } | { na
 export const ROOTS: Destination[] = ["home", "movies", "shows", "cartoons", "anime", "search", "settings", "saved"];
 export const isRoot = (name: string) => ROOTS.includes(name as Destination);
 
+/** What there is to watch: on a phone, one Home tab with these as the tabs at the top of its page
+ * (design/navigation.md, "Phone"). */
+export const CATEGORIES: Destination[] = ["home", "movies", "shows", "cartoons", "anime"];
+export const isCategory = (name: string) => CATEGORIES.includes(name as Destination);
+/** The category open last: where a phone's Home tab goes back to. */
+export const lastCategory = signal<Destination>("home");
+
+/** A phone's Home tab holds the categories (and Back from another tab goes to it). Set once at startup. */
+let homeTab = false;
+export function useHomeTab(on: boolean) {
+  homeTab = on;
+}
+
 export const stack = signal<Route[]>([{ name: "home" }]);
 export const route = () => stack()[stack().length - 1];
 
@@ -66,11 +79,25 @@ export function takeChosenInNav(name: Destination): boolean {
 }
 
 export function go(name: Destination) {
+  if (isCategory(name)) lastCategory.set(name);
   if (section() === name) return reselect(name);
   if (tabStacks) {
     kept.set(section(), stack());
     stack.set(kept.get(name) ?? [{ name }]);
   } else stack.set([{ name }]);
+}
+
+/** A category picked in the tabs at the top of a phone's Home: its page, from its top (a filter
+ * of what to watch, not a place: a film opened there before is not kept). */
+export function openCategory(name: Destination) {
+  if (section() === name) return reselect(name);
+  kept.delete(name);
+  go(name);
+}
+
+/** A phone's Home tab: the category open last; chosen again, its page goes to its top. */
+export function goHomeTab() {
+  go(isCategory(section()) ? section() : lastCategory());
 }
 
 const push = (r: Route) => stack.set([...stack(), r]);
@@ -85,10 +112,12 @@ export function openSettings() {
   if (route().name !== "settings") push({ name: "settings" });
 }
 
-/** One level up; from a destination other than Home, to Home. */
+/** One level up; from a destination other than Home, to Home. On a phone, from Search, Saved or
+ * Settings to the Home tab (the category open last), and from a category to All. */
 export function back() {
   const s = stack();
   if (s.length > 1) stack.set(s.slice(0, -1));
+  else if (homeTab && !isCategory(s[0].name)) go(lastCategory());
   else if (s[0].name !== "home") go("home");
 }
 
