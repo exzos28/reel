@@ -28,6 +28,7 @@ test("phone: six tabs, Settings last; More lists the destinations that do not fi
   expect(app.count("role:tab")).toBe(6);
   await app.press("label:Settings");
   expect(app.shows("label:Settings")).toBe(true);
+  expect(app.shows("back-head")).toBe(false);
   await app.press("label:Home");
   expect(app.shows("label:Cartoons")).toBe(false);
   await app.press("label:More");

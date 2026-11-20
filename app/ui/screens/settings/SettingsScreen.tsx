@@ -138,7 +138,7 @@ export function SettingsScreen() {
   return (
     // A destination with the nav over it; on touch a page pushed on the current tab.
     <View style={{ flex: 1 }}>
-    <PageFrame ctl={page} kind={caps.touch ? "deep" : "root"} title={() => t("settings.title")}>
+    <PageFrame ctl={page} kind={caps.touch && !caps.settingsTab ? "deep" : "root"} title={() => t("settings.title")}>
       <View style={pageStyle()}>
         <View style={rowsStyle()}>
           <SettingRow
