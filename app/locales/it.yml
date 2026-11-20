@@ -480,6 +480,8 @@ settings:
     data: "Fonti dei dati"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "Versione %{version} (%{build})"
+    license: "Codice disponibile · %{license}"
+    repository: "Codice sorgente di reel"
   details:
     title: "Dettagli dello stream"
     about: "Mentre un film è in riproduzione o in attesa, mostra la velocità, da quante persone arriva e quanto è già pronto."

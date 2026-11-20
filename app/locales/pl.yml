@@ -480,6 +480,8 @@ settings:
     data: "Źródła danych"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "Wersja %{version} (%{build})"
+    license: "Kod dostępny publicznie · %{license}"
+    repository: "Kod źródłowy reel"
   details:
     title: "Szczegóły strumienia"
     about: "Gdy film jest odtwarzany lub czeka, pokazuj, jak szybko płynie, od ilu osób i ile jest gotowe na zapas."

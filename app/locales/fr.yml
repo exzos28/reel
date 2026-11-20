@@ -480,6 +480,8 @@ settings:
     data: "Sources de données"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "Version %{version} (%{build})"
+    license: "Code source disponible · %{license}"
+    repository: "Code source de reel"
   details:
     title: "Détails du flux"
     about: "Pendant la lecture ou l'attente d'un film, afficher la vitesse, le nombre de personnes qui partagent et l'avance chargée."

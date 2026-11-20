@@ -480,6 +480,8 @@ settings:
     data: "Джерела даних"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "Версія %{version} (%{build})"
+    license: "Відкритий вихідний код для перегляду · %{license}"
+    repository: "Вихідний код reel"
   details:
     title: "Відомості про потік"
     about: "Поки фільм іде або чекає, показувати швидкість, скільки людей роздає і скільки завантажено наперед."

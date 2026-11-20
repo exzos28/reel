@@ -245,6 +245,9 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `load(data_dir: String, languages: String) -> String`: Loads the settings from `data_dir` (the app's data directory, empty when the host has none) and configures the engine from them; JSON `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`. `languages`: the system's preferred languages, a JSON array of BCP 47 tags; a new install starts with the first one reel has titles in (`contentLanguage`), else English.
   JSON: `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`
   Called from: `ui/preferences.ts`.
+- `project() -> String`: What About says of reel itself: `{"license","repository"}` (the license's name, the source code's address).
+  JSON: `{"license","repository"}`
+  Called from: `ui/screens/about/AboutScreen.tsx`.
 - `revision() -> f64`: Goes up when the settings change (here or on the hosted page) and when the hosted page's pairing code appears or goes: read `current` and `Hosted.pairing` again.
   Called from: `ui/hosted.ts`.
 - `setAudioLanguage(code: String) -> String` (`set_audio_language`): Saves the audio language tracks are looked for in (ISO 639-1, one of `audioLanguages` from `load`; empty: the app's language); the setting in effect ("" for the app's). A pick in the tracks panel sets it too (`Engine.chooseTrack`).

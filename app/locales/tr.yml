@@ -480,6 +480,8 @@ settings:
     data: "Veri kaynakları"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "Sürüm %{version} (%{build})"
+    license: "Kaynağı açık · %{license}"
+    repository: "reel'in kaynak kodu"
   details:
     title: "Akış ayrıntıları"
     about: "Film oynarken veya beklerken akışın hızını, kaç kişiden geldiğini ve ne kadarının hazır olduğunu göster."

@@ -480,6 +480,8 @@ settings:
     data: "Datenquellen"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "Version %{version} (%{build})"
+    license: "Quelloffen einsehbar · %{license}"
+    repository: "Quellcode von reel"
   details:
     title: "Stream-Details"
     about: "Während ein Film läuft oder wartet, anzeigen, wie schnell er kommt, von wie vielen Leuten und wie viel vorgeladen ist."

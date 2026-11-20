@@ -253,6 +253,12 @@ pub struct Settings;
 #[cfg(not(target_arch = "wasm32"))]
 #[module]
 impl Settings {
+    /// What About says of reel itself: `{"license","repository"}` (the license's name, the
+    /// source code's address).
+    pub fn project() -> String {
+        serde_json::json!({ "license": "PolyForm Noncommercial 1.0.0", "repository": "https://github.com/exzos28/reel" }).to_string()
+    }
+
     /// The kind of device, when the host knows better than the system ("tv" on a
     /// Samsung TV, whose web view NSH takes for a desktop browser; a development host's stand-in,
     /// `compat::set_device`); empty otherwise.

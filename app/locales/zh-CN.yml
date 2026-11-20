@@ -480,6 +480,8 @@ settings:
     data: "数据来源"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "版本 %{version} (%{build})"
+    license: "源码公开 · %{license}"
+    repository: "reel 源代码"
   details:
     title: "播放信息"
     about: "在影片播放或等待时，显示下载速度、分享人数和已缓冲的内容。"

@@ -480,6 +480,8 @@ settings:
     data: "Fontes de dados"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "Versão %{version} (%{build})"
+    license: "Código disponível · %{license}"
+    repository: "Código-fonte do reel"
   details:
     title: "Detalhes da transmissão"
     about: "Enquanto um filme passa ou espera, mostra a velocidade, de quantas pessoas ele vem e quanto já está pronto."

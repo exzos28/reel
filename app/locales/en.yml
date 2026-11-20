@@ -483,6 +483,8 @@ settings:
     data: Data sources
     tmdb_logo: The Movie Database (TMDB)
     version: "Version %{version} (%{build})"
+    license: "Source-available · %{license}"
+    repository: "reel's source code"
   details:
     title: Stream details
     about: While a film plays or waits, show how fast it comes, from how many people, and how much is ready ahead.

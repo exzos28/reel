@@ -471,6 +471,8 @@ settings:
     data: Источники данных
     tmdb_logo: The Movie Database (TMDB)
     version: "Версия %{version} (%{build})"
+    license: "Открытый исходный код для просмотра · %{license}"
+    repository: "Исходный код reel"
   details:
     title: Сведения о потоке
     about: Пока фильм идёт или ждёт, показывать скорость, сколько людей раздаёт и сколько загружено впрок.

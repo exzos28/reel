@@ -82,8 +82,17 @@ export function ReleaseText(props: { item: () => Summary; withStart?: boolean; s
   const name: TextStyle = { fontWeight: 500, color: colors.snow() };
   return (
     // With a source its line is kept while the release is still searched, so the buttons under it
-    // do not move when it comes in.
-    <If when={props.item().release} else={<If when={source().url !== ""}><Text style={style()}>{" "}</Text></If>}>
+    // do not move when it comes in: an empty line a screen reader does not stop at.
+    <If
+      when={props.item().release}
+      else={
+        <If when={source().url !== ""}>
+          <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <Text style={style()}>{" "}</Text>
+          </View>
+        </If>
+      }
+    >
       <If
         when={caps.touch}
         else={

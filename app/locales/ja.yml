@@ -480,6 +480,8 @@ settings:
     data: "データソース"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "バージョン %{version} (%{build})"
+    license: "ソース公開 · %{license}"
+    repository: "reel のソースコード"
   details:
     title: "ストリーム情報"
     about: "映画の再生中や待機中に、受信速度、共有している人数、先読みできている量を表示します。"

@@ -105,6 +105,10 @@ test("Settings: About reel, past the buffer sizes, shows the TMDB logo and notic
     "This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.",
   );
   for (const s of ["AniList", "Jikan (MyAnimeList)", "Fribb/anime-lists"]) expect(app.texts()).toContain(s);
+  // reel itself: its license and its source code (a TV shows the address, it opens no links).
+  expect(app.texts()).toContain("Source-available · PolyForm Noncommercial 1.0.0");
+  expect(app.texts()).toContain("reel's source code");
+  expect(app.texts()).toContain("https://github.com/exzos28/reel");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Playback buffer");
   await app.keyboard.press("enter"); // the focus is back on About
