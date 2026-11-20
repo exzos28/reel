@@ -36,7 +36,7 @@ import { playVolume, PlayerVolume, toggleMute, volumeDragEnd, volumeDragMove, vo
 import { useFullscreen } from "./platform/window";
 import { BarBack, barBackBox } from "./layout/WindowBar";
 import { onBack } from "./nav";
-import { SubtitleOverlay } from "./SubtitleOverlay";
+import { SubtitleOverlay, subtitleFit } from "./SubtitleOverlay";
 import { playerTracks } from "./tracks";
 import { trackHeadings, trackRows, TracksSheet, type TrackRow } from "./PlayerTracks";
 import { VideoSurface, videoUnderUi, type SurfaceRef } from "./VideoSurface";
@@ -221,8 +221,20 @@ export function Player() {
   const tracks = computed<Tracks>(() => JSON.parse(Catalog.tracks(what()?.id ?? "")));
   /** The release picked in the panel (shown; switching releases is the catalog's). */
   const picked = signal<Record<number, number>>({});
-  /** The bottom controls' height: the subtitles sit above it while they show. */
+  /** The bottom controls' height: the subtitles sit above them while they show. */
   const controlsHeight = signal(0);
+  /** The picture's width over its height, once the view says. */
+  const pictureAspect = signal<number | undefined>(undefined);
+  /** How far from the window's bottom the subtitles stay above: the controls' top edge and a
+   * gap while they show, else 0. */
+  const subtitlesAbove = () => (overlay() && !card() && controlsHeight() > 0 ? controlsBottom() + controlsHeight() + u(12) : 0);
+  /** The film's own subtitles (mpv draws them) in the box our overlay has: how far up and its
+   * sides, as shares of the picture's height (mpv's margins follow the picture). */
+  const filmSubtitles = () => {
+    const fit = subtitleFit(windowSize(), pictureAspect(), safe().x, 0, "");
+    const h = Math.max(1, fit.frame);
+    return { lift: subtitlesAbove() / h, sides: fit.side / h };
+  };
   // Audio and Subtitles: what the core says the video and the release have.
   const { embedded, menu, cue, choose } = playerTracks();
   /** The panel's releases: the short list, as the film's page has it (one of each quality, and
@@ -572,7 +584,8 @@ export function Player() {
           paused={paused() || leaving()}
           volume={leaving() ? 0 : playVolume()}
           // The film's own subtitles (mpv draws them) rise above the controls while they show.
-          subtitleLift={overlay() && !card() ? controlsHeight() / Math.max(1, windowSize().height) : 0}
+          subtitleLift={filmSubtitles().lift}
+          subtitleSides={filmSubtitles().sides}
           audioLanguages={menu().apply.audioLanguages ?? ""}
           audioTrack={menu().apply.audio}
           subtitleTrack={menu().apply.subtitle}
@@ -581,6 +594,7 @@ export function Player() {
           onLoad={(e) => {
             loaded.set(true);
             turnForPicture(e.width, e.height);
+            pictureAspect.set(e.width && e.height ? e.width / e.height : undefined);
             duration.set(e.duration);
             resumeTo = 0;
             // Resume: once, where the viewer stopped.
@@ -631,7 +645,7 @@ export function Player() {
         />
       </If>
 
-      <SubtitleOverlay text={cue} lift={() => (overlay() && !card() ? controlsHeight() : 0)} />
+      <SubtitleOverlay text={cue} above={subtitlesAbove} aspect={pictureAspect} />
 
       <If when={started() && !failed() && (buffering() || seekSlow())}>
         <BufferingNote text={waitingText} below={waitingBelow} />

@@ -173,6 +173,12 @@ impl Player {
             ("hwdec", "auto-safe"),
             // Subtitle files of the torrent are reel's (the overlay); mpv shows only embedded ones.
             ("sub-auto", "no"),
+            // Embedded subtitles sized from the picture, as the overlay's (5 % of its height), not
+            // from the window: an iPad held upright shows a frame less than half as tall.
+            ("sub-scale-with-window", "no"),
+            ("sub-font-size", SUB_FONT_SIZE),
+            // No track turned on by its default flag at load: the core picks (`subtitleTrack`).
+            ("subs-fallback", "no"),
             ("audio-file-auto", "no"),
             ("cache", "yes"),
             // The engine keeps this much behind where the player reads (reel_domain::play::PLAYER_CACHE).
@@ -302,12 +308,18 @@ impl Player {
                 let v = value.and_then(Value::as_f64).unwrap_or(1.0).clamp(0.0, 1.0);
                 self.set("volume", &format!("{}", v * 100.0));
             }
-            // The subtitles mpv draws itself (embedded in the film) rise over the player's controls
-            // while they show: the share of the view's height they cover (0: none, mpv's own margin).
+            // The subtitles mpv draws itself (embedded in the film) stay above the player's controls
+            // while they show: how far from the view's bottom, as a share of the picture's height
+            // (0: mpv's own margin). libass scales mpv's margins with the picture (pixels of a
+            // 720-high picture), and measures this one from the view's bottom.
             "subtitleLift" => {
-                let lift = value.and_then(Value::as_f64).unwrap_or(0.0).clamp(0.0, 0.8);
-                // mpv's margins are in pixels of a 720-high view, whatever its size; 22 is its default.
-                self.set("sub-margin-y", &format!("{}", (22.0 + lift * 720.0).round()));
+                let lift = value.and_then(Value::as_f64).unwrap_or(0.0).clamp(0.0, 4.0);
+                self.set("sub-margin-y", &format!("{}", margin(lift, SUB_MARGIN_Y)));
+            }
+            // Their room at each side, as our overlay's (a share of the picture's height).
+            "subtitleSides" => {
+                let sides = value.and_then(Value::as_f64).unwrap_or(0.0).clamp(0.0, 2.0);
+                self.set("sub-margin-x", &format!("{}", margin(sides, SUB_MARGIN_X)));
             }
             "rate" => self.set("speed", &format!("{}", value.and_then(Value::as_f64).unwrap_or(1.0))),
             "progressUpdateInterval" => {
@@ -332,6 +344,17 @@ impl Player {
             self.command(&["seek", &format!("{s}"), "absolute"]);
         }
     }
+}
+
+/// mpv's subtitle size: in pixels of a 720-high picture (`sub-scale-with-window=no`), 5 % of it.
+const SUB_FONT_SIZE: &str = "36";
+/// mpv's own subtitle margins (pixels of a 720-high picture): the least they are.
+const SUB_MARGIN_Y: f64 = 22.0;
+const SUB_MARGIN_X: f64 = 25.0;
+
+/// A margin of mpv's from a share of the picture's height, no less than `least`.
+fn margin(share: f64, least: f64) -> f64 {
+    (share * 720.0).max(least).round()
 }
 
 /// A track prop: a track id, `"no"` (none), or null (mpv's own choice).
