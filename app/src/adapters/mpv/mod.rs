@@ -46,6 +46,14 @@ pub fn register_linux(components: &nsh_platform_linux::Components) {
 #[cfg(target_os = "ios")]
 pub fn register_ios(components: &nsh_platform_ios::Components) {
     let Some(lib) = ffi::lib() else { return };
+    // MoltenVK (under mpv's Vulkan) warns on every pipeline libplacebo makes for a triangle
+    // strip: "Metal does not support disabling primitive restart". libplacebo draws them without
+    // indices, where restart never happens, so nothing differs; its errors still show.
+    // Set before mpv makes its first Vulkan instance, unless the environment says otherwise.
+    if std::env::var_os("MVK_CONFIG_LOG_LEVEL").is_none() {
+        // SAFETY: at start, from the main thread, before mpv (the one reader) runs.
+        unsafe { std::env::set_var("MVK_CONFIG_LOG_LEVEL", "1") };
+    }
     components.register("reel/mpv", Rc::new(move |cx| Box::new(ios::MpvComponent::new(cx, lib))));
 }
 
