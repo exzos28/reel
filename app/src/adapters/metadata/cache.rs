@@ -31,6 +31,8 @@ pub enum CacheKind {
     Rating,
     /// TMDB `/configuration`.
     Config,
+    /// A person and their titles.
+    Person,
 }
 
 impl CacheKind {
@@ -42,7 +44,7 @@ impl CacheKind {
             CacheKind::TitleOngoing | CacheKind::SeasonAiring => DAY,
             CacheKind::TitleSettled | CacheKind::SeasonSettled => 14 * DAY,
             CacheKind::Rating => 3 * DAY,
-            CacheKind::Config => 7 * DAY,
+            CacheKind::Config | CacheKind::Person => 7 * DAY,
         }
     }
 
@@ -56,6 +58,7 @@ impl CacheKind {
             CacheKind::SeasonSettled => "seasonSettled",
             CacheKind::Rating => "rating",
             CacheKind::Config => "config",
+            CacheKind::Person => "person",
         }
     }
 
@@ -69,6 +72,7 @@ impl CacheKind {
             CacheKind::SeasonSettled,
             CacheKind::Rating,
             CacheKind::Config,
+            CacheKind::Person,
         ]
         .into_iter()
         .find(|k| k.as_str() == s)

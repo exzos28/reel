@@ -1,0 +1,18 @@
+{
+  "id": 6384,
+  "name": "Keanu Reeves",
+  "known_for_department": "Acting",
+  "profile_path": "/4D0PpNI0kmP58hgrwGC3wCjxhnm.jpg",
+  "combined_credits": {
+    "cast": [
+      { "id": 604, "media_type": "movie", "title": "The Matrix Reloaded", "original_title": "The Matrix Reloaded", "release_date": "2003-05-15", "overview": "Six months after the events depicted in The Matrix...", "poster_path": "/9TGHDvWrqKBzwDxDodHYXEmOE6J.jpg", "backdrop_path": "/pxK1iK6anS6erGg4QePmMKbB1E7.jpg", "vote_average": 7.0, "vote_count": 10900, "genre_ids": [28, 878], "character": "Neo" },
+      { "id": 59186, "media_type": "tv", "name": "The Late Show", "original_name": "The Late Show", "first_air_date": "2015-09-08", "poster_path": "/x.jpg", "vote_average": 6.4, "vote_count": 300, "genre_ids": [10767, 35], "character": "Self" },
+      { "id": 603, "media_type": "movie", "title": "The Matrix", "original_title": "The Matrix", "release_date": "1999-03-31", "overview": "Set in the 22nd century...", "poster_path": "/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg", "backdrop_path": "/fNG7i7RqMErkcqhohV2a6cV1Ehy.jpg", "vote_average": 8.2, "vote_count": 26000, "genre_ids": [28, 878], "character": "Neo" },
+      { "id": 603, "media_type": "movie", "title": "The Matrix", "original_title": "The Matrix", "release_date": "1999-03-31", "poster_path": "/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg", "vote_average": 8.2, "vote_count": 26000, "genre_ids": [28, 878], "character": "Thomas A. Anderson" },
+      { "id": 94954, "media_type": "tv", "name": "Swedish Dicks", "original_name": "Swedish Dicks", "first_air_date": "2016-08-01", "poster_path": "/y.jpg", "vote_average": 6.1, "vote_count": 25, "genre_ids": [35, 80], "character": "Tex" }
+    ],
+    "crew": [
+      { "id": 76757, "media_type": "movie", "title": "Man of Tai Chi", "release_date": "2013-07-05", "vote_count": 600, "genre_ids": [28], "job": "Director", "department": "Directing" }
+    ]
+  }
+}

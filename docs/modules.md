@@ -49,6 +49,9 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `home() -> String`: The home shelves: `[{"id","items":[summary…]}]` (see `catalog::summary`).
   JSON: `[{"id","items":[summary…]}]`
   Called from: `ui/catalog.ts`.
+- `person(id: String) -> String`: A person's page ("tmdb:person:6384"): `{"id","name","photo","initials","items":[summary…], "state"}` (see `catalog::person`).
+  JSON: `{"id","name","photo","initials","items":[summary…], "state"}`
+  Called from: `ui/catalog.ts`.
 - `rememberSearch(query: String)` (`remember_search`): Keeps `query` among the recent searches (submitted, or a title opened from it).
   Called from: `ui/catalog.ts`.
 - `retrySearch(query: String)` (`retry_search`): Asks `query` again (a row that did not load: Try again); read on `revision()`.

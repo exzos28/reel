@@ -309,7 +309,7 @@ fn resume_continue_watching_and_up_next() {
     assert_eq!(t["left"], 14);
     let eps = episodes(AOT, 3);
     assert_eq!(eps[0]["watched"], true);
-    assert_eq!(eps[1]["left"], 14);
+    assert_eq!(eps[1]["note"], json!({ "left": 14 }));
     assert_eq!(eps[1]["start"], 600.0);
 
     let m = title(MATRIX);
@@ -336,6 +336,73 @@ fn resume_continue_watching_and_up_next() {
     assert_eq!(up_next("tmdb:tv:1429:s3e2", 1420.0, 1440.0)["number"], 3);
     assert!(up_next("tmdb:tv:1429:s3e5", 1420.0, 1440.0).is_null(), "season 4 is not known yet");
     assert!(up_next(MATRIX, 8150.0, 8160.0).is_null());
+}
+
+#[test]
+fn play_names_what_it_starts_and_episodes_show_their_progress() {
+    let _g = fresh(true, true);
+    seed_matrix();
+    seed_aot();
+    let play = |verb: &str, s: Option<u32>, e: Option<u32>, at: Option<u32>| json!({ "verb": verb, "season": s, "episode": e, "at": at });
+
+    // Nothing watched: a film plays, a show plays its first episode, named.
+    assert_eq!(title(MATRIX)["playAs"], play("play", None, None, None));
+    assert_eq!(title(AOT)["playAs"], play("play", Some(1), Some(1), None));
+
+    // Stopped in: Resume, where.
+    save_progress(MATRIX, 2472.0, 8160.0);
+    assert_eq!(title(MATRIX)["playAs"], play("resume", None, None, Some(2472)));
+    save_progress("tmdb:tv:1429:s3e2", 870.0, 1440.0);
+    assert_eq!(title(AOT)["playAs"], play("resume", Some(3), Some(2), Some(870)));
+
+    // The episode's row: the time left instead of its date, and a bar.
+    let eps = episodes(AOT, 3);
+    assert_eq!(eps[1]["note"], json!({ "left": 10 }));
+    assert!((eps[1]["progress"].as_f64().unwrap() - 870.0 / 1440.0).abs() < 1e-9);
+    assert_eq!(eps[2]["note"], json!({ "date": [2018, 8, 6] }), "not started: its date");
+    assert_eq!(eps[2]["progress"], 0.0);
+
+    // A minute into it still shows on the thumbnail.
+    save_progress("tmdb:tv:1429:s3e3", 15.0, 1440.0);
+    assert_eq!(episodes(AOT, 3)[2]["progress"], BAR_MIN);
+
+    // Finished: the next episode plays from its start (not "Resume").
+    save_progress("tmdb:tv:1429:s3e3", 1400.0, 1440.0);
+    let eps = episodes(AOT, 3);
+    assert_eq!(eps[2]["progress"], 1.0);
+    assert_eq!(eps[2]["note"], json!({ "date": [2018, 8, 6] }), "watched: its date again");
+    assert_eq!(title(AOT)["playAs"], play("play", Some(3), Some(4), None));
+}
+
+#[test]
+fn a_person_page_lists_their_titles_best_known_first() {
+    let _g = fresh(true, false);
+    seed_matrix();
+    const KEANU: &str = "tmdb:person:6384";
+    // The cast names each one's page; it is not known yet.
+    assert_eq!(title(MATRIX)["cast"][0]["person"], KEANU);
+    let p = person(KEANU);
+    assert_eq!(p["state"], "loading");
+    assert_eq!(p["items"], json!([]));
+
+    let mapped = tmdb().map_person(&fixture("tmdb_person_6384.json"), &cx()).unwrap();
+    seed(Call::Person(KEANU.into()), serde_json::to_value(mapped).unwrap());
+    let p = person(KEANU);
+    assert_eq!(p["state"], "done");
+    assert_eq!(p["name"], "Keanu Reeves");
+    assert_eq!(p["initials"], "KR");
+    assert!(p["photo"].as_str().unwrap().starts_with("https://image.tmdb.org/t/p/"));
+    let ids: Vec<_> = p["items"].as_array().unwrap().iter().map(|s| s["id"].as_str().unwrap()).collect();
+    // Each title once, the most voted first; no talk show, no film he only directed.
+    assert_eq!(ids, ["tmdb:movie:603", "tmdb:movie:604", "tmdb:tv:94954"]);
+    assert_eq!(p["items"][2]["kind"], "show");
+}
+
+#[test]
+fn a_person_the_source_cannot_find_says_so() {
+    let _g = fresh(true, false);
+    land(&Call::Person("tmdb:person:1".into()), &json!({ "data": null }), u64::MAX);
+    assert_eq!(person("tmdb:person:1")["state"], "unavailable");
 }
 
 /// What the engine read of the torrents' files, by link (tests set it).

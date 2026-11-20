@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 use super::{image_url, text, votes, ymd};
 
 /// Cast photos: TMDB's w185 profile size (AniList's large one).
-const PHOTO_W: u32 = 185;
+pub(super) const PHOTO_W: u32 = 185;
 /// How many of the cast the row shows.
 const CAST: usize = 20;
 /// Names per crew job.
@@ -29,7 +29,8 @@ pub fn initials(name: &str) -> String {
     }
 }
 
-/// `[{"name","character","photo","initials"}]`, billing order, first 20.
+/// `[{"name","character","photo","initials","person"}]`, billing order, first 20. `person`: the id
+/// of their page (a TMDB person's), null where reel has none (AniList's staff): not pressable.
 pub fn cast(credits: &Value) -> Vec<Value> {
     let mut people: Vec<&Value> = list(credits).iter().filter(|c| c["role"] == "cast").collect();
     people.sort_by_key(|c| c["order"].as_u64().unwrap_or(u64::MAX));
@@ -43,6 +44,7 @@ pub fn cast(credits: &Value) -> Vec<Value> {
                 "character": text(&c["character"]),
                 "photo": image_url(&c["profile"], PHOTO_W),
                 "initials": initials(&name),
+                "person": c["personId"].as_str().filter(|p| p.starts_with("tmdb:person:")),
             }))
         })
         .collect()

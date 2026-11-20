@@ -179,6 +179,45 @@ impl Tmdb {
         Ok((ask("/search/movie")?, ask("/search/tv")?))
     }
 
+    /// A person and every title they are credited in (`combined_credits`: films and series).
+    pub fn person_request(&self, n: u64, lang: &str) -> Result<Request, ProviderError> {
+        self.get(
+            &format!("/person/{n}"),
+            vec![("language", lang.to_owned()), ("append_to_response", "combined_credits".into())],
+            CacheKind::Person,
+        )
+    }
+
+    /// A person's answer: who they are and their titles. An actor's are the parts they played; a
+    /// director's or a writer's the titles they worked on. Talk shows, news and reality TV (where
+    /// people appear as themselves) are left out.
+    pub fn map_person(&self, body: &Value, cx: &MapCx) -> Result<Person, ProviderError> {
+        let n = u(body, "id").ok_or_else(|| parse_err("id"))?;
+        let credits = body.get("combined_credits").unwrap_or(&Value::Null);
+        let acting = s(body, "known_for_department").is_none_or(|d| d == "Acting");
+        let list = if acting { "cast" } else { "crew" };
+        let mut seen = std::collections::HashSet::new();
+        let cards = arr(credits, list)
+            .iter()
+            .filter(|c| !c["genre_ids"].as_array().is_some_and(|g| g.iter().any(|id| id.as_u64().is_some_and(|id| NOT_FILMOGRAPHY.contains(&id)))))
+            .filter_map(|c| {
+                let kind = match c.get("media_type").and_then(Value::as_str) {
+                    Some("movie") => TitleKind::Movie,
+                    Some("tv") => TitleKind::Series,
+                    _ => return None,
+                };
+                card(c, kind, cx)
+            })
+            .filter(|c| seen.insert(c.id.clone()))
+            .collect();
+        Ok(Person {
+            id: person_id(n),
+            name: s(body, "name").ok_or_else(|| parse_err("name"))?,
+            profile: cx.images.image_at(ImageKind::Profile, body, "profile_path"),
+            credits: cards,
+        })
+    }
+
     pub fn configuration_request(&self) -> Result<Request, ProviderError> {
         self.get("/configuration", vec![], CacheKind::Config)
     }
@@ -455,6 +494,19 @@ fn named(body: &Value, key: &str, list: &[Image], kind: ImageKind, cx: &MapCx) -
     Some(image)
 }
 
+/// A TMDB person's id as credits name it: "tmdb:person:6384".
+pub fn person_id(n: u64) -> String {
+    format!("tmdb:person:{n}")
+}
+
+/// The TMDB number of a person's id ("tmdb:person:6384").
+pub fn person_number(id: &str) -> Option<u64> {
+    id.strip_prefix("tmdb:person:")?.parse().ok().filter(|n| *n > 0)
+}
+
+/// TMDB's TV genres a person's titles leave out: News, Reality, Talk.
+const NOT_FILMOGRAPHY: [u64; 3] = [10763, 10764, 10767];
+
 fn card(v: &Value, kind: TitleKind, cx: &MapCx) -> Option<TitleCard> {
     let id = u(v, "id")?;
     let (title, original, date) = match kind {
@@ -641,7 +693,7 @@ impl TitleSource for Tmdb {
             .enumerate()
             .filter_map(|(i, c)| {
                 Some(Credit {
-                    person_id: format!("tmdb:person:{}", u(c, "id")?),
+                    person_id: person_id(u(c, "id")?),
                     name: s(c, "name")?,
                     role: CreditRole::Cast,
                     character: s(c, "character"),
@@ -661,7 +713,7 @@ impl TitleSource for Tmdb {
         for (i, (c, department, job)) in creators.chain(crew).enumerate() {
             let (Some(id), Some(name)) = (u(c, "id"), s(c, "name")) else { continue };
             people.push(Credit {
-                person_id: format!("tmdb:person:{id}"),
+                person_id: person_id(id),
                 name,
                 role: CreditRole::Crew,
                 character: None,

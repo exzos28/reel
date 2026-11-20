@@ -171,6 +171,8 @@ pub trait Metadata: Send + Sync {
     fn trending(&self, kind: String, language: String) -> Answer;
     fn title(&self, id: String, language: String) -> Answer;
     fn season(&self, id: String, season: u32, language: String) -> Answer;
+    /// A person ("tmdb:person:6384") and the titles they are in.
+    fn person(&self, id: String, language: String) -> Answer;
     fn search(&self, query: String, language: String) -> Answer;
     /// A page (from 1) of a catalog through a filter.
     fn discover(&self, kind: DiscoverKind, filter: Filter, language: String, page: u32) -> Answer;

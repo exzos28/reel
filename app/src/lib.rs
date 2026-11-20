@@ -466,6 +466,12 @@ impl Catalog {
         catalog::episodes(&show, season).to_string()
     }
 
+    /// A person's page ("tmdb:person:6384"): `{"id","name","photo","initials","items":[summary…],
+    /// "state"}` (see `catalog::person`).
+    pub fn person(id: String) -> String {
+        catalog::person(&id).to_string()
+    }
+
     /// Episode `number` of `season` of `show`, or null while it is not known.
     pub fn episode(show: String, season: u32, number: u32) -> String {
         catalog::episode(&show, season, number).to_string()
