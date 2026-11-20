@@ -187,9 +187,14 @@ Mockups: `tablet.html` frames `ipad-home`, `ipad-film`, `ipad-film-scrolled`,
   category to All; from All the app leaves.
 - Phones are upright everywhere but in the player (iOS: the root controller allows landscape
   only while a player is on screen).
-- Title pages (over a hero): a 40 pt disc (44 pt touch area) at (16, `safeArea().top` + 4) with
-  ‹ (iOS) / ← (Android); scrolled past the hero it becomes the standard bar: "‹ Movies" + title
-  (iOS), ← + title (Android). The same corner either way.
+- Title pages (over a hero): a 40 pt disc (44 pt touch area) at the left, centred in a bar row
+  under the status bar (iOS 44 pt, Android 64 dp), with ‹ (iOS) / ← (Android), and the Watchlist
+  disc at the right. Fixed: they stay as the page scrolls. Once the hero's still has scrolled
+  past, the row becomes the standard bar (ink 96%, a hairline under it): the discs lose their
+  fill (plain ‹ and ♥), the title fades in: centred 17/600 on iOS, after ← 22/400 on Android;
+  one line, cut with "…". Back's accessibility name is "Back to Movies"; its label is not shown.
+- Every scrolling phone page has a scrim under the status bar: a fade over a hero, solid ink 96%
+  once content is under it, and on a page without a hero from the start.
 - Settings: a tab of its own (its root page, no Back), large title 34/700. About and Interface
   are pushed on it with Back.
 - Release panel: bottom sheet (top at ~40% of the height), grabber 36×5, ✕ 30 pt; swipe down,

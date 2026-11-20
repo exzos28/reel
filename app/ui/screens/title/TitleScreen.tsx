@@ -11,7 +11,7 @@
 // the title. Back closes the release panel, then goes one level up.
 import { computed, effect, keymap, openUrl, signal, View } from "nsh";
 import { t } from "nsh/i18n";
-import { chooseRelease, episodeCode, episodeReleases, episodes, releaseLine, releasesText, title as titleOf, toggleList, type Episode, type Title } from "../../catalog";
+import { chooseRelease, episodeCode, episodeReleases, episodes, releaseLine, releasesText, title as titleOf, titleText, toggleList, type Episode, type Title } from "../../catalog";
 import { clamp } from "../../focus/memory";
 import { useZones } from "../../focus/zones";
 import { PageFrame } from "../../layout/PageFrame";
@@ -303,7 +303,9 @@ export function TitleScreen(props: { id: string }) {
       bottom={40}
       hero={isShow() ? 640 : 700}
       // Add to list: the frame puts it (a desktop's window bar and a tablet's top row carry their own).
-      action={<ListToggle inList={() => data().inList} focused={() => zone() === "header"} onPress={toggle} />}
+      action={(plain) => <ListToggle inList={() => data().inList} focused={() => zone() === "header"} onPress={toggle} plain={plain} />}
+      // A phone's bar shows the name once the page has scrolled past the hero.
+      barTitle={() => titleText(data())}
     >
       <View ref={page.follow(() => zone() === "header" || zone() === "actions", "start")}>
         <TitleHero
