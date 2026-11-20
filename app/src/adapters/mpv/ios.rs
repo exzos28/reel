@@ -5,13 +5,19 @@
 //!
 //! mpv reads the layer's size only when its video output is set up for a video (MPVKit's
 //! MoltenVK context reports no resize), so a new size while a picture shows starts the output
-//! again: a rotation or a split-view change blinks once. Files load once the layer has a size (`LoadGate`), else mpv
-//! would start its output at 0×0.
+//! again: a rotation or a split-view change blinks once. Only once mpv shows the picture where it
+//! was asked to (`Player::settled`): a new size while the film opens or a seek waits for its place
+//! waits for that. Files load once the layer has a size (`LoadGate`), else mpv would start its
+//! output at 0×0.
 
 use std::{
     cell::{Cell, RefCell},
     ffi::c_void,
-    sync::Arc,
+    rc::{Rc, Weak},
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
 };
 
 use nsh_platform_ios::{ComponentContext, NativeComponent};
@@ -152,6 +158,8 @@ pub struct Inner {
     layer: Retained<CALayer>,
     /// The size the output was started at (pixels); 0×0 before.
     size: Cell<(f64, f64)>,
+    /// A new size the output starts again at once mpv's picture is settled (`restart_when_settled`).
+    pending: Cell<Option<(f64, f64)>>,
     /// Files wait for the first size.
     gate: RefCell<Option<Arc<LoadGate>>>,
     lib: &'static Lib,
@@ -161,42 +169,99 @@ impl Inner {
     /// The layer is laid out at `w`×`h` pixels: start the output there, or restart it at a new size.
     fn laid_out(&self, w: f64, h: f64) {
         // A 1×1 layer is UIKit's placeholder before the real layout (MPVKit's demo skips it too).
-        if w < 2.0 || h < 2.0 || self.size.get() == (w, h) {
+        if w < 2.0 || h < 2.0 {
             return;
         }
-        let first = self.size.get() == (0.0, 0.0);
-        self.size.set((w, h));
-        let _: () = unsafe { msg_send![&*self.layer, setDrawableSize: CGSize { width: w, height: h }] };
-        let player = self.player.borrow();
-        tracing::warn!("reel mpv: layer {w}x{h}{}", if first { ", output starts" } else { ", resized" });
-        if first {
+        if self.size.get() == (0.0, 0.0) {
+            self.resize(w, h, "output starts");
+            let player = self.player.borrow();
             player.set_window(Retained::as_ptr(&self.layer) as *const c_void as i64);
             player.set_property("vo", VO);
             if let Some(gate) = self.gate.borrow_mut().take() {
                 gate.open(self.lib, player.raw());
             }
-        } else if player.property("vo-configured").as_deref() == Some("yes") {
-            // A picture shows: mpv sized its swapchain when its output started, and only a new
-            // output makes another (a video reload keeps it), so the output starts again here.
-            player.set_property("vo", "null");
-            player.set_property("vo", VO);
-            // VideoToolbox decodes on from where it was without its reference frames then
-            // ("output image buffer is null", no picture on a device): start decoding again from
-            // the keyframe at or before here (what plays is in mpv's cache already).
-            if let Some(at) = player.property("time-pos").and_then(|t| t.parse::<f64>().ok()) {
-                player.own_wait();
-                player.command_args(&["seek", &format!("{at}"), "absolute+keyframes"]);
-            }
+            return;
         }
-        // No picture yet: the output starts at the layer's size when the video starts. Starting
-        // it again now, while the file opens, left the film without a picture.
+        if self.size.get() == (w, h) {
+            // Back at the output's size before it started again (turned there and back).
+            self.pending.set(None);
+            return;
+        }
+        if self.player.borrow().property("vo-configured").as_deref() == Some("yes") {
+            // A picture shows, or is on its way: the output starts again at the new size, but not
+            // while the film opens or a seek waits for its place (the core fetching where the
+            // film resumes): started again then, the film played on without a picture. It waits
+            // for mpv's first frame there, as a turn while the film plays does.
+            self.pending.set(Some((w, h)));
+            if !self.player.borrow().settled() {
+                tracing::warn!("reel mpv: layer {w}x{h}, waits for the picture");
+            }
+            self.restart_when_settled();
+        } else {
+            // No picture yet: the output starts at the layer's size when the video starts.
+            // Starting it again now, while the file opens, left the film without a picture.
+            self.pending.set(None);
+            self.resize(w, h, "resized");
+        }
+    }
+
+    /// The layer's drawable at `w`×`h` pixels: what the output starts at.
+    fn resize(&self, w: f64, h: f64, what: &str) {
+        self.size.set((w, h));
+        let _: () = unsafe { msg_send![&*self.layer, setDrawableSize: CGSize { width: w, height: h }] };
+        tracing::warn!("reel mpv: layer {w}x{h}, {what}");
+    }
+
+    /// A new size waits (`pending`) and mpv shows the picture where it was asked to, with no
+    /// seek on its way (`Player::settled`): the output starts again at that size. Asked again
+    /// when that may have changed: mpv's playback restarted, the view's seek stopped waiting.
+    fn restart_when_settled(&self) {
+        let Some((w, h)) = self.pending.get() else { return };
+        let player = self.player.borrow();
+        if !player.settled() {
+            return;
+        }
+        self.pending.set(None);
+        self.resize(w, h, "resized");
+        if player.property("vo-configured").as_deref() != Some("yes") {
+            return;
+        }
+        // mpv sized its swapchain when its output started, and only a new output makes another
+        // (a video reload keeps it), so the output starts again here.
+        player.set_property("vo", "null");
+        player.set_property("vo", VO);
+        // VideoToolbox decodes on from where it was without its reference frames then ("output
+        // image buffer is null", no picture on a device): start decoding again from the keyframe
+        // at or before here (what plays is in mpv's cache already).
+        if let Some(at) = player.property("time-pos").and_then(|t| t.parse::<f64>().ok()) {
+            player.own_wait();
+            player.command_args(&["seek", &format!("{at}"), "absolute+keyframes"]);
+        }
+    }
+}
+
+/// The views on screen by number, on the main thread: mpv's events reach a view through it
+/// (`shown_on_main`), and a view gone by then is not found.
+static NEXT_VIEW: AtomicUsize = AtomicUsize::new(1);
+thread_local! {
+    static VIEWS: RefCell<Vec<(usize, Weak<Inner>)>> = const { RefCell::new(Vec::new()) };
+}
+
+/// mpv's playback restarted for view number `context`: a size waiting for it applies now.
+extern "C" fn shown_on_main(context: *mut c_void) {
+    let id = context as usize;
+    let inner = VIEWS.with(|v| v.borrow().iter().find(|(n, _)| *n == id).and_then(|(_, w)| w.upgrade()));
+    if let Some(inner) = inner {
+        inner.restart_when_settled();
     }
 }
 
 /// The `reel/mpv` native component.
 pub struct MpvComponent {
     view: Retained<UIView>,
-    inner: Option<std::rc::Rc<Inner>>,
+    inner: Option<Rc<Inner>>,
+    /// Its number in `VIEWS`.
+    id: usize,
     lifecycle: Option<Retained<Lifecycle>>,
 }
 
@@ -205,17 +270,18 @@ impl MpvComponent {
         let mtm = MainThreadMarker::new().expect("components are made on the main thread");
         let Some(view) = MpvView::new(mtm) else {
             cx.emit("error", serde_json::json!({ "message": "no Metal layer", "code": "view" }));
-            return MpvComponent { view: UIView::new(mtm), inner: None, lifecycle: None };
+            return MpvComponent { view: UIView::new(mtm), inner: None, id: 0, lifecycle: None };
         };
         let emit_cx = cx.clone();
         let made = std::time::Instant::now();
         let inner = match Player::new(lib, "null", &PLATFORM, Arc::new(move |name, data| emit_cx.emit(name, data))) {
             Ok(mut player) => {
                 let gate = player.hold_until_drawn();
-                Some(std::rc::Rc::new(Inner {
+                Some(Rc::new(Inner {
                     player: RefCell::new(player),
                     layer: view.ivars().layer.clone(),
                     size: Cell::new((0.0, 0.0)),
+                    pending: Cell::new(None),
                     gate: RefCell::new(Some(gate)),
                     lib,
                 }))
@@ -225,18 +291,21 @@ impl MpvComponent {
                 None
             }
         };
+        let id = NEXT_VIEW.fetch_add(1, Ordering::Relaxed);
         if let Some(inner) = &inner {
-            let weak = std::rc::Rc::downgrade(inner);
+            let weak = Rc::downgrade(inner);
             *view.ivars().on_layout.borrow_mut() = Some(Box::new(move |w, h| {
                 if let Some(inner) = weak.upgrade() {
                     inner.laid_out(w, h);
                 }
             }));
+            VIEWS.with(|v| v.borrow_mut().push((id, Rc::downgrade(inner))));
+            inner.player.borrow().when_shown(Box::new(move || crate::adapters::ios_awake::on_main(id, shown_on_main)));
         }
         tracing::warn!("reel mpv: the player made in {} ms", made.elapsed().as_millis());
-        let lifecycle = inner.as_ref().map(|i| Lifecycle::new(mtm, std::rc::Rc::downgrade(i)));
+        let lifecycle = inner.as_ref().map(|i| Lifecycle::new(mtm, Rc::downgrade(i)));
         crate::adapters::ios_awake::playing(true);
-        MpvComponent { view: Retained::into_super(view), inner, lifecycle }
+        MpvComponent { view: Retained::into_super(view), inner, id, lifecycle }
     }
 
 }
@@ -249,6 +318,10 @@ impl NativeComponent for MpvComponent {
     fn set_prop(&mut self, name: &str, value: Option<&Value>) {
         if let Some(inner) = &self.inner {
             inner.player.borrow_mut().set_prop(name, value);
+            // The core has the place (or the seek was dropped): a size may have waited for it.
+            if name == "seekWaiting" {
+                inner.restart_when_settled();
+            }
         }
     }
 
@@ -264,6 +337,7 @@ impl Drop for MpvComponent {
         if let Some(l) = self.lifecycle.take() {
             unsafe { NSNotificationCenter::defaultCenter().removeObserver(&l) };
         }
+        VIEWS.with(|v| v.borrow_mut().retain(|(n, _)| *n != self.id));
         // mpv holds the layer without retaining it: the player goes first, while the view (and
         // its layer) still exist.
         self.inner = None;

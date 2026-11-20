@@ -3,8 +3,8 @@
 // darkened (not blurred: the direction refuses blur), its logotype in the middle, the release
 // under it, one calm line from the core and a thin bar of the film's start coming in (the
 // dinosaur over the line when Settings asks for it); an error takes the same place, still.
-// Once the film plays, a stall only shows a line over the picture (`BufferingNote`), with no
-// loader.
+// Once the film plays, a stall only shows a line over the picture (`BufferingNote`; a phone's is
+// in the controls' bottom row, `WaitingLine`), with no loader.
 import { Image, reduceMotion, Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { titleText, type Summary } from "./catalog";
 import { Loader } from "./kit/Loader";
@@ -109,19 +109,30 @@ const noteStyle = (): ViewStyle => ({
 });
 /** The note's words as the stage's line has them. */
 const noteTextStyle = (): TextStyle => ({ ...type.body(), color: colors.soft(), textAlign: "center" });
-/** A stall or a seek while the film plays: one calm line at the picture's middle (`below`: how
- * far under it, points; negative over it: a phone's Play is there), as the stage words its own; the picture stays as it is,
- * and what is ready ahead shows on the scrubber. The loader (Settings) is the stage's only. */
-export function BufferingNote(props: { text: () => string; below: () => number }) {
-  // The line's offset from the middle: a spacer twice as tall on the other side of it.
-  const spacer = () => <View style={{ height: Math.abs(props.below()) * 2 }} />;
+/** A stall or a seek while the film plays: one calm line at the picture's middle, as the stage
+ * words its own; the picture stays as it is, and what is ready ahead shows on the scrubber. The
+ * loader (Settings) is the stage's only. */
+export function BufferingNote(props: { text: () => string }) {
   return (
     <View testID="buffering" style={{ ...cover(), pointerEvents: "none", alignItems: "center", justifyContent: "center", paddingHorizontal: safe().x }}>
-      <If when={props.below() > 0}>{spacer()}</If>
       <View style={{ ...noteStyle(), ...breathe(true) }}>
         <Text testID="buffering-line" style={noteTextStyle()}>{props.text()}</Text>
       </View>
-      <If when={props.below() < 0}>{spacer()}</If>
     </View>
   );
 }
+
+/** A phone's `BufferingNote`: its middle has Play, so the line is in the controls' bottom row,
+ * at its middle between the times and in their size (`style`), `side` points kept clear at each
+ * end (the wider time's room), one line cut with an ellipsis when long. */
+export function WaitingLine(props: { text: () => string; side: () => number; style: () => TextStyle }) {
+  return (
+    <View testID="buffering" style={{ ...waitingRowStyle(props.side()), ...breathe(true) }}>
+      <Text testID="buffering-line" style={{ ...props.style(), ...waitingTextStyle }}>{props.text()}</Text>
+    </View>
+  );
+}
+const waitingRowStyle = (side: number): ViewStyle => ({
+  position: "absolute", top: 0, bottom: 0, left: side, right: side, pointerEvents: "none", alignItems: "center", justifyContent: "center",
+});
+const waitingTextStyle: TextStyle = { numberOfLines: 1, textOverflow: "ellipsis", textAlign: "center" };

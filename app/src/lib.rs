@@ -222,8 +222,8 @@ impl VideoEngine {
     }
 
     /// Turns the screen to landscape (`true`) or portrait, whatever the device's rotation lock
-    /// says: the player's Rotate button (iOS; elsewhere nothing). The device turning it back
-    /// (rotation unlocked) still turns it.
+    /// says: the player's Rotate button, and its turn as it opens (iOS; elsewhere nothing). The
+    /// device turning it back (rotation unlocked) still turns it.
     pub fn turn(landscape: bool) {
         #[cfg(target_os = "ios")]
         crate::adapters::ios_awake::turn(landscape);
@@ -231,8 +231,9 @@ impl VideoEngine {
         let _ = landscape;
     }
 
-    /// Whether a phone's player starts sideways for a film of this size (the video view's
-    /// `width` and `height` once loaded): 16:9 and wider do (`reel_domain::play::starts_sideways`).
+    /// Whether a phone's player plays sideways for a film of this size (the video view's `width`
+    /// and `height` once loaded): it turned sideways as it opened, and only a picture taller than
+    /// wide turns it back upright (`reel_domain::play::starts_sideways`).
     pub fn sideways(width: f64, height: f64) -> bool {
         reel_domain::play::starts_sideways(width, height)
     }

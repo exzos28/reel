@@ -53,15 +53,14 @@ impl SeekReady {
     }
 }
 
-/// The narrowest picture a phone's player turns sideways for at the start: 16:9, with room for
-/// a few pixels cropped off (1916×1080) or a near-16:9 frame (1.75).
-const SIDEWAYS_FROM: f64 = 1.7;
-
-/// Whether a phone's player starts sideways for a picture this size (the video view's width and
-/// height once loaded, pixels): 16:9 and wider do; a narrower picture, or one not known yet (0),
-/// stays as the phone is held.
+/// Whether a phone's player plays sideways for a picture this size (the video view's width and
+/// height once loaded, pixels). A phone held upright turns sideways as the player opens, before
+/// the picture is known (mpv's output then starts at the sideways size); once loaded, only a
+/// picture taller than wide (a phone's vertical clip) turns it back upright. Any picture wider
+/// than tall plays sideways, 4:3 too (larger on a phone than upright); a square one, or one not
+/// known (0), stays sideways as it turned.
 pub fn starts_sideways(width: f64, height: f64) -> bool {
-    width > 0.0 && height > 0.0 && width / height >= SIDEWAYS_FROM
+    !(width > 0.0 && height > width)
 }
 
 /// A video track's picture as shown, from what its container says: the stored size, its pixel
@@ -90,19 +89,22 @@ mod tests {
     }
 
     #[test]
-    fn sixteen_nine_and_wider_turn_sideways() {
+    fn a_picture_wider_than_tall_plays_sideways_4_3_too() {
         assert!(starts_sideways(1920.0, 1080.0));
-        assert!(starts_sideways(1916.0, 1080.0));
         assert!(starts_sideways(1920.0, 800.0));
         assert!(starts_sideways(3840.0, 1600.0));
+        assert!(starts_sideways(1440.0, 1080.0)); // 4:3
+        assert!(starts_sideways(720.0, 576.0)); // PAL's stored size
     }
 
     #[test]
-    fn narrower_or_unknown_stay_upright() {
-        assert!(!starts_sideways(1440.0, 1080.0));
-        assert!(!starts_sideways(720.0, 576.0));
+    fn only_a_picture_taller_than_wide_turns_back_upright() {
         assert!(!starts_sideways(1080.0, 1920.0));
-        assert!(!starts_sideways(0.0, 0.0));
-        assert!(!starts_sideways(1920.0, 0.0));
+        assert!(!starts_sideways(1080.0, 1081.0));
+        // Square, or not known yet: it stays sideways as the player turned.
+        assert!(starts_sideways(1080.0, 1080.0));
+        assert!(starts_sideways(0.0, 0.0));
+        assert!(starts_sideways(1920.0, 0.0));
+        assert!(starts_sideways(0.0, 1080.0));
     }
 }

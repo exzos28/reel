@@ -363,21 +363,41 @@ test("iPad: no Rotate in the player (its window does not turn for an app); the �
   expect(app.shows("label:Close")).toBe(true);
 });
 
-test("phone held upright: a wide film turns the screen sideways once it loads, and upright again on leaving", async () => {
+// The core's answer for a picture: sideways unless it is taller than wide.
+const sidewaysUnlessTall = (w: number, h: number) => !(w > 0 && h > w);
+
+test("phone held upright: the player turns sideways as it opens, before the film loads, and upright again on leaving", async () => {
   const turns: boolean[] = [];
-  const app = await phonePlaying(PORTRAIT, { "VideoEngine.sideways": (w: number, h: number) => w / h >= 1.7, "VideoEngine.turn": (l: boolean) => { turns.push(l); } });
+  const loads: number[] = [];
+  const app = await openApp({
+    platform: "ios", ...PORTRAIT, clock: {},
+    // The engine still looks for people: no video view yet.
+    modules: { "app/native": { ...NATIVE, ...DUNE_FIRST, "Engine.status": JSON.stringify({ phase: "resolving", stage: "finding" }), "VideoEngine.sideways": (w: number, h: number) => (loads.push(w), sidewaysUnlessTall(w, h)), "VideoEngine.turn": (l: boolean) => { turns.push(l); } } },
+  });
+  await app.press("Play");
+  await app.wait(600);
+  expect(app.shows("stage")).toBe(true);
   expect(turns).toEqual([true]);
+  expect(loads).toEqual([]);
   await app.press("label:Close");
   await app.wait(600);
   expect(turns).toEqual([true, false]);
 });
 
-test("phone: a narrow film, or one already sideways, does not turn the screen", async () => {
+test("phone held upright: a wide film stays sideways once it loads", async () => {
   const turns: boolean[] = [];
-  const narrow = { "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } };
-  await phonePlaying(PORTRAIT, narrow);
-  expect(turns).toEqual([]);
-  await phonePlaying(SIDEWAYS, { ...narrow, "VideoEngine.sideways": true });
+  const app = await phonePlaying(PORTRAIT, { "VideoEngine.sideways": sidewaysUnlessTall, "VideoEngine.turn": (l: boolean) => { turns.push(l); } });
+  expect(app.shows("scrubber")).toBe(true);
+  expect(turns).toEqual([true]); // 1920×1080: the turn at the start only
+});
+
+test("phone: a picture taller than wide turns it back upright once it loads; one already sideways does not turn", async () => {
+  const turns: boolean[] = [];
+  const tall = { "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } };
+  await phonePlaying(PORTRAIT, tall);
+  expect(turns).toEqual([true, false]);
+  turns.length = 0;
+  await phonePlaying(SIDEWAYS, tall);
   expect(turns).toEqual([]);
 });
 
@@ -421,25 +441,27 @@ test("Mac: a drag on the volume keeps the controls up until it is let go", async
 // through "nothing plays" closed it and opened another over the one leaving (a blank screen).
 test("phone: an episode picked in the Episodes sheet plays in the same player, which stays up", async () => {
   const turns: boolean[] = [];
-  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } }, "Resume S3:E2 · 10:00");
+  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, "VideoEngine.sideways": true, "VideoEngine.turn": (l: boolean) => { turns.push(l); } }, "Resume S3:E2 · 10:00");
   await app.press("label:Episodes");
   await app.press("Old Story");
   expect(app.shows("player-host")).toBe(true); // never closed on the way
   await app.wait(600);
   expect(app.shows("player-host")).toBe(true);
   expect(app.shows("scrubber")).toBe(true);
-  expect(turns).toEqual([]); // the player was not torn down (it turns upright as it goes)
+  // Sideways as it opened, and no more: the player was not torn down (it turns upright as it
+  // goes), and the next episode does not turn it again.
+  expect(turns).toEqual([true]);
 });
 
 test("phone: Up next plays the next episode in the same player", async () => {
   const turns: boolean[] = [];
-  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, "Catalog.upNext": nextEpisode, "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } }, "Resume S3:E2 · 10:00");
+  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, "Catalog.upNext": nextEpisode, "VideoEngine.sideways": true, "VideoEngine.turn": (l: boolean) => { turns.push(l); } }, "Resume S3:E2 · 10:00");
   expect(app.texts()).toContain("Next episode · S3:E3");
   await app.press("label:Play now");
   expect(app.shows("player-host")).toBe(true);
   await app.wait(600);
   expect(app.shows("player-host")).toBe(true);
-  expect(turns).toEqual([]);
+  expect(turns).toEqual([true]);
   await app.press("label:Watch credits"); // the next one's card: the controls come back
   expect(app.shows("scrubber")).toBe(true);
 });
@@ -488,4 +510,34 @@ test("phone: the secondary buttons sit at the top, the bottom keeps the timeline
     expect(app.shows("player-top-buttons >> label:Rotate screen")).toBe(true);
     expect(app.shows("scrubber")).toBe(true);
   }
+});
+
+// A phone's middle has Play: the waiting line is in the bottom row, between the times, and the
+// controls stay up while it waits.
+test("phone: a slow seek's waiting line is in the bottom row between the times, not over Play", async () => {
+  for (const screen of [PORTRAIT, SIDEWAYS]) {
+    const app = await phonePlaying(screen, {
+      ...DETAILS,
+      // The place comes long after it is asked for.
+      "Engine.seek": () => new Promise<string>((r) => setTimeout(() => r(JSON.stringify({ state: "ready" })), 9000)),
+    });
+    await app.press("label:Forward 10 seconds");
+    await app.wait(1500); // the press rested: the place is asked for, and takes long
+    expect(app.shows("player-bottom >> buffering")).toBe(true);
+    expect(app.texts()).toContain("Waiting for the stream · 3.4 MB/s");
+    expect(app.shows("player-middle >> label:Pause")).toBe(true);
+    await app.wait(6000); // longer than the controls stay on their own
+    expect(app.shows("player-bottom >> buffering")).toBe(true);
+    expect(app.shows("scrubber")).toBe(true);
+  }
+});
+
+test("iPad: the waiting line stays a note at the picture's middle", async () => {
+  const app = await phonePlaying({ width: 1180, height: 820, safeArea: { top: 24, bottom: 20, left: 0, right: 0 } }, {
+    "Engine.seek": () => new Promise<string>((r) => setTimeout(() => r(JSON.stringify({ state: "ready" })), 3000)),
+  }, "Play", { nsh: { "platform.idiom": "pad" } });
+  await app.press("label:Forward 10 seconds");
+  await app.wait(1500);
+  expect(app.shows("buffering")).toBe(true);
+  expect(app.shows("player-bottom >> buffering")).toBe(false);
 });

@@ -18,6 +18,9 @@ use objc2_ui_kit::UIApplication;
 static PLAYING: AtomicUsize = AtomicUsize::new(0);
 /// Something saves (checked every few seconds).
 static SAVING: AtomicBool = AtomicBool::new(false);
+/// The player asked for landscape (`turn`): a phone's root controller allows it from then on, as
+/// the player opens, before its video view comes (`upright_on_phones`).
+static SIDEWAYS_ASKED: AtomicBool = AtomicBool::new(false);
 
 /// A player came (`true`) or went: the screen stays on, and a phone may turn (`upright_on_phones`).
 pub fn playing(on: bool) {
@@ -89,6 +92,11 @@ pub fn watch() {
 unsafe extern "C" {
     static _dispatch_main_q: c_void;
     fn dispatch_async_f(queue: *const c_void, context: *mut c_void, work: extern "C" fn(*mut c_void));
+}
+
+/// Runs `work(context)` on the main thread, a moment later (from any thread).
+pub fn on_main(context: usize, work: extern "C" fn(*mut c_void)) {
+    unsafe { dispatch_async_f(&raw const _dispatch_main_q, context as *mut c_void, work) };
 }
 
 /// UIKit's idle timer, on the main thread.
@@ -183,6 +191,7 @@ pub fn turn(landscape: bool) {
             }
         }
     }
+    SIDEWAYS_ASKED.store(landscape, Ordering::Relaxed);
     unsafe { dispatch_async_f(&raw const _dispatch_main_q, landscape as usize as *mut c_void, run) };
 }
 
@@ -202,10 +211,11 @@ pub fn upright_on_phones() {
         // UIUserInterfaceIdiomPhone is 0; masks: portrait 1 << 1, all 1 << 1 | 1 << 2 | 1 << 3 | 1 << 4.
         let device: Retained<AnyObject> = unsafe { msg_send![objc2::class!(UIDevice), currentDevice] };
         let idiom: isize = unsafe { msg_send![&device, userInterfaceIdiom] };
-        // A phone's player turns: portrait and landscape while one is on screen.
+        // A phone's player turns: portrait and landscape while one is on screen, or asked for
+        // landscape as it opens.
         if idiom != 0 {
             30
-        } else if PLAYING.load(Ordering::Relaxed) > 0 {
+        } else if PLAYING.load(Ordering::Relaxed) > 0 || SIDEWAYS_ASKED.load(Ordering::Relaxed) {
             (1 << 1) | (1 << 3) | (1 << 4)
         } else {
             1 << 1
