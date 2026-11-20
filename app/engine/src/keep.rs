@@ -13,7 +13,9 @@
 //! - A torrent being saved is leased (`leases`): a stream of it reads the same files, and
 //!   closing the player never deletes them. Complete, it leaves the session with its files.
 //! - Files are deleted only when no other item uses the same path.
-//! - Unfinished items go on when the app starts again, from their .torrent.
+//! - Unfinished items go on when the app starts again, from their .torrent, and from the
+//!   pieces librqbit verified (`<hash>.bitv` beside it, vendored librqbit's fastresume) instead
+//!   of hashing the files again.
 
 use std::{
     collections::{HashMap, HashSet},
@@ -406,10 +408,12 @@ pub fn init(data_dir: &Path) {
                 fail_torrent(&hash, "interrupted");
                 continue;
             };
+            let fastresume = file.parent().map(Path::to_path_buf);
             core.rt.spawn(async move {
                 let options = AddTorrentOptions {
                     overwrite: true,
                     paused,
+                    fastresume_folder: fastresume,
                     only_files: Some(wanted.into_iter().collect()),
                     output_folder: Some(dir.to_string_lossy().into_owned()),
                     ..Default::default()
@@ -590,6 +594,7 @@ async fn resolve(id: u32, source: String) {
         // Nothing until the item's files are known (below).
         only_files: Some(Vec::new()),
         output_folder: Some(dir.to_string_lossy().into_owned()),
+        fastresume_folder: with(|lib| lib.home.join("torrents")),
         ..Default::default()
     };
     // Another episode of the same pack saves it already: take that torrent as it is. Adding a
@@ -922,6 +927,7 @@ pub fn remove(id: u32) {
         if let Some(h) = &item.infohash {
             if lib.of(h).next().is_none() {
                 let _ = std::fs::remove_file(lib.torrent_file(h));
+                let _ = std::fs::remove_file(lib.torrent_file(h).with_extension("bitv"));
             }
             if let Some((tid, handle)) = lib.live.get(h).cloned() {
                 if lib.of(h).any(Item::unfinished) {
