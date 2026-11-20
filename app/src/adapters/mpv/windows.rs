@@ -280,6 +280,9 @@ impl Drop for MpvComponent {
         }
         d.target = None;
         drop(d);
-        self.player = None;
+        // Then the player stops without holding the UI thread (`Player::close_in_background`).
+        if let Some(p) = self.player.take() {
+            p.close_in_background();
+        }
     }
 }

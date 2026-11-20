@@ -1,11 +1,18 @@
 //! One mpv player: its handle, the props the TSX view sets, and a thread that
 //! turns mpv's events into the view's events (the same contract as NSH's
 //! `<Video>`: `load`, `progress`, `buffer`, `end`, `error`, plus `tracks`).
+//!
+//! The views call it on the UI's thread, so nothing here waits for mpv's: props and commands
+//! are mpv's asynchronous calls (`mpv_set_property_async`, `mpv_command_async`), answered on
+//! the event thread. mpv's thread can be busy for long (a stream that does not come) and can
+//! itself wait for the UI's (Android's TextureView takes its frames there): a call that waited
+//! for it froze the app (an ANR on Back while the film waited for the stream).
 
 use std::{
-    ffi::{CStr, c_char, c_int},
+    collections::HashMap,
+    ffi::{CStr, c_char, c_int, c_void},
     sync::{
-        Arc,
+        Arc, Mutex, OnceLock,
         atomic::{AtomicBool, AtomicU64, Ordering},
     },
     thread::JoinHandle,
@@ -238,15 +245,68 @@ fn view_failed() -> Value {
     json!({ "code": "view", "message": "the video view could not start" })
 }
 
-/// Runs an mpv command (`args`), logging a failure.
+/// What a request sent to mpv waits for: its answer.
+enum Pending {
+    /// What was asked, for the log if mpv could not do it.
+    Asked(String),
+    /// Runs once mpv has done this request and every one before it (`Player::after_requests`).
+    Then(Box<dyn FnOnce() + Send>),
+}
+
+/// The requests mpv has not answered yet, every player's, by their reply id, with the player's
+/// handle (what a player leaves unanswered goes with it: `Player::drop`).
+fn pending() -> &'static Mutex<HashMap<u64, (usize, Pending)>> {
+    static PENDING: OnceLock<Mutex<HashMap<u64, (usize, Pending)>>> = OnceLock::new();
+    PENDING.get_or_init(Default::default)
+}
+
+/// Sends a request mpv does on its own thread (`send` with the reply id): queued in order, never
+/// waited for. Its answer comes to the event thread (`answered`).
+fn request(lib: &Lib, raw: Raw, what: Pending, send: impl FnOnce(u64) -> c_int) {
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    let id = NEXT.fetch_add(1, Ordering::Relaxed);
+    pending().lock().unwrap().insert(id, (raw.0 as usize, what));
+    let r = send(id);
+    if r < 0 {
+        let mut all = pending().lock().unwrap();
+        match all.remove(&id) {
+            Some((_, Pending::Asked(what))) => tracing::warn!("reel mpv: {what}: {}", ffi::error_text(lib, r)),
+            // Never run before mpv is done with what came before: it runs when the player goes.
+            Some(then @ (_, Pending::Then(_))) => {
+                tracing::warn!("reel mpv: a request was not queued: {}", ffi::error_text(lib, r));
+                all.insert(id, then);
+            }
+            None => {}
+        }
+    }
+}
+
+/// mpv answered request `id` (`error` < 0: it failed).
+fn answered(lib: &Lib, id: u64, error: c_int) {
+    let done = pending().lock().unwrap().remove(&id).map(|(_, p)| p);
+    match done {
+        Some(Pending::Then(then)) => then(),
+        Some(Pending::Asked(what)) if error < 0 => tracing::warn!("reel mpv: {what}: {}", ffi::error_text(lib, error)),
+        _ => {}
+    }
+}
+
+/// Runs an mpv command (`args`) on mpv's thread, logging a failure.
 pub fn command(lib: &'static Lib, raw: Raw, args: &[&str]) {
     let owned: Vec<_> = args.iter().map(|a| cstr(a)).collect();
     let mut ptrs: Vec<*const c_char> = owned.iter().map(|c| c.as_ptr()).collect();
     ptrs.push(std::ptr::null());
-    let r = unsafe { (lib.command)(raw.0, ptrs.as_mut_ptr()) };
-    if r < 0 {
-        tracing::warn!("reel mpv: {}: {}", args.join(" "), ffi::error_text(lib, r));
-    }
+    // mpv copies the arguments before it returns.
+    request(lib, raw, Pending::Asked(args.join(" ")), |id| unsafe { (lib.command_async)(raw.0, id, ptrs.as_mut_ptr()) });
+}
+
+/// Sets property `name` to `value` (text) on mpv's thread, logging a failure.
+fn set_property(lib: &Lib, raw: Raw, name: &str, value: &str) {
+    let (n, v) = (cstr(name), cstr(value));
+    let mut text = v.as_ptr();
+    request(lib, raw, Pending::Asked(format!("{name}={value}")), |id| unsafe {
+        (lib.set_property_async)(raw.0, id, n.as_ptr(), ffi::FORMAT_STRING, (&mut text as *mut *const c_char).cast::<c_void>())
+    });
 }
 
 const OBSERVED: [(&str, c_int); 9] = [
@@ -344,10 +404,36 @@ impl Player {
     #[cfg_attr(not(target_os = "android"), allow(dead_code))]
     /// The window mpv draws into (`wid`; Android: a global reference to a Surface, 0: none).
     pub fn set_window(&self, wid: i64) {
+        let (lib, raw) = (self.lib, self.raw);
         let mut wid = wid;
-        let r = unsafe { (self.lib.set_option)(self.raw.0, cstr("wid").as_ptr(), ffi::FORMAT_INT64, (&mut wid as *mut i64).cast()) };
-        if r < 0 {
-            tracing::warn!("reel mpv: wid: {}", ffi::error_text(self.lib, r));
+        request(lib, raw, Pending::Asked(format!("wid={wid}")), |id| unsafe {
+            (lib.set_property_async)(raw.0, id, cstr("wid").as_ptr(), ffi::FORMAT_INT64, (&mut wid as *mut i64).cast())
+        });
+    }
+
+    /// Runs `then` (on the event thread) once mpv has done every request sent before this:
+    /// Android lets go of a Surface only once mpv no longer draws into it. If mpv never answers,
+    /// it runs when the player has gone (`Drop`).
+    #[cfg_attr(not(target_os = "android"), allow(dead_code))]
+    pub fn after_requests(&self, then: impl FnOnce() + Send + 'static) {
+        let (lib, raw) = (self.lib, self.raw);
+        let args = [cstr("ignore")];
+        let mut ptrs = [args[0].as_ptr(), std::ptr::null()];
+        request(lib, raw, Pending::Then(Box::new(then)), |id| unsafe { (lib.command_async)(raw.0, id, ptrs.as_mut_ptr()) });
+    }
+
+    /// Stops the player and lets it go without waiting for mpv: its sound and its events stop
+    /// now, and mpv is torn down on a thread of its own (that waits for mpv's thread, which may
+    /// be waiting for a stream). For a view whose window mpv no longer uses (Android: it holds
+    /// its own reference to the Surface; the desktops: the render context is freed first).
+    #[cfg_attr(not(any(target_os = "macos", windows, all(target_os = "linux", not(target_arch = "arm")))), allow(dead_code))]
+    pub fn close_in_background(self) {
+        self.shared.stop.store(true, Ordering::Relaxed);
+        self.command(&["stop"]);
+        let closing = std::thread::Builder::new().name("reel-mpv-close".into()).spawn(move || drop(self));
+        if let Err(e) = closing {
+            // The player came back with the error and went on this thread.
+            tracing::warn!("reel mpv: no thread to close the player on: {e}");
         }
     }
 
@@ -380,10 +466,7 @@ impl Player {
     }
 
     fn set(&self, name: &str, value: &str) {
-        let r = unsafe { (self.lib.set_property_string)(self.raw.0, cstr(name).as_ptr(), cstr(value).as_ptr()) };
-        if r < 0 {
-            tracing::warn!("reel mpv: {name}={value}: {}", ffi::error_text(self.lib, r));
-        }
+        set_property(self.lib, self.raw, name, value);
     }
 
     fn command(&self, args: &[&str]) {
@@ -512,23 +595,45 @@ const PLAYER_CACHE_OPTION: &str = "64MiB";
 const _: () = assert!(reel_domain::play::PLAYER_CACHE == 64 * 1024 * 1024, "keep PLAYER_CACHE_OPTION in step");
 
 impl Drop for Player {
+    /// Waits for mpv to stop (`close_in_background` waits on a thread of its own).
     fn drop(&mut self) {
         // Silence first: tearing mpv down takes a moment, and it would play what it has
         // buffered meanwhile (the viewer has already left the player).
-        self.command(&["stop"]);
+        if !self.shared.stop.swap(true, Ordering::Relaxed) {
+            self.command(&["stop"]);
+        }
         // mpv waits in a hook until it is let go, even to stop.
         self.shared.hooks.close();
-        self.shared.stop.store(true, Ordering::Relaxed);
         unsafe { (self.lib.wakeup)(self.raw.0) };
         if let Some(t) = self.thread.take() {
             let _ = t.join();
         }
+        // What mpv has not answered (no answer is read any more), taken while the handle is
+        // still this player's (a new player may get its address once it is freed).
+        let handle = self.raw.0 as usize;
+        let left: Vec<Pending> = {
+            let mut all = pending().lock().unwrap();
+            let ids: Vec<u64> = all.iter().filter(|(_, (h, _))| *h == handle).map(|(id, _)| *id).collect();
+            ids.into_iter().filter_map(|id| all.remove(&id)).map(|(_, p)| p).collect()
+        };
         unsafe { (self.lib.terminate_destroy)(self.raw.0) };
+        // What waited for mpv runs now that it has gone.
+        for p in left {
+            if let Pending::Then(then) = p {
+                then();
+            }
+        }
     }
 }
 
 /// The event thread: until the player is dropped.
 fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
+    // Nothing more for the view once the player is closing (it may be gone already).
+    let emit = |name: &str, data: Value| {
+        if !shared.stop.load(Ordering::Relaxed) {
+            emit(name, data);
+        }
+    };
     let mut time = 0.0;
     let mut duration = 0.0;
     let mut cached_until = 0.0;
@@ -553,6 +658,7 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
         match event.event_id {
             ffi::EVENT_NONE => {}
             ffi::EVENT_SHUTDOWN => return,
+            ffi::EVENT_SET_PROPERTY_REPLY | ffi::EVENT_COMMAND_REPLY => answered(lib, event.reply_userdata, event.error),
             ffi::EVENT_LOG_MESSAGE if !event.data.is_null() => {
                 let m = unsafe { &*(event.data as *const ffi::EventLogMessage) };
                 let text = |p: *const c_char| if p.is_null() { String::new() } else { unsafe { CStr::from_ptr(p) }.to_string_lossy().trim_end().to_owned() };

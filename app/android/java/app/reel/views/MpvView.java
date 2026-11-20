@@ -3,9 +3,14 @@
 // (the player's controls draw over it); a SurfaceView sits under the window and needed every
 // view above it transparent. The player itself is the core's (src/adapters/mpv: the same as on macOS); this
 // passes it the Surface, the TSX view's props and commands, and passes its events to NSH.
+//
+// None of its calls waits for mpv (src/adapters/mpv/android.rs): mpv's thread may be waiting for
+// the stream, or for this thread, which takes the TextureView's frames.
 package app.reel.views;
 
 import android.graphics.SurfaceTexture;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
@@ -16,11 +21,15 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 
 final class MpvView implements NshComponent, TextureView.SurfaceTextureListener {
+  private static final Handler MAIN = new Handler(Looper.getMainLooper());
+
   private final NshComponentContext context;
   private final TextureView texture;
   /** The Surface mpv draws into, while the texture is there. */
   private Surface surface;
   private long handle;
+  /** The view is gone: the player's last events (it stops on a thread of its own) go nowhere. */
+  private volatile boolean destroyed;
 
   MpvView(NshComponentContext context) {
     this.context = context;
@@ -43,8 +52,11 @@ final class MpvView implements NshComponent, TextureView.SurfaceTextureListener 
   @Override public void setAnimatedColor(String name, int value) {}
 
   @Override public void destroy() {
+    destroyed = true;
     long h = handle;
     handle = 0;
+    // The player stops on a thread of its own; mpv keeps its own reference to the window while
+    // it does, so the Surface goes now.
     nativeDestroy(h);
     releaseSurface();
   }
@@ -62,9 +74,23 @@ final class MpvView implements NshComponent, TextureView.SurfaceTextureListener 
   }
 
   @Override public boolean onSurfaceTextureDestroyed(SurfaceTexture st) {
-    if (handle != 0) nativeDetach(handle);
-    releaseSurface();
-    return true;
+    if (handle == 0 || surface == null) {
+      releaseSurface();
+      return true;
+    }
+    // mpv lets go of the Surface on its own thread, then both are released (`release`): kept
+    // until then, not released by the TextureView (false).
+    surface = null;
+    nativeDetach(handle, st);
+    return false;
+  }
+
+  /** mpv no longer draws into `surface` (called from the player's thread). */
+  static void release(final Surface surface, final SurfaceTexture texture) {
+    MAIN.post(() -> {
+      surface.release();
+      if (texture != null) texture.release();
+    });
   }
 
   @Override public void onSurfaceTextureUpdated(SurfaceTexture st) {}
@@ -78,6 +104,7 @@ final class MpvView implements NshComponent, TextureView.SurfaceTextureListener 
 
   /** A player event (from the core's thread): to NSH on the main thread. */
   void emit(String name, String json) {
+    if (destroyed) return;
     Object data;
     try {
       data = json == null ? null : new JSONTokener(json).nextValue();
@@ -85,7 +112,9 @@ final class MpvView implements NshComponent, TextureView.SurfaceTextureListener 
       data = null;
     }
     final Object payload = data;
-    texture.post(() -> context.emit(name, payload));
+    texture.post(() -> {
+      if (!destroyed) context.emit(name, payload);
+    });
   }
 
   /** Any value as a one-element JSON array, so strings and null travel as JSON too. */
@@ -95,7 +124,7 @@ final class MpvView implements NshComponent, TextureView.SurfaceTextureListener 
 
   private native long nativeCreate();
   private native void nativeAttach(long handle, Object surface);
-  private native void nativeDetach(long handle);
+  private native void nativeDetach(long handle, Object texture);
   private native void nativeSize(long handle, int width, int height);
   private native void nativeProp(long handle, String name, String json);
   private native void nativeCommand(long handle, String name, String json);
