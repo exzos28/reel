@@ -33,7 +33,7 @@ import { AboutBlock, hasAbout } from "./AboutBlock";
 import { LazyBlock } from "../../layout/LazyBlock";
 import { CastRow } from "./CastRow";
 import { DetailsBlock, hasDetails } from "./DetailsBlock";
-import { action, castAt, focusTitle, item, releaseAt, season, similarAt, zone, type HeroAction, type Zone } from "./focus";
+import { action, castAt, focusTitle, item, releaseAt, season, similarAt, titleScroll, zone, type HeroAction, type Zone } from "./focus";
 import { ReleasePanel } from "./ReleasePanel";
 import { SeriesEpisodes } from "./SeriesEpisodes";
 import { shelfCardWidth, wideCardHeight } from "../home/WideCard";
@@ -260,7 +260,7 @@ export function TitleScreen(props: { id: string }) {
   };
 
   /** The page puts the focused row (or the season tabs) in its upper third. */
-  const page = scroller({ anchor: (viewport) => viewport / 3 });
+  const page = scroller({ anchor: (viewport) => viewport / 3, memory: titleScroll(props.id) });
 
   useZones(
     zone,
