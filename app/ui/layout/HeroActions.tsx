@@ -17,6 +17,7 @@ import { ShortRelease } from "./HeroMeta";
 import { Icon } from "../kit/Icon";
 import { alpha, colors, focusRing } from "../theme";
 import { labelText, oneLine } from "../kit/text";
+import { pressFeedback } from "../kit/pressFeedback";
 
 /** The row they sit in; `wrap`: with the release line beside them. */
 export const actionsRow = (wrap: boolean): ViewStyle =>
@@ -109,9 +110,11 @@ export function SplitPlay(props: {
   onMore: () => void;
   stretch: boolean;
 }) {
+  const playPress = pressFeedback();
+  const morePress = pressFeedback();
   return (
     <View style={splitStyle(props.stretch)}>
-      <View role="button" accessibilityLabel={props.label()} hitSlop={targetSlop(cs(SPLIT))} onPress={props.onPlay} hoverStyle={{ opacity: 0.9 }} activeStyle={{ opacity: 0.7 }} style={playPartStyle(props.playFocused(), props.stretch)}>
+      <View role="button" accessibilityLabel={props.label()} hitSlop={targetSlop(cs(SPLIT))} onPress={props.onPlay} onPressDown={playPress.onPressDown} onPressUp={playPress.onPressUp} hoverStyle={{ opacity: 0.9 }} style={{ ...playPartStyle(props.playFocused(), props.stretch), opacity: playPress.on() ? 0.7 : 1 }}>
         <Icon src={() => playIcon} size={26} color={() => colors.ink()} />
         <View style={{ flexShrink: 1, minWidth: 0, gap: u(2) }}>
           <Text style={{ ...playLabelStyle(), ...oneLine }}>{props.label()}</Text>
@@ -128,7 +131,7 @@ export function SplitPlay(props: {
       <View style={seamStyle()}>
         <View style={seamLine()} />
       </View>
-      <View role="button" accessibilityLabel={t("title.other_releases")} hitSlop={targetSlop(cs(76))} onPress={props.onMore} hoverStyle={{ opacity: 0.9 }} activeStyle={{ opacity: 0.7 }} style={morePartStyle(props.moreFocused())}>
+      <View role="button" accessibilityLabel={t("title.other_releases")} hitSlop={targetSlop(cs(76))} onPress={props.onMore} onPressDown={morePress.onPressDown} onPressUp={morePress.onPressUp} hoverStyle={{ opacity: 0.9 }} style={{ ...morePartStyle(props.moreFocused()), opacity: morePress.on() ? 0.7 : 1 }}>
         <Icon src={() => chevronIcon} size={26} color={() => colors.ink()} />
       </View>
     </View>

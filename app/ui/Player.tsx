@@ -36,6 +36,7 @@ import { onBack } from "./nav";
 import { SubtitleOverlay } from "./SubtitleOverlay";
 import { playerTracks, type TrackOption } from "./tracks";
 import { VideoSurface, videoUnderUi, type SurfaceRef } from "./VideoSurface";
+import { pressFeedback } from "./kit/pressFeedback";
 import playIcon from "./icons/play.svg";
 import pauseIcon from "./icons/pause.svg";
 import rewindIcon from "./icons/rewind.svg";
@@ -827,18 +828,20 @@ function RoundButton(props: {
   selected: () => boolean;
   onPress: () => void;
 }) {
+  const press = pressFeedback();
   return (
     <View style={{ alignItems: "center" }}>
       <View
         role="button"
         accessibilityLabel={props.label()}
         onPress={props.onPress}
+        onPressDown={press.onPressDown}
+        onPressUp={press.onPressUp}
         hoverStyle={{ backgroundColor: colors.control() }}
-        activeStyle={{ backgroundColor: colors.control() }}
         style={{
           width: u(68), height: u(68), borderRadius: 999, borderCurve: "continuous",
           alignItems: "center", justifyContent: "center",
-          backgroundColor: props.selected() ? colors.control() : alpha(colors.raise(), 0.85),
+          backgroundColor: props.selected() || press.on() ? colors.control() : alpha(colors.raise(), 0.85),
           ...focusRing(props.focused()),
         }}
       >

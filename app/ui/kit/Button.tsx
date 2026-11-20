@@ -3,6 +3,7 @@ import { alpha, colors, cs, focusRing, radius, targetSlop, u } from "../theme";
 import { Icon } from "./Icon";
 import { rounded, row } from "./shape";
 import { labelText } from "./text";
+import { pressFeedback } from "./pressFeedback";
 
 type Kind = "primary" | "secondary";
 
@@ -46,6 +47,7 @@ export function Button(props: {
 }) {
   const fg = () => foreground(props.kind);
   const off = () => props.disabled?.() ?? false;
+  const press = pressFeedback();
   return (
     <View
       role="button"
@@ -54,9 +56,10 @@ export function Button(props: {
       accessibilityState={{ disabled: off() }}
       onPress={() => !off() && props.onPress()}
       hoverStyle={{ opacity: off() ? 0.4 : 0.9 }}
-      // A press shows at once (a finger has no hover): dimmed while it lasts.
-      activeStyle={off() ? undefined : { opacity: 0.7 }}
-      style={{ ...buttonStyle(props.kind, props.focused(), props.height ?? 60, !!props.grow), opacity: off() ? 0.4 : 1 }}
+      // A press shows at once (a finger has no hover), a quick tap too.
+      onPressDown={() => !off() && press.onPressDown()}
+      onPressUp={press.onPressUp}
+      style={{ ...buttonStyle(props.kind, props.focused(), props.height ?? 60, !!props.grow), opacity: off() ? 0.4 : press.on() ? 0.7 : 1 }}
     >
       <If when={props.fill && props.fill() != null}>
         <View style={fillStyle(props.fill!() ?? 0)} />

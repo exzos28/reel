@@ -5,6 +5,7 @@ import { scrolled } from "../layout/scrollCtl";
 import { focusRing, hoverRing, u } from "../theme";
 import { PREVIEW_DELAY, PREVIEW_LIFT, PreviewBody, previewOn, previewPopup, previewStarting, previewWidth } from "./HoverPreview";
 import { cardRadius, rounded } from "./shape";
+import { pressFeedback } from "./pressFeedback";
 
 /** The frame round the picture: the white ring of the focus, shown too under the pointer. The ring
  * is an outline, so it takes no room and moves nothing. */
@@ -36,6 +37,7 @@ export function Card(props: CardProps) {
 }
 
 function PlainCard(props: CardProps & { onLayout?: (size: { width: number; height: number }) => void }) {
+  const press = pressFeedback();
   return (
     <View
       ref={props.viewRef ?? (() => {})}
@@ -43,10 +45,12 @@ function PlainCard(props: CardProps & { onLayout?: (size: { width: number; heigh
       role="button"
       accessibilityLabel={props.label()}
       onPress={props.onPress}
+      onPressDown={press.onPressDown}
+      onPressUp={press.onPressUp}
       onLayout={props.onLayout ? (e) => props.onLayout!({ width: e.bounds.size.width, height: e.bounds.size.height }) : undefined}
       style={props.style}
     >
-      <View hoverStyle={hoverRing()} activeStyle={{ opacity: 0.75 }} style={frameStyle(props.focused())}>
+      <View hoverStyle={hoverRing()} style={{ ...frameStyle(props.focused()), opacity: press.on() ? 0.75 : 1 }}>
         {props.picture}
       </View>
       {props.children}
