@@ -40,8 +40,10 @@ function TabStack(props: { tab: Destination; page: (r: Route) => JSX.Element }) 
       testID="touch-stack"
       state={s}
       style={{ flex: 1 }}
-      // The user went back natively (a swipe, the header's or the system's back).
-      onChange={(e) => !same(e.routes, stack()) && stack.set([...e.routes])}
+      // The user went back natively (a swipe, the header's or the system's back). Only the
+      // current tab's stack writes the history: a pop a tab's stack reports once another tab is
+      // shown (iOS reports one when its transition ends) must not put that tab's pages in it.
+      onChange={(e) => section() === props.tab && !same(e.routes, stack()) && stack.set([...e.routes])}
     >
       {(r) => <Page route={r}>{props.page(r)}</Page>}
     </NavStack>

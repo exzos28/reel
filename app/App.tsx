@@ -18,7 +18,7 @@ import { InterfaceScreen } from "./ui/screens/interface/InterfaceScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { PersonScreen } from "./ui/screens/person/PersonScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
-import { back, canGoBack, closeFirst, go, handleBack, isRoot, route, section, useHomeTab, useTabStacks } from "./ui/nav";
+import { back, canGoBack, closeFirst, go, handleBack, isRoot, route, section, useHomeTab, useSettingsSheet, useTabStacks } from "./ui/nav";
 import { screenFor } from "./ui/screens/RouteScreen";
 import { frame } from "./ui/layout/chrome";
 import { caps } from "./ui/platform";
@@ -26,6 +26,7 @@ import { railWidth } from "./ui/layout/metrics";
 import { PhoneCategoryBar, PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
 import { SourceDrawer } from "./ui/screens/source/SourceDrawer";
 import { TouchStack } from "./ui/layout/TouchStack";
+import { SettingsSheet } from "./ui/layout/SettingsSheet";
 import { ExitDialog } from "./ui/layout/ExitDialog";
 import { keysInUse } from "./ui/focus/keys";
 import { Player } from "./ui/Player";
@@ -50,6 +51,8 @@ startDiagnostics();
 useTabStacks(caps.touch);
 // A phone's Home tab holds the categories (design/navigation.md, "Phone").
 useHomeTab(caps.settingsTab);
+// A tablet's Settings is a sheet over the page (design/navigation.md, "Tablet").
+useSettingsSheet(caps.settingsSheet);
 // A link that opens the app (reel://s?t=<key>&u=<address>, from a partner's bot): its source
 // fills the source's fields (the setup's step, else the drawer); nothing is saved until the
 // viewer saves it. Any other link is dropped (anyone can make one).
@@ -147,6 +150,7 @@ function App() {
         </If>
         <If when={frame.nav === "top-row"}>
           <TabletTopRow />
+          <SettingsSheet page={screenFor} />
         </If>
       </If>
       {/* A desktop's window bar (the player's drag strips while a film plays). */}

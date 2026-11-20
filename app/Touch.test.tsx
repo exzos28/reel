@@ -1,8 +1,8 @@
 // Phone and tablet (design/navigation.md, "Tablet" and "Phone"): the tabs,
 // each tab keeping its own stack, a phone's Home with its categories at the
-// top, Settings pushed on the current tab (tablet), Back from a pushed page.
+// top, Settings as a sheet over the page (tablet), Back from a pushed page.
 import { expect, test } from "nsh/test";
-import { NATIVE, openApp } from "./testEngine";
+import { NATIVE, SEARCH_DUNE, openApp } from "./testEngine";
 
 const phone = () => openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": NATIVE } });
 
@@ -96,8 +96,91 @@ test("phone: the player's ✕ closes it", async () => {
   expect(app.texts()).toContain("Continue watching");
 });
 
-// The tablet's top row (layout/TouchNav.tsx) is not covered here: a headless
-// run reports the phone idiom at any size, and `open` cannot set the idiom.
+/** An iPad held sideways: a headless run reports the phone idiom unless NSH's `platform` says
+ * otherwise. Films save here: Inception and Dune say "Saving 5%", and Saving opens Saved. */
+const tablet = () =>
+  openApp({
+    platform: "ios",
+    width: 1210,
+    height: 834,
+    safeArea: { top: 24, bottom: 20, left: 0, right: 0 },
+    modules: {
+      nsh: { "platform.idiom": "pad" },
+      "app/native": {
+        ...NATIVE,
+        "Catalog.search": JSON.stringify(SEARCH_DUNE),
+        "Catalog.rememberSearch": null,
+        "Library.supported": true,
+        "Library.revision": 1,
+        "Library.title": JSON.stringify({ state: "saving", progress: 0.05 }),
+        "Library.list": JSON.stringify({ saving: [], ready: [], failed: [], space: { saved: 0, free: 10 * 1024 ** 3, folder: null } }),
+        "Library.overall": JSON.stringify({ saving: true, progress: 0.05 }),
+      },
+    },
+  });
+
+const TABLET_TABS = ["home", "movies", "shows", "cartoons", "anime", "search"];
+
+test("tablet: each tab keeps its own pages, Settings is in none of them, the tab shown is the one selected", async () => {
+  const app = await tablet();
+  expect(app.shows("top-row")).toBe(true);
+  // Home → a film → Settings, Interface, back, About: all in the sheet over the film.
+  await app.press("label:Inception >> nth=0");
+  await app.press("label:Settings");
+  await app.press("label:Interface");
+  expect(app.texts()).toContain("Loading animation");
+  await app.press("label:Back to Settings");
+  await app.press("label:About reel");
+  expect(app.texts()).toContain("Data sources");
+  await app.press("label:Close");
+  expect(app.shows("settings-sheet")).toBe(false);
+  // Search → a film → Saving: Saved replaces what is shown.
+  await app.press("label:Search");
+  await app.press("label:Dune >> nth=0");
+  await app.press("label:Saving 5%");
+  expect(TABLET_TABS.some((tab) => app.shows(`top-tab-on-${tab}`))).toBe(false); // Saved is no tab
+  // Series → a show → Home: Home's own page, the film left there, Home selected.
+  await app.press("label:Series");
+  await app.press("label:Severance >> nth=0");
+  await app.press("label:Home");
+  expect(app.shows("label:Back to Home")).toBe(true);
+  expect(app.texts()).not.toContain("Data sources");
+  expect(app.texts()).toContain("Saving 5%");
+  expect(app.shows("top-tab-on-home")).toBe(true);
+  // Home again: its root, still selected.
+  await app.press("label:Home");
+  expect(app.texts()).toContain("Continue watching");
+  expect(app.shows("label:Back to Home")).toBe(false);
+  expect(app.shows("top-tab-on-home")).toBe(true);
+  // Search kept its film; Series its show.
+  await app.press("label:Search");
+  expect(app.shows("label:Back to Search")).toBe(true);
+  expect(app.shows("top-tab-on-search")).toBe(true);
+});
+
+test("tablet: Settings opens as a sheet over the page and closes back to it", async () => {
+  const app = await tablet();
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  await app.press("label:Settings");
+  expect(app.shows("settings-sheet")).toBe(true);
+  expect(app.texts()).toContain("Playback buffer");
+  expect(app.shows("label:Back to Settings")).toBe(false); // Settings is the sheet's first page
+  // The page under it stays the film, behind the sheet.
+  expect(app.shows("label:Back to Movies")).toBe(true);
+  await app.press("label:About reel");
+  expect(app.texts()).toContain("Data sources");
+  await app.keyboard.press("escape"); // Back: About, then Settings
+  expect(app.texts()).toContain("Playback buffer");
+  await app.keyboard.press("escape");
+  expect(app.shows("settings-sheet")).toBe(false);
+  expect(app.texts()).toContain("Saving 5%"); // the film, where it was
+  await app.press("label:Settings");
+  await app.press("settings-sheet-backdrop"); // a press outside
+  expect(app.shows("settings-sheet")).toBe(false);
+  await app.keyboard.press("escape"); // then Back leaves the film
+  expect(app.texts()).toContain("All movies");
+});
 
 test("phone: ⌄ in Play opens the releases in a bottom sheet; ✕ closes it", async () => {
   const app = await phone();

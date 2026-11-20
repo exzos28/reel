@@ -13,13 +13,15 @@
 //   solid from the start on a page without one;
 // - a phone's pinned foot (the setup's main button): under the scrolling content, above the home
 //   indicator, within the thumb's reach (`footPinned`; elsewhere the screen keeps it inline).
+// In a tablet's Settings sheet (`InSheet`) none of it: the sheet's head has the title, and the
+// content starts under it.
 import { computed, effect, safeArea, Text, View, windowSize, type JSX, type TextStyle, type ViewRef, type ViewStyle } from "nsh";
 import { pageTitle } from "../kit/text";
 import { go, isCategory, section, toTop } from "../nav";
 import { caps } from "../platform";
 import { alpha, colors, safe, u } from "../theme";
 import { frame } from "./chrome";
-import { frameSolid, onTop } from "./frameState";
+import { frameSolid, InSheet, onTop } from "./frameState";
 import { heroBoxNow, metrics, type PageKind } from "./metrics";
 import { NavBar } from "./NavBar";
 import { NAV } from "./navItems";
@@ -73,6 +75,9 @@ const footStyle = (): ViewStyle => ({
   backgroundColor: colors.ink(),
 });
 
+/** A page in a tablet's Settings sheet: nothing over it, a little room under its content. */
+const SHEET_METRICS = { headBottom: 0, titleTop: 0, bottomRoom: 24 };
+
 export function PageFrame(props: {
   ctl: ScrollCtl;
   kind: PageKind;
@@ -99,8 +104,9 @@ export function PageFrame(props: {
   top?: () => boolean;
   children: JSX.Element;
 }) {
-  const m = () => metrics(props.kind);
-  const root = props.kind === "root";
+  const inSheet = InSheet();
+  const m = () => (inSheet ? SHEET_METRICS : metrics(props.kind));
+  const root = props.kind === "root" && !inSheet;
   const pinned = () => !!props.foot && footPinned();
   const top = props.top ?? onTop();
   // The bars over the page turn solid once content is under them: past the top, or past the
@@ -139,10 +145,10 @@ export function PageFrame(props: {
             <If when={props.hero == null}>
               <View style={{ height: m().headBottom }} />
             </If>
-            <If when={props.title && !props.titleLead && pageTitleShown()}>
+            <If when={props.title && !props.titleLead && pageTitleShown() && !inSheet}>
               <Text style={titleStyle(m().titleTop - m().headBottom)}>{props.title!()}</Text>
             </If>
-            <If when={props.title && props.titleLead && pageTitleShown()}>
+            <If when={props.title && props.titleLead && pageTitleShown() && !inSheet}>
               <View style={leadRowStyle(m().titleTop - m().headBottom)}>
                 {props.titleLead!()}
                 <Text style={{ ...pageTitle(), flexShrink: 1 }}>{props.title!()}</Text>
@@ -168,10 +174,10 @@ export function PageFrame(props: {
           {props.foot}
         </View>
       </If>
-      <If when={props.kind === "deep" && frame.nav === "tab-bar"}>
+      <If when={props.kind === "deep" && frame.nav === "tab-bar" && !inSheet}>
         <PhoneBackHead />
       </If>
-      <If when={caps.touch}>
+      <If when={caps.touch && !inSheet}>
         <View testID={top() ? (props.hero == null || solid() ? "status-scrim-solid" : "status-scrim") : undefined} style={scrimStyle(props.hero == null || solid())} />
       </If>
     </View>

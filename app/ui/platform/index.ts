@@ -60,6 +60,9 @@ export const caps = {
    * a film upright otherwise. */
   rotate: runtime.os === "ios",
   /** Settings and Saved are tabs of their own (a phone's tab bar: Home, Search, Saved,
-   * Settings), root pages; elsewhere on touch they are pushed on the current tab. */
+   * Settings), root pages. */
   settingsTab: family === "phone",
+  /** Settings is a sheet in the middle of the window over the page (a tablet), never a page of
+   * a tab's stack. */
+  settingsSheet: family === "tablet",
 };

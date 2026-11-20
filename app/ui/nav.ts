@@ -42,9 +42,9 @@ export function section(): Destination {
 /** Whether there is a page under this one. */
 export const canGoBack = () => stack().length > 1;
 
-/** One stack per tab (phone, tablet): switching tabs keeps each tab's place,
- * and Settings opens on top of the current tab. Off on a TV and a desktop,
- * where a destination starts the stack over. Set once at startup. */
+/** One stack per tab (phone, tablet): switching tabs keeps each tab's place;
+ * on a phone Settings opens on top of the current tab, on a tablet over it as a sheet. Off on
+ * a TV and a desktop, where a destination starts the stack over. Set once at startup. */
 let tabStacks = false;
 const kept = new Map<Destination, Route[]>();
 export function useTabStacks(on: boolean) {
@@ -84,6 +84,8 @@ export function takeChosenInNav(name: Destination): boolean {
 }
 
 export function go(name: Destination) {
+  // A destination takes the screen: the Settings sheet does not stay over it.
+  if (sheet().length) sheet.set([]);
   if (isCategory(name)) lastCategory.set(name);
   if (section() === name) return reselect(name);
   if (tabStacks) {
@@ -105,23 +107,44 @@ export function goHomeTab() {
   go(isCategory(section()) ? section() : lastCategory());
 }
 
+/** A tablet's Settings: a sheet over the page (`layout/SettingsSheet`), with its own pages
+ * (Settings, then Interface or About on it), never in a tab's stack. Empty while it is closed.
+ * Set once at startup. */
+let settingsSheet = false;
+export function useSettingsSheet(on: boolean) {
+  settingsSheet = on;
+  sheet.set([]);
+}
+export const sheet = signal<Route[]>([]);
+/** Whether the Settings sheet is open (a tablet). */
+export const settingsOpen = () => sheet().length > 0;
+/** Closes the Settings sheet, whatever page of it is open. */
+export const closeSettings = () => sheet.set([]);
+
 const push = (r: Route) => stack.set([...stack(), r]);
+/** About and Interface: on the Settings sheet while it is open, else on the stack. */
+const pushSettingsPage = (r: Route) => (settingsOpen() ? sheet.set([...sheet(), r]) : push(r));
 export const openTitle = (id: string) => push({ name: "title", id });
 /** A person of a title's cast: the titles they are in. */
 export const openPerson = (id: string) => push({ name: "person", id });
 /** About reel and its data sources, over Settings. */
-export const openAbout = () => push({ name: "about" });
+export const openAbout = () => pushSettingsPage({ name: "about" });
 /** How the app looks (Menu position, Loading animation), over Settings. */
-export const openInterface = () => push({ name: "interface" });
-/** Settings: a destination of its own, or (with tab stacks) on top of the current tab. */
+export const openInterface = () => pushSettingsPage({ name: "interface" });
+/** Settings: a destination of its own; on a tablet the sheet over the page; on a phone (with tab
+ * stacks) on top of the current tab. */
 export function openSettings() {
+  if (settingsSheet) return settingsOpen() || sheet.set([{ name: "settings" }]);
   if (!tabStacks) return go("settings");
   if (route().name !== "settings") push({ name: "settings" });
 }
 
-/** One level up; from a destination other than Home, to Home. On a phone, from Search, Saved or
- * Settings to the Home tab (the category open last), and from a category to All. */
+/** One level up: on the Settings sheet first (its last page closes it). Then from a destination
+ * other than Home, to Home. On a phone, from Search, Saved or Settings to the Home tab (the
+ * category open last), and from a category to All. */
 export function back() {
+  const open = sheet();
+  if (open.length) return sheet.set(open.slice(0, -1));
   const s = stack();
   if (s.length > 1) stack.set(s.slice(0, -1));
   else if (homeTab && !isCategory(s[0].name)) go(lastCategory());

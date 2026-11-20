@@ -2,7 +2,7 @@
 // Home, Movies, Shows, Anime and Search. Phone: a bottom tab bar (Home, Search, Saved, Settings)
 // on every page but the player, and a head over a root page (the logo; on a category's page
 // Home's tabs: All, Movies, Series, Cartoons, Anime) that scrolls away with it.
-// Tablet: Settings is a button that pushes it on the current tab.
+// Tablet: Settings is a button that opens it as a sheet over the page (layout/SettingsSheet).
 // Tablet: one top row on every page: the logo (Back in its place on a deeper
 // page), the floating tabs centred, Add to list on a title, Settings; solid
 // once content is under it.
@@ -13,7 +13,7 @@ import backIcon from "../icons/back.svg";
 import settingsIcon from "../icons/settings.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
-import { canGoBack, CATEGORIES, go, goHomeTab, handleBack, isCategory, openCategory, openSettings, route, section, stack, type Destination, type Route } from "../nav";
+import { canGoBack, CATEGORIES, go, goHomeTab, handleBack, isCategory, openCategory, openSettings, route, section, settingsOpen, stack, type Destination, type Route } from "../nav";
 import { look } from "../platform/look";
 import { alpha, colors, font, iconPt, targetSlop, u } from "../theme";
 import { ListToggle } from "./ListToggle";
@@ -39,7 +39,8 @@ const pt = iconPt;
 const tabBarHeight = () => TAB_ROW + safeArea().bottom;
 const topRowBottom = () => safeArea().top + TOP_ROW;
 
-const isSettings = () => route().name === "settings" || route().name === "about" || route().name === "interface";
+/** Settings is open: a tablet's sheet, or a page of it on the stack. */
+const isSettings = () => settingsOpen() || route().name === "settings" || route().name === "about" || route().name === "interface";
 
 const disc = (size: number, selected = false): ViewStyle => ({
   width: size,
@@ -55,7 +56,7 @@ function Logo() {
   return <Text style={logoStyle()}>{t("app.name")}</Text>;
 }
 
-/** Settings, a round button: it pushes Settings on the current tab (a 44 pt touch area). */
+/** Settings, a round button: it opens the Settings sheet over the page (a 44 pt touch area). */
 function SettingsButton(props: { size: number }) {
   return (
     <Pressable role="button" accessibilityLabel={t("nav.settings")} onPress={openSettings} hitSlop={targetSlop(props.size)} style={disc(props.size, isSettings())}>
@@ -429,10 +430,10 @@ export function TabletTopRow() {
         <View style={tabsGroup(frameSolid())}>
           <Each of={TABS} key={(n) => n.id}>
             {(n) => {
-              const on = () => section() === n().id && !isSettings();
+              const on = () => section() === n().id;
               const iconOnly = () => n().id === "search" || iconsOnly();
               return (
-                <Pressable haptic={!on()} role="tab" accessibilityLabel={t(`nav.${n().id}`)} accessibilityState={{ selected: on() }} onPress={() => go(n().id)} style={topTab(on(), iconOnly())}>
+                <Pressable testID={on() ? `top-tab-on-${n().id}` : undefined} haptic={!on()} role="tab" accessibilityLabel={t(`nav.${n().id}`)} accessibilityState={{ selected: on() }} onPress={() => go(n().id)} style={topTab(on(), iconOnly())}>
                   <Icon src={() => n().icon} size={pt(17)} color={() => (on() ? colors.snow() : colors.dim())} />
                   <If when={!iconOnly()}>
                     <Text style={topTabText(on())}>{t(`nav.${n().id}`)}</Text>
