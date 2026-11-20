@@ -155,6 +155,13 @@ fn candidates() -> Vec<PathBuf> {
         out.push("libmpv.so.2".into());
         return out;
     }
+    // iOS: the framework build/libmpv.sh bundle-ios embeds, beside the app's binary.
+    if cfg!(target_os = "ios") {
+        if let Some(dir) = std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf())) {
+            out.push(dir.join("Frameworks/Libmpv.framework/Libmpv"));
+        }
+        return out;
+    }
     if let Some(p) = std::env::var_os("REEL_LIBMPV") {
         out.push(PathBuf::from(p));
     }

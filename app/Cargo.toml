@@ -57,6 +57,16 @@ objc2-open-gl = { version = "0.3", features = ["CGLTypes", "CGLCurrent"] }
 objc2-core-video = { version = "0.3", features = ["CVBase"] }
 objc2-core-foundation = { version = "0.3", features = ["CFDate"] }
 
+[target.'cfg(target_os = "ios")'.dependencies]
+# The mpv video view on iOS (`src/adapters/mpv/ios.rs`): a native component on NSH's UIKit host.
+libc = "0.2"
+nsh-platform-ios = { version = "0.5.1", default-features = false }
+objc2 = "0.6"
+objc2-foundation = "0.3"
+objc2-ui-kit = { version = "0.3", features = ["UIView", "UIResponder", "UIWindow", "UIScreen"] }
+objc2-quartz-core = { version = "0.3", features = ["CALayer", "CATransaction", "objc2-core-foundation"] }
+objc2-core-foundation = { version = "0.3", features = ["CFCGTypes"] }
+
 # Linux: libmpv loaded at run time.
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"

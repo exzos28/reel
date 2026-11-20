@@ -4,11 +4,13 @@
 //! "mpv"): on macOS an NSView drawn through mpv's render API (`view`), on Linux a GTK GLArea
 //! drawn the same way (`linux`), on Windows a Direct2D drawing of mpv's Direct3D 11 frames
 //! (`windows`), on Android a TextureView (`app/android`, Java) driving the
-//! same player (`android`). Without libmpv the
+//! same player (`android`), on iOS a Metal layer mpv draws into itself (`ios`). Without libmpv the
 //! app keeps NSH's `<Video>`.
 
 #[cfg(target_os = "android")]
 mod android;
+#[cfg(target_os = "ios")]
+mod ios;
 #[cfg(all(target_os = "linux", not(target_arch = "arm")))]
 mod linux;
 #[cfg(windows)]
@@ -18,7 +20,7 @@ pub mod player;
 #[cfg(target_os = "macos")]
 mod view;
 
-#[cfg(any(target_os = "macos", all(target_os = "linux", not(target_arch = "arm")), windows))]
+#[cfg(any(target_os = "macos", target_os = "ios", all(target_os = "linux", not(target_arch = "arm")), windows))]
 use std::rc::Rc;
 
 /// Whether libmpv was found (and loaded).
@@ -38,6 +40,13 @@ pub fn register_windows(components: &nsh_platform_windows::Components) {
 pub fn register_linux(components: &nsh_platform_linux::Components) {
     let Some(lib) = ffi::lib() else { return };
     components.register("reel/mpv", Rc::new(move |cx| Box::new(linux::MpvComponent::new(cx, lib))));
+}
+
+/// Registers `reel/mpv` when libmpv is there (iOS: a Metal layer mpv draws into).
+#[cfg(target_os = "ios")]
+pub fn register_ios(components: &nsh_platform_ios::Components) {
+    let Some(lib) = ffi::lib() else { return };
+    components.register("reel/mpv", Rc::new(move |cx| Box::new(ios::MpvComponent::new(cx, lib))));
 }
 
 /// Registers `reel/mpv` when libmpv is there.

@@ -270,6 +270,8 @@ case "$target" in
     fresh_out
     package ios-simulator
     bundle="$(one "$pkg/*.app")"
+    # The video player: libmpv's framework in the app (it plays MKV, every codec).
+    "$repo/build/libmpv.sh" bundle-ios "$bundle"
     # The app must stay universal: UIDeviceFamily 1 (iPhone) and 2 (iPad).
     families="$(plutil -extract UIDeviceFamily json -o - "$bundle/Info.plist")"
     log "UIDeviceFamily: $families"

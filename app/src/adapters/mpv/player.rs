@@ -83,6 +83,7 @@ impl LoadGate {
     /// The view cannot draw (no render context, no device): the file held, and any later one,
     /// will never load. The player says so (`error`, code `view`) instead of waiting for the
     /// picture for ever.
+    #[cfg_attr(target_os = "ios", allow(dead_code))]
     pub fn fail(&self) {
         let held = {
             let mut g = self.state.lock().unwrap();
