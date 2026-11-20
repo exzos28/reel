@@ -20,7 +20,7 @@
 // The TV keeps reel's own panel: on Android (Android TV), after an NSH Sheet has
 // been open, Escape (the remote's Back in the tests) no longer reached the app's key
 // bindings in a headless run, and the remote must always reach Back.
-import { effect, keyboardFrame, safeArea, signal, Text, untracked, View, windowSize, type JSX, type ViewStyle } from "nsh";
+import { cleanup, effect, keyboardFrame, safeArea, signal, Text, untracked, View, windowSize, type JSX, type ViewStyle } from "nsh";
 import { Sheet, type SheetDetent } from "nsh/base";
 import { titleBar } from "../platform/titlebar";
 import { t } from "nsh/i18n";
@@ -29,7 +29,7 @@ import { rounded } from "../kit/shape";
 import { metaText, sectionTitle } from "../kit/text";
 import { alpha, colors, iconPt, safe, targetSlop, u } from "../theme";
 import closeIcon from "../icons/plus.svg";
-import { frame, phoneSideways } from "./chrome";
+import { frame, phoneSideways, type PanelPlace } from "./chrome";
 import { scroller, Scroller, type ScrollCtl } from "./Scroller";
 import { Pressable } from "../kit/Pressable";
 
@@ -77,6 +77,9 @@ const room = () => windowSize().height - safeArea().top - 8;
 /** Each drawer's rows as they last measured (by its id and title: the choices share one id): it
  * opens at the height it had. */
 const lastRows = new Map<string, number>();
+/** Where each open drawer (by its id) sits for the layout: a tablet's window resized across a
+ * phone's width moves it (`frame().panel`), and its page is laid out again with it. */
+const openOn = new Map<string, PanelPlace>();
 
 function sheetStyle(place: Place): ViewStyle {
   if (place === "side")
@@ -243,6 +246,27 @@ export function Drawer(props: {
 }) {
   const close = () => props.open() && props.onClose();
   const place = (): Place => (props.sideways && phoneSideways() ? "side" : frame().panel);
+  // The layout changed under an open drawer (a tablet's window resized across a phone's width):
+  // it closes, since a sheet open at one place does not move to another (it went unseen and
+  // still took Back). Its page, laid out again, opens it closed: the new drawer finds the old
+  // place it was open at.
+  let openAt: PanelPlace | null = null;
+  effect(() => {
+    const panel = frame().panel;
+    if (!props.open()) {
+      if (openAt) openOn.delete(props.id);
+      openAt = null;
+      return;
+    }
+    const was = openAt ?? openOn.get(props.id);
+    openAt = panel;
+    openOn.set(props.id, panel);
+    if (was !== undefined && was !== panel) untracked(close);
+  });
+  // Gone with the layout as it was: kept for the drawer that takes its place; else forgotten.
+  cleanup(() => {
+    if (openAt && openAt === untracked(() => frame().panel)) openOn.delete(props.id);
+  });
   const inset = () => insets(place());
   const bottom = () => place() === "bottom-sheet";
   // A bottom sheet's detents: its parts as they lay out, the rows at the longest they have been

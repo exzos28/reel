@@ -443,6 +443,24 @@ test("phone: ⌄ in Play opens the releases in a bottom sheet; ✕ closes it", a
   expect(app.texts()).toContain("All movies");
 });
 
+test("tablet: the releases' sheet open in a narrow window closes once the window widens, and Back leaves the film", async () => {
+  const app = await tabletAt(390, 844);
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  await app.press("label:Other releases");
+  expect(app.shows("releases-close")).toBe(true);
+  await app.setViewport(1180, 820);
+  await app.wait(600);
+  expect(app.shows("releases-close")).toBe(false);
+  expect(app.shows("label:Back to Movies")).toBe(true);
+  // Narrow again: it stays closed; Back is the page's.
+  await app.setViewport(390, 844);
+  await app.wait(600);
+  expect(app.shows("releases-close")).toBe(false);
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("All movies");
+});
+
 test("phone, with a source: Home's Play waits for the source's answer, then opens the drawer when it did not answer", async () => {
   const home = JSON.parse(NATIVE["Catalog.home"] as string);
   home.hero.release = null;
