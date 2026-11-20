@@ -115,7 +115,9 @@ export CARGO_BUILD_RUSTFLAGS="${CARGO_BUILD_RUSTFLAGS:-} --remap-path-prefix=$HO
 # C and C++ built by crates (QuickJS, ring…) write their source paths too (assert messages).
 export CFLAGS="${CFLAGS:-} -ffile-prefix-map=$HOME=/home -ffile-prefix-map=$repo=/reel"
 export CXXFLAGS="${CXXFLAGS:-} -ffile-prefix-map=$HOME=/home -ffile-prefix-map=$repo=/reel"
-package_check() { python3 -I "$repo/build/package-check.py" "$@" || die "the package depends on the build machine (above)"; }
+# The project's own public repository is no one's personal data: About names it (app/src/lib.rs,
+# Settings.project), and its account may be the builder's user name.
+package_check() { python3 -I "$repo/build/package-check.py" --allow "github.com/exzos28/reel" "$@" || die "the package depends on the build machine (above)"; }
 
 case "$target" in
   check)
