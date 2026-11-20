@@ -33,6 +33,16 @@ test("phone: Home, Search and Settings at the bottom; the categories at the top 
   expect(app.texts()).toContain("All anime");
 });
 
+test("phone: the categories change the same with less motion, and the bar stays", async () => {
+  const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, reducedMotion: true, modules: { "app/native": NATIVE } });
+  for (const [category, heading] of [["Anime", "All anime"], ["Series", "All series"], ["Movies", "All movies"]]) {
+    await app.press(`label:${category}`);
+    expect(app.shows("category-bar")).toBe(true);
+    expect(app.texts()).toContain(heading);
+  }
+  expect(app.texts().filter((x) => x === "Anime").length).toBe(1);
+});
+
 test("phone: Settings is a tab of its own, without Back; Back from it goes to the Home tab", async () => {
   const app = await phone();
   await app.press("label:Movies");
