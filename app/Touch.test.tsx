@@ -200,6 +200,18 @@ test("tablet: the selected tab chosen again over a page of it goes back to its r
   expect(app.shows("label:Back to Home")).toBe(false);
 });
 
+test("tablet: a page swiped back from just before another tab is chosen stays gone on return", async () => {
+  const app = await tablet();
+  await app.press("label:Inception >> nth=0");
+  await app.press("label:Leonardo DiCaprio >> nth=0");
+  expect(app.texts()).toContain("Films and series");
+  await app.back(); // the system's back (iOS's swipe): the native stack pops
+  await app.press("label:Series");
+  await app.press("label:Home");
+  expect(app.texts()).not.toContain("Films and series");
+  expect(app.shows("label:Back to Home")).toBe(true); // the film, where it was
+});
+
 test("phone: the selected tab chosen again over a page of it goes back to its root", async () => {
   const app = await phone();
   await app.press("label:Movies");
