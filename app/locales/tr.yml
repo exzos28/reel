@@ -311,6 +311,12 @@ search:
     movies: "Filmler"
     shows: "Diziler"
     anime: "Anime"
+  try_again: "Yeniden dene"
+  # A row of results whose source did not answer.
+  row_failed:
+    movies: "Filmler yüklenemedi."
+    shows: "Diziler yüklenemedi."
+    anime: "Animeler yüklenemedi."
 
 compat:
   audio_dts: "Bu sürümde yalnızca DTS ses var ve bu cihaz onu oynatamıyor. Başka bir sürüm seç."

@@ -51,12 +51,14 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/catalog.ts`.
 - `rememberSearch(query: String)` (`remember_search`): Keeps `query` among the recent searches (submitted, or a title opened from it).
   Called from: `ui/catalog.ts`.
+- `retrySearch(query: String)` (`retry_search`): Asks `query` again (a row that did not load: Try again); read on `revision()`.
+  Called from: `ui/catalog.ts`.
 - `revision() -> f64`: Goes up when anything the catalog shows changed (an answer landed, a search finished, progress was saved): read again.
   Called from: `ui/catalog.ts`.
 - `saveProgress(id: String, position: f64, duration: f64) -> bool` (`save_progress`): The player's report: `position` of `duration` seconds into `id`. Whether it counts as watched now (90%).
   Called from: `ui/playback.ts`.
-- `search(query: String) -> String`: The search screen for `query` (see `catalog::search::search`): `{"query","state","tmdb","recent","sections":[{"id","items":[summary…]}]}`. Asks in the background once the query rests; read again on `revision()`.
-  JSON: `{"query","state","tmdb","recent","sections":[{"id","items":[summary…]}]}`
+- `search(query: String) -> String`: The search screen for `query` (see `catalog::search::search`): `{"query","state","tmdb","recent","sections":[{"id","state","items":[summary…]}]}` (a row's `state` "failed": its source did not answer). Asks in the background once the query rests; read again on `revision()`.
+  JSON: `{"query","state","tmdb","recent","sections":[{"id","state","items":[summary…]}]}`
   Called from: `ui/catalog.ts`.
 - `startAt(id: String) -> f64` (`start_at`): Where the player should start `id` (what plays), seconds: where the viewer stopped, 0 when new or watched.
   Called from: `ui/playback.ts`.
@@ -202,8 +204,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: nothing in the UI.
 - `revision() -> f64`: Goes up whenever a background refresh stored newer data: ask again for what is on screen when it changes.
   Called from: nothing in the UI.
-- `async search(query: String, language: String) -> String`: Search: `data` is `{"sections":[{"source":"tmdb"|"anilist","items":[TitleCard]}]}`; an anime TMDB found is not repeated under AniList.
-  JSON: `{"sections":[{"source":"tmdb"|"anilist","items":[TitleCard]}]}`
+- `async search(query: String, language: String) -> String`: Search: `data` is `{"sections":[{"source":"tmdb"|"anilist","items":[TitleCard]}], "failed":["tmdbMovies"|"tmdbShows"|"anilist"]}` (TMDB's films and series as two sections; `failed`: the sources that did not answer); an anime TMDB found is not repeated under AniList.
+  JSON: `{"sections":[{"source":"tmdb"|"anilist","items":[TitleCard]}], "failed":["tmdbMovies"|"tmdbShows"|"anilist"]}`
   Called from: nothing in the UI.
 - `async season(id: String, season: u32, language: String) -> String`: TMDB season `season` (0 = specials) of a series: `data` is a Season with its episodes.
   Called from: nothing in the UI.

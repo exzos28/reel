@@ -487,10 +487,16 @@ impl Catalog {
     }
 
     /// The search screen for `query` (see `catalog::search::search`):
-    /// `{"query","state","tmdb","recent","sections":[{"id","items":[summary…]}]}`.
+    /// `{"query","state","tmdb","recent","sections":[{"id","state","items":[summary…]}]}`
+    /// (a row's `state` "failed": its source did not answer).
     /// Asks in the background once the query rests; read again on `revision()`.
     pub fn search(query: String) -> String {
         catalog::search::search(&query).to_string()
+    }
+
+    /// Asks `query` again (a row that did not load: Try again); read on `revision()`.
+    pub fn retry_search(query: String) {
+        catalog::search::retry(&query)
     }
 
     /// Keeps `query` among the recent searches (submitted, or a title opened from it).
@@ -598,8 +604,10 @@ impl Meta {
         metadata().season(id, season, language).await
     }
 
-    /// Search: `data` is `{"sections":[{"source":"tmdb"|"anilist","items":[TitleCard]}]}`;
-    /// an anime TMDB found is not repeated under AniList.
+    /// Search: `data` is `{"sections":[{"source":"tmdb"|"anilist","items":[TitleCard]}],
+    /// "failed":["tmdbMovies"|"tmdbShows"|"anilist"]}` (TMDB's films and series as two
+    /// sections; `failed`: the sources that did not answer); an anime TMDB found is not
+    /// repeated under AniList.
     pub async fn search(query: String, language: String) -> String {
         metadata().search(query, language).await
     }

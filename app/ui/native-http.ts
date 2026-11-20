@@ -162,6 +162,7 @@ export const Catalog: CatalogModule = {
   search: s("Catalog", "search"),
   rememberSearch: s("Catalog", "rememberSearch"),
   forgetSearches: s("Catalog", "forgetSearches"),
+  retrySearch: s("Catalog", "retrySearch"),
 };
 
 export const Settings: SettingsModule = {

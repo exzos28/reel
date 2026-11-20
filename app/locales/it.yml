@@ -311,6 +311,12 @@ search:
     movies: "Film"
     shows: "Serie TV"
     anime: "Anime"
+  try_again: "Riprova"
+  # A row of results whose source did not answer.
+  row_failed:
+    movies: "Impossibile caricare i film."
+    shows: "Impossibile caricare le serie TV."
+    anime: "Impossibile caricare gli anime."
 
 compat:
   audio_dts: "Questa versione ha solo audio DTS, che questo dispositivo non può riprodurre. Scegli un'altra versione."

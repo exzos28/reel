@@ -311,6 +311,12 @@ search:
     movies: "映画"
     shows: "ドラマ"
     anime: "アニメ"
+  try_again: "再試行"
+  # A row of results whose source did not answer.
+  row_failed:
+    movies: "映画を読み込めませんでした。"
+    shows: "ドラマを読み込めませんでした。"
+    anime: "アニメを読み込めませんでした。"
 
 compat:
   audio_dts: "このリリースの音声は DTS のみで、このデバイスでは再生できません。別のリリースを選んでください。"

@@ -738,72 +738,93 @@ async fn season_work(id: String, season: u32, lang: String) -> CallResult {
 async fn search_work(query: String, lang: String) -> CallResult {
     let mut age = Age::default();
     if query.trim().is_empty() {
-        return Ok((json!({ "sections": [] }), age));
+        return Ok((json!({ "sections": [], "failed": [] }), age));
     }
     let tmdb = service().tmdb();
     let tmdb_on = tmdb.configured();
     let cx = map_cx(&lang, &mut age, true).await;
-    let tmdb_req = tmdb.search_request(&query, &lang);
-    let anilist_req = Anilist.search_request(&query, &lang);
-    let tmdb_fut = async {
-        match tmdb_req {
-            Ok(req) => Some(cached(req).await),
-            Err(_) => None,
+    // Without a key TMDB is not asked (not a failure: the screen says so).
+    let (movies_req, shows_req) = match tmdb.search_requests(&query, &lang) {
+        Ok((m, s)) => (Some(m), Some(s)),
+        Err(_) => (None, None),
+    };
+    let anilist_req = Anilist.search_request(&query, &lang).ok();
+    let ask = |req: Option<Request>| async move {
+        match req {
+            Some(req) => Some(cached(req).await),
+            None => None,
         }
     };
-    let anilist_fut = async {
-        match anilist_req {
-            Ok(req) => Some(cached(req).await),
-            Err(_) => None,
-        }
-    };
-    let (tmdb_got, anilist_got) = tokio::join!(tmdb_fut, anilist_fut);
-
-    let mut sections = Vec::new();
-    let mut failures = Vec::new();
-    let mut tmdb_cards = Vec::new();
-    match tmdb_got.map(|r| {
-        r.and_then(|got| {
-            age.add(&got);
-            tmdb.map_cards(&got.body, &cx)
+    let (movies_got, shows_got, anilist_got) = tokio::join!(ask(movies_req), ask(shows_req), ask(anilist_req));
+    let mut tmdb_cards = |got: Option<Result<Got, ProviderError>>| {
+        got.map(|r| {
+            r.and_then(|got| {
+                age.add(&got);
+                tmdb.map_cards(&got.body, &cx)
+            })
+            .map(|mut cards| {
+                mark_anime(&mut cards);
+                cards
+            })
         })
-    }) {
-        Some(Ok(mut cards)) => {
-            mark_anime(&mut cards);
-            tmdb_cards = cards;
-        }
-        Some(Err(e)) => failures.push((e, ProviderId::Tmdb)),
-        None => {}
-    }
-    let mut anime_cards = Vec::new();
-    match anilist_got.map(|r| {
+    };
+    let movies = tmdb_cards(movies_got);
+    let shows = tmdb_cards(shows_got);
+    let anime = anilist_got.map(|r| {
         r.and_then(|got| {
             age.add(&got);
             Anilist.map_cards(&got.body, &cx)
         })
-    }) {
-        Some(Ok(cards)) => {
-            // An anime TMDB already found is not listed twice.
-            let found: HashSet<String> = tmdb_cards.iter().map(|c| c.id.clone()).collect();
-            anime_cards = canonicalize(cards, tmdb_on).into_iter().filter(|c| !found.contains(&c.id)).collect();
-        }
-        Some(Err(e)) => failures.push((e, ProviderId::Anilist)),
-        None => {}
-    }
-    if tmdb_cards.is_empty()
-        && anime_cards.is_empty()
-        && let Some((e, p)) = failures.first()
-    {
-        return Err((e.clone(), Some(*p)));
-    }
+        .map(|cards| canonicalize(cards, tmdb_on))
+    });
+    let (data, failures) = search_answer(movies, shows, anime)?;
     for (e, p) in &failures {
         age.warn(*p, e);
     }
-    if tmdb_on {
-        sections.push(SearchSection { source: ProviderId::Tmdb, items: tmdb_cards });
+    Ok((data, age))
+}
+
+/// What one source of a search gave: its cards, why it has none, or `None`
+/// when it was not asked (TMDB without a key).
+type Asked = Option<Result<Vec<TitleCard>, ProviderError>>;
+
+/// Search's `data` from what each source gave: `{"sections":[{source,
+/// items}],"failed":[…]}`, TMDB's films and series as two sections, an
+/// anime TMDB found not repeated under AniList; `failed` names the sources
+/// that did not answer ("tmdbMovies", "tmdbShows", "anilist"), so the
+/// screen can say which row is missing. The failures, for the warnings.
+/// When nothing was found and a source failed, the search failed.
+fn search_answer(
+    movies: Asked,
+    shows: Asked,
+    anime: Asked,
+) -> Result<(Value, Vec<(ProviderError, ProviderId)>), (ProviderError, Option<ProviderId>)> {
+    let mut sections = Vec::new();
+    let mut failed = Vec::new();
+    let mut failures = Vec::new();
+    let mut found = HashSet::new();
+    let mut any = false;
+    for (name, provider, asked) in
+        [("tmdbMovies", ProviderId::Tmdb, movies), ("tmdbShows", ProviderId::Tmdb, shows), ("anilist", ProviderId::Anilist, anime)]
+    {
+        match asked {
+            Some(Ok(cards)) => {
+                // TMDB's come first: AniList's cards it already has are left out.
+                let items: Vec<TitleCard> = cards.into_iter().filter(|c| found.insert(c.id.clone())).collect();
+                any |= !items.is_empty();
+                sections.push(SearchSection { source: provider, items });
+            }
+            Some(Err(e)) => {
+                failed.push(name);
+                failures.push((e, provider));
+            }
+            None => {}
+        }
     }
-    sections.push(SearchSection { source: ProviderId::Anilist, items: anime_cards });
-    Ok((json!({ "sections": sections }), age))
+    if !any && let Some((e, p)) = failures.first() {
+        return Err((e.clone(), Some(*p)));
+    }
+    Ok((json!({ "sections": sections, "failed": failed }), failures))
 }
 
 // ---- What `lib.rs` exposes --------------------------------------------
