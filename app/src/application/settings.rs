@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::wiring::playback;
+use reel_domain::subtitles::files;
 use reel_domain::{redact::redact_keys, search::Source};
 
 /// Choices for the playback buffer, MiB.
@@ -74,6 +75,8 @@ struct Saved {
     language: String,
     /// The language of titles, descriptions and episode names (a TMDB tag).
     content_language: String,
+    /// The audio language (ISO 639-1) the viewer last picked a track in; empty: the app's.
+    audio_language: String,
     /// The user's search source: a Torznab endpoint and its key (may be empty).
     source_url: String,
     source_key: String,
@@ -116,6 +119,7 @@ impl Default for Saved {
             buffer_mb: DEFAULT_BUFFER_MB,
             language: DEFAULT_LANGUAGE.to_owned(),
             content_language: DEFAULT_CONTENT_LANGUAGE.to_owned(),
+            audio_language: String::new(),
             source_url: String::new(),
             source_key: String::new(),
             stream_details: false,
@@ -141,6 +145,9 @@ impl Saved {
         }
         if !LOADERS.contains(&self.loader.as_str()) {
             self.loader = DEFAULT_LOADER.to_owned();
+        }
+        if !self.audio_language.is_empty() && !is_audio_language(&self.audio_language) {
+            self.audio_language.clear();
         }
         if self.language.is_empty() {
             self.language = DEFAULT_LANGUAGE.to_owned();
@@ -301,7 +308,8 @@ pub fn load(data_dir: Option<&Path>, languages: &[String]) -> Value {
 }
 
 /// The settings as the UI shows them, from memory:
-/// `{"language","contentLanguage","contentLanguages":[{"tag","name"}],"bufferMB",
+/// `{"language","contentLanguage","contentLanguages":[{"tag","name"}],"audioLanguage" (ISO
+/// 639-1, "": the app's),"audioLanguages":[codes],"bufferMB",
 /// "streamDetails","navPosition","loader","setupDone","source":{"url","hasKey"},"bufferChoices":[{"mb","default"}]}`.
 pub fn current() -> Value {
     let saved = with(|s| s.saved.clone());
@@ -314,6 +322,8 @@ pub fn current() -> Value {
             .iter()
             .map(|(tag, name)| json!({ "tag": tag, "name": name }))
             .collect::<Vec<_>>(),
+        "audioLanguage": saved.audio_language,
+        "audioLanguages": files::known().collect::<Vec<_>>(),
         "bufferMB": saved.buffer_mb,
         "streamDetails": saved.stream_details,
         "navPosition": saved.nav_position,
@@ -483,6 +493,44 @@ pub fn set_content_language(tag: &str) -> String {
     now
 }
 
+/// The app's language (ISO 639-1): the UI shows the content language's (`showUiIn` in
+/// ui/preferences.ts: one setting for both), so its base, "pt" for "pt-BR".
+pub fn ui_language() -> String {
+    let tag = content_language();
+    tag.split('-').next().unwrap_or("en").to_owned()
+}
+
+/// Whether `code` is a language a track can be told to be in (`files::known`).
+pub fn is_audio_language(code: &str) -> bool {
+    files::known().any(|c| c == code)
+}
+
+/// The audio language the viewer picked last; None: the app's (`ui_language`).
+pub fn audio_language() -> Option<String> {
+    with(|s| (!s.saved.audio_language.is_empty()).then(|| s.saved.audio_language.clone()))
+}
+
+/// The language audio is looked for in: the one picked last, else the app's.
+pub fn wanted_audio_language() -> String {
+    audio_language().unwrap_or_else(ui_language)
+}
+
+/// Saves the audio language (a code of `files::known`; "" goes back to the app's; another value is
+/// refused); the setting in effect ("" for the app's).
+pub fn set_audio_language(code: &str) -> String {
+    let now = with(|s| {
+        if code.is_empty() || is_audio_language(code) {
+            if s.saved.audio_language != code {
+                s.saved.audio_language = code.to_owned();
+                save(s);
+            }
+        }
+        s.saved.audio_language.clone()
+    });
+    bump();
+    now
+}
+
 pub fn set_language(tag: &str) {
     with(|s| {
         s.saved.language = tag.to_owned();
@@ -593,6 +641,20 @@ mod tests {
         set_content_language(DEFAULT_CONTENT_LANGUAGE);
         // A kept content language stays whatever the system's.
         assert_eq!(load(Some(&dir), &["ru-RU".to_owned()])["contentLanguage"], DEFAULT_CONTENT_LANGUAGE);
+
+        // Audio language: the app's until one is picked; a known code, kept across loads.
+        assert_eq!(load(Some(&dir), &[])["audioLanguage"], "");
+        assert_eq!(wanted_audio_language(), "en");
+        set_content_language("pt-BR");
+        assert_eq!(wanted_audio_language(), "pt", "the app's language, the content language's base");
+        set_content_language(DEFAULT_CONTENT_LANGUAGE);
+        assert_eq!(set_audio_language("kk"), "kk");
+        assert_eq!(set_audio_language("jav"), "kk", "an unknown code is refused");
+        assert_eq!(load(Some(&dir), &[])["audioLanguage"], "kk");
+        assert_eq!(wanted_audio_language(), "kk");
+        assert_eq!(set_audio_language(""), "", "back to the app's");
+        assert_eq!(audio_language(), None);
+        assert!(current()["audioLanguages"].as_array().unwrap().iter().any(|c| c == "uz"));
 
         // Nav position and loader: one of their lists, kept across loads; missing or unknown
         // in the file: the defaults.

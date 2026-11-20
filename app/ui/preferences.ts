@@ -40,6 +40,10 @@ export interface SettingsJson {
   loader?: Loader;
   contentLanguage?: string;
   contentLanguages?: ContentLanguage[];
+  /** The audio language tracks are looked for in (ISO 639-1); "": the app's. */
+  audioLanguage?: string;
+  /** The languages it can be (ISO 639-1, named by `languages.*`). */
+  audioLanguages?: string[];
   source?: SourceInfo;
   /** The first-run setup was gone through (the core says when). */
   setupDone?: boolean;
@@ -47,6 +51,9 @@ export interface SettingsJson {
 
 export const contentLanguage = signal("en-US");
 export const contentLanguages = signal<ContentLanguage[]>([]);
+/** The audio language (ISO 639-1), "" for the app's; a pick in the player sets it too. */
+export const audioLanguage = signal("");
+export const audioLanguages = signal<string[]>([]);
 
 export const bufferMB = signal(0);
 /** The player shows the stream's speed, people and what is ready ahead. */
@@ -89,6 +96,8 @@ export function applySettings(s: SettingsJson) {
   if (s.contentLanguage) contentLanguage.set(s.contentLanguage);
   showUiIn(contentLanguage());
   if (s.contentLanguages) contentLanguages.set(s.contentLanguages);
+  if (s.audioLanguage !== undefined) audioLanguage.set(s.audioLanguage);
+  if (s.audioLanguages) audioLanguages.set(s.audioLanguages);
   if (s.source) source.set(s.source);
   if (s.setupDone !== undefined) setupDone.set(s.setupDone);
 }
@@ -134,6 +143,11 @@ export async function checkSource(): Promise<CheckResult> {
     if (r.state === "done") return { state: "ok", ...r.caps };
     return { state: "failed", message: r.message ?? "", reason: r.reason ?? "error", host: r.host ?? "" };
   }
+}
+
+/** Looks for audio in `code` ("" : the app's language); the core keeps it. */
+export async function chooseAudioLanguage(code: string) {
+  audioLanguage.set(await Settings.setAudioLanguage(code));
 }
 
 /** Shows titles, descriptions and the UI in `tag`; the core drops what it asked in the old one. */

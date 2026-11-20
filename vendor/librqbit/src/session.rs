@@ -298,6 +298,11 @@ pub struct AddTorrentOptions {
 
     // Custom trackers
     pub trackers: Option<Vec<String>>,
+
+    /// reel: keep this torrent's verified pieces in `<folder>/<info_hash>.bitv` and start from
+    /// them next time instead of checking every piece, without session persistence (for the
+    /// filesystem storage; `fastresume.rs`, `REEL_PATCH.md`).
+    pub fastresume_folder: Option<PathBuf>,
 }
 
 pub struct ListOnlyResponse {
@@ -1377,6 +1382,7 @@ impl Session {
                     ratelimits: opts.ratelimits,
                     initial_peers: opts.initial_peers.clone().unwrap_or_default(),
                     peer_limit: opts.peer_limit.or(self.peer_limit),
+                    fastresume_folder: opts.fastresume_folder.clone(),
                     #[cfg(feature = "disable-upload")]
                     _disable_upload: self._disable_upload,
                 },

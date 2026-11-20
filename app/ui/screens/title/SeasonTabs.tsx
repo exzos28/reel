@@ -9,7 +9,8 @@ import { scroller, type Follow } from "../../layout/Scroller";
 import { colors, safe, selectedFill, type, u } from "../../theme";
 import { Pressable } from "../../kit/Pressable";
 
-type Season = { number: number; year: number; episodes: number };
+/** `year` is null when neither the season nor its episodes say it. */
+type Season = { number: number; year: number | null; episodes: number };
 
 const tabLabel = (selected: boolean): TextStyle => ({ ...labelText(selected ? colors.snow() : colors.ash()), fontWeight: 600 });
 const subStyle = (): TextStyle => ({ ...metaText(), marginHorizontal: safe().x, marginTop: u(4) });
@@ -40,7 +41,9 @@ export function SeasonTabs(props: {
                 style={pillStyle(selectedFill(chosen(s())), props.focused() && chosen(s()), 22)}
               >
                 <Text style={tabLabel(chosen(s()))}>{t("series.season", { number: s().number })}</Text>
-                <Text style={{ ...type.small(), color: colors.ash() }}>{String(s().year)}</Text>
+                <If when={s().year != null}>
+                  <Text style={{ ...type.small(), color: colors.ash() }}>{String(s().year)}</Text>
+                </If>
               </Pressable>
             )}
           </Each>

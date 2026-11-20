@@ -9,7 +9,8 @@
 import { host } from "nsh";
 
 export type AvplayOp =
-  | { op: "open"; url: string }
+  /** `hold`: AVPlay waits for `play` once prepared (the audio track is chosen first). */
+  | { op: "open"; url: string; hold?: boolean }
   | { op: "play" }
   | { op: "pause" }
   | { op: "seek"; position: number }

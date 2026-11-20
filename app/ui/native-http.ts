@@ -173,6 +173,7 @@ export const Settings: SettingsModule = {
   setLoader: s("Settings", "setLoader"),
   setSource: s("Settings", "setSource"),
   setContentLanguage: s("Settings", "setContentLanguage"),
+  setAudioLanguage: s("Settings", "setAudioLanguage"),
   setLanguage: s("Settings", "setLanguage"),
   finishSetup: s("Settings", "finishSetup"),
   current: s("Settings", "current"),

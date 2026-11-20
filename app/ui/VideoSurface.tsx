@@ -43,6 +43,9 @@ export interface VideoSurfaceProps {
   src: string;
   paused: boolean;
   volume?: number;
+  /** The languages to start in before the tracks are known (the core's `apply.audioLanguages`,
+   * mpv's `alang`: "ru,rus"). */
+  audioLanguages?: string;
   /** mpv's audio track id; null leaves it to the player. */
   audioTrack?: number | null;
   /** mpv's subtitle track id, "no" for none; null leaves it to the player. */
@@ -73,6 +76,7 @@ interface MpvProps {
   src: string;
   paused: boolean;
   volume: number;
+  audioLanguages: string;
   audioTrack: number | null;
   subtitleTrack: number | string | null;
   progressUpdateInterval: number;
@@ -90,7 +94,8 @@ interface MpvEvents {
 }
 
 const MpvView = nativeComponent<MpvProps, MpvEvents>("reel/mpv", {
-  props: ["src", "paused", "volume", "audioTrack", "subtitleTrack", "progressUpdateInterval", "subtitleLift"],
+  // The languages before `src`: mpv starts in them.
+  props: ["audioLanguages", "src", "paused", "volume", "audioTrack", "subtitleTrack", "progressUpdateInterval", "subtitleLift"],
   events: ["load", "progress", "buffer", "end", "error", "tracks"],
 });
 
@@ -178,6 +183,7 @@ function PlayerView(props: VideoSurfaceProps) {
         paused={props.paused}
         volume={props.volume ?? 1}
         subtitleLift={props.subtitleLift ?? 0}
+        audioLanguages={props.audioLanguages ?? ""}
         audioTrack={props.audioTrack ?? null}
         subtitleTrack={props.subtitleTrack ?? null}
         progressUpdateInterval={props.progressUpdateInterval ?? 250}

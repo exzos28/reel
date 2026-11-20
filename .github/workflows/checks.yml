@@ -1,8 +1,8 @@
 # The checks every change must pass before it reaches main (a PR's required checks). Called by
 # ci.yml and release.yml. Each job and step runs build/build.sh <target>, the same command a
-# developer can run locally. The cheap checks run on Ubuntu; reel-app is built and tested on macOS:
-# `app` (types, no-engine, cargo test, part 1 of the *.test.tsx) and `ui` (parts 2 and 3), side by
-# side on their own Macs, all from the same Cargo cache.
+# developer can run locally. Everything runs on Ubuntu (Macs are few and the platform builds need
+# them): reel-app is built and tested in `app` (types, no-engine, cargo test, part 1 of the
+# *.test.tsx) and `ui` (parts 2 and 3), side by side, all from the same Cargo cache.
 name: checks
 
 on:
@@ -47,17 +47,20 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: Swatinem/rust-cache@v2.9.3
         with:
-          workspaces: app -> target
+          workspaces: |
+            app -> target
+            vendor/librqbit -> target
           key: test-crates
       - run: build/build.sh test-crates
 
   # reel-app: the type check, the build without the engine and the app's tests. A failed step
   # does not stop the next one, so one run says which of them broke.
   app:
-    runs-on: macos-15
+    runs-on: ubuntu-24.04 # GTK 4.14, as the Linux build
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7.0.1
+      - run: build/setup-linux-deps.sh
       - uses: ./.github/actions/setup-nsh
         with:
           rust-cache-key: checks
@@ -79,10 +82,10 @@ jobs:
           path: app/.nsh/dist/test/junit-*.xml
           if-no-files-found: ignore
 
-  # The other *.test.tsx files, on Macs of their own beside `app` (build/build.sh test-ui).
+  # The other *.test.tsx files, on machines of their own beside `app` (build/build.sh test-ui).
   ui:
     name: ui ${{ matrix.part }}
-    runs-on: macos-15
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -90,6 +93,7 @@ jobs:
         part: [2, 3]
     steps:
       - uses: actions/checkout@v7.0.1
+      - run: build/setup-linux-deps.sh
       - uses: ./.github/actions/setup-nsh
         with:
           rust-cache-key: checks

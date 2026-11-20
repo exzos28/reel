@@ -83,7 +83,7 @@ async function playing(settings: Record<string, unknown> = DETAILS, engine: Reco
 
 test("the player opens the core's stream in AVPlay and waits on the stage until it plays", async () => {
   const { app, ops, event } = await tv();
-  expect(ops()).toEqual([{ op: "open", url: URL }]);
+  expect(ops()).toEqual([{ op: "open", url: URL, hold: true }]);
   expect(app.shows("stage")).toBe(true);
   expect(app.shows("scrubber")).toBe(false);
   await event({ type: "loaded", duration: 600, tracks: TRACKS });
@@ -97,8 +97,9 @@ test("the player opens the core's stream in AVPlay and waits on the stage until 
 test("AVPlay's tracks go to the core, and the audio picked in the panel to AVPlay", async () => {
   const { app, ops, embedded } = await playing();
   expect(JSON.parse(embedded.at(-1)!)).toEqual({ avplay: TRACKS });
-  // AVPlay already plays the first audio track: nothing to switch yet.
+  // The core's track is AVPlay's first: nothing to switch, it plays.
   expect(ops().filter((o) => o.op === "track")).toEqual([]);
+  expect(ops().slice(1, 2)).toEqual([{ op: "play" }]);
   await app.press("label:Audio and subtitles");
   await app.press("label:Russian");
   expect(ops().filter((o) => o.op === "track")).toEqual([{ op: "track", trackType: "AUDIO", index: 2 }]);
@@ -113,7 +114,33 @@ test("pause, play and seeks reach AVPlay", async () => {
   // The seek reaches AVPlay a moment after the key (a slow machine, CI, is not there yet at once).
   await app.waitUntil(() => ops().length >= 6);
   // The seek holds the picture (a pause) until it is there.
-  expect(ops().slice(1)).toEqual([{ op: "pause" }, { op: "play" }, { op: "pause" }, { op: "seek", position: 11 }, { op: "play" }]);
+  expect(ops().slice(2)).toEqual([{ op: "pause" }, { op: "play" }, { op: "pause" }, { op: "seek", position: 11 }, { op: "play" }]);
+});
+
+test("prepared, AVPlay switches to the core's audio track before it plays", async () => {
+  // The core picks the Russian track (the language looked for) once it has AVPlay's tracks.
+  const { app, ops, event } = await tv(DETAILS, {
+    "Engine.tracks": (_job: number, _id: string, e: string) => (e ? menu(2) : JSON.stringify({
+      pending: true, audio: [{ key: "original", kind: "original", selected: true }], subtitles: [{ key: "off", kind: "off", selected: true }],
+      apply: { audio: null, subtitle: null, external: null, audioLanguages: "ru,rus" },
+    })),
+  });
+  await event({ type: "loaded", duration: 600, tracks: TRACKS });
+  // The play follows the switch a moment later (a slow machine, CI, is not there yet at once).
+  await app.waitUntil(() => ops().length >= 3);
+  expect(ops().slice(1)).toEqual([{ op: "track", trackType: "AUDIO", index: 2 }, { op: "play" }]);
+});
+
+test("without an audio track from the core, AVPlay plays after a moment", async () => {
+  const none = JSON.stringify({
+    pending: false, audio: [{ key: "original", kind: "original", selected: true }], subtitles: [{ key: "off", kind: "off", selected: true }],
+    apply: { audio: null, subtitle: "no", external: null },
+  });
+  const { app, ops, event } = await tv(DETAILS, { "Engine.tracks": () => none });
+  await event({ type: "loaded", duration: 600, tracks: TRACKS });
+  expect(ops().slice(1)).toEqual([]);
+  await app.wait(1600);
+  expect(ops().slice(1)).toEqual([{ op: "play" }]);
 });
 
 test("a run of presses is one seek, sent once the arrows rest; the scrubber keeps its target until AVPlay gets there", async () => {

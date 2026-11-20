@@ -6,6 +6,9 @@ import { cleanup, effect, View } from "nsh";
 import { avplayLink, clearPageBackgrounds, type AvplayEvent, type AvplayOp } from "./avplay";
 import type { VideoSurfaceProps } from "./VideoSurface";
 
+/** The longest a prepared stream waits for the core's audio track before it plays anyway, ms. */
+const AUDIO_WAIT_MS = 1500;
+
 export function AvplaySurface(props: VideoSurfaceProps) {
   const link = avplayLink();
   /** The stream AVPlay has open: until it says `loaded`, ops wait. */
@@ -15,6 +18,11 @@ export function AvplaySurface(props: VideoSurfaceProps) {
   let pausedNow = false;
   let audioNow: number | null = null;
   let seekTo: number | null = null;
+  /** Prepared, AVPlay waits (`hold`) until the core says which audio track plays: the viewer
+   * never hears a moment of another one. */
+  let waitingAudio = false;
+  let audioTimer: ReturnType<typeof setTimeout> | undefined;
+  cleanup(() => clearTimeout(audioTimer));
 
   const send = (op: AvplayOp) => {
     try {
@@ -25,14 +33,18 @@ export function AvplaySurface(props: VideoSurfaceProps) {
   };
   const apply = () => {
     if (!loaded) return;
-    if (props.paused !== pausedNow) {
-      pausedNow = props.paused;
-      send({ op: pausedNow ? "pause" : "play" });
-    }
     const audio = props.audioTrack ?? null;
     if (audio != null && audio !== audioNow) {
       audioNow = audio;
       send({ op: "track", trackType: "AUDIO", index: audio });
+    }
+    if (audio != null && waitingAudio) {
+      waitingAudio = false;
+      clearTimeout(audioTimer);
+    }
+    if (!waitingAudio && props.paused !== pausedNow) {
+      pausedNow = props.paused;
+      send({ op: pausedNow ? "pause" : "play" });
     }
     if (seekTo != null) {
       send({ op: "seek", position: seekTo });
@@ -45,9 +57,15 @@ export function AvplaySurface(props: VideoSurfaceProps) {
       case "loaded": {
         loaded = true;
         duration = e.duration;
-        // AVPlay plays as soon as it is prepared, on its first audio track.
-        pausedNow = false;
+        // Prepared, AVPlay holds on its first audio track until `play`: the core's track first.
+        pausedNow = true;
         audioNow = e.tracks?.find((t) => t.type === "AUDIO")?.index ?? null;
+        waitingAudio = true;
+        clearTimeout(audioTimer);
+        audioTimer = setTimeout(() => {
+          waitingAudio = false;
+          apply();
+        }, AUDIO_WAIT_MS);
         // The core reads AVPlay's tracks (`Engine.tracks`).
         props.onTracks?.(JSON.stringify({ avplay: e.tracks ?? [] }));
         props.onLoad?.({ duration });
@@ -92,7 +110,7 @@ export function AvplaySurface(props: VideoSurfaceProps) {
     const src = props.src;
     loaded = false;
     seekTo = null;
-    if (src) send({ op: "open", url: src });
+    if (src) send({ op: "open", url: src, hold: true });
   });
   effect(() => {
     void props.paused;

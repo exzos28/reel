@@ -51,6 +51,8 @@ const LANGUAGES: &[(&str, &[&str])] = &[
     ("ja", &["ja", "jpn", "japanese"]),
     ("zh", &["zh", "chi", "zho", "chinese"]),
     ("ko", &["ko", "kor", "korean"]),
+    ("kk", &["kk", "kaz", "kazakh"]),
+    ("uz", &["uz", "uzb", "uzbek"]),
 ];
 
 /// A language name or code as ISO 639-1; None for one we do not know.
@@ -59,6 +61,21 @@ pub fn language(name: &str) -> Option<&'static str> {
     // "en-US", "pt_BR": the language part.
     let name = name.split(['-', '_']).next().unwrap_or("");
     LANGUAGES.iter().find(|(_, names)| names.contains(&name)).map(|(code, _)| *code)
+}
+
+/// The codes of a language (ISO 639-1 `code`): "de" → ["de", "ger", "deu"], as a player
+/// matches them against a file's tags; empty for one we do not know.
+pub fn codes(code: &str) -> Vec<&'static str> {
+    LANGUAGES
+        .iter()
+        .find(|(c, _)| *c == code)
+        .map(|(_, names)| names.iter().copied().filter(|n| n.len() <= 3).collect())
+        .unwrap_or_default()
+}
+
+/// The languages reel knows (ISO 639-1), in its order.
+pub fn known() -> impl Iterator<Item = &'static str> {
+    LANGUAGES.iter().map(|(code, _)| *code)
 }
 
 /// The words of a name: split at dots, spaces, brackets, dashes and underscores.
@@ -157,6 +174,11 @@ mod tests {
         assert_eq!(language("pt-BR"), Some("pt"));
         assert_eq!(language("ger"), Some("de"));
         assert_eq!(language("SDH"), None);
+        assert_eq!(language("kaz"), Some("kk"));
+        assert_eq!(language("uzb"), Some("uz"));
+        assert_eq!(language("jav"), None, "Javanese, seen on Japanese tracks: not ours");
+        assert_eq!(codes("de"), ["de", "ger", "deu"]);
+        assert!(codes("xx").is_empty());
     }
 
     #[test]

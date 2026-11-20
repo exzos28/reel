@@ -7,6 +7,7 @@
 
 pub mod torznab;
 
+use reel_domain::numbering::{self, Holds, Numbering};
 use reel_domain::{compat, release};
 pub use reel_domain::search::{Request, Source};
 
@@ -211,6 +212,7 @@ const AT_ONCE: usize = 4;
 async fn search(source: &Source, request: &Request) -> anyhow::Result<(Vec<Value>, Vec<Value>)> {
     let caps = caps(source).await.unwrap_or_default();
     let query = request.query();
+    let numbering = Numbering(request.season_sizes.clone());
     let mut found = Vec::new();
     let mut last_err = None;
     let mut urls = torznab::search_urls(&source.url, source.key.as_deref(), &query, &caps)?;
@@ -257,14 +259,14 @@ async fn search(source: &Source, request: &Request) -> anyhow::Result<(Vec<Value
                 // latest releases instead: only those about this title count.
                 found.extend(items.into_iter().filter(|it| is_about(&it.title, &names, request.year, request.season.is_none())));
                 // A season asks every query: packs and single episodes come from different ones.
-                if !matches!(query, Query::Season { .. }) && rank(&found, &query).0.iter().any(|r| r["seeders"].as_u64().unwrap_or(0) > 0) {
+                if !matches!(query, Query::Season { .. }) && rank(&found, &query, &numbering).0.iter().any(|r| r["seeders"].as_u64().unwrap_or(0) > 0) {
                     break;
                 }
             }
             Err(e) => last_err = Some(e),
         }
     }
-    let (ranked, hidden) = rank(&found, &query);
+    let (ranked, hidden) = rank(&found, &query, &numbering);
     match (ranked.is_empty() && hidden.is_empty(), last_err) {
         (true, Some(e)) => Err(e),
         _ => Ok((ranked, hidden)),
@@ -324,26 +326,18 @@ fn is_about(release: &str, names: &[String], year: Option<u16>, film: bool) -> b
     }
 }
 
-/// How well a release fits the query: 2 the exact episode (or a film),
-/// 1 a season pack that holds it, 0 not this.
-fn fit(info: &release::ReleaseInfo, query: &Query) -> u8 {
-    match query {
-        Query::Movie { .. } => 2,
-        Query::Episode { season, episode, .. } => match info.season {
-            Some(s) if s != *season => 0,
-            _ if info.episodes.contains(episode) => 2,
-            Some(_) if info.episodes.is_empty() => 1,
-            _ => 0,
-        },
-        // A season: its packs first (no episodes named, or several), then single
-        // episodes; a name without a season may hold it too (a show's only one).
-        Query::Season { season, .. } => match info.season {
-            Some(s) if s != *season => 0,
-            Some(_) if info.episodes.len() != 1 => 2,
-            Some(_) => 1,
-            None if info.episodes.is_empty() => 1,
-            None => 0,
-        },
+/// How well a release fits the query: 2 the exact episode (or a film, or the season's pack),
+/// 1 a pack that may hold it, 0 not this (`numbering::holds`, the same decision Play makes).
+fn fit(info: &release::ReleaseInfo, query: &Query, numbering: &Numbering) -> u8 {
+    let (season, episode) = match query {
+        Query::Movie { .. } => return 2,
+        Query::Episode { season, episode, .. } => (*season, Some(*episode)),
+        Query::Season { season, .. } => (*season, None),
+    };
+    match numbering::holds(info, season, episode, numbering) {
+        Holds::Named => 2,
+        Holds::Pack => 1,
+        Holds::No => 0,
     }
 }
 
@@ -351,7 +345,7 @@ fn fit(info: &release::ReleaseInfo, query: &Query) -> u8 {
 /// people sharing, then how well it fits, then the picture size, then more people, and
 /// only then the source (a 4K remux with 80 people is not over a 4K WEB-DL with 2000: for
 /// streaming the swarm matters more, and a remux is several times the bitrate).
-fn rank(items: &[Item], query: &Query) -> (Vec<Value>, Vec<Value>) {
+fn rank(items: &[Item], query: &Query, numbering: &Numbering) -> (Vec<Value>, Vec<Value>) {
     let profile = compat::profile();
     let mut hidden = Vec::new();
     // Some indexers report 0 seeders for everything (they don't parse it):
@@ -365,7 +359,7 @@ fn rank(items: &[Item], query: &Query) -> (Vec<Value>, Vec<Value>) {
             continue;
         }
         let info = release::parse(&it.title);
-        let fit = fit(&info, query);
+        let fit = fit(&info, query, numbering);
         if fit == 0 || !seen.insert(key.clone()) {
             continue;
         }
@@ -393,7 +387,8 @@ fn rank(items: &[Item], query: &Query) -> (Vec<Value>, Vec<Value>) {
                 "peers": it.peers,
                 "indexer": it.indexer,
                 "info": info,
-                "seasonPack": if matches!(query, Query::Season { .. }) { info.episodes.len() != 1 } else { fit == 1 || info.episodes.len() > 1 },
+                // More than one episode (or a season without numbers): its size is shared out.
+                "seasonPack": info.episodes.len() != 1,
             }),
         ));
     }
@@ -421,7 +416,7 @@ mod tests {
         let q = Query::Season { imdb: None, title: "Show".into(), season: 1 };
         let item = |t: &str| Item { title: t.into(), link: Some(format!("https://indexer.example/{t}")), seeders: Some(5), ..Default::default() };
         let items = [item("Show S01E03 1080p"), item("Show S01 1080p"), item("Show S02 1080p"), item("Show S01E01-08 of 08 1080p")];
-        let r = rank(&items, &q).0;
+        let r = rank(&items, &q, &Numbering::default()).0;
         let titles: Vec<&str> = r.iter().map(|x| x["title"].as_str().unwrap()).collect();
         assert_eq!(titles.len(), 3, "not season 2");
         assert!(!titles.contains(&"Show S02 1080p"));
@@ -453,7 +448,7 @@ mod tests {
     fn ranking_dedupes_and_orders() {
         let items = torznab::parse(include_str!("fixtures/torznab-sintel.xml")).unwrap();
         let q = Query::Movie { imdb: None, title: "Sintel".into(), year: Some(2010) };
-        let r = rank(&items, &q).0;
+        let r = rank(&items, &q, &Numbering::default()).0;
         // 4 items: one duplicate by infohash, so 3; nobody sharing goes last.
         assert_eq!(r.len(), 3);
         assert_eq!(r[0]["title"], "Sintel 2010 1080p WEB x264 & subs");
@@ -467,10 +462,10 @@ mod tests {
     fn in_one_picture_size_more_people_sharing_win_over_the_source() {
         let q = Query::Movie { imdb: None, title: "Film".into(), year: None };
         let item = |t: &str, s: u32| Item { title: t.into(), link: Some(format!("https://indexer.example/{t}")), seeders: Some(s), ..Default::default() };
-        let r = rank(&[item("Film 2160p Remux HEVC", 82), item("Film 2160p WEB-DL HEVC", 2231), item("Film 1080p BluRay", 5000)], &q).0;
+        let r = rank(&[item("Film 2160p Remux HEVC", 82), item("Film 2160p WEB-DL HEVC", 2231), item("Film 1080p BluRay", 5000)], &q, &Numbering::default()).0;
         let titles: Vec<&str> = r.iter().map(|x| x["title"].as_str().unwrap()).collect();
         assert_eq!(titles, ["Film 2160p WEB-DL HEVC", "Film 2160p Remux HEVC", "Film 1080p BluRay"]);
-        let tie = rank(&[item("Film 1080p WEB", 10), item("Film 1080p BluRay", 10)], &q).0;
+        let tie = rank(&[item("Film 1080p WEB", 10), item("Film 1080p BluRay", 10)], &q, &Numbering::default()).0;
         assert_eq!(tie[0]["title"], "Film 1080p BluRay", "equal people: the better source");
     }
 
@@ -479,7 +474,7 @@ mod tests {
         compat::set_profile(compat::Profile::Tizen);
         let q = Query::Movie { imdb: None, title: "Film".into(), year: None };
         let item = |t: &str| Item { title: t.into(), link: Some(format!("https://indexer.example/{t}")), seeders: Some(5), ..Default::default() };
-        let (shown, hidden) = rank(&[item("Film 1080p BluRay DTS-HD MA"), item("Film 1080p WEB AAC")], &q);
+        let (shown, hidden) = rank(&[item("Film 1080p BluRay DTS-HD MA"), item("Film 1080p WEB AAC")], &q, &Numbering::default());
         compat::set_profile(compat::Profile::Mpv);
         assert_eq!(shown.len(), 1);
         assert_eq!(hidden[0]["reason"], "audio_dts");
@@ -494,6 +489,7 @@ mod tests {
             year: Some(1922),
             season: None,
             episode: None,
+            season_sizes: Vec::new(),
         };
         assert_eq!(r.alt_names(), vec!["Nosferatu".to_string()], "a duplicate and a blank are skipped");
         // One plain search by the name, in the query's categories, with a film's year.
@@ -511,7 +507,7 @@ mod tests {
             Item { title: "Sintel 720p".into(), link: Some("https://indexer.example/a".into()), seeders: Some(0), ..Default::default() },
             Item { title: "Sintel 1080p".into(), link: Some("https://indexer.example/b".into()), seeders: Some(0), ..Default::default() },
         ];
-        let r = rank(&items, &q).0;
+        let r = rank(&items, &q, &Numbering::default()).0;
         assert_eq!(r[0]["title"], "Sintel 1080p", "ordered by quality, not as dead");
         assert!(r[0]["seeders"].is_null());
     }
@@ -532,6 +528,7 @@ mod tests {
             year: Some(1922),
             season: None,
             episode: None,
+            season_sizes: Vec::new(),
         };
         let (r, _) = runtime().block_on(search(&source, &request)).expect("the source answers");
         println!("{} releases; best: {:?} {:?}", r.len(), r.first().map(|v| &v["info"]), r.first().map(|v| &v["seeders"]));
@@ -549,11 +546,11 @@ mod tests {
             item("Flash.Gordon.S01E03.720p", 5),
             item("Flash.Gordon.S02E03.720p", 90),
         ];
-        let r = rank(&items, &q).0;
+        let r = rank(&items, &q, &Numbering::default()).0;
         let titles: Vec<_> = r.iter().map(|v| v["title"].as_str().unwrap()).collect();
         assert_eq!(titles, vec!["Flash.Gordon.S01E03.720p", "Flash.Gordon.S01.1080p"]);
         assert_eq!(r[1]["seasonPack"], true);
-        let r = rank(&[item("Flash.Gordon.S01E01-12.720p", 9)], &q).0;
+        let r = rank(&[item("Flash.Gordon.S01E01-12.720p", 9)], &q, &Numbering::default()).0;
         assert_eq!(r[0]["seasonPack"], true, "episodes 1-12 hold it: a pack");
     }
 }

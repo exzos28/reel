@@ -6,8 +6,9 @@ pub enum PlaySource {
     None,
     /// Still finding out (the title or the search): ask again.
     Searching,
-    /// A magnet or .torrent URL, and the episode to pick in a pack.
-    Ready(String, Option<(u16, u16)>),
+    /// A magnet or .torrent URL, the episode to pick in a pack, and its season's place in the
+    /// show's numbering (a pack may number through the show).
+    Ready(String, Option<(u16, u16)>, Option<crate::numbering::Through>),
     /// The episode is not in the release chosen for its season: the viewer picks one for it.
     NotInRelease,
 }

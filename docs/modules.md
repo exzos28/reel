@@ -78,7 +78,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `checkSpace() -> String` (`check_space`): Whether there is room to start playing, as JSON `{"ok":bool,"free":bytes|null,"needed":bytes,"buffer":MiB}`.
   JSON: `{"ok":bool,"free":bytes|null,"needed":bytes,"buffer":MiB}`
   Called from: `ui/screens/settings/SettingsScreen.tsx`.
-- `chooseTrack(job: u32, id: String, embedded: String, choice: String) -> String` (`choose_track`): The viewer picked `choice` (a key of `tracks`); subtitles are remembered for the title. The columns after it (as `tracks`).
+- `chooseTrack(job: u32, id: String, embedded: String, choice: String) -> String` (`choose_track`): The viewer picked `choice` (a key of `tracks`); subtitles and audio are remembered for the title, and an audio pick's language becomes the one audio is looked for in (`tracks::choose`). The columns after it (as `tracks`).
   Called from: `ui/tracks.ts`.
 - `close(job: u32)`: Stops the job and deletes what it downloaded (the cache is per film).
   Called from: `ui/playback.ts`.
@@ -89,7 +89,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/playback.ts`.
 - `open(id: String) -> u32`: Starts playing `id` from the catalog (a title, or an episode `<title>:s<season>e<episode>`) with the release it picks from the user's search source: a job id for `status`, 0 when the engine could not start (see the log).
   Called from: `ui/playback.ts`.
-- `openRelease(source: String, season: u32, episode: u32) -> u32` (`open_release`): Starts playing a release a search found: `source` is its magnet or .torrent URL; `season`/`episode` (0 for a film) pick the episode's file in a pack. A job id for `status`, 0 when the engine could not start.
+- `openRelease(source: String, season: u32, episode: u32) -> u32` (`open_release`): Starts playing a release a search found: `source` is its magnet or .torrent URL; `season`/`episode` (0 for a film) pick the episode's file in a pack, by the pack's own numbers (no show is named here, so no numbering through it: Play's way, `play`, has that). A job id for `status`, 0 when the engine could not start.
   Called from: nothing in the UI.
 - `async seek(job: u32, seconds: f64) -> String`: Gets the place at `seconds` ready before the view seeks there (no player waits in pieces still to come: a TV's AVPlay holds the page meanwhile). `{"state":…}`: `ready` once it is in (at once when it was), `replaced` when a newer seek or `close` came first, `unknown` when the film has no index to tell (seek as it is).
   JSON: `{"state":…}`
@@ -232,6 +232,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/preferences.ts`.
 - `revision() -> f64`: Goes up when the settings change (here or on the hosted page) and when the hosted page's pairing code appears or goes: read `current` and `Hosted.pairing` again.
   Called from: `ui/hosted.ts`.
+- `setAudioLanguage(code: String) -> String` (`set_audio_language`): Saves the audio language tracks are looked for in (ISO 639-1, one of `audioLanguages` from `load`; empty: the app's language); the setting in effect ("" for the app's). A pick in the tracks panel sets it too (`Engine.chooseTrack`).
+  Called from: `ui/preferences.ts`.
 - `setBufferMb(mb: u32) -> u32` (`set_buffer_mb`): Saves the playback buffer size (one of the choices); the size in effect.
   Called from: `ui/preferences.ts`.
 - `setContentLanguage(tag: String) -> String` (`set_content_language`): Saves the content language (titles, descriptions, episode names; one of `contentLanguages` from `load`) and drops what was asked in the old one; the language in effect.

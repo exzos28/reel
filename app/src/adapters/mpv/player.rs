@@ -314,6 +314,10 @@ impl Player {
                 let ms = value.and_then(Value::as_f64).unwrap_or(250.0).max(16.0);
                 self.shared.interval_ms.store(ms as u64, Ordering::Relaxed);
             }
+            // The languages to start in ("ru,rus", the core's): mpv's choice at load, before the
+            // core picks the track (`audioTrack`). Before `src` in the view's props; and loadfile
+            // runs on mpv's thread, which picks the tracks only once the stream has opened.
+            "audioLanguages" => self.set("alang", value.and_then(Value::as_str).unwrap_or("")),
             "audioTrack" => self.set("aid", &track_value(value)),
             "subtitleTrack" => self.set("sid", &track_value(value)),
             _ => {}

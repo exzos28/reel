@@ -241,6 +241,8 @@ languages:
   ja: "Japonca"
   zh: "Çince"
   ko: "Korece"
+  kk: "Kazakça"
+  uz: "Özbekçe"
 
 series:
   season: "%{number}. Sezon"
@@ -374,6 +376,10 @@ settings:
   language:
     title: "Dil"
     about: "Başlıklar, açıklamalar ve bölüm adları; reel sürümleri de bu adlarla arar."
+  audio_language:
+    title: "Ses dili"
+    about: "Filmler, varsa bu dildeki sesle oynar. Oynatıcıda bir ses parçası seçmek bunu değiştirir."
+    same: "Uygulama diliyle aynı"
   source:
     title: "Arama kaynağı"
     about: "reel'in bir filmin veya bölümün sürümlerini aradığı yer. Bir Torznab adresi ve API anahtarı."

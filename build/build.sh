@@ -8,7 +8,7 @@
 #   typecheck      nsh check (cargo check of app/ + TypeScript)
 #   no-engine      app/ checked without the engine (cargo check --no-default-features)
 #   test           test-crates + test-app
-#   test-crates    cargo test of the domain and engine crates (no GTK, no nsh needed)
+#   test-crates    cargo test of the domain and engine crates and the vendored librqbit (no GTK, no nsh)
 #   test-app       nsh test (cargo test of app/, then the *.test.tsx files, headless)
 #   test-rust      cargo test of app/ only (test-app's first half)
 #   test-ui <n>    the *.test.tsx files of part n of 3 (test-app's second half, split for CI)
@@ -91,6 +91,11 @@ case "$target" in
   # These need only cargo or bash, not nsh.
   test-crates)
     cargo test --locked -p reel-domain -p reel-engine
+    # The vendored librqbit's own tests (reel patches it: REEL_PATCH.md). It is a dependency, not
+    # a member of app/'s workspace, so the line above does not run them. Without the tests that
+    # download over the network (fastresume's does not).
+    (cd "$repo/vendor/librqbit" && cargo test --locked --lib -- \
+      --skip tests::e2e:: --skip e2e_another_local_client --skip e2e_padded_files --skip e2e_stream)
     exit 0
     ;;
   ui-rules)

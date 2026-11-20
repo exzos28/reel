@@ -10,6 +10,7 @@ use std::{
     sync::Mutex,
 };
 
+use reel_domain::audio::Signature;
 use serde::{Deserialize, Serialize};
 
 /// Watched to here (of the duration), the film or episode counts as seen.
@@ -70,6 +71,10 @@ struct Saved {
     /// ("en"), or "?" for a track whose language is unknown.
     #[serde(default)]
     subtitles: HashMap<String, String>,
+    /// The audio track picked per title (not per episode), as tracks are known again in
+    /// another file (`audio::Signature`).
+    #[serde(default)]
+    audio: HashMap<String, Signature>,
 }
 
 struct Store {
@@ -114,6 +119,9 @@ pub fn init(data_dir: Option<&Path>) {
         }
         for (title, pref) in read.subtitles {
             s.saved.subtitles.entry(title).or_insert(pref);
+        }
+        for (title, pref) in read.audio {
+            s.saved.audio.entry(title).or_insert(pref);
         }
         s.file = file;
     });
@@ -193,6 +201,24 @@ pub fn set_subtitle_pref(title: &str, pref: &str) {
             return;
         }
         s.saved.subtitles.insert(title.to_owned(), pref.to_owned());
+        if let Some(file) = &s.file {
+            write(file, &s.saved);
+        }
+    });
+}
+
+/// The audio track last picked in `title`.
+pub fn audio_pref(title: &str) -> Option<Signature> {
+    with(|s| s.saved.audio.get(title).cloned())
+}
+
+/// Remembers the audio track picked in `title`.
+pub fn set_audio_pref(title: &str, pref: &Signature) {
+    with(|s| {
+        if s.saved.audio.get(title) == Some(pref) {
+            return;
+        }
+        s.saved.audio.insert(title.to_owned(), pref.clone());
         if let Some(file) = &s.file {
             write(file, &s.saved);
         }

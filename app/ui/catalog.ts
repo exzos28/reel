@@ -128,7 +128,8 @@ export interface Title extends Summary {
   releases: Release[];
   releasesState: ReleasesState;
   season?: number;
-  seasonList?: { number: number; year: number; episodes: number; name: string | null }[];
+  /** `year` is null when neither the season nor its episodes say it. */
+  seasonList?: { number: number; year: number | null; episodes: number; name: string | null }[];
   /** The overview is longer than the hero's three lines: shown whole below. */
   aboutFull: boolean;
   cast: CastMember[];

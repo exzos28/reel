@@ -26,8 +26,9 @@ export interface TrackMenu {
   pending: boolean;
   audio: TrackOption[];
   subtitles: TrackOption[];
-  /** What the video view applies, and the subtitle file our overlay shows. */
-  apply: { audio: number | null; subtitle: number | "no" | null; external: number | null };
+  /** What the video view applies, and the subtitle file our overlay shows; `audioLanguages`:
+   * what mpv starts in before the tracks are known ("ru,rus"). */
+  apply: { audio: number | null; subtitle: number | "no" | null; external: number | null; audioLanguages?: string };
 }
 
 const BEFORE: TrackMenu = {
@@ -46,6 +47,8 @@ export function playerTracks() {
   /** The subtitle line on screen now ("" for none). */
   const cue = signal("");
   const ready = computed(() => status().phase === "ready");
+  /** The engine's job, once `Engine.open` answered (the status comes after it). */
+  const job = computed(() => (status(), currentJob()));
 
   let asked = 0;
   const refresh = async () => {
@@ -56,9 +59,21 @@ export function playerTracks() {
     const m: TrackMenu = JSON.parse(await Engine.tracks(job, w.id, embedded()));
     if (n === asked) menu.set(m);
   };
+  // Another film: nothing of the last one's tracks (its audio track id would go to the new view).
+  let shown = 0;
+  effect(() => {
+    const j = job();
+    if (j === shown) return;
+    shown = j;
+    asked++;
+    embedded.set("");
+    menu.set(BEFORE);
+  });
+  // Asked once the job is there, before it plays: the view starts in the languages it says.
   effect(() => {
     embedded();
-    if (ready()) void refresh().catch((e) => console.warn("tracks", e));
+    ready();
+    if (job()) void refresh().catch((e) => console.warn("tracks", e));
   });
   // Until the release's files are known (its metadata comes from peers).
   const poll = setInterval(() => {

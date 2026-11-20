@@ -4,11 +4,13 @@
 //! `compat` keeps the device's player profile process-wide (the host sets it once at start);
 //! everything else here is plain data and functions on it.
 
+pub mod audio;
 pub mod compat;
 pub mod container;
 pub mod discover;
 pub mod episode;
 pub mod keys;
+pub mod numbering;
 pub mod play;
 pub mod ports;
 pub mod redact;
