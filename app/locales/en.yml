@@ -330,6 +330,9 @@ player:
   close_tracks: Close audio and subtitles
   episodes: Episodes
   close_episodes: Close the episodes
+  season_episodes:
+    one: "Season %{number} · %{count} episode"
+    other: "Season %{number} · %{count} episodes"
   now_playing: Playing now
   fullscreen: Full screen
   mute: Mute

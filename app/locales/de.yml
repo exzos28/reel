@@ -330,6 +330,9 @@ player:
   close_tracks: "Ton und Untertitel schließen"
   episodes: "Folgen"
   close_episodes: "Folgen schließen"
+  season_episodes:
+    one: "Staffel %{number} · %{count} Folge"
+    other: "Staffel %{number} · %{count} Folgen"
   now_playing: "Läuft gerade"
   fullscreen: "Vollbild"
   mute: "Ton aus"

@@ -330,6 +330,9 @@ player:
   close_tracks: "Zamknij dźwięk i napisy"
   episodes: "Odcinki"
   close_episodes: "Zamknij odcinki"
+  season_episodes:
+    one: "Sezon %{number} · %{count} odcinek"
+    other: "Sezon %{number} · odcinki: %{count}"
   now_playing: "Teraz odtwarzane"
   fullscreen: "Pełny ekran"
   mute: "Wycisz"

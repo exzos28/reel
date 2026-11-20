@@ -330,6 +330,9 @@ player:
   close_tracks: "Fechar áudio e legendas"
   episodes: "Episódios"
   close_episodes: "Fechar episódios"
+  season_episodes:
+    one: "Temporada %{number} · %{count} episódio"
+    other: "Temporada %{number} · %{count} episódios"
   now_playing: "Assistindo agora"
   fullscreen: "Tela cheia"
   mute: "Desativar som"

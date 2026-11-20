@@ -330,6 +330,9 @@ player:
   close_tracks: "关闭音频和字幕"
   episodes: "选集"
   close_episodes: "关闭选集"
+  season_episodes:
+    one: "第 %{number} 季 · %{count} 集"
+    other: "第 %{number} 季 · %{count} 集"
   now_playing: "正在播放"
   fullscreen: "全屏"
   mute: "静音"

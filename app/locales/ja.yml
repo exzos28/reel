@@ -330,6 +330,9 @@ player:
   close_tracks: "音声と字幕を閉じる"
   episodes: "エピソード"
   close_episodes: "エピソードを閉じる"
+  season_episodes:
+    one: "シーズン%{number} · %{count}話"
+    other: "シーズン%{number} · %{count}話"
   now_playing: "再生中"
   fullscreen: "全画面表示"
   mute: "ミュート"

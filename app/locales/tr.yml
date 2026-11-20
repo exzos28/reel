@@ -330,6 +330,9 @@ player:
   close_tracks: "Ses ve altyazıyı kapat"
   episodes: "Bölümler"
   close_episodes: "Bölümleri kapat"
+  season_episodes:
+    one: "%{number}. Sezon · %{count} bölüm"
+    other: "%{number}. Sezon · %{count} bölüm"
   now_playing: "Şimdi oynatılıyor"
   fullscreen: "Tam ekran"
   mute: "Sesi kapat"
