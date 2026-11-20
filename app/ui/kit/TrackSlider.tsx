@@ -25,6 +25,8 @@ const SETTLE_MS = 100;
  * down (UIKit's), and takes the press from the finger there: the drag counts from where that
  * press ended. Elsewhere it counts from the press. */
 const fromRecognition = runtime.os === "ios";
+/** iOS: the longest a press's end is taken to precede its pan's start, ms (a few touch samples). */
+const MAX_LAG_MS = 50;
 
 export function TrackSlider(props: {
   testID?: string;
@@ -87,8 +89,9 @@ export function TrackSlider(props: {
     if (!down) base.set(at);
   });
 
-  /** iOS: where the press the pan took over ended. */
+  /** iOS: where the press the pan took over ended, and when (ms). */
   let upX: number | null = null;
+  let upAt = 0;
   /** iOS: the drag counts from `x` less the translation it began with. */
   const anchor = (x: number) => {
     if (began == null) return;
@@ -161,6 +164,7 @@ export function TrackSlider(props: {
         clearTimeout(settle);
         if (dragging) return anchor(e.position.x);
         upX = e.position.x;
+        upAt = performance.now();
         settle = setTimeout(cancel, SETTLE_MS);
       }}
       onPanStart={(e) => {
@@ -168,7 +172,10 @@ export function TrackSlider(props: {
         began = fromRecognition ? e.translation.x : null;
         const up = upX;
         press(pressX);
-        if (up != null) anchor(up);
+        // The press ended a touch sample before the pan began (UIKit counts the pan from the
+        // finger at that later sample): the finger moved on meanwhile, at the pan's speed. Left
+        // out, the thumb trailed the finger by that much (4 to 8 pt).
+        if (up != null) anchor(up + (fromRecognition ? e.velocity.x * Math.min(Math.max(performance.now() - upAt, 0), MAX_LAG_MS) / 1000 : 0));
         dragging = true;
         last = -1;
         props.onHold?.(true);

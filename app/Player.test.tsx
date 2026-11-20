@@ -344,7 +344,7 @@ test("phone: an episode picked in the Episodes sheet plays", async () => {
   expect(app.texts()).toContain("S3:E3 · Pain");
 });
 
-test("phone: Play and ±10 s sit in the middle of the picture, the bottom row keeps the rest", async () => {
+test("phone: Play and ±10 s sit in the middle of the picture, the rest at the top", async () => {
   const app = await phonePlaying(PORTRAIT);
   expect(app.shows("player-middle")).toBe(true);
   expect(app.shows("label:Pause")).toBe(true);
@@ -415,4 +415,77 @@ test("Mac: a drag on the volume keeps the controls up until it is let go", async
   await app.drop();
   await app.wait(5100);
   expect(app.shows("volume")).toBe(false);
+});
+
+// Another episode plays in the same player: on iOS the player is a dialog of its own, and going
+// through "nothing plays" closed it and opened another over the one leaving (a blank screen).
+test("phone: an episode picked in the Episodes sheet plays in the same player, which stays up", async () => {
+  const turns: boolean[] = [];
+  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } }, "Resume S3:E2 · 10:00");
+  await app.press("label:Episodes");
+  await app.press("Old Story");
+  expect(app.shows("player-host")).toBe(true); // never closed on the way
+  await app.wait(600);
+  expect(app.shows("player-host")).toBe(true);
+  expect(app.shows("scrubber")).toBe(true);
+  expect(turns).toEqual([]); // the player was not torn down (it turns upright as it goes)
+});
+
+test("phone: Up next plays the next episode in the same player", async () => {
+  const turns: boolean[] = [];
+  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, "Catalog.upNext": nextEpisode, "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } }, "Resume S3:E2 · 10:00");
+  expect(app.texts()).toContain("Next episode · S3:E3");
+  await app.press("label:Play now");
+  expect(app.shows("player-host")).toBe(true);
+  await app.wait(600);
+  expect(app.shows("player-host")).toBe(true);
+  expect(turns).toEqual([]);
+  await app.press("label:Watch credits"); // the next one's card: the controls come back
+  expect(app.shows("scrubber")).toBe(true);
+});
+
+test("phone: leaving the player turns it upright, even after Rotate upright and the phone turned sideways", async () => {
+  const turns: boolean[] = [];
+  const app = await phonePlaying(SIDEWAYS, { "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } });
+  await app.press("label:Rotate screen"); // upright
+  expect(turns).toEqual([false]);
+  await app.press("label:Close");
+  await app.wait(600);
+  expect(turns).toEqual([false, false]);
+});
+
+test("phone: back from the background, the player keeps the orientation it had", async () => {
+  const turns: boolean[] = [];
+  const app = await phonePlaying(SIDEWAYS, { "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } });
+  await app.setLifecycle("background");
+  await app.setViewport(PORTRAIT.width, PORTRAIT.height); // iOS turned it as the phone is held
+  await app.setLifecycle("active");
+  expect(turns).toEqual([true]);
+});
+
+// A saved film has no releases to switch to: no empty Release list.
+const SAVED_TRACKS = { "Catalog.tracks": JSON.stringify({ audio: [{ key: "original", selected: true }], subtitles: [{ key: "off", selected: true }], releases: [] }) };
+
+test("phone: a film without releases has no Release list in its tracks", async () => {
+  const app = await phonePlaying(PORTRAIT, SAVED_TRACKS);
+  await app.press("label:Audio and subtitles");
+  expect(app.shows("id:tracks-tab-1")).toBe(true);
+  expect(app.shows("id:tracks-tab-2")).toBe(false);
+});
+
+test("iPad: a film without releases has no Release column in its tracks", async () => {
+  const app = await phonePlaying({ width: 1180, height: 820, safeArea: { top: 24, bottom: 20, left: 0, right: 0 } }, SAVED_TRACKS, "Play", { nsh: { "platform.idiom": "pad" } });
+  await app.press("label:Audio and subtitles");
+  expect(app.texts()).toContain("Subtitles");
+  expect(app.texts()).not.toContain("Release");
+});
+
+test("phone: the secondary buttons sit at the top, the bottom keeps the timeline", async () => {
+  for (const screen of [PORTRAIT, SIDEWAYS]) {
+    const app = await phonePlaying(screen);
+    expect(app.shows("player-top-buttons")).toBe(true);
+    expect(app.shows("player-top-buttons >> label:Audio and subtitles")).toBe(true);
+    expect(app.shows("player-top-buttons >> label:Rotate screen")).toBe(true);
+    expect(app.shows("scrubber")).toBe(true);
+  }
 });

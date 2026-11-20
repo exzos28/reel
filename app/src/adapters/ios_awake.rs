@@ -34,31 +34,40 @@ pub fn playing(on: bool) {
 /// when the player goes.
 fn orientations_changed() {
     extern "C" fn run(_: *mut c_void) {
-        use objc2::{msg_send, rc::Retained, runtime::AnyObject};
-        let Some(mtm) = MainThreadMarker::new() else { return };
-        let app = UIApplication::sharedApplication(mtm);
-        unsafe {
-            let scenes: Retained<AnyObject> = msg_send![&app, connectedScenes];
-            let scenes: Retained<objc2_foundation::NSArray<AnyObject>> = msg_send![&scenes, allObjects];
-            for scene in scenes.iter() {
-                let responds: bool = msg_send![&scene, respondsToSelector: objc2::sel!(windows)];
-                if !responds {
-                    continue;
-                }
-                let windows: Retained<objc2_foundation::NSArray<AnyObject>> = msg_send![&scene, windows];
-                for window in windows.iter() {
-                    let root: Option<Retained<AnyObject>> = msg_send![&window, rootViewController];
-                    if let Some(root) = root {
-                        let can: bool = msg_send![&root, respondsToSelector: objc2::sel!(setNeedsUpdateOfSupportedInterfaceOrientations)];
-                        if can {
-                            let _: () = msg_send![&root, setNeedsUpdateOfSupportedInterfaceOrientations];
-                        }
+        if MainThreadMarker::new().is_some() {
+            reread_orientations();
+        }
+    }
+    unsafe { dispatch_async_f(&raw const _dispatch_main_q, std::ptr::null_mut(), run) };
+}
+
+/// Every window's controllers, the root and those it presents (the player's dialog), read their
+/// orientations again (iOS 16+). On the main thread.
+fn reread_orientations() {
+    use objc2::{msg_send, rc::Retained, runtime::AnyObject};
+    let Some(mtm) = MainThreadMarker::new() else { return };
+    let app = UIApplication::sharedApplication(mtm);
+    unsafe {
+        let scenes: Retained<AnyObject> = msg_send![&app, connectedScenes];
+        let scenes: Retained<objc2_foundation::NSArray<AnyObject>> = msg_send![&scenes, allObjects];
+        for scene in scenes.iter() {
+            let responds: bool = msg_send![&scene, respondsToSelector: objc2::sel!(windows)];
+            if !responds {
+                continue;
+            }
+            let windows: Retained<objc2_foundation::NSArray<AnyObject>> = msg_send![&scene, windows];
+            for window in windows.iter() {
+                let mut controller: Option<Retained<AnyObject>> = msg_send![&window, rootViewController];
+                while let Some(c) = controller {
+                    let can: bool = msg_send![&c, respondsToSelector: objc2::sel!(setNeedsUpdateOfSupportedInterfaceOrientations)];
+                    if can {
+                        let _: () = msg_send![&c, setNeedsUpdateOfSupportedInterfaceOrientations];
                     }
+                    controller = msg_send![&c, presentedViewController];
                 }
             }
         }
     }
-    unsafe { dispatch_async_f(&raw const _dispatch_main_q, std::ptr::null_mut(), run) };
 }
 
 /// Starts following what saves; once.
@@ -158,6 +167,8 @@ pub fn turn(landscape: bool) {
         // UIInterfaceOrientationMask: portrait 1 << 1, landscape (left and right) 1 << 3 | 1 << 4.
         let mask: usize = if context.is_null() { 1 << 1 } else { (1 << 3) | (1 << 4) };
         let Some(class) = objc2::runtime::AnyClass::get(c"UIWindowSceneGeometryPreferencesIOS") else { return };
+        // The controllers' orientations first: the player's dialog may have just come or be going.
+        reread_orientations();
         let app = UIApplication::sharedApplication(mtm);
         unsafe {
             let prefs: Retained<AnyObject> = msg_send![msg_send![class, alloc], initWithInterfaceOrientations: mask];

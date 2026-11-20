@@ -9,7 +9,7 @@
 // buttons on the buttons row), Up/Down switch rows, Escape closes the
 // panel, then hides the overlay, then leaves. Near the end of an episode
 // the Up next card (tv-player-end.html) takes the remote instead.
-import { cleanup, computed, createAnimatedValue, effect, Image, keymap, safeArea, Scroll, signal, Text, untracked, View, windowSize, type ImageAsset, type ViewStyle } from "nsh";
+import { cleanup, computed, createAnimatedValue, effect, Image, keymap, lifecycle, safeArea, Scroll, signal, Text, untracked, View, windowSize, type ImageAsset, type ViewStyle } from "nsh";
 import { BufferingNote, PlayerStage, type StageLine } from "./PlayerStage";
 import { t } from "nsh/i18n";
 import { Catalog, Fmt, VideoEngine } from "./native";
@@ -22,8 +22,9 @@ import { cachedAhead, currentJob, duration, firstFrame, readAt, playing as what,
 import { chrome, frame, sideSafeArea, windowControlsRoom } from "./layout/chrome";
 import { alpha, colors, density, focusRing, font, iconPt, radius, safe, showFocus, targetSlop, ts as layoutTs, type, u as layoutU } from "./theme";
 
-/** A phone: play and ±10 s in the middle of the picture, under the thumbs; the bottom row keeps
- * the timeline and the secondary buttons, lifted off the home indicator. */
+/** A phone: play and ±10 s in the middle of the picture, under the thumbs; the secondary buttons
+ * at the top right, opposite the ✕; the bottom keeps only the timeline, lifted off the home
+ * indicator. */
 const PHONE = () => chrome() === "phone";
 /** On a phone the player is held at arm's length over a film: its controls are one and a half
  * times the layout's size (a 68 px button 46 pt, not 31) and its text a quarter larger (times 18 pt). */
@@ -37,7 +38,7 @@ import { TrackSlider } from "./kit/TrackSlider";
 import { useFullscreen } from "./platform/window";
 import { BarBack, barBackBox } from "./layout/WindowBar";
 import { onBack } from "./nav";
-import { SubtitleOverlay, subtitleFit } from "./SubtitleOverlay";
+import { SubtitleOverlay, subtitleBottom, subtitleFit, subtitleRest, subtitleScale } from "./SubtitleOverlay";
 import { playerTracks } from "./tracks";
 import { trackHeadings, trackRows, TracksSheet, type TrackRow } from "./PlayerTracks";
 import { VideoSurface, videoUnderUi, type SurfaceRef } from "./VideoSurface";
@@ -184,8 +185,12 @@ export function Player() {
   const buttons: ButtonId[] = BUTTONS.filter(
     (b) => (b !== "fullscreen" || caps.fullscreen) && (b !== "rotate" || caps.rotate) && (b !== "episodes" || episodeOf() != null),
   );
-  /** The bottom row's buttons: on a phone without those in the middle of the picture. */
-  const bottomButtons = PHONE() ? buttons.filter((b) => !MIDDLE.includes(b)) : buttons;
+  /** The bottom row's buttons: none on a phone, whose bottom keeps only the timeline (its
+   * secondary buttons are at the top, `topButtons`; Play and ±10 s in the middle). */
+  const bottomButtons = PHONE() ? [] : buttons;
+  /** A phone's secondary buttons (Audio and subtitles, Episodes, Rotate): at the top right,
+   * opposite the ✕, so the picture keeps the room a bottom row took. */
+  const topButtons = PHONE() ? buttons.filter((b) => !MIDDLE.includes(b)) : [];
   const middleButtons = PHONE() ? buttons.filter((b) => MIDDLE.includes(b)) : [];
   /** On touch, Episodes and Rotate keep to the right edge: the first of them pushes the rest there
    * (on a computer the volume has the right). */
@@ -194,15 +199,32 @@ export function Player() {
   const episodesOpen = signal(false);
   /** The window fills the screen (desktops). Left as it was found when the player closes. */
   const { on: fullscreen, set: setFullscreen } = useFullscreen();
-  /** Rotate: to the other orientation than the window's now. The player turned it: upright again
-   * when the player closes (else the app stays sideways with the rotation lock on). */
-  let turned = false;
+  /** Rotate: to the other orientation than the window's now. */
   const turn = () => {
     const { width, height } = windowSize();
-    turned = width <= height;
-    VideoEngine.turn(turned);
+    VideoEngine.turn(width <= height);
   };
-  if (caps.rotate) cleanup(() => turned && VideoEngine.turn(false));
+  // A phone is upright again when the player closes, however it came to be sideways (Rotate,
+  // the film's own turn, the phone turned in the hand after Rotate upright): else the app
+  // stayed sideways with the rotation lock on.
+  if (caps.rotate) cleanup(() => VideoEngine.turn(false));
+  /** The phone's orientation as the app left for the background (null: in front). iOS brings it
+   * back as the phone is held, which undid a turn the player asked for (Rotate, the film's own):
+   * back in front, the player keeps the orientation it had. */
+  let leftSideways: boolean | null = null;
+  if (caps.rotate)
+    effect(() => {
+      const state = lifecycle();
+      untracked(() => {
+        if (state !== "active") {
+          if (leftSideways == null) leftSideways = windowSize().width > windowSize().height;
+        } else if (leftSideways != null) {
+          // Asked whatever the window says now: iOS may turn it a moment after the app is back.
+          VideoEngine.turn(leftSideways);
+          leftSideways = null;
+        }
+      });
+    });
   /** A phone held upright turns sideways for a wide film (the core says which) once, on the
    * player's first load: not again for the next episode, which keeps what the viewer chose. */
   let mayTurnSideways = PHONE() && caps.rotate;
@@ -211,7 +233,6 @@ export function Player() {
     mayTurnSideways = false;
     const w = windowSize();
     if (!width || !height || w.width > w.height || leaving() || !VideoEngine.sideways(width, height)) return;
-    turned = true;
     VideoEngine.turn(true);
   };
 
@@ -226,15 +247,33 @@ export function Player() {
   const controlsHeight = signal(0);
   /** The picture's width over its height, once the view says. */
   const pictureAspect = signal<number | undefined>(undefined);
-  /** How far from the window's bottom the subtitles stay above: the controls' top edge and a
-   * gap while they show, else 0. */
-  const subtitlesAbove = () => (overlay() && !card() && controlsHeight() > 0 ? controlsBottom() + controlsHeight() + u(12) : 0);
+  /** The phone's middle buttons show (Play and ±10 s over the picture's centre). */
+  const middleShown = () => middleButtons.length > 0 && ready() && overlay() && !staged() && !panel() && !episodesOpen() && !card();
+  /** How far from the window's bottom the subtitles stay above (`subtitleBottom`): the controls'
+   * top edge while they show, clear of the middle buttons, at the picture's bottom held upright;
+   * 0 where nothing lifts them off their rest. */
+  const subtitlesAbove = () => {
+    const controls = overlay() && !card() && controlsHeight() > 0 ? controlsBottom() + controlsHeight() + u(12) : 0;
+    const bottom = subtitleBottom({
+      window: windowSize(),
+      aspect: pictureAspect(),
+      rest: subtitleRest(),
+      controls,
+      middle: middleShown() ? u(BIG_BUTTON) : 0,
+      size: subtitleFit(windowSize(), pictureAspect(), safe().x, 0, "").size,
+      gap: u(12),
+    });
+    return bottom > subtitleRest() + 0.5 ? bottom : 0;
+  };
   /** The film's own subtitles (mpv draws them) in the box our overlay has: how far up and its
-   * sides, as shares of the picture's height (mpv's margins follow the picture). */
+   * sides, as shares of the picture's height (mpv's margins follow the picture), and how much
+   * larger than mpv's 5 % of it (no smaller than our overlay's least). */
   const filmSubtitles = () => {
     const fit = subtitleFit(windowSize(), pictureAspect(), safe().x, 0, "");
-    const h = Math.max(1, fit.frame);
-    return { lift: subtitlesAbove() / h, sides: fit.side / h };
+    const scale = subtitleScale(windowSize(), pictureAspect());
+    // mpv scales its margins with the subtitles (`sub-scale`): they are given before it.
+    const h = Math.max(1, fit.frame) * scale;
+    return { lift: subtitlesAbove() / h, sides: fit.side / h, scale };
   };
   // Audio and Subtitles: what the core says the video and the release have.
   const { embedded, menu, cue, choose } = playerTracks();
@@ -242,6 +281,8 @@ export function Player() {
    * the one playing), so a quality shows once. */
   const shortReleases = computed(() => tracks().releases.filter((r) => r.top || r.selected));
   const columns = computed(() => [menu().audio.length, menu().subtitles.length, shortReleases().length]);
+  /** The lists the panel shows: Release only when there are releases (a saved film has none). */
+  const lists = () => (shortReleases().length > 0 ? 3 : 2);
   /** Row `i` of list `col` is the chosen one: the release picked here, else what the core says. */
   const isSelected = (col: number, i: number, fromCore: boolean) => {
     const p = col === 2 ? picked()[col] : undefined;
@@ -262,6 +303,21 @@ export function Player() {
   });
   const dismissed = signal(false);
   const card = computed(() => next() != null && !dismissed());
+  // Another episode (Up next, the Episodes panel) in the same player: it plays, its Up next
+  // comes, the release picked for the last one is not its, and the controls show a moment (as
+  // they do when a player opens).
+  let playingId = untracked(what)?.id;
+  effect(() => {
+    const id = what()?.id;
+    if (id == null || id === playingId) return;
+    playingId = id;
+    untracked(() => {
+      paused.set(false);
+      dismissed.set(false);
+      picked.set({});
+      poke();
+    });
+  });
   // Up next takes the keys and the screen: the panels and sheets close under it.
   effect(() => {
     if (card()) untracked(() => (panel.set(false), episodesOpen.set(false)));
@@ -408,7 +464,7 @@ export function Player() {
     else scrubBy(id === "back" ? -1 : 1);
   };
   const movePanel = (dc: number, dr: number) => {
-    const col = Math.min(Math.max(panelCol() + dc, 0), 2);
+    const col = Math.min(Math.max(panelCol() + dc, 0), lists() - 1);
     panelCol.set(col);
     panelRow.set(Math.min(Math.max(dc ? 0 : panelRow() + dr, 0), Math.max(columns()[col] - 1, 0)));
   };
@@ -576,6 +632,9 @@ export function Player() {
   return (
     <Pressable feedback="none"
       testID="player"
+      // A backdrop that wakes the controls, not one element for screen readers: as one (it hears
+      // presses) it hid every control inside it from VoiceOver.
+      accessible={false}
       style={{ flex: 1, backgroundColor: screenBackground() }}
       onMouseMove={() => {
         if (!card()) poke();
@@ -601,9 +660,11 @@ export function Player() {
           src={url()}
           paused={paused() || leaving()}
           volume={leaving() ? 0 : playVolume()}
-          // The film's own subtitles (mpv draws them) rise above the controls while they show.
+          // The film's own subtitles (mpv draws them) rise above the controls while they show,
+          // clear of the middle buttons, and sit at the picture held upright.
           subtitleLift={filmSubtitles().lift}
           subtitleSides={filmSubtitles().sides}
+          subtitleScale={filmSubtitles().scale}
           audioLanguages={menu().apply.audioLanguages ?? ""}
           audioTrack={menu().apply.audio}
           subtitleTrack={menu().apply.subtitle}
@@ -655,6 +716,7 @@ export function Player() {
       <If when={caps.fullscreen}>
         <Pressable feedback="none"
           testID="picture"
+          accessible={false}
           style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
           onPress={() => !card() && poke()}
           onPressDown={(e) => {
@@ -725,6 +787,23 @@ export function Player() {
               <Text style={{ ...type.meta(), color: colors.soft() }}>{status()}</Text>
             </If>
           </View>
+          {/* A phone's secondary buttons, at the right, centred on the ✕'s line. */}
+          <If when={ready() && topButtons.length > 0}>
+            <View testID="player-top-buttons" style={topButtonsStyle()}>
+              <Each of={topButtons} key="index">
+                {(id) => (
+                  <RoundButton
+                    icon={() => icon(id())}
+                    label={() => label(id())}
+                    size={BUTTON}
+                    focused={() => row() === "buttons" && buttons[button()] === id() && !panel()}
+                    selected={() => (id() === "tracks" && panel()) || (id() === "episodes" && episodesOpen())}
+                    onPress={() => { poke(); button.set(buttons.indexOf(id())); run(id()); }}
+                  />
+                )}
+              </Each>
+            </View>
+          </If>
         </View>
 
         <If when={episodesOpen() ? what() : null}>
@@ -750,6 +829,7 @@ export function Player() {
         </If>
         <If when={panel() && SHEETS()}>
           <TracksSheet
+            lists={lists}
             col={panelCol}
             onCol={(col) => { poke(); panelCol.set(col); panelRow.set(0); }}
             rows={() => trackRows(panelCol(), menu().audio, menu().subtitles, shortReleases())}
@@ -763,6 +843,7 @@ export function Player() {
           {/* A tap beside the panel closes it, as a sheet's does. */}
           <Pressable feedback="none" role="button" accessibilityLabel={t("player.close_tracks")} onPress={() => panel.set(false)} style={panelBackdrop} />
           <TracksPanel
+            lists={lists}
             bottom={() => controlsHeight() + controlsBottom() + u(24)}
             rows={(col) => trackRows(col, menu().audio, menu().subtitles, shortReleases())}
             isSelected={isSelected}
@@ -773,7 +854,7 @@ export function Player() {
         </If>
 
         {/* A phone's middle: −10 s, Play (larger), +10 s over the picture's centre. */}
-        <If when={ready() && middleButtons.length > 0 && !panel() && !episodesOpen() && !card()}>
+        <If when={middleShown()}>
           <View testID="player-middle" style={middleStyle()}>
             <Each of={middleButtons} key="index">
               {(id) => (
@@ -821,6 +902,7 @@ export function Player() {
                 {duration() > 0 ? t("player.left", { time: Fmt.position(Math.max(Math.ceil(duration()) - shownSecond(), 0)) }) : ""}
               </Text>
             </View>
+            <If when={bottomButtons.length > 0 || volumeShown}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: u(14), marginTop: u(26) }}>
               {/* On the right: the volume (computers). */}
               <If when={volumeShown}>
@@ -843,6 +925,7 @@ export function Player() {
                 )}
               </Each>
             </View>
+            </If>
           </View>
         </If>
       </If>
@@ -935,6 +1018,11 @@ function Scrubber(props: {
   );
 }
 
+/** A phone's top-right buttons: pushed to the right edge, centred on the ✕'s line. */
+const topButtonsStyle = (): ViewStyle => ({
+  marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: u(14), marginTop: (CLOSE() - u(BUTTON)) / 2,
+});
+
 /** A phone's middle row, centred on the picture; presses beside its buttons reach the picture. */
 const middleStyle = (): ViewStyle => ({
   position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "box-none",
@@ -982,6 +1070,8 @@ const panelCloseStyle = (): ViewStyle => ({
 });
 
 function TracksPanel(props: {
+  /** How many lists show: Audio and Subtitles, and Release when there are releases. */
+  lists: () => number;
   rows: (col: number) => TrackRow[];
   isSelected: (col: number, i: number, fromCore: boolean) => boolean;
   focused: (col: number, i: number) => boolean;
@@ -1045,7 +1135,7 @@ function TracksPanel(props: {
     >
       {column(0, trackHeadings()[0], () => props.rows(0))}
       {column(1, trackHeadings()[1], () => props.rows(1))}
-      {column(2, trackHeadings()[2], () => props.rows(2))}
+      <If when={props.lists() > 2}>{column(2, trackHeadings()[2], () => props.rows(2))}</If>
       {/* Touch has no Back key on screen: ✕ closes the panel (a tap beside it does too). */}
       <If when={caps.touch}>
         <Pressable role="button" accessibilityLabel={t("player.close_tracks")} hitSlop={targetSlop(u(56))} onPress={props.onClose}
@@ -1073,7 +1163,8 @@ function UpNext(props: {
   return (
     <View
       style={{
-        position: "absolute", right: safe().x, bottom: u(96), width: u(720), maxWidth: "90%",
+        // A phone's: at the controls' bottom, clear of the home indicator.
+        position: "absolute", right: safe().x, bottom: PHONE() ? controlsBottom() : u(96), width: u(720), maxWidth: "90%",
         padding: u(22), borderRadius: radius() + u(22), borderCurve: "continuous", backgroundColor: alpha(colors.card(), 0.95),
         boxShadow: `0 ${u(24)}px ${u(60)}px ${alpha(colors.ink(), 0.6)}`,
       }}

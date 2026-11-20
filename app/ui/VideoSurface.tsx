@@ -58,6 +58,9 @@ export interface VideoSurfaceProps {
   /** The room at each side of those subtitles, as a share of the picture's height (as our
    * overlay's: `subtitleFit`). */
   subtitleSides?: number;
+  /** How much larger those subtitles are than the player's own size for the picture (1: as
+   * it is): a small picture's would be too small to read. */
+  subtitleScale?: number;
   style?: ViewStyle;
   surfaceRef?: (r: SurfaceRef) => void;
   /** Loaded: how long the film is, and its picture's size as shown (pixels) where the view says. */
@@ -87,6 +90,7 @@ interface MpvProps {
   progressUpdateInterval: number;
   subtitleLift: number;
   subtitleSides: number;
+  subtitleScale: number;
 }
 
 interface MpvEvents {
@@ -101,7 +105,7 @@ interface MpvEvents {
 
 const MpvView = nativeComponent<MpvProps, MpvEvents>("reel/mpv", {
   // The languages before `src`: mpv starts in them.
-  props: ["audioLanguages", "src", "paused", "volume", "audioTrack", "subtitleTrack", "progressUpdateInterval", "subtitleLift", "subtitleSides"],
+  props: ["audioLanguages", "src", "paused", "volume", "audioTrack", "subtitleTrack", "progressUpdateInterval", "subtitleLift", "subtitleSides", "subtitleScale"],
   events: ["load", "progress", "buffer", "end", "error", "tracks"],
 });
 
@@ -190,6 +194,7 @@ function PlayerView(props: VideoSurfaceProps) {
         volume={props.volume ?? 1}
         subtitleLift={props.subtitleLift ?? 0}
         subtitleSides={props.subtitleSides ?? 0}
+        subtitleScale={props.subtitleScale ?? 1}
         audioLanguages={props.audioLanguages ?? ""}
         audioTrack={props.audioTrack ?? null}
         subtitleTrack={props.subtitleTrack ?? null}

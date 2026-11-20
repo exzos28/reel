@@ -4,7 +4,7 @@
 // position is where seeks put it).
 import { expect, test } from "nsh/test";
 import { NATIVE, STILL, openApp, DUNE_FIRST } from "./testEngine";
-import { MIN_SIZE, ems, subtitleFit } from "./ui/SubtitleOverlay";
+import { MIN_SIZE, ems, subtitleBottom, subtitleFit, subtitleScale } from "./ui/SubtitleOverlay";
 
 const status = JSON.stringify({
   phase: "ready",
@@ -147,4 +147,38 @@ test("subtitles take two lines at most: more of their own become one paragraph, 
   const two = subtitleFit({ width: 1920, height: 1080 }, 16 / 9, 96, 22, "- Who's there?\n- Nobody.");
   expect(two.text).toBe("- Who's there?\n- Nobody.");
   expect(near(two.size, 54)).toBe(true);
+});
+
+// Where they sit on a phone (points from the window's bottom): 393 × 852 upright, 852 × 393 sideways.
+const UPRIGHT = { width: 393, height: 852 };
+const SIDEWAYS = { width: 852, height: 393 };
+const room = { aspect: 16 / 9, rest: 40, controls: 0, middle: 0, size: 14, gap: 8 };
+
+test("held upright, the subtitles sit at the picture's bottom, not at the window's", () => {
+  const frame = 393 / (16 / 9);
+  const pictureBottom = (852 - frame) / 2;
+  const at = subtitleBottom({ ...room, window: UPRIGHT });
+  expect(at).toBeGreaterThan(pictureBottom);
+  expect(at).toBeLessThan(pictureBottom + 20);
+  // The controls far below the picture do not move them.
+  expect(subtitleBottom({ ...room, window: UPRIGHT, controls: 200 })).toBe(at);
+});
+
+test("sideways, the subtitles rest at the bottom and rise above the controls", () => {
+  expect(subtitleBottom({ ...room, window: SIDEWAYS })).toBe(40);
+  expect(subtitleBottom({ ...room, window: SIDEWAYS, controls: 120 })).toBe(120);
+});
+
+test("two lines that would reach the middle buttons go over them", () => {
+  // The buttons 65 pt tall in the middle: from 164 to 229 pt off the bottom.
+  const at = subtitleBottom({ ...room, window: SIDEWAYS, controls: 150, middle: 65 });
+  expect(at).toBe(393 / 2 + 65 / 2 + 8);
+  // Far enough below them, they stay.
+  expect(subtitleBottom({ ...room, window: SIDEWAYS, controls: 60, middle: 65 })).toBe(60);
+});
+
+test("the film's own subtitles grow to the least size where the picture is small", () => {
+  expect(subtitleScale(SIDEWAYS, 16 / 9)).toBe(1); // 393 pt high: 19.6 pt
+  const upright = subtitleScale(UPRIGHT, 16 / 9); // 221 pt high: 11 pt
+  expect(Math.abs(upright * (393 / (16 / 9)) * 0.05 - MIN_SIZE)).toBeLessThan(0.001);
 });
