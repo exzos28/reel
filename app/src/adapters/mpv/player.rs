@@ -83,6 +83,7 @@ impl LoadGate {
     /// The view cannot draw (no render context, no device): the file held, and any later one,
     /// will never load. The player says so (`error`, code `view`) instead of waiting for the
     /// picture for ever.
+    #[cfg_attr(target_os = "ios", allow(dead_code))]
     pub fn fail(&self) {
         let held = {
             let mut g = self.state.lock().unwrap();
@@ -131,7 +132,7 @@ pub fn command(lib: &'static Lib, raw: Raw, args: &[&str]) {
     }
 }
 
-const OBSERVED: [(&str, c_int); 8] = [
+const OBSERVED: [(&str, c_int); 9] = [
     // The byte of the file mpv has read to: with demuxer-cache-time, where bytes are in time.
     ("stream-pos", ffi::FORMAT_INT64),
     ("time-pos", ffi::FORMAT_DOUBLE),
@@ -143,6 +144,8 @@ const OBSERVED: [(&str, c_int); 8] = [
     ("seeking", ffi::FORMAT_FLAG),
     ("track-list", ffi::FORMAT_STRING),
     ("eof-reached", ffi::FORMAT_FLAG),
+    // What decodes the video ("videotoolbox", "mediacodec", "no": the CPU), for the log.
+    ("hwdec-current", ffi::FORMAT_STRING),
 ];
 
 impl Player {
@@ -217,6 +220,18 @@ impl Player {
         if r < 0 {
             tracing::warn!("reel mpv: wid: {}", ffi::error_text(self.lib, r));
         }
+    }
+
+    /// A property's value as text (None: unavailable).
+    #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
+    pub fn property(&self, name: &str) -> Option<String> {
+        let p = unsafe { (self.lib.get_property_string)(self.raw.0, cstr(name).as_ptr()) };
+        if p.is_null() {
+            return None;
+        }
+        let v = unsafe { CStr::from_ptr(p) }.to_string_lossy().into_owned();
+        unsafe { (self.lib.free)(p.cast()) };
+        Some(v)
     }
 
     #[cfg_attr(not(target_os = "android"), allow(dead_code))]
@@ -350,6 +365,8 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
     let mut read_at: i64 = 0;
     let mut last_progress: Option<Instant> = None;
     let (mut buffering, mut cache_wait, mut seeking) = (false, false, false);
+    // The video output failed (said once): mpv plays the sound on without a picture then.
+    let mut no_picture = false;
     loop {
         if shared.stop.load(Ordering::Relaxed) {
             return;
@@ -361,7 +378,14 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
             ffi::EVENT_LOG_MESSAGE if !event.data.is_null() => {
                 let m = unsafe { &*(event.data as *const ffi::EventLogMessage) };
                 let text = |p: *const c_char| if p.is_null() { String::new() } else { unsafe { CStr::from_ptr(p) }.to_string_lossy().trim_end().to_owned() };
-                tracing::warn!("mpv [{}] {}: {}", text(m.prefix), text(m.level), text(m.text));
+                let line = text(m.text);
+                tracing::warn!("mpv [{}] {}: {}", text(m.prefix), text(m.level), line);
+                // Its video output could not start (no GPU context: Metal, Vulkan, a driver):
+                // the view cannot show the film, which is an error, not sound alone.
+                if !no_picture && (line.starts_with("Error opening/initializing the selected video_out") || line.starts_with("Failed initializing any suitable GPU context")) {
+                    no_picture = true;
+                    emit("error", json!({ "message": line, "code": "view" }));
+                }
             }
             ffi::EVENT_FILE_LOADED => {
                 duration = get_f64(lib, raw, "duration").unwrap_or(duration);
@@ -417,6 +441,10 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
                         if unsafe { *(p.data as *const c_int) } != 0 && !shared.at_end.swap(true, Ordering::Relaxed) {
                             emit("end", json!({}));
                         }
+                    }
+                    (b"hwdec-current", ffi::FORMAT_STRING) => {
+                        let how = unsafe { CStr::from_ptr(*(p.data as *const *const c_char)) }.to_string_lossy();
+                        tracing::warn!("reel mpv: decoding with {}", if how.is_empty() || how == "no" { "the CPU" } else { &how });
                     }
                     (b"track-list", ffi::FORMAT_STRING) => {
                         let list = unsafe { CStr::from_ptr(*(p.data as *const *const c_char)) }.to_string_lossy();

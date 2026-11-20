@@ -57,6 +57,12 @@ pub fn init(data_dir: Option<&Path>) {
     }
 }
 
+/// Something is being saved now (not paused, not done): the screen stays on for it on iOS.
+#[cfg_attr(not(target_os = "ios"), allow(dead_code))]
+pub fn saving_now() -> bool {
+    items().iter().any(|i| matches!(i["state"].as_str(), Some("resolving" | "saving" | "waiting")))
+}
+
 fn items() -> Vec<Value> {
     keep().list().as_array().cloned().unwrap_or_default()
 }

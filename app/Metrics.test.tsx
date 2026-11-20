@@ -94,13 +94,14 @@ test("a hero's box: a TV's and touch's are the design's; a desktop's grows with 
   expect(heroBox({ height: 422, left: 343, width: 1440, windowHeight: 900, desktop: true }).stillLeft).toBe(343);
 });
 
-test("phone: Settings and About have Back and their title (no system header); Back goes back", async () => {
+test("phone: About has Back and its title (no system header) over the Settings tab; Back goes back", async () => {
   const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": NATIVE } });
   await app.press("label:Settings");
+  expect(app.shows("back-head")).toBe(false);
+  await app.press("About reel");
   expect(app.shows("back-head")).toBe(true);
-  expect(app.texts()).toContain("Settings");
   await app.press("label:Back");
-  expect(app.texts()).toContain("Continue watching");
+  expect(app.texts()).toContain("Playback buffer");
   expect(app.shows("back-head")).toBe(false);
 });
 

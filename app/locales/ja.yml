@@ -320,6 +320,7 @@ player:
   unmute: "ミュート解除"
   volume: "音量"
   exit_fullscreen: "全画面表示を終了"
+  rotate: "画面を回転"
   stage:
     searching: "リリースを探しています"
     finding: "共有している人を探しています"

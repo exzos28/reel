@@ -5,8 +5,10 @@
 #[cfg(target_os = "android")]
 pub mod android_views;
 pub mod http_client;
+#[cfg(target_os = "ios")]
+pub mod ios_awake;
 pub mod metadata;
 #[cfg_attr(feature = "engine", allow(dead_code))]
 pub mod no_engine;
-#[cfg(any(target_os = "macos", target_os = "android", target_os = "linux", windows))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "linux", windows))]
 pub mod mpv;

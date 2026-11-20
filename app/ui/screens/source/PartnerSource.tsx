@@ -15,18 +15,21 @@ import { colors, cs, density, u } from "../../theme";
 const qrRow = (): ViewStyle => ({ ...row(u(28)), alignItems: "center" });
 const qrStyle = () => ({ width: cs(200), height: cs(200), ...rounded() });
 
-/** A QR code and what it is for. */
+/** A QR code and what it is for; `children` (the button) under both, where it has the whole
+ * width: beside the code, in half a tablet's setup, it did not fit. */
 function Qr(props: { src: string; title: string | null; text: string; children?: JSX.Element }) {
   return (
-    <View testID="partner-qr" style={qrRow()}>
-      <Image src={props.src} style={qrStyle()} />
-      <View style={{ flexShrink: 1, gap: u(8) }}>
-        <If when={props.title}>
-          <Text style={labelText(colors.snow())}>{props.title}</Text>
-        </If>
-        <Text style={bodyText(colors.ash())}>{props.text}</Text>
-        {props.children}
+    <View style={{ gap: u(16) }}>
+      <View testID="partner-qr" style={qrRow()}>
+        <Image src={props.src} style={qrStyle()} />
+        <View style={{ flexShrink: 1, gap: u(8) }}>
+          <If when={props.title}>
+            <Text style={labelText(colors.snow())}>{props.title}</Text>
+          </If>
+          <Text style={bodyText(colors.ash())}>{props.text}</Text>
+        </View>
       </View>
+      {props.children}
     </View>
   );
 }

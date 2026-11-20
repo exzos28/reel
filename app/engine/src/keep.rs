@@ -319,6 +319,24 @@ fn fits_windows(path: &Path) -> bool {
 /// `%LOCALAPPDATA%\reel\saved` there (unset or empty: the library's). The library itself
 /// (`library.json`, the .torrent files) stays in the data dir: it is small, the settings are
 /// there too, and each item keeps its folder in full, so it finds its files wherever they are.
+/// iOS backs the app's data up to iCloud: saved films (gigabytes, back from the swarm any time)
+/// are left out, as `NSURLIsExcludedFromBackupKey` marks them (this attribute is what it sets).
+#[cfg(target_os = "ios")]
+fn exclude_from_backup(dir: &Path) {
+    use std::os::unix::ffi::OsStrExt;
+    let Ok(path) = std::ffi::CString::new(dir.as_os_str().as_bytes()) else { return };
+    let value = b"com.apple.backupd";
+    let r = unsafe {
+        libc::setxattr(path.as_ptr(), c"com.apple.metadata:com_apple_backup_excludeItem".as_ptr(), value.as_ptr().cast(), value.len(), 0, 0)
+    };
+    if r != 0 {
+        engine::log_line(&format!("saved: not left out of the backup: {}", std::io::Error::last_os_error()));
+    }
+}
+
+#[cfg(not(target_os = "ios"))]
+fn exclude_from_backup(_dir: &Path) {}
+
 fn default_folder(home: &Path, local: Option<std::ffi::OsString>) -> PathBuf {
     match local.filter(|l| !l.is_empty()) {
         Some(local) => PathBuf::from(local).join("reel").join("saved"),
@@ -357,6 +375,7 @@ pub fn init(data_dir: &Path) {
         return;
     }
     let _ = std::fs::create_dir_all(home.join("torrents"));
+    exclude_from_backup(&home);
     let stored = load(&home.join("library.json"));
     let films = default_folder(&home, if cfg!(windows) { std::env::var_os("LOCALAPPDATA") } else { None });
     let mut lib = Library { home, films, stored, live: HashMap::new(), revision: 1 };

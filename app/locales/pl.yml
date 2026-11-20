@@ -320,6 +320,7 @@ player:
   unmute: "Włącz dźwięk"
   volume: "Głośność"
   exit_fullscreen: "Zamknij pełny ekran"
+  rotate: "Obróć ekran"
   stage:
     searching: "Szukanie wydania"
     finding: "Szukanie udostępniających"

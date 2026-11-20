@@ -53,4 +53,10 @@ export const caps = {
   remote: tv,
   /** The window can fill the screen (a full-screen button and F in the player). */
   fullscreen: runtime.desktop && !tv,
+  /** The player turns the screen itself (a Rotate button): iOS, where the rotation lock keeps
+   * a film upright otherwise. */
+  rotate: runtime.os === "ios",
+  /** Settings is a tab of its own (a phone's tab bar), a root page; elsewhere on touch it is
+   * pushed on the current tab. */
+  settingsTab: family === "phone",
 };

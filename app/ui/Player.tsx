@@ -12,14 +12,21 @@
 import { cleanup, computed, effect, Image, keymap, safeArea, Scroll, signal, Text, untracked, View, windowSize, type ImageAsset, type ViewStyle } from "nsh";
 import { BufferingNote, PlayerStage, type StageLine } from "./PlayerStage";
 import { t } from "nsh/i18n";
-import { Catalog, Fmt } from "./native";
+import { Catalog, Fmt, VideoEngine } from "./native";
 import { episodeCode, episodeText, runtime, titleText, type Episode, type Release } from "./catalog";
 import { Icon } from "./components";
 import { rounded } from "./kit/shape";
 import plusIcon from "./icons/plus.svg";
 import { streamDetails } from "./preferences";
 import { cachedAhead, currentJob, duration, firstFrame, readAt, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
-import { alpha, colors, focusRing, font, iconPt, radius, safe, showFocus, targetSlop, ts, type, u } from "./theme";
+import { alpha, colors, density, focusRing, font, iconPt, radius, safe, showFocus, targetSlop, ts as layoutTs, type, u as layoutU } from "./theme";
+
+/** On a phone the player is held at arm's length over a film: its controls are one and a half
+ * times the layout's size (a 68 px button 46 pt, not 31) and its text a quarter larger (times 18 pt). */
+const PHONE_CONTROLS = density === "compact" ? 1.5 : 1;
+const PHONE_TEXT = density === "compact" ? 1.25 : 1;
+const u = (px: number) => layoutU(px) * PHONE_CONTROLS;
+const ts = (px: number) => layoutTs(px) * PHONE_TEXT;
 import { chrome } from "./layout/chrome";
 import { caps } from "./platform";
 import { playVolume, PlayerVolume, toggleMute, volumeDragEnd, volumeDragMove, volumeShown } from "./PlayerVolume";
@@ -36,6 +43,7 @@ import forwardIcon from "./icons/forward.svg";
 import tracksIcon from "./icons/tracks.svg";
 import fullscreenIcon from "./icons/fullscreen.svg";
 import fullscreenExitIcon from "./icons/fullscreen-exit.svg";
+import rotateIcon from "./icons/rotate.svg";
 import episodesIcon from "./icons/episodes.svg";
 import { PlayerEpisodes } from "./PlayerEpisodes";
 import checkIcon from "./icons/check.svg";
@@ -98,7 +106,7 @@ const topRowStyle = (full: boolean): ViewStyle => ({
   gap: u(24),
 });
 
-const BUTTONS = ["back", "play", "forward", "tracks", "episodes", "fullscreen"] as const;
+const BUTTONS = ["back", "play", "forward", "tracks", "episodes", "fullscreen", "rotate"] as const;
 type ButtonId = (typeof BUTTONS)[number];
 const PLAY_BUTTON = 1;
 
@@ -150,12 +158,24 @@ export function Player() {
     return m ? { season: Number(m[1]), episode: Number(m[2]) } : null;
   };
   const buttons: ButtonId[] = BUTTONS.filter(
-    (b) => (b !== "fullscreen" || caps.fullscreen) && (b !== "episodes" || episodeOf() != null),
+    (b) => (b !== "fullscreen" || caps.fullscreen) && (b !== "rotate" || caps.rotate) && (b !== "episodes" || episodeOf() != null),
   );
+  /** On touch, Episodes and Rotate keep to the right edge: the first of them pushes the rest there
+   * (on a computer the volume has the right). */
+  const rightFrom: ButtonId | undefined = caps.touch ? buttons.find((b) => b === "episodes" || b === "rotate") : undefined;
   /** The show's episodes in a panel (a series only). */
   const episodesOpen = signal(false);
   /** The window fills the screen (desktops). Left as it was found when the player closes. */
   const { on: fullscreen, set: setFullscreen } = useFullscreen();
+  /** Rotate: to the other orientation than the window's now. The player turned it: upright again
+   * when the player closes (else the app stays sideways with the rotation lock on). */
+  let turned = false;
+  const turn = () => {
+    const { width, height } = windowSize();
+    turned = width <= height;
+    VideoEngine.turn(turned);
+  };
+  if (caps.rotate) cleanup(() => turned && VideoEngine.turn(false));
 
   // The tracks panel: three columns, the focus inside it while it is open.
   const panel = signal(false);
@@ -311,6 +331,7 @@ export function Player() {
     else if (id === "tracks") (episodesOpen.set(false), panel() ? panel.set(false) : openPanel());
     else if (id === "episodes") (panel.set(false), episodesOpen.set(!episodesOpen()));
     else if (id === "fullscreen") setFullscreen(!fullscreen());
+    else if (id === "rotate") turn();
     else scrubBy(id === "back" ? -1 : 1);
   };
   const movePanel = (dc: number, dr: number) => {
@@ -463,11 +484,13 @@ export function Player() {
     : id === "back" ? t("player.back_10")
     : id === "forward" ? t("player.forward_10")
     : id === "fullscreen" ? (fullscreen() ? t("player.exit_fullscreen") : t("player.fullscreen"))
+    : id === "rotate" ? t("player.rotate")
     : id === "episodes" ? t("player.episodes")
     : t("player.tracks");
   const icon = (id: ButtonId): ImageAsset =>
     id === "play" ? (paused() ? playIcon : pauseIcon) : id === "back" ? rewindIcon : id === "forward" ? forwardIcon
     : id === "fullscreen" ? (fullscreen() ? fullscreenExitIcon : fullscreenIcon)
+    : id === "rotate" ? rotateIcon
     : id === "episodes" ? episodesIcon : tracksIcon;
 
   return (
@@ -686,7 +709,7 @@ export function Player() {
               </If>
               <Each of={buttons} key="index">
                 {(id, i) => (
-                  <View style={{ marginLeft: id() === "tracks" ? u(22) : 0 }}>
+                  <View style={{ marginLeft: id() === rightFrom ? "auto" : id() === "tracks" ? u(22) : 0 }}>
                     <RoundButton
                       icon={() => icon(id())}
                       label={() => label(id())}

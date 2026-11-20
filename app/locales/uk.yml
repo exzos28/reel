@@ -320,6 +320,7 @@ player:
   unmute: "Увімкнути звук"
   volume: "Гучність"
   exit_fullscreen: "Вийти з повноекранного режиму"
+  rotate: "Повернути екран"
   stage:
     searching: "Шукаємо роздачу"
     finding: "Шукаємо, хто роздає"

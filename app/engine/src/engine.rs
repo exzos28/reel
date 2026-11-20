@@ -392,6 +392,10 @@ fn session_options() -> SessionOptions {
             ..Default::default()
         }),
         peer_limit: Some(PEER_LIMIT),
+        // Local service discovery is multicast, which iOS allows only with an entitlement Apple
+        // grants on request (and it asks for Local Network access): peers come from the DHT
+        // and the trackers there.
+        disable_local_service_discovery: cfg!(target_os = "ios"),
         // librqbit's permits for blocking work (`runtime_worker_threads` sizes only that):
         // every open stream holds one while it is open (the player's, warming, subtitles) and
         // adding a torrent needs one, so with its 8 a film playing kept a saved one from
@@ -416,6 +420,23 @@ const BLOCKING_PERMITS: usize = 64;
 
 /// Peers connected or being connected per torrent (librqbit's default is 128).
 const PEER_LIMIT: usize = 300;
+
+/// The video's file name, percent-encoded, for the end of its stream URL: players that guess
+/// the format from the URL (AVPlayer) read the extension there. librqbit ignores it.
+fn url_name(handle: &librqbit::ManagedTorrent, file: usize) -> String {
+    let name = handle
+        .with_metadata(|m| m.file_infos.get(file).map(|f| f.relative_filename.file_name().map(|n| n.to_string_lossy().into_owned())))
+        .ok()
+        .flatten()
+        .flatten()
+        .unwrap_or_default();
+    name.bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => (b as char).to_string(),
+            _ => format!("%{b:02X}"),
+        })
+        .collect()
+}
 
 pub(crate) fn log_line(line: &str) {
     use std::io::Write;
@@ -1133,7 +1154,7 @@ pub fn status(job: u32) -> Value {
                 "phase": "ready",
                 "name": handle.name(),
                 "file": file,
-                "stream_url": format!("http://127.0.0.1:{}/torrents/{}/stream/{file}", core.port, handle.id()),
+                "stream_url": format!("http://127.0.0.1:{}/torrents/{}/stream/{file}/{}", core.port, handle.id(), url_name(&handle, file)),
                 "low_space": low_space(),
                 "speed": live.map(|l| l.download_speed.mbps).unwrap_or(0.0),
                 "peers": peers,

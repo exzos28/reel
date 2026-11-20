@@ -25,7 +25,7 @@ use nsh_core::prelude::*;
 
 #[cfg(not(target_arch = "wasm32"))]
 use application::{catalog, library, progress, settings, tracks};
-#[cfg(any(target_os = "macos", target_os = "android", target_os = "linux", windows))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "linux", windows))]
 use adapters::mpv;
 #[cfg(not(target_arch = "wasm32"))]
 use wiring::{metadata, playback};
@@ -41,6 +41,18 @@ fn native(registry: &mut Registry) {
 #[native_components(macos)]
 fn components(components: &nsh_platform_macos::Components) {
     mpv::register(components);
+}
+
+/// The mpv video view on iOS and iPadOS (a Metal layer), where libmpv is in the app.
+#[native_components(ios)]
+fn ios_components(components: &nsh_platform_ios::Components) {
+    mpv::register_ios(components);
+    // The screen stays on while something saves (and while a film plays: the mpv view).
+    adapters::ios_awake::watch();
+    // reel's dark background under the UI from the first frame (NSH's root is white).
+    adapters::ios_awake::paint_root();
+    // A phone is upright but in the player.
+    adapters::ios_awake::upright_on_phones();
 }
 
 /// The mpv video view on Windows (Direct2D in the view), where libmpv is found.
@@ -183,7 +195,7 @@ impl VideoEngine {
         if let Some(kind) = reel_domain::compat::profile().host_video() {
             return kind.into();
         }
-        #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "linux", windows))]
         if mpv::available() {
             reel_domain::compat::set_profile(reel_domain::compat::Profile::Mpv);
             return "mpv".into();
@@ -204,6 +216,16 @@ impl VideoEngine {
         crate::adapters::android_views::fullscreen(on);
         #[cfg(not(target_os = "android"))]
         let _ = on;
+    }
+
+    /// Turns the screen to landscape (`true`) or portrait, whatever the device's rotation lock
+    /// says: the player's Rotate button (iOS; elsewhere nothing). The device turning it back
+    /// (rotation unlocked) still turns it.
+    pub fn turn(landscape: bool) {
+        #[cfg(target_os = "ios")]
+        crate::adapters::ios_awake::turn(landscape);
+        #[cfg(not(target_os = "ios"))]
+        let _ = landscape;
     }
 
     /// Whether reel's own native views are registered on this device (Android: the Java ones

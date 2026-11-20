@@ -320,6 +320,7 @@ player:
   unmute: "Rétablir le son"
   volume: "Volume"
   exit_fullscreen: "Quitter le plein écran"
+  rotate: "Faire pivoter l'écran"
   stage:
     searching: "Recherche d'une version"
     finding: "Recherche de personnes qui partagent"

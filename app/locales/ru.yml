@@ -319,6 +319,7 @@ player:
   unmute: Включить звук
   volume: Громкость
   exit_fullscreen: Выйти из полноэкранного режима
+  rotate: Повернуть экран
   stage:
     searching: Ищем раздачу
     finding: Ищем, кто раздаёт

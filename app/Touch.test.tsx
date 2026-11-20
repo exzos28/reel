@@ -23,9 +23,13 @@ test("phone: a bottom tab bar; a tab keeps its place; the selected tab chosen ag
   expect(app.texts()).toContain("All movies");
 });
 
-test("phone: five tabs; More lists the destinations that do not fit and opens one", async () => {
+test("phone: six tabs, Settings last; More lists the destinations that do not fit and opens one", async () => {
   const app = await phone();
-  expect(app.count("role:tab")).toBe(5);
+  expect(app.count("role:tab")).toBe(6);
+  await app.press("label:Settings");
+  expect(app.shows("label:Settings")).toBe(true);
+  expect(app.shows("back-head")).toBe(false);
+  await app.press("label:Home");
   expect(app.shows("label:Cartoons")).toBe(false);
   await app.press("label:More");
   expect(app.shows("more-panel")).toBe(true);

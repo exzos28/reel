@@ -320,6 +320,7 @@ player:
   unmute: "Ton an"
   volume: "Lautstärke"
   exit_fullscreen: "Vollbild beenden"
+  rotate: "Bildschirm drehen"
   stage:
     searching: "Suche ein Release"
     finding: "Suche Leute, die es teilen"
