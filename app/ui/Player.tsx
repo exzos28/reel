@@ -21,10 +21,10 @@ import { streamDetails } from "./preferences";
 import { cachedAhead, currentJob, duration, firstFrame, readAt, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
 import { alpha, colors, density, focusRing, font, iconPt, radius, safe, showFocus, targetSlop, ts as layoutTs, type, u as layoutU } from "./theme";
 
-/** On a phone the player is held at arm's length over a film: its controls are twice the
- * layout's size (a 68 px button 61 pt, not 31) and its text one and a half times (times 22 pt). */
-const PHONE_CONTROLS = density === "compact" ? 2 : 1;
-const PHONE_TEXT = density === "compact" ? 1.5 : 1;
+/** On a phone the player is held at arm's length over a film: its controls are one and a half
+ * times the layout's size (a 68 px button 46 pt, not 31) and its text a quarter larger (times 18 pt). */
+const PHONE_CONTROLS = density === "compact" ? 1.5 : 1;
+const PHONE_TEXT = density === "compact" ? 1.25 : 1;
 const u = (px: number) => layoutU(px) * PHONE_CONTROLS;
 const ts = (px: number) => layoutTs(px) * PHONE_TEXT;
 import { chrome } from "./layout/chrome";

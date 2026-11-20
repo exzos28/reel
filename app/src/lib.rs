@@ -51,6 +51,8 @@ fn ios_components(components: &nsh_platform_ios::Components) {
     adapters::ios_awake::watch();
     // reel's dark background under the UI from the first frame (NSH's root is white).
     adapters::ios_awake::paint_root();
+    // A phone is upright but in the player.
+    adapters::ios_awake::upright_on_phones();
 }
 
 /// The mpv video view on Windows (Direct2D in the view), where libmpv is found.

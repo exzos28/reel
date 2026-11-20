@@ -234,12 +234,6 @@ impl Player {
         Some(v)
     }
 
-    /// Runs an mpv command (for the platform's view).
-    #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
-    pub fn command_args(&self, args: &[&str]) {
-        self.command(args);
-    }
-
     #[cfg_attr(not(target_os = "android"), allow(dead_code))]
     /// A property by name (for the platform's view: `vo`, the surface size).
     pub fn set_property(&self, name: &str, value: &str) {

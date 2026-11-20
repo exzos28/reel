@@ -19,7 +19,7 @@ static PLAYING: AtomicUsize = AtomicUsize::new(0);
 /// Something saves (checked every few seconds).
 static SAVING: AtomicBool = AtomicBool::new(false);
 
-/// A player came (`true`) or went.
+/// A player came (`true`) or went: the screen stays on, and a phone may turn (`upright_on_phones`).
 pub fn playing(on: bool) {
     if on {
         PLAYING.fetch_add(1, Ordering::Relaxed);
@@ -27,6 +27,38 @@ pub fn playing(on: bool) {
         let _ = PLAYING.try_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_sub(1));
     }
     apply();
+    orientations_changed();
+}
+
+/// Asks UIKit to read the root controller's orientations again (iOS 16+): it turns back upright
+/// when the player goes.
+fn orientations_changed() {
+    extern "C" fn run(_: *mut c_void) {
+        use objc2::{msg_send, rc::Retained, runtime::AnyObject};
+        let Some(mtm) = MainThreadMarker::new() else { return };
+        let app = UIApplication::sharedApplication(mtm);
+        unsafe {
+            let scenes: Retained<AnyObject> = msg_send![&app, connectedScenes];
+            let scenes: Retained<objc2_foundation::NSArray<AnyObject>> = msg_send![&scenes, allObjects];
+            for scene in scenes.iter() {
+                let responds: bool = msg_send![&scene, respondsToSelector: objc2::sel!(windows)];
+                if !responds {
+                    continue;
+                }
+                let windows: Retained<objc2_foundation::NSArray<AnyObject>> = msg_send![&scene, windows];
+                for window in windows.iter() {
+                    let root: Option<Retained<AnyObject>> = msg_send![&window, rootViewController];
+                    if let Some(root) = root {
+                        let can: bool = msg_send![&root, respondsToSelector: objc2::sel!(setNeedsUpdateOfSupportedInterfaceOrientations)];
+                        if can {
+                            let _: () = msg_send![&root, setNeedsUpdateOfSupportedInterfaceOrientations];
+                        }
+                    }
+                }
+            }
+        }
+    }
+    unsafe { dispatch_async_f(&raw const _dispatch_main_q, std::ptr::null_mut(), run) };
 }
 
 /// Starts following what saves; once.
@@ -117,4 +149,60 @@ pub fn turn(landscape: bool) {
         }
     }
     unsafe { dispatch_async_f(&raw const _dispatch_main_q, landscape as usize as *mut c_void, run) };
+}
+
+/// A phone shows reel upright only; the player (a full-screen dialog of its own, with its own
+/// orientations) turns sideways. NSH's window root controller has no say in it, so reel adds its
+/// `supportedInterfaceOrientations`: portrait on a phone, every orientation on a tablet. Once, at
+/// start, on the main thread.
+pub fn upright_on_phones() {
+    use std::ffi::{c_char, c_void};
+    unsafe extern "C" {
+        fn object_getClass(object: *mut c_void) -> *mut c_void;
+        fn sel_registerName(name: *const c_char) -> *const c_void;
+        fn class_addMethod(class: *mut c_void, sel: *const c_void, imp: *const c_void, types: *const c_char) -> bool;
+    }
+    extern "C" fn orientations(_this: *mut c_void, _cmd: *const c_void) -> usize {
+        use objc2::{msg_send, rc::Retained, runtime::AnyObject};
+        // UIUserInterfaceIdiomPhone is 0; masks: portrait 1 << 1, all 1 << 1 | 1 << 2 | 1 << 3 | 1 << 4.
+        let device: Retained<AnyObject> = unsafe { msg_send![objc2::class!(UIDevice), currentDevice] };
+        let idiom: isize = unsafe { msg_send![&device, userInterfaceIdiom] };
+        // A phone's player turns: portrait and landscape while one is on screen.
+        if idiom != 0 {
+            30
+        } else if PLAYING.load(Ordering::Relaxed) > 0 {
+            (1 << 1) | (1 << 3) | (1 << 4)
+        } else {
+            1 << 1
+        }
+    }
+    static ONCE: Once = Once::new();
+    ONCE.call_once(|| unsafe {
+        use objc2::{msg_send, rc::Retained, runtime::AnyObject};
+        let Some(mtm) = MainThreadMarker::new() else { return };
+        let app = UIApplication::sharedApplication(mtm);
+        // The window's root controller's own class (NSH's), whatever objc2 named it.
+        let mut class: *mut c_void = std::ptr::null_mut();
+        let scenes: Retained<AnyObject> = msg_send![&app, connectedScenes];
+        let scenes: Retained<objc2_foundation::NSArray<AnyObject>> = msg_send![&scenes, allObjects];
+        for scene in scenes.iter() {
+            let responds: bool = msg_send![&scene, respondsToSelector: objc2::sel!(windows)];
+            if !responds {
+                continue;
+            }
+            let windows: Retained<objc2_foundation::NSArray<AnyObject>> = msg_send![&scene, windows];
+            for window in windows.iter() {
+                let root: Option<Retained<AnyObject>> = msg_send![&window, rootViewController];
+                if let Some(root) = root {
+                    class = object_getClass(Retained::as_ptr(&root) as *mut c_void);
+                }
+            }
+        }
+        if class.is_null() {
+            tracing::warn!("reel: no root controller: the phone turns sideways everywhere");
+            return;
+        }
+        let imp = orientations as extern "C" fn(*mut c_void, *const c_void) -> usize;
+        class_addMethod(class, sel_registerName(c"supportedInterfaceOrientations".as_ptr()), imp as *const c_void, c"Q@:".as_ptr());
+    });
 }

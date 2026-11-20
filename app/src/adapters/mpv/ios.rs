@@ -4,8 +4,8 @@
 //! render API path (`view.rs`) does not apply.
 //!
 //! mpv reads the layer's size only when its video output is set up for a video (MPVKit's
-//! MoltenVK context reports no resize), so a new size while a picture shows reloads the video
-//! (`video-reload`): a rotation or a split-view change blinks once. Files load once the layer has a size (`LoadGate`), else mpv
+//! MoltenVK context reports no resize), so a new size while a picture shows starts the output
+//! again: a rotation or a split-view change blinks once. Files load once the layer has a size (`LoadGate`), else mpv
 //! would start its output at 0×0.
 
 use std::{
@@ -172,12 +172,13 @@ impl Inner {
                 gate.open(self.lib, player.raw());
             }
         } else if player.property("vo-configured").as_deref() == Some("yes") {
-            // A picture shows: mpv took the layer's size when its output was set up for this
-            // video, so the video is set up again (from where it is), which reads the new size.
-            // Not `vo` off and on: during a file's start that left it without a picture.
-            player.command_args(&["video-reload"]);
+            // A picture shows: mpv sized its swapchain when its output started, and only a new
+            // output makes another (a video reload keeps it), so the output starts again here.
+            player.set_property("vo", "null");
+            player.set_property("vo", VO);
         }
-        // No picture yet: the output reads the size it needs when the video starts.
+        // No picture yet: the output starts at the layer's size when the video starts. Starting
+        // it again now, while the file opens, left the film without a picture.
     }
 }
 
