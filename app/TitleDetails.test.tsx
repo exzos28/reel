@@ -24,8 +24,9 @@ test("a film shows its scores, age rating, crew, cast, details and More like thi
   for (const s of ["Cast", "Leonardo DiCaprio", "Cobb", "JG", "Arthur"]) expect(texts).toContain(s);
   for (const s of ["Details", "Tagline", "Your mind is the scene of the crime.", "Release date", "Jul 15, 2010"])
     expect(texts).toContain(s);
-  for (const s of ["Runtime", "Country", "United Kingdom, United States", "Studio", "Legendary Pictures, Syncopy"])
+  for (const s of ["Country", "United Kingdom, United States", "Studio", "Legendary Pictures, Syncopy"])
     expect(texts).toContain(s);
+  expect(texts).not.toContain("Runtime"); // the hero's line says it
   expect(texts).toContain("More like this");
   expect(texts).toContain("Dune");
   // In that order, under the hero.

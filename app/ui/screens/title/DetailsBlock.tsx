@@ -1,8 +1,9 @@
 // The facts of a title in two columns of label and value: tagline, original
-// title, release date, runtime (a series: its status), countries, studios.
+// title, release date, a series' status, countries, studios. A film's runtime is not here: the
+// hero's line says it.
 import { Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
-import { dateText, namesText, runtime, statusText, type Title } from "../../catalog";
+import { dateText, namesText, statusText, type Title } from "../../catalog";
 import { labelText, metaText } from "../../kit/text";
 import { SectionTitle } from "../../layout/Section";
 import { safe, u } from "../../theme";
@@ -19,7 +20,7 @@ function facts(d: Title): [string, string][] {
     ["tagline", d.tagline],
     ["original_title", d.originalTitle],
     [show ? "first_aired" : "release_date", d.releaseDate ? dateText(d.releaseDate) : null],
-    show ? ["status", d.status ? statusText(d.status) : null] : ["runtime", d.minutes ? runtime(d.minutes) : null],
+    ["status", show && d.status ? statusText(d.status) : null],
     ["countries", d.countries.length ? namesText(d.countries) : null],
     [show ? "networks" : "studios", d.studios.length ? namesText(d.studios) : null],
   ];

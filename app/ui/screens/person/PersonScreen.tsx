@@ -1,5 +1,6 @@
 // A person of a title's cast: their photo and name as the page's title, then the films and
-// series they are in, the best known first (the core's order), as Films' grid shows titles.
+// series they are in, the best known first (the core's order), as Films' grid shows titles, each
+// with its year and the part they played there (or their job).
 // Remote: the focus starts on the first title; the arrows walk the grid; OK opens the title.
 // Back goes one level up (the title the person was opened from); coming back from a title
 // finds the focus where it was.
@@ -99,7 +100,7 @@ export function PersonScreen(props: { id: string }) {
         page={page}
         focusRow={() => Math.floor(focusedAt() / columns())}
         cell={(item, at) => (
-          <GridCard item={item} width={() => cellWidth(columns(), GRID_GAP)} focused={() => focusedAt() === at()} onPress={() => open(at())} />
+          <GridCard item={item} facet={() => data().facet} width={() => cellWidth(columns(), GRID_GAP)} focused={() => focusedAt() === at()} onPress={() => open(at())} />
         )}
       />
     </PageFrame>

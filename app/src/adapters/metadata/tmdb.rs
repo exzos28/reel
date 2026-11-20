@@ -197,6 +197,7 @@ impl Tmdb {
         let acting = s(body, "known_for_department").is_none_or(|d| d == "Acting");
         let list = if acting { "cast" } else { "crew" };
         let mut seen = std::collections::HashSet::new();
+        let mut parts = std::collections::BTreeMap::new();
         let cards = arr(credits, list)
             .iter()
             .filter(|c| !c["genre_ids"].as_array().is_some_and(|g| g.iter().any(|id| id.as_u64().is_some_and(|id| NOT_FILMOGRAPHY.contains(&id)))))
@@ -206,15 +207,24 @@ impl Tmdb {
                     Some("tv") => TitleKind::Series,
                     _ => return None,
                 };
-                card(c, kind, cx)
+                card(c, kind, cx).map(|card| (card, if acting { s(c, "character") } else { None }))
             })
-            .filter(|c| seen.insert(c.id.clone()))
+            // A title they are credited in twice (two names of one part): the first the source lists.
+            .filter(|(c, _)| seen.insert(c.id.clone()))
+            .map(|(c, part)| {
+                // "Self" (an appearance as themselves) is no part.
+                if let Some(part) = part.map(|p| p.trim().to_owned()).filter(|p| !p.is_empty() && p != "Self") {
+                    parts.insert(c.id.clone(), part);
+                }
+                c
+            })
             .collect();
         Ok(Person {
             id: person_id(n),
             name: s(body, "name").ok_or_else(|| parse_err("name"))?,
             profile: cx.images.image_at(ImageKind::Profile, body, "profile_path"),
             credits: cards,
+            parts,
         })
     }
 
