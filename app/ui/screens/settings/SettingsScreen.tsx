@@ -1,5 +1,5 @@
 // Settings, a nav destination: one list of rows, each a setting's name and the value in effect
-// (design/setup-and-settings.md): Language, Playback buffer, Search source, Stream details,
+// (design/setup-and-settings.md): Language, Audio language, Playback buffer, Search source, Stream details,
 // Interface (a page of its own: Menu position, Loading animation), About reel. Up/down move the
 // focus (Up from the first: the nav); OK opens a row's choices (a drawer with one line on what
 // the setting does), the source drawer, flips the switch or opens Interface or About. Back takes the focus to the nav, then Home. Beside the list, where the device serves its
@@ -17,12 +17,13 @@ import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { go, goFromNav, onBack, openAbout, openInterface } from "../../nav";
 import {
-  bufferChoices, bufferMB, chooseBuffer, chooseContentLanguage, contentLanguages, source, streamDetails, toggleStreamDetails,
+  audioLanguages, bufferChoices, bufferMB, chooseAudioLanguage, chooseBuffer, chooseContentLanguage, contentLanguages, source,
+  streamDetails, toggleStreamDetails,
 } from "../../preferences";
 import { row } from "../../kit/shape";
 import { Fmt } from "../../native";
 import { safe, u } from "../../theme";
-import { bufferChoiceList, languageChoices, languageName, sizeText } from "./choices";
+import { audioLanguageChoices, audioLanguageName, bufferChoiceList, languageChoices, languageName, sizeText } from "./choices";
 import { SettingRow } from "./SettingRow";
 import { PhoneCard } from "../source/PhoneCard";
 import { openSourceDrawer } from "../source/SourceDrawer";
@@ -33,7 +34,7 @@ const pageStyle = (): ViewStyle => ({ ...row(u(96), "flex-start"), paddingHorizo
 const rowsStyle = (): ViewStyle => ({ flex: 1, gap: u(12) });
 const SETTINGS_AT = NAV.findIndex((n) => n.id === "settings");
 
-type Picker = "language" | "buffer";
+type Picker = "language" | "audio_language" | "buffer";
 
 /** Back from Interface or About finds the focus on its row. */
 let backTo: "interface" | "about" | null = null;
@@ -49,22 +50,24 @@ function readFreeSpace() {
 
 export function SettingsScreen() {
   const freeBytes = readFreeSpace();
-  /** The focus goes through the rows: language, buffer, source, stream details, Interface, About. */
+  /** The focus goes through the rows: language, audio language, buffer, source, stream details,
+   * Interface, About. */
   const LANGUAGE_AT = 0;
-  const BUFFER_AT = 1;
-  const SOURCE_AT = 2;
-  const detailsAt = () => 3;
-  const INTERFACE_AT = 4;
-  const aboutAt = () => 5;
+  const AUDIO_AT = 1;
+  const BUFFER_AT = 2;
+  const SOURCE_AT = 3;
+  const detailsAt = () => 4;
+  const INTERFACE_AT = 5;
+  const aboutAt = () => 6;
   const focus = signal(backTo === "about" ? aboutAt() : backTo === "interface" ? INTERFACE_AT : 0);
   /** The drawer of choices open, its focus on `pickAt`. */
   const picker = signal<Picker | null>(null);
   const pickAt = signal(0);
   const choices = () => {
     const p = picker();
-    return p === "buffer" ? bufferChoiceList() : languageChoices();
+    return p === "buffer" ? bufferChoiceList() : p === "audio_language" ? audioLanguageChoices() : languageChoices();
   };
-  const rowOf: Record<Picker, number> = { language: LANGUAGE_AT, buffer: BUFFER_AT };
+  const rowOf: Record<Picker, number> = { language: LANGUAGE_AT, audio_language: AUDIO_AT, buffer: BUFFER_AT };
   const open = (which: Picker) => {
     focus.set(rowOf[which]);
     onNav.set(false);
@@ -76,6 +79,10 @@ export function SettingsScreen() {
     if (which === "language") {
       const l = contentLanguages()[i];
       if (l) chooseContentLanguage(l.tag);
+    } else if (which === "audio_language") {
+      // The first choice is the app's language ("").
+      const code = i === 0 ? "" : audioLanguages()[i - 1];
+      if (code !== undefined) chooseAudioLanguage(code);
     } else if (which === "buffer") {
       const c = bufferChoices()[i];
       if (c) chooseBuffer(c.mb);
@@ -126,6 +133,7 @@ export function SettingsScreen() {
       else if (f === detailsAt()) toggleStreamDetails();
       else if (f === SOURCE_AT) openSourceDrawer("edit");
       else if (f === LANGUAGE_AT) open("language");
+      else if (f === AUDIO_AT) open("audio_language");
       else if (f === BUFFER_AT) open("buffer");
       else if (f === INTERFACE_AT) ui();
     },
@@ -147,6 +155,13 @@ export function SettingsScreen() {
             focused={() => at() === LANGUAGE_AT && !picker()}
             viewRef={page.follow(() => at() === LANGUAGE_AT)}
             onPress={() => open("language")}
+          />
+          <SettingRow
+            label={t("settings.audio_language.title")}
+            value={audioLanguageName}
+            focused={() => at() === AUDIO_AT && !picker()}
+            viewRef={page.follow(() => at() === AUDIO_AT)}
+            onPress={() => open("audio_language")}
           />
           <SettingRow
             label={t("settings.buffer.title")}

@@ -25,6 +25,8 @@ pub struct Track {
     pub external: bool,
     /// The player uses it now.
     pub selected: bool,
+    /// Audio description (mpv's `visual-impaired`): never played unless picked.
+    pub visual_impaired: bool,
 }
 
 /// The tracks the view reports: the `tracks` event's payload. It reads
@@ -141,6 +143,8 @@ struct MpvTrack {
     external: bool,
     #[serde(default)]
     selected: bool,
+    #[serde(default, rename = "visual-impaired")]
+    visual_impaired: bool,
 }
 
 /// A codec as people know it: "ac3" → "AC3", "eac3" → "E-AC3", "subrip" → "SRT".
@@ -216,6 +220,7 @@ pub fn from_mpv(track_list: &str) -> Option<Embedded> {
             forced: t.forced,
             external: t.external,
             selected: t.selected,
+            visual_impaired: t.visual_impaired,
         };
         match t.kind.as_str() {
             "audio" => out.audio.push(track),
@@ -236,11 +241,14 @@ mod tests {
             {"id":1,"type":"video","codec":"h264","selected":true},
             {"id":1,"type":"audio","lang":"eng","codec":"aac","demux-channels":"stereo","default":true,"selected":true},
             {"id":2,"type":"audio","lang":"rus","title":"Dub","codec":"ac3","demux-channels":"5.1(side)"},
+            {"id":3,"type":"audio","lang":"und","visual-impaired":true},
             {"id":1,"type":"sub","lang":"eng","codec":"subrip","forced":true,"title":" "},
             {"id":2,"type":"sub","lang":"tlh","codec":"ass","external":true}
         ]"#;
         let e = from_mpv(list).unwrap();
-        assert_eq!(e.audio.len(), 2);
+        assert_eq!(e.audio.len(), 3);
+        assert_eq!(e.audio[2].language.as_deref(), Some("und"), "mpv keeps und as it is");
+        assert!(e.audio[2].visual_impaired);
         assert_eq!(e.audio[0].language.as_deref(), Some("en"));
         assert!(e.audio[0].selected && e.audio[0].default);
         assert_eq!(e.audio[1].language.as_deref(), Some("ru"));

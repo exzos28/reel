@@ -2,7 +2,9 @@
 import { t } from "nsh/i18n";
 import type { Choice } from "../../layout/ChoicePanel";
 import { Fmt } from "../../native";
-import { bufferChoices, bufferMB, contentLanguage, contentLanguages, loader, LOADERS, navPosition, NAV_POSITIONS } from "../../preferences";
+import {
+  audioLanguage, audioLanguages, bufferChoices, bufferMB, contentLanguage, contentLanguages, loader, LOADERS, navPosition, NAV_POSITIONS,
+} from "../../preferences";
 
 const MIB = 1024 * 1024;
 export const sizeText = (mb: number) => Fmt.size(mb * MIB);
@@ -13,6 +15,16 @@ export const languageName = () => contentLanguages().find((l) => l.tag === conte
 /** The languages, each named in itself, the one in effect selected. */
 export const languageChoices = (): Choice[] =>
   contentLanguages().map((l) => ({ key: l.tag, text: l.name, selected: l.tag === contentLanguage() }));
+
+/** The audio language in effect: the app's, or the one picked. */
+export const audioLanguageName = () =>
+  audioLanguage() ? t(`languages.${audioLanguage()}`) : t("settings.audio_language.same");
+
+/** The app's language first, then the languages a track can be in, the one in effect selected. */
+export const audioLanguageChoices = (): Choice[] => [
+  { key: "", text: t("settings.audio_language.same"), selected: audioLanguage() === "" },
+  ...audioLanguages().map((l) => ({ key: l, text: t(`languages.${l}`), selected: l === audioLanguage() })),
+];
 
 /** Where the menu sits, the one in effect selected. */
 export const navPositionName = () => t(`settings.nav_position.${navPosition()}`);

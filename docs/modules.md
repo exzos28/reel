@@ -78,7 +78,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `checkSpace() -> String` (`check_space`): Whether there is room to start playing, as JSON `{"ok":bool,"free":bytes|null,"needed":bytes,"buffer":MiB}`.
   JSON: `{"ok":bool,"free":bytes|null,"needed":bytes,"buffer":MiB}`
   Called from: `ui/screens/settings/SettingsScreen.tsx`.
-- `chooseTrack(job: u32, id: String, embedded: String, choice: String) -> String` (`choose_track`): The viewer picked `choice` (a key of `tracks`); subtitles are remembered for the title. The columns after it (as `tracks`).
+- `chooseTrack(job: u32, id: String, embedded: String, choice: String) -> String` (`choose_track`): The viewer picked `choice` (a key of `tracks`); subtitles and audio are remembered for the title, and an audio pick's language becomes the one audio is looked for in (`tracks::choose`). The columns after it (as `tracks`).
   Called from: `ui/tracks.ts`.
 - `close(job: u32)`: Stops the job and deletes what it downloaded (the cache is per film).
   Called from: `ui/playback.ts`.
@@ -232,6 +232,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/preferences.ts`.
 - `revision() -> f64`: Goes up when the settings change (here or on the hosted page) and when the hosted page's pairing code appears or goes: read `current` and `Hosted.pairing` again.
   Called from: `ui/hosted.ts`.
+- `setAudioLanguage(code: String) -> String` (`set_audio_language`): Saves the audio language tracks are looked for in (ISO 639-1, one of `audioLanguages` from `load`; empty: the app's language); the setting in effect ("" for the app's). A pick in the tracks panel sets it too (`Engine.chooseTrack`).
+  Called from: `ui/preferences.ts`.
 - `setBufferMb(mb: u32) -> u32` (`set_buffer_mb`): Saves the playback buffer size (one of the choices); the size in effect.
   Called from: `ui/preferences.ts`.
 - `setContentLanguage(tag: String) -> String` (`set_content_language`): Saves the content language (titles, descriptions, episode names; one of `contentLanguages` from `load`) and drops what was asked in the old one; the language in effect.
