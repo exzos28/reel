@@ -21,9 +21,9 @@ use objc2::{
     runtime::AnyClass,
 };
 use objc2_core_foundation::CGSize;
-use objc2_foundation::{NSObject, NSObjectProtocol};
+use objc2_foundation::{NSNotification, NSNotificationCenter, NSObject, NSObjectProtocol};
 use objc2_quartz_core::{CALayer, CATransaction};
-use objc2_ui_kit::{UIResponder, UIView};
+use objc2_ui_kit::{UIApplicationDidEnterBackgroundNotification, UIApplicationWillEnterForegroundNotification, UIResponder, UIView};
 use serde_json::Value;
 
 use super::{
@@ -101,8 +101,49 @@ impl MpvView {
     }
 }
 
+define_class!(
+    /// Follows the app going to the background and back: iOS stops an app that draws with the
+    /// GPU in the background, so mpv's video stops there (`vid=no`) and comes back after.
+    #[unsafe(super(NSObject))]
+    #[thread_kind = MainThreadOnly]
+    #[name = "ReelMpvLifecycle"]
+    #[ivars = std::rc::Weak<Inner>]
+    pub struct Lifecycle;
+
+    unsafe impl NSObjectProtocol for Lifecycle {}
+
+    impl Lifecycle {
+        #[unsafe(method(background:))]
+        fn background(&self, _n: &NSNotification) {
+            if let Some(inner) = self.ivars().upgrade() {
+                inner.player.borrow().set_property("vid", "no");
+            }
+        }
+
+        #[unsafe(method(foreground:))]
+        fn foreground(&self, _n: &NSNotification) {
+            if let Some(inner) = self.ivars().upgrade() {
+                inner.player.borrow().set_property("vid", "auto");
+            }
+        }
+    }
+);
+
+impl Lifecycle {
+    fn new(mtm: MainThreadMarker, inner: std::rc::Weak<Inner>) -> Retained<Lifecycle> {
+        let this = Lifecycle::alloc(mtm).set_ivars(inner);
+        let this: Retained<Lifecycle> = unsafe { msg_send![super(this), init] };
+        let center = NSNotificationCenter::defaultCenter();
+        unsafe {
+            center.addObserver_selector_name_object(&this, objc2::sel!(background:), Some(UIApplicationDidEnterBackgroundNotification), None);
+            center.addObserver_selector_name_object(&this, objc2::sel!(foreground:), Some(UIApplicationWillEnterForegroundNotification), None);
+        }
+        this
+    }
+}
+
 /// The player and what its output knows of the layer.
-struct Inner {
+pub struct Inner {
     player: RefCell<Player>,
     layer: Retained<CALayer>,
     /// The size the output was started at (pixels); 0×0 before.
@@ -142,6 +183,7 @@ impl Inner {
 pub struct MpvComponent {
     view: Retained<UIView>,
     inner: Option<std::rc::Rc<Inner>>,
+    lifecycle: Option<Retained<Lifecycle>>,
 }
 
 impl MpvComponent {
@@ -149,7 +191,7 @@ impl MpvComponent {
         let mtm = MainThreadMarker::new().expect("components are made on the main thread");
         let Some(view) = MpvView::new(mtm) else {
             cx.emit("error", serde_json::json!({ "message": "no Metal layer", "code": "view" }));
-            return MpvComponent { view: UIView::new(mtm), inner: None };
+            return MpvComponent { view: UIView::new(mtm), inner: None, lifecycle: None };
         };
         let emit_cx = cx.clone();
         let inner = match Player::new(lib, "null", &PLATFORM, Arc::new(move |name, data| emit_cx.emit(name, data))) {
@@ -176,7 +218,9 @@ impl MpvComponent {
                 }
             }));
         }
-        MpvComponent { view: Retained::into_super(view), inner }
+        let lifecycle = inner.as_ref().map(|i| Lifecycle::new(mtm, std::rc::Rc::downgrade(i)));
+        crate::adapters::ios_awake::playing(true);
+        MpvComponent { view: Retained::into_super(view), inner, lifecycle }
     }
 
 }
@@ -201,8 +245,12 @@ impl NativeComponent for MpvComponent {
 
 impl Drop for MpvComponent {
     fn drop(&mut self) {
+        if let Some(l) = self.lifecycle.take() {
+            unsafe { NSNotificationCenter::defaultCenter().removeObserver(&l) };
+        }
         // mpv holds the layer without retaining it: the player goes first, while the view (and
         // its layer) still exist.
         self.inner = None;
+        crate::adapters::ios_awake::playing(false);
     }
 }

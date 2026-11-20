@@ -351,6 +351,8 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
     let mut read_at: i64 = 0;
     let mut last_progress: Option<Instant> = None;
     let (mut buffering, mut cache_wait, mut seeking) = (false, false, false);
+    // The video output failed (said once): mpv plays the sound on without a picture then.
+    let mut no_picture = false;
     loop {
         if shared.stop.load(Ordering::Relaxed) {
             return;
@@ -362,7 +364,14 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
             ffi::EVENT_LOG_MESSAGE if !event.data.is_null() => {
                 let m = unsafe { &*(event.data as *const ffi::EventLogMessage) };
                 let text = |p: *const c_char| if p.is_null() { String::new() } else { unsafe { CStr::from_ptr(p) }.to_string_lossy().trim_end().to_owned() };
-                tracing::warn!("mpv [{}] {}: {}", text(m.prefix), text(m.level), text(m.text));
+                let line = text(m.text);
+                tracing::warn!("mpv [{}] {}: {}", text(m.prefix), text(m.level), line);
+                // Its video output could not start (no GPU context: Metal, Vulkan, a driver):
+                // the view cannot show the film, which is an error, not sound alone.
+                if !no_picture && (line.starts_with("Error opening/initializing the selected video_out") || line.starts_with("Failed initializing any suitable GPU context")) {
+                    no_picture = true;
+                    emit("error", json!({ "message": line, "code": "view" }));
+                }
             }
             ffi::EVENT_FILE_LOADED => {
                 duration = get_f64(lib, raw, "duration").unwrap_or(duration);

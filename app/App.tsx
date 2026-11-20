@@ -28,6 +28,7 @@ import { TouchStack } from "./ui/layout/TouchStack";
 import { ExitDialog } from "./ui/layout/ExitDialog";
 import { keysInUse } from "./ui/focus/keys";
 import { Player } from "./ui/Player";
+import { PlayerHost } from "./ui/layout/PlayerHost";
 import { playerUp, status } from "./ui/playback";
 import { loadSettings, setupDone } from "./ui/preferences";
 import { SetupScreen } from "./ui/screens/setup/SetupScreen";
@@ -128,7 +129,7 @@ function App() {
       <If when={setupDone() === false}>
         <SetupScreen />
       </If>
-      <If when={setupDone() !== false && !playing()} else={<If when={setupDone() !== false}><Player /></If>}>
+      <If when={setupDone() !== false && !playing()} else={<If when={setupDone() !== false}><PlayerHost><Player /></PlayerHost></If>}>
         <If when={caps.touch} else={<OneScreen />}>
           {/* Right of the phone's rail when it is held sideways. */}
           <View style={{ flex: 1, marginLeft: railWidth() }}>

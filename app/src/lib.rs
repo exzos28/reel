@@ -47,6 +47,8 @@ fn components(components: &nsh_platform_macos::Components) {
 #[native_components(ios)]
 fn ios_components(components: &nsh_platform_ios::Components) {
     mpv::register_ios(components);
+    // The screen stays on while something saves (and while a film plays: the mpv view).
+    adapters::ios_awake::watch();
 }
 
 /// The mpv video view on Windows (Direct2D in the view), where libmpv is found.
