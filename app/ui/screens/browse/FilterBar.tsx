@@ -111,7 +111,7 @@ export function FilterBar(props: {
   return (
     // A phone has no width for the row: the title over the pills, which scroll, Sort with them.
     <If
-      when={density === "compact"}
+      when={density() === "compact"}
       else={
         <View ref={props.blockRef} style={barStyle()}>
           <Text style={{ ...sectionTitle(), marginRight: u(22) }}>{props.title()}</Text>

@@ -20,13 +20,13 @@ import { Pressable } from "../../kit/Pressable";
 
 const groupStyle = (focused: boolean): ViewStyle => ({
   ...rowStyle(false, focused, u(24)),
-  ...(compact ? { minHeight: cs(108), paddingVertical: cs(12) } : { height: cs(108) }),
+  ...(compact() ? { minHeight: cs(108), paddingVertical: cs(12) } : { height: cs(108) }),
   paddingLeft: cs(10),
   paddingRight: cs(22),
 });
-const thumbStyle = (): ViewStyle => ({ width: cs(compact ? 96 : 160), height: cs(compact ? 54 : 90), ...rounded(u(8)), overflow: "hidden", backgroundColor: colors.raise() });
+const thumbStyle = (): ViewStyle => ({ width: cs(compact() ? 96 : 160), height: cs(compact() ? 54 : 90), ...rounded(u(8)), overflow: "hidden", backgroundColor: colors.raise() });
 const imageStyle = () => ({ ...cover(), objectFit: "cover" }) as ViewStyle;
-const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", marginTop: u(8), width: compact ? "100%" : cs(300) });
+const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", marginTop: u(8), width: compact() ? "100%" : cs(300) });
 const progressFill = (p: number): ViewStyle => ({ height: "100%", width: `${Math.round(p * 100)}%`, backgroundColor: alpha(colors.snow(), 0.45) });
 
 export function SavedGroupRow(props: {
@@ -82,9 +82,9 @@ export function SavedGroupRow(props: {
       <View style={{ flex: 1, gap: u(4) }}>
         <Text style={{ ...labelText(), ...oneLine }}>{g().title}</Text>
         <Text style={{ ...metaText(), ...oneLine }}>{line()}</Text>
-        <If when={compact}>{state()}</If>
+        <If when={compact()}>{state()}</If>
       </View>
-      <If when={!compact}>
+      <If when={!compact()}>
         <View style={stateColumn()}>{state()}</View>
       </If>
       <View style={actionsBlock()}>

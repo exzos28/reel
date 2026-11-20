@@ -4,7 +4,7 @@
 import { Scroll, signal, View, type JSX, type ScrollEvent, type ScrollRef, type ViewRef, type ViewStyle } from "nsh";
 import { Scrollbar } from "nsh/base";
 import { alpha, colors, density, u } from "../theme";
-import { chrome } from "./chrome";
+import { family } from "../platform";
 import { stopAll, type ScrollCtl } from "./scrollCtl";
 
 export { scroller, type Follow, type Placement, type ScrollCtl } from "./scrollCtl";
@@ -12,7 +12,7 @@ export { scroller, type Follow, type Placement, type ScrollCtl } from "./scrollC
 /** Windows and Linux: reel scrolls with the wheel itself, faster than the system's 48 px a notch
  * and gliding (notches in a row add up, so it coasts); a Mac's trackpad and wheel keep the
  * system's, which already coast. */
-const OWN_WHEEL = chrome === "windows" || chrome === "linux";
+const OWN_WHEEL = family === "windows" || family === "linux";
 /** Points a wheel notch moves (it reports lines: three a notch). */
 const POINTS_PER_LINE = 40;
 
@@ -74,7 +74,7 @@ export function Scroller(props: {
 }) {
   const c = props.ctl;
   // Our thin bar for pages only: rows of cards show none (a trackpad, the keys and the focus move them).
-  const bar = density === "regular" && !c.horizontal;
+  const bar = density() === "regular" && !c.horizontal;
   const shown = signal(false);
   let hide = 0;
   const poke = () => {

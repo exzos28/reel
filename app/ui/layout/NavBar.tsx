@@ -57,7 +57,7 @@ function NavPills(props: Props) {
             style={pillStyle(props.current() === n().id ? colors.nav() : "transparent", props.focused() === i(), 20)}
           >
             <Icon src={() => n().icon} size={24} color={() => tint(n().id)} />
-            <If when={density !== "compact"}>
+            <If when={density() !== "compact"}>
               <Text style={labelText(tint(n().id))}>{t(`nav.${n().id}`)}</Text>
             </If>
           </Pressable>

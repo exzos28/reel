@@ -51,7 +51,7 @@ const FLOAT_MARGIN = 12;
 type Place = "tv" | "side-sheet" | "floating-sheet" | "bottom-sheet" | "side";
 
 /** A phone's drawer (from the bottom, or at the right held sideways): its heading stays put. */
-const phone = () => frame.panel === "bottom-sheet";
+const phone = () => frame().panel === "bottom-sheet";
 /** A phone's sheet left and right of its content: a page's margin (`chrome`'s phone 20). */
 const PHONE_PAD = 20;
 /** Room under a phone sheet's last row, over the home indicator. */
@@ -72,7 +72,7 @@ function sheetStyle(place: Place): ViewStyle {
   if (place === "bottom-sheet")
     return { backgroundColor: colors.card(), borderTopLeftRadius: 22, borderTopRightRadius: 22, borderCurve: "continuous" };
   // A tablet's: clear of the status bar and the home indicator; in portrait under half the screen.
-  if (frame.panel === "floating-sheet")
+  if (frame().panel === "floating-sheet")
     return {
       width: Math.min(FLOAT_WIDTH, windowSize().width * FLOAT_SHARE),
       margin: FLOAT_MARGIN,
@@ -86,7 +86,7 @@ function sheetStyle(place: Place): ViewStyle {
 }
 /** A desktop drawer runs up over the window bar: where the system's window controls sit at the
  * bar's right end (Windows, GTK), its ✕ and title start under them instead of beneath them. */
-const controlsRoom = () => (frame.panel === "side-sheet" && titleBar().right > 0 ? titleBar().height : 0);
+const controlsRoom = () => (frame().panel === "side-sheet" && titleBar().right > 0 ? titleBar().height : 0);
 const underControls = (): ViewStyle => ({ paddingTop: controlsRoom() });
 const grabberStyle = (): ViewStyle => ({ width: 36, height: 5, borderRadius: 3, alignSelf: "center", backgroundColor: "#4A4A4A" });
 /** The grabber's press area: the strip over the heading. */
@@ -111,9 +111,9 @@ const closeStyle = (place: Place): ViewStyle => ({
 });
 /** How far in from a drawer's sides its rows start, points: a row that scrolls sideways (the
  * Save drawer's seasons) runs out to the edge by this much, so the cut shows it goes on. */
-export const drawerPad = () => (frame.panel === "tv" ? u(48) : phone() ? PHONE_PAD : 16);
+export const drawerPad = () => (frame().panel === "tv" ? u(48) : phone() ? PHONE_PAD : 16);
 const contentStyle = (): ViewStyle =>
-  frame.panel === "tv"
+  frame().panel === "tv"
     ? { paddingHorizontal: u(48), paddingTop: safe().y, paddingBottom: safe().y, gap: u(20) }
     : phone() ? { paddingHorizontal: PHONE_PAD, paddingTop: 8, paddingBottom: PHONE_FOOT, gap: 12 }
     : { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 };
@@ -131,7 +131,7 @@ function CloseButton(props: { onPress: () => void; place: Place; id: string }) {
 
 /** What stays at the drawer's foot under the scrolling rows (its main action). */
 const footerStyle = (): ViewStyle => ({
-  ...(frame.panel === "tv"
+  ...(frame().panel === "tv"
     ? { paddingHorizontal: u(48), paddingTop: u(20), paddingBottom: safe().y, gap: u(12) }
     : phone() ? { paddingHorizontal: PHONE_PAD, paddingTop: 12, paddingBottom: PHONE_FOOT, gap: 10 }
     : { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, gap: 10 }),
@@ -158,7 +158,7 @@ type BodyProps = {
 /** The title, the note under it and the head (room on the right for the ✕ where there is one). */
 function Heading(props: BodyProps) {
   return (
-    <View style={{ gap: u(6), paddingRight: frame.panel === "tv" ? 0 : 40 }}>
+    <View style={{ gap: u(6), paddingRight: frame().panel === "tv" ? 0 : 40 }}>
       <If when={props.title}>
         <Text style={sectionTitle()}>{props.title!()}</Text>
       </If>
@@ -225,7 +225,7 @@ export function Drawer(props: {
   footer?: () => JSX.Element;
 }) {
   const close = () => props.open() && props.onClose();
-  const place = (): Place => (props.sideways && phoneSideways() ? "side" : frame.panel);
+  const place = (): Place => (props.sideways && phoneSideways() ? "side" : frame().panel);
   const inset = () => insets(place());
   // A bottom sheet's height: its parts as they lay out, the rows at the longest they have been
   // since it opened (a switch to a shorter list does not drop it), up to `MEDIUM` until it grows.
@@ -249,7 +249,7 @@ export function Drawer(props: {
     place() === "bottom-sheet" ? { height: height(), transitionProperty: "height", transitionDuration: 250, transitionTimingFunction: "ease-out" } : {};
   return (
     <If
-      when={frame.panel !== "tv"}
+      when={frame().panel !== "tv"}
       else={
         <If when={props.open()}>
           {[

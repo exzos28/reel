@@ -159,8 +159,22 @@ Top row 60 pt under the status bar (iPad 24 pt, Android 32 dp; take `safeArea().
   with ← (48 dp touch target), then the logo.
 - Centre: the floating tab bar (44 pt capsule, 36 pt tabs, label 15/500): Home, Movies, Series,
   Anime, Search (icon only).
-- Right: Settings, 40 pt disc; selected fill while the Settings sheet is open.
-- Scroll: the row stays; solid ink 96% (with the status bar area) once content is under it.
+- Right: on a title Add to list, then Saved (where the device saves; a ring of the overall saving
+  progress around it while something saves), then Settings: 40 pt discs, 10 apart. Saved is a
+  destination with its own stack ("‹ Saved" on a page over it), selected fill while it is open;
+  Settings' while the Settings sheet is open.
+- The side slots share what the tabs leave (the tabs stay centred; the right keeps its buttons'
+  width); the tabs show their labels when they fit beside the logo or a 150 pt Back and the
+  buttons (measured), else icons only (an upright iPad's title page, a narrow window).
+- Scroll: the row stays; solid ink 96% (with the status bar area) and a 1 pt `card` line under it
+  once content is under it.
+- A window narrower than 600 pt (iPadOS's windowed mode, Split View, Android's multi-window) is
+  laid out as a phone's (tab bar, sheets from the bottom, phone sizes), live as it is resized;
+  Settings stays the sheet. In a window that does not fill the screen the system's window
+  controls (●●●) sit at the top left: the logo, Back and the first tab start after them. A hero's
+  Play takes the whole width with Save and Trailer under it where they do not fit in a row; a
+  hero's title shrinks rather than break a word.
+- Without a network at start (the core decides), the app opens on Saved when something is saved.
 - Settings is a sheet in the middle of the window over the current page (iPad's form sheet:
   540 × 640 pt, less in a smaller window; radius 22, over the page dimmed to 60 %), never a page
   of a tab: a tab's stack holds only its root, titles and people, so a tab never opens on a

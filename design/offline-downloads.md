@@ -28,8 +28,9 @@ Words: **Save** and **Saved**, never "Download". Mockups: `concept/mac-saved.htm
   pack gets more files selected, not a second torrent).
 - The hero button shows the state: Save → "Saving 2 of 5" (a ring) → Saved.
 - Episode rows: a round button (save · progress ring · white check).
-- **Saved**: a round icon top right, after settings, with a ring of the overall progress while
-  something saves. The screen: space used and free, the folder (Change folder); "Saving" rows
+- **Saved**: a round icon top right (on a tablet left of Settings; on a phone a tab), with a ring
+  of the overall progress while something saves. Without a network at start the app opens on it
+  when something is saved (`Library.opening`). The screen: space used and free, the folder (Change folder); "Saving" rows
   with Pause and Remove; "Ready to watch" cards; films on a disk that is not connected are grey.
 - Library, Saved plays; the rest of the app says it is offline.
 - Settings: where to save (desktops: any folder, the system dialog; Android: phone or SD card;

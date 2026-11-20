@@ -20,7 +20,7 @@ import { scroller, Scroller, type ScrollCtl } from "./Scroller";
 import { Pressable } from "../kit/Pressable";
 
 /** A tablet's: a popover, not a sheet. */
-const popover = frame.panel === "floating-sheet";
+const popover = () => frame().panel === "floating-sheet";
 /** The popover's width, its rows' most and its room from the screen's edges and the anchor, points. */
 const POP_WIDTH = 320;
 const POP_ROWS_MOST = 0.55;
@@ -136,7 +136,7 @@ function Popover(props: Props) {
 }
 
 export function ChoicePanel(props: Props) {
-  if (popover) return <Popover {...props} />;
+  if (popover()) return <Popover {...props} />;
   return (
     <Drawer id={props.id ?? "choice"} open={() => true} onClose={props.onClose} title={props.title} note={props.note}>
       {(list) => <Rows {...props} list={list} />}

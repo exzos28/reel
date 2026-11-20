@@ -16,7 +16,7 @@ const subStyle = (): TextStyle => ({ ...oneLine, ...type.small(), color: colors.
 /** A poster's width: 196 TV pixels, but on a phone about three to the screen's width
  * (0.45 of 196 made 88 pt, four and more small ones in a row). */
 export const posterWidth = () =>
-  density === "compact" ? Math.round((windowSize().width - 2 * safe().x - 2 * u(20)) / 3.15) : u(196);
+  density() === "compact" ? Math.round((windowSize().width - 2 * safe().x - 2 * u(20)) / 3.15) : u(196);
 
 export function PosterCard(props: {
   item: () => Summary;

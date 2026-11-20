@@ -470,6 +470,24 @@ pub fn open_folder() -> bool {
     }
 }
 
+/// Where the app opens (design/offline-downloads.md): `"saved"` when Home's catalog is out of
+/// reach (no network) and something is saved to watch, `"home"` otherwise, `"wait"` while Home's
+/// first answers are on their way.
+pub fn opening() -> &'static str {
+    if !supported() {
+        return "home";
+    }
+    opening_from(catalog::home_unreachable(), || items().iter().any(|i| i["state"] == "saved"))
+}
+
+fn opening_from(unreachable: Option<bool>, ready: impl FnOnce() -> bool) -> &'static str {
+    match unreachable {
+        None => "wait",
+        Some(true) if ready() => "saved",
+        Some(_) => "home",
+    }
+}
+
 /// Goes up when anything the screens show changed.
 pub fn revision() -> u64 {
     keep().revision() + REVISION.load(Ordering::Relaxed)
@@ -478,6 +496,14 @@ pub fn revision() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn it_opens_on_saved_only_offline_with_something_to_watch() {
+        assert_eq!(opening_from(None, || true), "wait");
+        assert_eq!(opening_from(Some(true), || true), "saved");
+        assert_eq!(opening_from(Some(true), || false), "home", "nothing saved: Home says it is offline");
+        assert_eq!(opening_from(Some(false), || true), "home");
+    }
 
     #[test]
     fn a_shows_episodes_are_one_group_a_film_its_own() {

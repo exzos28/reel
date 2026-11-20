@@ -45,9 +45,9 @@ const stepStyle = (wide: boolean): ViewStyle => ({ flex: 1, maxWidth: wide ? for
 const headStyle = (): ViewStyle => ({ ...row(0), minHeight: cs(44) });
 /** The source step's two ways side by side (one above the other on a phone): a ready source,
  * then your own (the order of Settings' source drawer). */
-const waysStyle = (): ViewStyle => ({ flexDirection: density === "compact" ? "column" : "row", alignItems: "flex-start", gap: u(64), marginTop: u(28) });
-const wayStyle = (): ViewStyle => ({ flex: density === "compact" ? undefined : 1, alignSelf: "stretch", gap: u(14) });
-const wayRule = (): ViewStyle => (density === "compact" ? { height: 1, alignSelf: "stretch" } : { width: 1, alignSelf: "stretch" });
+const waysStyle = (): ViewStyle => ({ flexDirection: density() === "compact" ? "column" : "row", alignItems: "flex-start", gap: u(64), marginTop: u(28) });
+const wayStyle = (): ViewStyle => ({ flex: density() === "compact" ? undefined : 1, alignSelf: "stretch", gap: u(14) });
+const wayRule = (): ViewStyle => (density() === "compact" ? { height: 1, alignSelf: "stretch" } : { width: 1, alignSelf: "stretch" });
 const optionsStyle = (): ViewStyle => ({ gap: u(12), marginTop: u(30) });
 const optionStyle = (selected: boolean, focused: boolean): ViewStyle => ({
   ...rowStyle(selected, focused),

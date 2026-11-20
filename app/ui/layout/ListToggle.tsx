@@ -17,7 +17,7 @@ import { Pressable } from "../kit/Pressable";
 
 /** Sizes, points (TV: TV pixels): height, icon, label, padding left / right. */
 const size = () =>
-  chrome === "tv"
+  chrome() === "tv"
     ? { height: cs(62), icon: 24, label: u(24), left: u(22), right: u(28), gap: u(12) }
     : { height: 34, icon: iconPt(15), label: 13, left: 12, right: 14, gap: 7 };
 /** The touch disc, points. */
@@ -59,8 +59,8 @@ export function ListToggle(props: { inList: () => boolean; focused: () => boolea
   const icon = () => (props.inList() ? checkIcon : plusIcon);
   const tint = () => (props.inList() ? colors.snow() : colors.dim());
   /** The phone's disc: the heart Home's hero has. */
-  const discIcon = () => (chrome !== "phone" ? icon() : props.inList() ? heartFilledIcon : heartIcon);
-  const discTint = () => (chrome !== "phone" ? tint() : props.inList() ? colors.red() : colors.snow());
+  const discIcon = () => (chrome() !== "phone" ? icon() : props.inList() ? heartFilledIcon : heartIcon);
+  const discTint = () => (chrome() !== "phone" ? tint() : props.inList() ? colors.red() : colors.snow());
   return (
     <If
       when={caps.touch}

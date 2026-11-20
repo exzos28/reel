@@ -171,6 +171,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/library.ts`.
 - `openFolder() -> bool` (`open_folder`): Opens the folder saved films go into in the system's file manager (desktops); false where there is none or it did not open.
   Called from: `ui/library.ts`.
+- `opening() -> String`: Where the app opens: `"saved"` when Home's catalog is out of reach (no network) and something is saved to watch, `"home"` otherwise, `"wait"` while Home's first answers are on their way (ask again as `Catalog.revision` goes up).
+  Called from: `ui/library.ts`.
 - `overall() -> String`: The Saved tab's mark: `{"saving","progress"}` (see `library::overall`).
   JSON: `{"saving","progress"}`
   Called from: `ui/library.ts`.
@@ -269,6 +271,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/preferences.ts`.
 - `setStreamDetails(on: bool) -> bool` (`set_stream_details`): Saves whether the player shows the stream's speed, people and what is ready ahead (off by default); the value in effect.
   Called from: `ui/preferences.ts`.
+- `windowed(width: f64, height: f64) -> bool`: Whether a window `width` x `height` points does not fill the screen: an iPad's window in windowed mode or Split View, where the system's window controls sit at its top left. False elsewhere (only iOS knows its screen here).
+  Called from: `ui/layout/chrome.ts`.
 
 ## Sources
 

@@ -272,10 +272,10 @@ test("Mac: the Back in the window bar's slot closes the player, while it starts 
 const PORTRAIT = { width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 } };
 const SIDEWAYS = { width: 852, height: 393, safeArea: { top: 0, bottom: 21, left: 62, right: 62 } };
 
-async function phonePlaying(screen: typeof PORTRAIT, over: Record<string, unknown> = {}, start = "Play") {
+async function phonePlaying(screen: typeof PORTRAIT, over: Record<string, unknown> = {}, start = "Play", modules: Record<string, Record<string, unknown>> = {}) {
   const app = await openApp({
     platform: "ios", ...screen, clock: {},
-    modules: { "app/native": { ...NATIVE, ...DUNE_FIRST, ...STILL, "Engine.status": status, "Engine.timeline": timeline, ...over } },
+    modules: { ...modules, "app/native": { ...NATIVE, ...DUNE_FIRST, ...STILL, "Engine.status": status, "Engine.timeline": timeline, ...over } },
   });
   await app.press(start);
   await app.wait(600);
@@ -345,6 +345,13 @@ test("phone: Play and ±10 s sit in the middle of the picture, the bottom row ke
   expect(app.shows("label:Rotate screen")).toBe(true);
   await app.press("label:Pause");
   expect(app.shows("label:Play")).toBe(true);
+});
+
+test("iPad: no Rotate in the player (its window does not turn for an app); the ✕ at the corner", async () => {
+  const app = await phonePlaying({ width: 1180, height: 820, safeArea: { top: 24, bottom: 20, left: 0, right: 0 } }, {}, "Play", { nsh: { "platform.idiom": "pad" } });
+  expect(app.shows("label:Audio and subtitles")).toBe(true);
+  expect(app.shows("label:Rotate screen")).toBe(false);
+  expect(app.shows("label:Close")).toBe(true);
 });
 
 test("phone held upright: a wide film turns the screen sideways once it loads, and upright again on leaving", async () => {

@@ -13,12 +13,12 @@ export const wideCardHeight = (width: number) => (width * 198) / 352;
 
 /** A shelf of these cards (Home, Search's rows, More like this): on a desktop the cards of the Films
  * and Series grid, as big and as far apart; a TV and touch keep 352 TV pixels, 24 apart. */
-const desktop = density === "regular";
-export const shelfCardWidth = () => (desktop ? gridCardWidth() : u(352));
+const desktop = () => density() === "regular";
+export const shelfCardWidth = () => (desktop() ? gridCardWidth() : u(352));
 /** Between a shelf's cards, TV pixels. */
-export const SHELF_GAP = desktop ? GRID_GAP : 24;
+export const SHELF_GAP = () => (desktop() ? GRID_GAP : 24);
 /** From one card's start to the next one's, points (a row's arrows move by it). */
-export const shelfStep = () => shelfCardWidth() + u(SHELF_GAP);
+export const shelfStep = () => shelfCardWidth() + u(SHELF_GAP());
 
 const titleStyle = () => ({ ...oneLine, ...labelText(), fontWeight: 600, marginTop: u(10) });
 

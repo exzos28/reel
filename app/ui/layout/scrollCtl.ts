@@ -119,7 +119,7 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
       viewport: s.bounds.size[length],
       content: c.bounds.size[length],
       // On a TV a block is kept clear of the title-safe edge too (the set may crop it).
-      pad: density === "ten-foot" ? Math.max(ringRoom(), safe().y) : ringRoom(),
+      pad: density() === "ten-foot" ? Math.max(ringRoom(), safe().y) : ringRoom(),
     };
     // A TV keeps one focus line: up and down move the page under it, never the focus over
     // a page standing still (only where the page cannot move: its very top and end).

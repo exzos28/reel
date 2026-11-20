@@ -6,7 +6,7 @@
 // Tablet: one top row on every page: the logo (Back in its place on a deeper
 // page), the floating tabs centred, Add to list on a title, Settings; solid
 // once content is under it.
-import { safeArea, Text, View, windowSize, type ImageAsset, type JSX, type TextStyle, type ViewStyle } from "nsh";
+import { safeArea, signal, Text, View, windowSize, type ImageAsset, type JSX, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { person as personOf, title as titleOf, titleText, toggleList } from "../catalog";
 import backIcon from "../icons/back.svg";
@@ -14,11 +14,13 @@ import settingsIcon from "../icons/settings.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
 import { canGoBack, CATEGORIES, go, goHomeTab, handleBack, isCategory, openCategory, openSettings, route, section, settingsOpen, stack, type Destination, type Route } from "../nav";
+import { caps } from "../platform";
 import { look } from "../platform/look";
 import { alpha, colors, font, iconPt, targetSlop, u } from "../theme";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
 import { frameSolid } from "./frameState";
+import { windowControlsRoom } from "./chrome";
 import { CATEGORY_ROW, PHONE_BACK_HEAD, PHONE_HEAD, PHONE_TITLE_BAR, phoneRail, railWidth, TAB_ROW, TOP_ROW } from "./metrics";
 import { Rail, railLead } from "./Rail";
 import { scroller } from "./scrollCtl";
@@ -115,10 +117,13 @@ const markStyle = (): ViewStyle => ({ position: "absolute", top: 0, right: andro
 /** The phone's tabs: Home (the categories, chosen at the top of its page), Search, Saved where
  * this device saves, Settings. */
 const PHONE_TABS: { id: Destination; label: string; icon: ImageAsset; on: () => boolean; go: () => void }[] = [
-  { id: "home", label: "nav.home", icon: NAV[0].icon, on: () => isCategory(section()), go: goHomeTab },
-  { id: "search", label: "nav.search", icon: searchIcon, on: () => section() === "search", go: () => go("search") },
-  ...(librarySupported ? [{ id: "saved" as const, label: "nav.saved", icon: savedIcon, on: () => section() === "saved", go: () => go("saved") }] : []),
-  { id: "settings", label: "nav.settings", icon: settingsIcon, on: () => section() === "settings", go: () => go("settings") },
+  { id: "home", label: "nav.home", icon: NAV[0].icon, on: () => isCategory(section()) && !isSettings(), go: goHomeTab },
+  { id: "search", label: "nav.search", icon: searchIcon, on: () => section() === "search" && !isSettings(), go: () => go("search") },
+  ...(librarySupported ? [{ id: "saved" as const, label: "nav.saved", icon: savedIcon, on: () => section() === "saved" && !isSettings(), go: () => go("saved") }] : []),
+  // A tablet's narrow window (a phone's layout) keeps the tablet's Settings: the sheet.
+  caps.settingsTab
+    ? { id: "settings", label: "nav.settings", icon: settingsIcon, on: () => section() === "settings", go: () => go("settings") }
+    : { id: "settings", label: "nav.settings", icon: settingsIcon, on: isSettings, go: openSettings },
 ];
 
 function Tab(props: { label: string; icon: ImageAsset; on: () => boolean; inRail: boolean; saving?: boolean; onPress: () => void }) {
@@ -172,7 +177,7 @@ const categoryText = (on: boolean): TextStyle => ({ fontFamily: font, fontSize: 
 function CategoryTabs() {
   const tabs = scroller({ horizontal: true, anchor: railLead });
   return (
-    <View role="tablist" accessibilityLabel={t("nav.categories")} style={{ borderBottomWidth: 1, borderBottomColor: colors.card() }}>
+    <View role="tablist" accessibilityLabel={t("nav.categories")} style={{ borderBottomWidth: 1, borderBottomColor: colors.card(), paddingLeft: Math.max(0, windowControlsRoom() - 20) }}>
       <Rail ctl={tabs} gap={40}>
         <Each of={CATEGORIES} key={(c) => c}>
           {(c) => {
@@ -256,7 +261,7 @@ const titleBarStyle = (solid: boolean): ViewStyle => ({
   right: 0,
   height: safeArea().top + PHONE_TITLE_BAR,
   paddingTop: safeArea().top,
-  paddingLeft: 16,
+  paddingLeft: Math.max(16, windowControlsRoom()),
   paddingRight: 16 + safeArea().right,
   zIndex: 10,
   pointerEvents: "box-none",
@@ -312,7 +317,7 @@ const backHeadStyle = (): ViewStyle => ({
   right: 0,
   height: safeArea().top + PHONE_BACK_HEAD,
   paddingTop: safeArea().top,
-  paddingLeft: 16 + safeArea().left,
+  paddingLeft: Math.max(16 + safeArea().left, windowControlsRoom()),
   backgroundColor: colors.ink(),
   zIndex: 10,
 });
@@ -328,6 +333,16 @@ export function PhoneBackHead() {
 
 // ---- Tablet --------------------------------------------------------------
 
+/** The row's sides, points: its padding at the window's edges, and the least room between the
+ * tabs and what is beside them. */
+const ROW_EDGE = 24;
+const TABS_GAP = 8;
+/** The least the Back capsule keeps on a deeper page, points: it says where Back goes. */
+const BACK_ROOM = 150;
+/** The round buttons at the right (Add to list, Saved, Settings), points, and their gap. */
+const DISC = 40;
+const DISC_GAP = 10;
+
 const topRowStyle = (solid: boolean): ViewStyle => ({
   ...row(0),
   position: "absolute",
@@ -336,19 +351,28 @@ const topRowStyle = (solid: boolean): ViewStyle => ({
   right: 0,
   height: topRowBottom(),
   paddingTop: safeArea().top,
-  paddingHorizontal: 24,
+  paddingLeft: Math.max(ROW_EDGE + safeArea().left, windowControlsRoom()),
+  paddingRight: ROW_EDGE + safeArea().right,
   zIndex: 10,
+  // Solid once content is under it, the status bar's area with it, a hairline under it.
   backgroundColor: solid ? alpha(colors.ink(), 0.96) : "transparent",
+  borderBottomWidth: 1,
+  borderBottomColor: solid ? colors.card() : "transparent",
+  transitionProperty: "colors",
+  transitionDuration: BAR_FADE,
 });
-/** The row's three slots: the sides as wide as each other, so the tabs between them are
- * centred and never run into Back, the logo or the buttons. */
-const sideWidth = () => Math.min(220, windowSize().width * 0.24);
-const sideStyle = (end: boolean): ViewStyle => ({ ...row(10), width: sideWidth(), justifyContent: end ? "flex-end" : "flex-start" });
-const centerStyle: ViewStyle = { flex: 1, alignItems: "center" };
-/** The tabs keep only their icons where their labels do not fit between the sides. */
-const iconsOnly = () => windowSize().width < 1080;
+/** The sides share what the tabs leave, so the tabs stay centred; the right one keeps at least
+ * its buttons' width (the tabs move left of the centre before they run into them). */
+const sideStyle = (end: boolean, least: number): ViewStyle => ({
+  ...row(DISC_GAP),
+  flex: 1,
+  minWidth: least,
+  justifyContent: end ? "flex-end" : "flex-start",
+  ...(end ? { paddingLeft: TABS_GAP } : { paddingRight: TABS_GAP }),
+});
 const tabsGroup = (solid: boolean): ViewStyle => ({
   ...row(2),
+  flexShrink: 0,
   height: 52,
   padding: 4,
   ...rounded(26),
@@ -363,9 +387,11 @@ const topTab = (on: boolean, iconOnly: boolean): ViewStyle => ({
   ...rounded(22),
   backgroundColor: on ? colors.nav() : "transparent",
 });
-const topTabText = (on: boolean): TextStyle => ({ fontFamily: font, fontSize: 15, fontWeight: 500, color: on ? colors.snow() : colors.dim() });
-const capsuleStyle = (): ViewStyle => ({ ...row(2), height: 44, maxWidth: sideWidth(), paddingLeft: 8, paddingRight: 14, ...rounded(22), backgroundColor: alpha(colors.card(), 0.78) });
+const topTabText = (on: boolean): TextStyle => ({ numberOfLines: 1, fontFamily: font, fontSize: 15, fontWeight: 500, color: on ? colors.snow() : colors.dim() });
+const capsuleStyle = (): ViewStyle => ({ ...row(2), flexShrink: 1, minWidth: 0, height: 44, paddingLeft: 8, paddingRight: 14, ...rounded(22), backgroundColor: alpha(colors.card(), 0.78) });
 const capsuleText = (): TextStyle => ({ numberOfLines: 1, flexShrink: 1, fontFamily: font, fontSize: 16, fontWeight: 500, color: colors.snow() });
+/** Where the tabs with their labels are laid out unseen, wide enough for them, to know their width. */
+const measureRoom: ViewStyle = { position: "absolute", top: 0, left: 0, width: 4000, height: 0, overflow: "hidden", opacity: 0, pointerEvents: "none" };
 
 /** What the page under this one is called ("‹ Movies"). */
 function underName(): string {
@@ -402,7 +428,7 @@ function TabletBack() {
   );
 }
 
-/** A title's Add to list in the row, left of Settings. */
+/** A title's Add to list in the row, left of Saved and Settings. */
 function RowListToggle() {
   const shown = () => {
     const r = route();
@@ -417,37 +443,89 @@ function RowListToggle() {
   );
 }
 
-/** The tablet's top row: Back (or the logo) | the tabs | Add to list and Settings. */
+/** Saved is open (its own stack), and Settings is not over it. */
+const savedOn = () => section() === "saved" && !isSettings();
+const ringRoom = 3;
+/** Saved's ring of the overall progress, around the disc while anything saves. */
+const savedRingStyle = (): ViewStyle => ({ position: "absolute", top: -ringRoom, left: -ringRoom, pointerEvents: "none" });
+
+/** Saved, a round button where this device saves (design/offline-downloads.md): a destination
+ * of its own (its own stack; chosen again, its root), with a ring of how much of what is saving
+ * is saved while anything saves. */
+function SavedButton() {
+  watchSaved();
+  return (
+    <Pressable
+      testID="saved-button"
+      role="button"
+      accessibilityLabel={t("nav.saved")}
+      accessibilityState={{ selected: savedOn() }}
+      haptic={!savedOn()}
+      onPress={() => go("saved")}
+      hitSlop={targetSlop(DISC)}
+      style={disc(DISC, savedOn())}
+    >
+      <If when={savingOverall().saving}>
+        <View testID="saved-progress" style={savedRingStyle()}>
+          <ProgressRing progress={() => savingOverall().progress} size={DISC + 2 * ringRoom} stroke={2.5} background={() => (savedOn() ? colors.nav() : colors.ink())} />
+        </View>
+      </If>
+      <Icon src={() => savedIcon} size={pt(DISC * 0.47)} color={() => (savedOn() ? colors.snow() : colors.dim())} />
+    </Pressable>
+  );
+}
+
+/** The tablet's top row: Back (or the logo) | the tabs | Add to list, Saved and Settings. The tabs
+ * show their labels where those fit between the sides (measured), else their icons only. */
 export function TabletTopRow() {
+  const labelled = signal(0);
+  const logo = signal(0);
+  const right = signal(0);
+  const leftNeed = () => (canGoBack() ? BACK_ROOM : logo());
+  const edge = () => Math.max(ROW_EDGE + safeArea().left, windowControlsRoom());
+  const labels = () =>
+    labelled() > 0 &&
+    labelled() + 2 * (Math.max(leftNeed() + edge(), right() + ROW_EDGE + safeArea().right) + TABS_GAP) <= windowSize().width;
+  const tabs = (iconsOnly: boolean, live: boolean) => (
+    <Each of={TABS} key={(n) => n.id}>
+      {(n) => {
+        const on = () => live && section() === n().id;
+        const iconOnly = () => n().id === "search" || iconsOnly;
+        return (
+          <Pressable testID={on() ? `top-tab-on-${n().id}` : undefined} haptic={!on()} role="tab" accessibilityLabel={t(`nav.${n().id}`)} accessibilityState={{ selected: on() }} onPress={() => go(n().id)} style={topTab(on(), iconOnly())}>
+            <Icon src={() => n().icon} size={pt(17)} color={() => (on() ? colors.snow() : colors.dim())} />
+            <If when={!iconOnly()}>
+              <Text style={topTabText(on())}>{t(`nav.${n().id}`)}</Text>
+            </If>
+          </Pressable>
+        );
+      }}
+    </Each>
+  );
   return (
     // Under the Settings sheet the row is out of a screen reader's reach.
-    <View testID="top-row" accessibilityElementsHidden={settingsOpen()} importantForAccessibility={settingsOpen() ? "no-hide-descendants" : "auto"} style={topRowStyle(frameSolid())}>
-      <View style={sideStyle(false)}>
-        <If when={canGoBack()} else={<Logo />}>
+    <View testID={frameSolid() ? "top-row-solid" : "top-row"} accessibilityElementsHidden={settingsOpen()} importantForAccessibility={settingsOpen() ? "no-hide-descendants" : "auto"} style={topRowStyle(frameSolid())}>
+      <View style={measureRoom} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <View style={{ ...tabsGroup(false), alignSelf: "flex-start" }} onLayout={(e) => labelled.set(e.bounds.size.width)}>
+          {tabs(false, false)}
+        </View>
+      </View>
+      <View style={sideStyle(false, 0)}>
+        <If when={canGoBack()} else={<View onLayout={(e) => logo.set(e.bounds.size.width)}><Logo /></View>}>
           <TabletBack />
         </If>
       </View>
-      <View style={centerStyle}>
-        <View style={tabsGroup(frameSolid())}>
-          <Each of={TABS} key={(n) => n.id}>
-            {(n) => {
-              const on = () => section() === n().id;
-              const iconOnly = () => n().id === "search" || iconsOnly();
-              return (
-                <Pressable testID={on() ? `top-tab-on-${n().id}` : undefined} haptic={!on()} role="tab" accessibilityLabel={t(`nav.${n().id}`)} accessibilityState={{ selected: on() }} onPress={() => go(n().id)} style={topTab(on(), iconOnly())}>
-                  <Icon src={() => n().icon} size={pt(17)} color={() => (on() ? colors.snow() : colors.dim())} />
-                  <If when={!iconOnly()}>
-                    <Text style={topTabText(on())}>{t(`nav.${n().id}`)}</Text>
-                  </If>
-                </Pressable>
-              );
-            }}
-          </Each>
-        </View>
+      <View testID={labels() ? "top-tabs-labelled" : "top-tabs-icons"} style={tabsGroup(frameSolid())}>
+        {tabs(!labels(), true)}
       </View>
-      <View style={sideStyle(true)}>
-        <RowListToggle />
-        <SettingsButton size={44} />
+      <View style={sideStyle(true, right() + TABS_GAP)}>
+        <View style={row(DISC_GAP)} onLayout={(e) => right.set(e.bounds.size.width)}>
+          <RowListToggle />
+          <If when={librarySupported}>
+            <SavedButton />
+          </If>
+          <SettingsButton size={DISC} />
+        </View>
       </View>
     </View>
   );

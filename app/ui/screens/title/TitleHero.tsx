@@ -1,4 +1,4 @@
-import { computed, View, type ViewStyle } from "nsh";
+import { computed, View, windowSize, type ViewStyle } from "nsh";
 import { playLabel, releaseLine, releasesText, type Title } from "../../catalog";
 import { t } from "nsh/i18n";
 import { StateLine } from "../../kit/StateLine";
@@ -9,7 +9,8 @@ import { aboutExpandsInHero, wholeAboutInHero } from "./AboutBlock";
 import { heroTop } from "../../layout/metrics";
 import { actionsRow, PlayButton, SaveButton, SPLIT_HEIGHT, SplitPlay, TrailerButton } from "../../layout/HeroActions";
 import { librarySupported, saveOffer, titleSaveState } from "../../library";
-import { density, u } from "../../theme";
+import { density, safe, u } from "../../theme";
+import { caps } from "../../platform";
 import type { HeroAction } from "./focus";
 
 export type { HeroAction } from "./focus";
@@ -33,8 +34,12 @@ export const heroActions = (title: Title): HeroAction[] => [
   ...(title.trailer ? (["trailer"] as const) : []),
 ];
 
-/** A phone stacks the block: Play the whole width, Save and Trailer halves under it. */
-const stacked = density === "compact";
+/** The hero's column narrower than this, TV pixels (a tablet's narrow window), stacks the block too:
+ * the split Play, Save and Trailer side by side take about as much. */
+const ROW_ROOM = 1100;
+/** A phone stacks the block: Play the whole width, Save and Trailer halves under it; so does a
+ * column too narrow for them in a row. */
+const stacked = () => density() === "compact" || (caps.touch && windowSize().width - 2 * safe().x < u(ROW_ROOM));
 /** The phone's Save and Trailer, TV pixels (48 pt). */
 const HALF_HEIGHT = 64;
 
@@ -67,12 +72,12 @@ export function TitleHero(props: {
   const saveSize = computed(() => (librarySupported && !show() ? saveOffer(props.data().id).size : null));
   const release = () => (props.data().release ? releaseLine(props.data().release!, false) : null);
   const focused = (a: HeroAction) => () => props.focused() === a;
-  const height = stacked ? HALF_HEIGHT : SPLIT_HEIGHT;
+  const height = () => (stacked() ? HALF_HEIGHT : SPLIT_HEIGHT);
   const play = () => (
     <If
       when={splitPlay(props.data())}
       else={
-        <PlayButton label={() => playLabel(props.data())} focused={focused("play")} onPress={props.onPlay} height={SPLIT_HEIGHT} grow={stacked} />
+        <PlayButton label={() => playLabel(props.data())} focused={focused("play")} onPress={props.onPlay} height={SPLIT_HEIGHT} grow={stacked()} />
       }
     >
       <SplitPlay
@@ -84,7 +89,7 @@ export function TitleHero(props: {
         moreFocused={focused("releases")}
         onPlay={props.onPlay}
         onMore={props.onReleases}
-        stretch={stacked}
+        stretch={stacked()}
       />
     </If>
   );
@@ -100,12 +105,12 @@ export function TitleHero(props: {
           // Nothing to save until a release is known (a film's search found none, or still runs);
           // what is saved already stays reachable.
           disabled={() => !show() && !props.data().release && saveState().state === "none"}
-          height={height}
-          grow={stacked}
+          height={height()}
+          grow={stacked()}
         />
       </If>
       <If when={props.data().trailer}>
-        <TrailerButton focused={focused("trailer")} onPress={props.onTrailer} height={height} grow={stacked} />
+        <TrailerButton focused={focused("trailer")} onPress={props.onTrailer} height={height()} grow={stacked()} />
       </If>
     </>
   );
@@ -123,7 +128,7 @@ export function TitleHero(props: {
       wholeTitle={wholeAboutInHero}
     >
       <If
-        when={stacked}
+        when={stacked()}
         else={
           <View style={actionsRow(false)}>
             {play()}

@@ -48,7 +48,7 @@ function statusText(a: SearchAnswer): string {
 
 /** Where a keyboard can type at once (not a TV remote): coming back up to
  * the field gives it the input's focus too. */
-const typesAtOnce = density !== "ten-foot";
+const typesAtOnce = density() !== "ten-foot";
 
 export function SearchScreen() {
   const answer = computed(() => search(query()));
@@ -225,7 +225,7 @@ export function SearchScreen() {
               }
             >
             <If
-              when={searchGrid}
+              when={searchGrid()}
               else={
                 <HomeShelf
                   shelf={section}

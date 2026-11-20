@@ -4,9 +4,9 @@
 import { windowSize } from "nsh";
 import { chrome, sideInset } from "./chrome";
 
-const tablet = chrome === "tablet";
+const tablet = () => chrome() === "tablet";
 /** Held wide: content 1000 points across or more (an iPad's landscape, not its portrait). */
-const wide = () => tablet && windowSize().width - 2 * sideInset() >= 1000;
+const wide = () => tablet() && windowSize().width - 2 * sideInset() >= 1000;
 
 /** A show's episodes in two columns. */
 export const episodeColumns = () => (wide() ? 2 : 1);

@@ -51,6 +51,8 @@ fn ios_components(components: &nsh_platform_ios::Components) {
     adapters::ios_awake::watch();
     // reel's dark background under the UI from the first frame (NSH's root is white).
     adapters::ios_awake::paint_root();
+    // The screen's size, to tell a window that does not fill it (`Settings.windowed`).
+    adapters::ios_awake::remember_screen();
     // A phone is upright but in the player.
     adapters::ios_awake::upright_on_phones();
 }
@@ -264,6 +266,19 @@ impl Settings {
     /// `compat::set_device`); empty otherwise.
     pub fn device() -> String {
         reel_domain::compat::device().unwrap_or_default().to_owned()
+    }
+
+    /// Whether a window `width` x `height` points does not fill the screen: an iPad's window in
+    /// windowed mode or Split View, where the system's window controls sit at its top left.
+    /// False elsewhere (only iOS knows its screen here).
+    pub fn windowed(width: f64, height: f64) -> bool {
+        #[cfg(target_os = "ios")]
+        return crate::adapters::ios_awake::windowed(width, height);
+        #[cfg(not(target_os = "ios"))]
+        {
+            let _ = (width, height);
+            false
+        }
     }
 
     /// Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows",
@@ -778,6 +793,13 @@ impl Library {
     /// The Saved tab's mark: `{"saving","progress"}` (see `library::overall`).
     pub fn overall() -> String {
         library::overall().to_string()
+    }
+
+    /// Where the app opens: `"saved"` when Home's catalog is out of reach (no network) and
+    /// something is saved to watch, `"home"` otherwise, `"wait"` while Home's first answers are
+    /// on their way (ask again as `Catalog.revision` goes up).
+    pub fn opening() -> String {
+        library::opening().to_owned()
     }
 }
 

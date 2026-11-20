@@ -92,6 +92,30 @@ fn apply() {
     unsafe { dispatch_async_f(&raw const _dispatch_main_q, on as usize as *mut c_void, set) };
 }
 
+/// The screen's sides, points, shorter first: read on the main thread as the app starts.
+static SCREEN: std::sync::Mutex<Option<(f64, f64)>> = std::sync::Mutex::new(None);
+
+/// Keeps the screen's size (UIKit's main screen) for `windowed`. Called on the main thread.
+pub fn remember_screen() {
+    use objc2::{msg_send, rc::Retained, runtime::AnyObject};
+    use objc2_core_foundation::CGRect;
+    if MainThreadMarker::new().is_none() {
+        return;
+    }
+    let bounds: CGRect = unsafe {
+        let screen: Retained<AnyObject> = msg_send![objc2::class!(UIScreen), mainScreen];
+        msg_send![&screen, bounds]
+    };
+    let (w, h) = (bounds.size.width, bounds.size.height);
+    *SCREEN.lock().unwrap() = Some((w.min(h), w.max(h)));
+}
+
+/// Whether a window `width` x `height` points does not fill the screen (iPadOS's windowed mode,
+/// Split View); false while the screen is not known.
+pub fn windowed(width: f64, height: f64) -> bool {
+    SCREEN.lock().unwrap().is_some_and(|(short, long)| (width.min(height) - short).abs() > 1.0 || (width.max(height) - long).abs() > 1.0)
+}
+
 /// reel's background (`colors.ink`, nsh.json) behind everything on iOS: NSH paints the window's
 /// root white ("as in React Native"), which showed as a white flash at start, before the UI drew,
 /// and through the player's dialog as it faded in. Called on the main thread.
