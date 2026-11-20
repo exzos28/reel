@@ -272,8 +272,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 
 - `check() -> u32`: Checks the saved source (`t=caps`); a job id for `result`, 0 when none is set.
   Called from: `ui/preferences.ts`.
-- `result(id: u32) -> String`: `{"state":"pending"}`, `{"state":"done","releases":[…]}` (ranked: each `{"id","title","source","infohash","size","seeders","peers","indexer", "info":{resolution,hdr,dolby_vision,codec,source,season,episodes,season_pack}, "seasonPack"}`), `{"state":"done","caps":{…}}` for a check, or `{"state":"failed","message"}`.
-  JSON: `{"state":"pending"}`, `{"state":"done","releases":[…]}`, `{"id","title","source","infohash","size","seeders","peers","indexer", "info":{resolution,hdr,dolby_vision,codec,source,season,episodes,season_pack}, "seasonPack"}`, `{"state":"done","caps":{…}}`, `{"state":"failed","message"}`
+- `result(id: u32) -> String`: `{"state":"pending"}`, `{"state":"done","releases":[…]}` (ranked: each `{"id","title","source","infohash","size","seeders","peers","indexer", "info":{resolution,hdr,dolby_vision,languages,codec,source,season,episodes,season_pack}, "seasonPack"}`), `{"state":"done","caps":{…}}` for a check, or `{"state":"failed","message"}`.
+  JSON: `{"state":"pending"}`, `{"state":"done","releases":[…]}`, `{"id","title","source","infohash","size","seeders","peers","indexer", "info":{resolution,hdr,dolby_vision,languages,codec,source,season,episodes,season_pack}, "seasonPack"}`, `{"state":"done","caps":{…}}`, `{"state":"failed","message"}`
   Called from: `ui/preferences.ts`.
 - `search(request: String) -> u32`: Searches for a film or an episode. `request` is JSON `{"imdb","title","year","season","episode"}` (imdb, year, season and episode optional). A search id for `result`; 0 when no source is set.
   Called from: nothing in the UI.

@@ -711,25 +711,72 @@ fn quality_rank(r: &Value) -> u64 {
     r["info"]["resolution"].as_u64().unwrap_or(0)
 }
 
-/// The release's own words for where it comes from: "BluRay", "WEB HDR".
-fn source_label(r: &Value) -> String {
-    let info = &r["info"];
-    let mut parts: Vec<&str> = Vec::new();
-    parts.push(match info["source"].as_str() {
+/// Where the release comes from: "BluRay", "WEB" ("" when its name does not say).
+fn source_name(r: &Value) -> &'static str {
+    match r["info"]["source"].as_str() {
         Some("remux") => "Remux",
         Some("bluray") => "BluRay",
         Some("web") => "WEB",
         Some("hdtv") => "HDTV",
         Some("dvd") => "DVD",
         _ => "",
-    });
-    if info["dolby_vision"] == true {
-        parts.push("DV");
-    } else if info["hdr"] == true {
-        parts.push("HDR");
     }
-    parts.retain(|p| !p.is_empty());
-    parts.join(" ")
+}
+
+/// The release's own words for where it comes from: "BluRay", "WEB HDR".
+fn source_label(r: &Value) -> String {
+    let info = &r["info"];
+    let hdr = if info["dolby_vision"] == true {
+        "DV"
+    } else if info["hdr"] == true {
+        "HDR"
+    } else {
+        ""
+    };
+    [source_name(r), hdr].into_iter().filter(|p| !p.is_empty()).collect::<Vec<_>>().join(" ")
+}
+
+/// The picture in a release row's second line: codec, then Dolby Vision and HDR, "H.265 · DV ·
+/// HDR" (no words to translate); "" when the name says none of them.
+fn video_label(r: &Value) -> String {
+    let info = &r["info"];
+    let codec = match info["codec"].as_str() {
+        Some("x264") => "H.264",
+        Some("x265") => "H.265",
+        Some("av1") => "AV1",
+        _ => "",
+    };
+    let dv = if info["dolby_vision"] == true { "DV" } else { "" };
+    // A Dolby Vision release's HDR10 layer, or HDR alone.
+    let hdr = if info["hdr10"] == true || (info["hdr"] == true && info["dolby_vision"] != true) { "HDR" } else { "" };
+    [codec, dv, hdr].into_iter().filter(|p| !p.is_empty()).collect::<Vec<_>>().join(" · ")
+}
+
+/// A release row's second line and its spoken label, as parts the UI words and joins: `{"text"}`
+/// as it is, `{"audio":[{"language","voice"}…]}` the audio languages (`language` ISO 639-1 or
+/// null, `voice` "dub", "mvo", "dvo", "avo" or null), `{"key",…}` a key with its values.
+/// The line: audio first (what the choice turns on), the picture, the size. Spoken: the name,
+/// the line, the people sharing and how it starts; the release's own name is left out (long
+/// and noisy read aloud).
+fn release_parts(r: &Value, peers: u64, mbit: u64) -> (Vec<Value>, Vec<Value>) {
+    let mut line = Vec::new();
+    if let Some(a) = r["info"]["languages"].as_array().filter(|a| !a.is_empty()) {
+        line.push(json!({ "audio": a }));
+    }
+    let video = video_label(r);
+    if !video.is_empty() {
+        line.push(json!({ "text": video }));
+    }
+    let size = size(r);
+    if !size.is_empty() {
+        line.push(if r["seasonPack"] == true { json!({ "key": "release.pack", "size": size }) } else { json!({ "text": size }) });
+    }
+    let name = [quality(r), source_name(r).to_owned()].into_iter().filter(|p| !p.is_empty()).collect::<Vec<_>>().join(" ");
+    let mut spoken = vec![json!({ "text": name })];
+    spoken.extend(line.iter().cloned());
+    spoken.push(json!({ "key": "release.sharing", "count": peers }));
+    spoken.push(json!({ "key": format!("release.note.{}", start_note(peers, mbit)), "mbit": mbit }));
+    (line, spoken)
 }
 
 fn peers(r: &Value) -> u64 {
@@ -825,11 +872,6 @@ fn picked_within(limits: fit::Limits, key: &str, releases: &[Value], minutes: u3
     first.or_else(|| now.max_by_key(best)).or_else(|| rs.max_by_key(shared)).map(|(i, _)| i)
 }
 
-/// Four signal bars for the people sharing.
-fn bars(peers: u64) -> u8 {
-    reel_domain::release::swarm_tier(peers)
-}
-
 /// How long one of `key` runs and how many episodes a pack of its season holds.
 fn length_of(key: &str, info: &Info) -> (u32, u32) {
     if let Some((show, s)) = parse_season_key(key) {
@@ -860,16 +902,19 @@ fn releases_json(key: &str, info: &Info) -> Vec<Value> {
         .map(|&(i, top)| {
             let r = &releases[i];
             let (p, m) = (peers(r), mbit(r, minutes, episodes));
+            let (line, spoken) = release_parts(r, p, m);
             json!({
                 "index": i,
                 "quality": quality(r),
                 "source": source_label(r),
+                // In the releases sheet, without HDR: its second line says it (`line`).
+                "origin": source_name(r),
                 // The release's full name.
                 "group": r["title"],
                 "size": size(r),
-                "tracks": [],
+                "line": line,
+                "spoken": spoken,
                 "peers": p,
-                "bars": bars(p),
                 "note": start_note(p, m),
                 "mbit": m,
                 "selected": Some(i) == pick,

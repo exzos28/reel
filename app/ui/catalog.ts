@@ -89,12 +89,14 @@ export interface Release {
   quality: string;
   source: string;
   group: string;
+  /** Where it comes from without HDR ("BluRay"): the releases sheet's first line. */
+  origin: string;
   size: string;
-  /** Keys under `tracks.*`. */
-  tracks: string[];
+  /** The second line ("English, Russian MVO · H.264 · 700 MB"), as the core orders it. */
+  line: ReleasePart[];
+  /** All of the row for a screen reader. */
+  spoken: ReleasePart[];
   peers: number;
-  /** Signal bars, 1..4. */
-  bars: number;
   /** Key under `release.note.*`. */
   note: string;
   mbit: number;
@@ -105,6 +107,16 @@ export interface Release {
   /** In the short list (the most shared of its quality, or the one Play uses). */
   top: boolean;
 }
+
+/** An audio language a release's name says: `language` ISO 639-1 (null when only the voice is
+ * told), `voice` a key under `release.voice.*` (a dub, a voice-over) or null. */
+export interface AudioLanguage {
+  language: string | null;
+  voice: string | null;
+}
+
+/** A part of a release's line: text as it is, its audio languages, or a key with its values. */
+export type ReleasePart = { text: string } | { audio: AudioLanguage[] } | ({ key: string } & Record<string, string | number>);
 
 /** Where the search for releases is (key under `releases.state.*` except "done"). */
 export type ReleasesState = "no_source" | "searching" | "failed" | "done" | "none";
@@ -420,7 +432,25 @@ export const namesText = (names: string[]) => names.join(", ");
 
 export const statusText = (status: string) => t(`status.${status}`);
 
-export const tracksText = (r: Release) => r.tracks.map((k) => t(`tracks.${k}`)).join(", ");
+/** "Russian MVO", "English", "MVO". */
+function audioText(a: AudioLanguage) {
+  const voice = a.voice ? t(`release.voice.${a.voice}`) : "";
+  if (!a.language) return voice;
+  const language = t(`languages.${a.language}`);
+  return voice ? t("release.voiced", { language, voice }) : language;
+}
+
+function partText(p: ReleasePart): string {
+  if ("audio" in p) return (p.audio as AudioLanguage[]).map(audioText).join(", ");
+  if ("text" in p) return p.text as string;
+  return t(p.key as string, p);
+}
+
+/** A release row's second line: "English, Russian MVO · H.264 · 700 MB". */
+export const releaseDetails = (r: Release) => r.line.map(partText).join(" · ");
+
+/** A release row as a screen reader says it. */
+export const releaseSpoken = (r: Release) => r.spoken.map(partText).join(", ");
 
 /** An episode's name or overview, from the core (empty while its season is not known). */
 export function episodeText(show: string, season: number, episode: number, field: "title" | "about") {

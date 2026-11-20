@@ -137,6 +137,12 @@ release:
   sharing: "%{count} 人分享中"
   sharing_short: "%{count} 人分享"
   pack: "整季合集 %{size}"
+  voiced: "%{language}（%{voice}）"
+  voice:
+    dub: "配音"
+    mvo: "MVO"
+    dvo: "DVO"
+    avo: "AVO"
   fast: "数秒即可播放"
   note:
     starts_fast: "秒开"

@@ -137,6 +137,12 @@ release:
   sharing: "Compartido por %{count}"
   sharing_short: "Comparten: %{count}"
   pack: "temporada completa, %{size}"
+  voiced: "%{language} (%{voice})"
+  voice:
+    dub: "doblaje"
+    mvo: "MVO"
+    dvo: "DVO"
+    avo: "AVO"
   fast: "empieza en segundos"
   note:
     starts_fast: "Empieza rápido"

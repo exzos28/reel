@@ -238,7 +238,9 @@ fn releases_from_the_search_best_quality_first() {
     assert_eq!(r[1]["group"], "The.Matrix.1999.1080p.BluRay.x264");
     assert_eq!(r[2]["note"], "starts_fast");
     assert_eq!(r[3]["note"], "few_sharing");
-    assert_eq!(r[3]["bars"], 1);
+    assert_eq!(r[3]["source"], "DVD");
+    // Their names say no languages or codec: the line is the size.
+    assert_eq!(r[3]["line"], json!([{ "text": "1 GB" }]));
     assert_eq!(t["release"]["quality"], "1080p");
     assert_eq!(t["release"]["size"], "8 GB");
     match play_source(MATRIX) {
@@ -1045,4 +1047,42 @@ fn a_whole_show_labelled_season_one_plays_any_season() {
     TORRENT_FILES.lock().unwrap().insert(format!("magnet:?xt=urn:btih:{title}"), files);
     assert_eq!(episodes(AOT, 3)[1]["inRelease"], "yes");
     assert!(matches!(play_source("tmdb:tv:1429:s3e2"), PlaySource::Ready(..)));
+}
+
+/// A release row's second line: the audio its name says, then the picture, then the size; the
+/// spoken label says it all with the people sharing and how it starts.
+#[test]
+fn a_release_row_says_its_audio_picture_and_size() {
+    let name = "Ночь живых мертвецов / Night of the Living Dead [1968, США, ужасы, BDRip 2160p] MVO + Original Eng + Sub (Rus, Eng) HDR10 DV HEVC";
+    let info = reel_domain::release::parse(name);
+    let r = json!({ "title": name, "size": 700.0 * 1024.0 * 1024.0, "seasonPack": false, "info": info });
+    let (line, spoken) = release_parts(&r, 3, 2);
+    assert_eq!(
+        json!(line),
+        json!([
+            { "audio": [{ "language": "ru", "voice": "mvo" }, { "language": "en", "voice": null }] },
+            { "text": "H.265 · DV · HDR" },
+            { "text": "700 MB" },
+        ])
+    );
+    assert_eq!(spoken[0], json!({ "text": "4K BluRay" }));
+    assert_eq!(spoken[1..4], line[..]);
+    assert_eq!(spoken[4], json!({ "key": "release.sharing", "count": 3 }));
+    assert_eq!(spoken[5], json!({ "key": "release.note.few_sharing", "mbit": 2 }));
+    // The row's first line leaves HDR to the second; the player's list keeps it.
+    assert_eq!(source_name(&r), "BluRay");
+    assert_eq!(source_label(&r), "BluRay DV");
+
+    // A season pack's size is the pack's; a name that says nothing gives the size alone.
+    let pack = json!({ "title": "Show S01", "size": 4.0 * 1024.0 * 1024.0 * 1024.0, "seasonPack": true, "info": reel_domain::release::parse("Show S01") });
+    assert_eq!(json!(release_parts(&pack, 50, 1).0), json!([{ "key": "release.pack", "size": "4 GB" }]));
+}
+
+#[test]
+fn the_picture_line() {
+    let v = |name: &str| video_label(&json!({ "info": reel_domain::release::parse(name) }));
+    assert_eq!(v("Film.2010.1080p.BluRay.x264"), "H.264");
+    assert_eq!(v("Film 2160p WEB-DL DV H265"), "H.265 · DV");
+    assert_eq!(v("Film 2160p WEB HDR10 AV1"), "AV1 · HDR");
+    assert_eq!(v("Film DVDRip"), "");
 }

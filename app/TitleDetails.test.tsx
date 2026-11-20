@@ -63,6 +63,7 @@ test("⌄ in Play opens the releases in a panel; OK picks one and closes it; Bac
   await app.keyboard.press("right"); // ⌄, the other releases: the stop after Play
   await app.keyboard.press("enter");
   for (const s of ["Releases", "3 found, the best of each quality first"]) expect(app.texts()).toContain(s);
+  expect(app.texts()).toContain("English, Russian MVO · H.264 · 8 GB"); // on a TV the details under the source
   for (const s of ["Starts fast", "Needs 58 Mbit/s internet"]) expect(app.texts()).not.toContain(s); // no note column
   await app.keyboard.press("escape"); // closes the panel, stays on the film
   expect(app.texts()).not.toContain("3 found, the best of each quality first");
@@ -233,6 +234,10 @@ test("phone: the release sits in Play as one short line (the people sharing a nu
   expect(app.shows("label:Trailer")).toBe(true);
   await app.press("label:Other releases");
   expect(app.texts()).toContain("3 found, the best of each quality first");
+  // A release row: its audio, picture, size and the people sharing, then its own name; said whole.
+  expect(app.texts()).toContain("English, Russian MVO · H.264 · 8 GB · 412");
+  expect(app.texts()).toContain("Inception.2010.1080p.BluRay.x264");
+  expect(app.shows("label:1080p BluRay, English, Russian MVO, H.264, 8 GB, 412 people sharing, Starts fast")).toBe(true);
 });
 
 test("Save names the film's size; when it does not fit it asks, and saves the smaller release the core names", async () => {

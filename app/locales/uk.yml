@@ -137,6 +137,12 @@ release:
   sharing: "Роздають %{count} ос."
   sharing_short: "%{count} ос."
   pack: "весь сезон, %{size}"
+  voiced: "%{language} (%{voice})"
+  voice:
+    dub: "дубляж"
+    mvo: "багатоголосий"
+    dvo: "двоголосий"
+    avo: "одноголосий"
   fast: "запуститься за секунди"
   note:
     starts_fast: "Запуститься швидко"
