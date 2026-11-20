@@ -41,3 +41,16 @@ test("TV: the hero's way to the title's page is a button that says Details", asy
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("Director");
 });
+
+test("TV: the split Play is one focus ring; the part with the focus stays white, the other turns grey", async () => {
+  const app = await app_();
+  await app.keyboard.press("enter"); // Inception's page, the focus on Play
+  expect(app.shows("split-play")).toBe(true);
+  const more = () => app.viewStyle("split-play-more")?.backgroundColor;
+  const onPlay = more();
+  await app.keyboard.press("right"); // ⌄
+  const onMore = more();
+  expect(onMore).not.toBe(onPlay);
+  await app.keyboard.press("down"); // off the split: both parts white again
+  expect(more()).toBe(onMore);
+});
