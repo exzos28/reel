@@ -3,6 +3,8 @@
 //! video view on macOS.
 
 #[cfg(target_os = "android")]
+pub mod android_display;
+#[cfg(target_os = "android")]
 pub mod android_views;
 pub mod http_client;
 #[cfg(target_os = "ios")]

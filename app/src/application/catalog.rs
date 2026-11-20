@@ -29,6 +29,7 @@ use super::{progress, settings};
 use crate::wiring::{metadata, playback};
 use reel_domain::discover::{DiscoverKind, Filter};
 use reel_domain::numbering::{self, Holds, Numbering, Through};
+use reel_domain::play::Pick;
 use reel_domain::{compat, episode, fit, release, typo};
 
 mod details;
@@ -148,11 +149,11 @@ fn record_search(key: &str, started_in: u64, search: Search) {
 }
 
 /// The search source changed: what the old one found (or failed to find) is dropped, so the
-/// screens search the new one at once.
+/// screens search the new one at once. The releases kept per title stay: they are found again
+/// by what they are (`Pick`), in the new source's answers or not at all.
 pub fn source_changed() {
     SEARCH_GEN.fetch_add(1, Ordering::Relaxed);
     SEARCHES.lock().unwrap().clear();
-    CHOSEN.lock().unwrap().clear();
     bump();
 }
 
@@ -588,8 +589,29 @@ struct Search {
 const RETRY_FAILED_AFTER: Duration = Duration::from_secs(30);
 
 static SEARCHES: LazyLock<Mutex<HashMap<String, Search>>> = LazyLock::new(Default::default);
-/// The user's choice of release per what plays: an index into its releases.
-static CHOSEN: LazyLock<Mutex<HashMap<String, usize>>> = LazyLock::new(Default::default);
+
+/// The release kept for what `key`'s releases are searched for (the viewer's choice, or the one
+/// it was watched in), kept with the watch progress so it outlives a restart.
+fn kept(key: &str) -> Option<Pick> {
+    progress::release(key)
+}
+
+/// What a release of a search's answer is, to find it again in another (`Pick`).
+fn pick_of(r: &Value) -> Pick {
+    Pick {
+        infohash: text(&r["infohash"]),
+        title: text(&r["title"]).unwrap_or_default(),
+        size: r["size"].as_f64().filter(|b| *b > 0.0).map(|b| b as u64),
+    }
+}
+
+/// Where release `pick` is in `releases`.
+fn find_pick(pick: &Pick, releases: &[Value]) -> Option<usize> {
+    releases.iter().position(|r| {
+        let size = r["size"].as_f64().filter(|b| *b > 0.0).map(|b| b as u64);
+        pick.is(r["infohash"].as_str(), r["title"].as_str().unwrap_or_default(), size)
+    })
+}
 
 fn has_source() -> bool {
     #[cfg(test)]
@@ -821,16 +843,21 @@ fn plays_now(peers: u64, mbit: u64) -> bool {
     peers >= 50 && mbit <= PLAYS_NOW_MBIT
 }
 
-/// The release Play uses: the user's choice, else the best quality that plays now; on a device
-/// with limits (`fit::limits`: a phone, a tablet) the best that plays now within them, else the
-/// most shared one within them, before any other. An index into `releases`.
+/// The release Play uses: the one kept for `key` (the viewer's choice, or the one it was watched
+/// in) while the search still finds it, else the best quality that plays now; on a device with
+/// limits (`fit::limits`: a phone, a tablet, a screen that shows less than 4K HDR) the best that
+/// plays now within them, else the most shared one within them, before any other. An index into
+/// `releases`.
 fn chosen(key: &str, releases: &[Value], minutes: u32, episodes: u32) -> Option<usize> {
-    if let Some(&i) = CHOSEN.lock().unwrap().get(key)
-        && i < releases.len()
-    {
+    if let Some(i) = kept(key).and_then(|p| find_pick(&p, releases)) {
         return Some(i);
     }
-    picked_within(fit::limits(compat::family()), key, releases, minutes, episodes, |_| true)
+    picked_within(device_limits(), key, releases, minutes, episodes, |_| true)
+}
+
+/// What this device picks by itself: its kind (`compat::family`) on its screen (`compat::display`).
+fn device_limits() -> fit::Limits {
+    fit::limits(compat::family(), compat::display())
 }
 
 /// How long one runs when the catalog does not say, minutes: a film's or an episode's usual
@@ -838,20 +865,30 @@ fn chosen(key: &str, releases: &[Value], minutes: u32, episodes: u32) -> Option<
 const FILM_MINUTES: u32 = 120;
 const EPISODE_MINUTES: u32 = 45;
 
+/// A release's picture as its name says it.
+fn picture(r: &Value) -> fit::Picture {
+    let info = &r["info"];
+    let dv = info["dolby_vision"] == true;
+    fit::Picture {
+        lines: info["resolution"].as_u64().map(|h| h as u32),
+        hdr: info["hdr"] == true || dv,
+        dolby_vision_only: dv && info["hdr10"] != true,
+    }
+}
+
 /// Whether release `r` of `key` keeps to `limits`: its picture and its bytes per hour (a pack's
 /// share per episode; a pack of a season whose episode count is not known is judged by its
 /// picture alone).
 fn release_within(limits: fit::Limits, key: &str, r: &Value, minutes: u32, episodes: u32) -> bool {
-    let lines = r["info"]["resolution"].as_u64().map(|h| h as u32);
     let pack = r["seasonPack"] == true;
     let bytes = r["size"].as_f64().unwrap_or(0.0);
     if pack && episodes <= 1 {
-        return fit::within(limits, lines, 0.0, 0);
+        return fit::within(limits, picture(r), 0.0, 0);
     }
     let share = if pack { episodes as f64 } else { 1.0 };
     let episode = parse_key(key).1.is_some() || parse_season_key(key).is_some();
     let minutes = if minutes > 0 { minutes } else if episode { EPISODE_MINUTES } else { FILM_MINUTES };
-    fit::within(limits, lines, bytes / share, minutes)
+    fit::within(limits, picture(r), bytes / share, minutes)
 }
 
 /// The release Play picks by itself among those `allowed` lets through (Save's smaller one: those
@@ -1090,7 +1127,7 @@ pub fn play_source(key: &str) -> PlaySource {
     };
     let info = from_title(&t);
     if let Some((s, e)) = ep
-        && !CHOSEN.lock().unwrap().contains_key(key)
+        && kept(key).is_none()
     {
         match season_has(title, &info, s, e) {
             Some((source, Has::Yes | Has::Unknown)) => {
@@ -1217,7 +1254,7 @@ pub fn smaller_release(key: &str, fits: impl Fn(u64) -> bool) -> Option<Value> {
     let releases = releases_of(key);
     let (minutes, episodes) = length_of(key, &info);
     let size = |r: &Value| r["size"].as_f64().filter(|b| *b > 0.0).map(|b| b as u64);
-    let i = picked_within(fit::limits(compat::family()), key, &releases, minutes, episodes, |r| size(r).is_some_and(&fits))?;
+    let i = picked_within(device_limits(), key, &releases, minutes, episodes, |r| size(r).is_some_and(&fits))?;
     let r = &releases[i];
     Some(json!({ "id": r["id"], "quality": quality(r), "source": source_label(r), "size": size(r) }))
 }
@@ -1297,7 +1334,7 @@ fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
     let seen = progress::get(&key);
     let watched = seen.as_ref().is_some_and(|e| e.watched);
     // Where it plays from: a release picked for it, else its season's (if it holds it).
-    let own = CHOSEN.lock().unwrap().contains_key(&key);
+    let own = kept(&key).is_some();
     let from = plays_from(&key);
     let pick = search_of(&from).and_then(|s| s.releases).and_then(|rs| {
         let i = chosen(&from, &rs, minutes, 1)?;
@@ -1903,7 +1940,7 @@ fn first_aired(show: &str, season: u32) -> Option<u16> {
 /// one for it, else its season's; a film itself.
 fn plays_from(key: &str) -> String {
     match parse_key(key) {
-        (show, Some((s, _))) if !CHOSEN.lock().unwrap().contains_key(key) => season_key(show, s),
+        (show, Some((s, _))) if kept(key).is_none() => season_key(show, s),
         _ => key.to_owned(),
     }
 }
@@ -1959,7 +1996,8 @@ fn watching() -> Vec<Value> {
 }
 
 /// Makes release `index` (of `title(id).releases[].index`) the one Play
-/// uses for what `id` plays (a title: its Play target; or an episode key).
+/// uses for what `id` plays (a title: its Play target; or an episode key), from now on and
+/// after a restart (kept with the watch progress, found again by what it is: `Pick`).
 pub fn choose_release(id: &str, index: usize) -> bool {
     let (title, ep) = parse_key(id);
     let key = match (ep, peek(&Call::Title(title.to_owned()))) {
@@ -1969,15 +2007,14 @@ pub fn choose_release(id: &str, index: usize) -> bool {
         }
         _ => id.to_owned(),
     };
-    let ok = index < releases_of(&key).len();
-    if ok {
-        CHOSEN.lock().unwrap().insert(key, index);
-        bump();
-    }
-    ok
+    let Some(r) = releases_of(&key).get(index).map(pick_of) else { return false };
+    progress::set_release(&key, r);
+    bump();
+    true
 }
 
-/// Records where the player is in `key`; whether it now counts as watched.
+/// Records where the player is in `key`; whether it now counts as watched. The release it plays
+/// is kept for it from then on (`keep_release`).
 pub fn save_progress(key: &str, position: f64, duration: f64) -> bool {
     let (title, ep) = parse_key(key);
     if title.starts_with("reel:") {
@@ -1985,8 +2022,25 @@ pub fn save_progress(key: &str, position: f64, duration: f64) -> bool {
     }
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64);
     let watched = progress::save(key, title, ep, position, duration, now);
+    if progress::get(key).is_some() {
+        keep_release(key);
+    }
     bump();
     watched
+}
+
+/// Resume plays on in the release `key` was watched in: the one Play uses for it now is kept
+/// (with its season's, for an episode of a pack), so neither a restart nor a later search that
+/// ranks another release first moves the viewer to it.
+fn keep_release(key: &str) {
+    let from = plays_from(key);
+    let (show, _) = parse_key(key);
+    let (Some(t), Some(releases)) = (peek(&Call::Title(show.to_owned())), search_of(&from).and_then(|s| s.releases)) else { return };
+    let info = Info { id: show.to_owned(), ..from_title(&t) };
+    let (minutes, episodes) = length_of(&from, &info);
+    if let Some(i) = chosen(&from, &releases, minutes, episodes) {
+        progress::set_release(&from, pick_of(&releases[i]));
+    }
 }
 
 /// The catalog's and progress's stores are process-wide: tests that use
