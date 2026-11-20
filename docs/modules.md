@@ -159,12 +159,15 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `list() -> String`: The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, each item `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`.
   JSON: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`
   Called from: `ui/library.ts`.
+- `offer(key: String) -> String`: Save on a film's page: `{"size","free","fits","smaller":{"id","quality","source","size"}}` (see `library::offer`): the size for its button, and whether it fits the free space.
+  JSON: `{"size","free","fits","smaller":{"id","quality","source","size"}}`
+  Called from: nothing in the UI.
 - `openFolder() -> bool` (`open_folder`): Opens the folder saved films go into in the system's file manager (desktops); false where there is none or it did not open.
   Called from: `ui/library.ts`.
 - `pause(id: u32)`: Pauses saving the item (its whole torrent: episodes of one pack pause together).
   Called from: `ui/library.ts`.
-- `plan(show: String, season: u32) -> String`: The Save drawer for a season: `{"episodes":[{"key","number","title","size","state", "progress","locked"}],"saved","total","size"}`.
-  JSON: `{"episodes":[{"key","number","title","size","state", "progress","locked"}],"saved","total","size"}`
+- `plan(show: String, season: u32, picked: String) -> String`: The Save drawer for a season, with the keys ticked in it (`picked`, a JSON array): `{"episodes":[{"key","number","title","size","state","progress","locked"}],"saved", "total","size","free","picked":{"count","size","fits"}}` (see `library::plan`).
+  JSON: `{"episodes":[{"key","number","title","size","state","progress","locked"}],"saved", "total","size","free","picked":{"count","size","fits"}}`
   Called from: `ui/library.ts`.
 - `remove(id: u32)`: Stops saving the item and deletes its files.
   Called from: `ui/library.ts`.
@@ -174,6 +177,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: nothing in the UI.
 - `save(keys: String) -> bool`: Saves the catalog keys in `keys` (a JSON array: a film, or episodes) once their release is known; what is saved already stays. False when this device saves nothing.
   Called from: `ui/library.ts`.
+- `saveRelease(key: String, release: String) -> bool` (`save_release`): Saves film `key` from release `release` (the id `offer`'s `smaller` gives) instead of the one Play uses, which stays as it is.
+  Called from: nothing in the UI.
 - `setFolder(folder: String) -> String` (`set_folder`): Saves new items into `folder` from now on: "" when done, else why not.
   Called from: nothing in the UI.
 - `supported() -> bool`: Whether this device saves films (false on TVs and without the engine): no Save control shows when it does not.
@@ -238,6 +243,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/preferences.ts`.
 - `setContentLanguage(tag: String) -> String` (`set_content_language`): Saves the content language (titles, descriptions, episode names; one of `contentLanguages` from `load`) and drops what was asked in the old one; the language in effect.
   Called from: `ui/preferences.ts`.
+- `setFamily(name: String) -> bool` (`set_family`): Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows", "linux", "tablet", "phone"), once at start: what Play and Save pick by themselves follows from it (a phone keeps to 1080p and a size per hour, `fit::limits`). False for an unknown name.
+  Called from: nothing in the UI.
 - `setLanguage(tag: String)` (`set_language`): Saves the UI language (a BCP 47 tag).
   Called from: nothing in the UI.
 - `setLoader(loader: String) -> String` (`set_loader`): Saves the loading animation ("logo" or "dinosaur"; another value is refused); the one in effect.
@@ -263,8 +270,6 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/preferences.ts`.
 - `search(request: String) -> u32`: Searches for a film or an episode. `request` is JSON `{"imdb","title","year","season","episode"}` (imdb, year, season and episode optional). A search id for `result`; 0 when no source is set.
   Called from: nothing in the UI.
-- `setPictureCap(lines: u32)` (`set_picture_cap`): The tallest picture Play picks by itself, in lines (1080 on a phone or a tablet: 4K costs it time and space for nothing it can show); 0: any. The viewer can still choose any release.
-  Called from: `App.tsx`.
 - `setProfile(name: String) -> bool` (`set_profile`): Sets the player profile of this device (what it can play): "mpv", "apple_avplayer", "android_mediaplayer", "tizen". Releases it cannot play are hidden from searches. False for an unknown name.
   Called from: nothing in the UI.
 

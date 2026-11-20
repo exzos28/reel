@@ -254,6 +254,14 @@ impl Settings {
         reel_domain::compat::device().unwrap_or_default().to_owned()
     }
 
+    /// Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows",
+    /// "linux", "tablet", "phone"), once at start: what Play and Save pick by themselves follows
+    /// from it (a phone keeps to 1080p and a size per hour, `fit::limits`). False for an
+    /// unknown name.
+    pub fn set_family(name: String) -> bool {
+        reel_domain::compat::set_family(&name).is_some()
+    }
+
     /// Loads the settings from `data_dir` (the app's data directory, empty
     /// when the host has none) and configures the engine from them; JSON
     /// `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`. `languages`: the system's
@@ -620,12 +628,6 @@ impl Sources {
         }
     }
 
-    /// The tallest picture Play picks by itself, in lines (1080 on a phone or a tablet: 4K costs it
-    /// time and space for nothing it can show); 0: any. The viewer can still choose any release.
-    pub fn set_picture_cap(lines: u32) {
-        catalog::set_picture_cap(lines);
-    }
-
     /// Sets the player profile of this device (what it can play): "mpv",
     /// "apple_avplayer", "android_mediaplayer", "tizen". Releases it cannot
     /// play are hidden from searches. False for an unknown name.
@@ -687,10 +689,24 @@ impl Library {
         library::title(&id, show).to_string()
     }
 
-    /// The Save drawer for a season: `{"episodes":[{"key","number","title","size","state",
-    /// "progress","locked"}],"saved","total","size"}`.
-    pub fn plan(show: String, season: u32) -> String {
-        library::plan(&show, season).to_string()
+    /// The Save drawer for a season, with the keys ticked in it (`picked`, a JSON array):
+    /// `{"episodes":[{"key","number","title","size","state","progress","locked"}],"saved",
+    /// "total","size","free","picked":{"count","size","fits"}}` (see `library::plan`).
+    pub fn plan(show: String, season: u32, picked: String) -> String {
+        let picked: Vec<String> = serde_json::from_str(&picked).unwrap_or_default();
+        library::plan(&show, season, &picked).to_string()
+    }
+
+    /// Save on a film's page: `{"size","free","fits","smaller":{"id","quality","source","size"}}`
+    /// (see `library::offer`): the size for its button, and whether it fits the free space.
+    pub fn offer(key: String) -> String {
+        library::offer(&key).to_string()
+    }
+
+    /// Saves film `key` from release `release` (the id `offer`'s `smaller` gives) instead of
+    /// the one Play uses, which stays as it is.
+    pub fn save_release(key: String, release: String) -> bool {
+        library::save_release(&key, &release)
     }
 
     /// The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free",
