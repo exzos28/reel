@@ -13,8 +13,9 @@
 #                                          # (REEL_LIBMPV_APPLE: a local one instead, for a build
 #                                          # not released yet: reel-libmpv's apple/build.sh)
 #   build/libmpv.sh bundle-macos <App.app>   # copies it into Contents/Frameworks, re-signs ad hoc
-#   build/libmpv.sh bundle-ios <App.app>     # the simulator's slice into <App>/Frameworks, re-signs
-#                                            # ad hoc (a device build signs it with the app's identity)
+#   build/libmpv.sh bundle-ios <App.app> [simulator|device]
+#                                            # that slice into <App>/Frameworks; the simulator's is
+#                                            # signed ad hoc, a device's by build/ios-sign.sh after
 set -euo pipefail
 
 REPO="exzos28/reel-libmpv"
@@ -134,16 +135,23 @@ case "${1:-}" in
     codesign --force --sign - --preserve-metadata=entitlements "$app"
     ;;
   bundle-ios)
-    app="${2:?usage: $0 bundle-ios <App.app>}"
+    app="${2:?usage: $0 bundle-ios <App.app> [simulator|device]}"
+    kind="${3:-simulator}"
     xc="$(apple)"
-    slice="$(find "$xc" -maxdepth 1 -type d -name 'ios-*simulator' | head -1)"
-    [ -d "$slice/Libmpv.framework" ] || { echo "libmpv: no simulator slice in $xc" >&2; exit 1; }
+    case "$kind" in
+      simulator) slice="$(find "$xc" -maxdepth 1 -type d -name 'ios-*simulator' | head -1)" ;;
+      device) slice="$xc/ios-arm64" ;;
+      *) echo "libmpv: bundle-ios takes simulator or device, not $kind" >&2; exit 2 ;;
+    esac
+    [ -d "$slice/Libmpv.framework" ] || { echo "libmpv: no $kind slice in $xc" >&2; exit 1; }
     mkdir -p "$app/Frameworks"
     rm -rf "$app/Frameworks/Libmpv.framework"
     cp -R "$slice/Libmpv.framework" "$app/Frameworks/"
     strip -S -x "$app/Frameworks/Libmpv.framework/Libmpv" 2>/dev/null
-    codesign --force --sign - "$app/Frameworks/Libmpv.framework"
-    codesign --force --sign - --preserve-metadata=entitlements "$app"
+    if [ "$kind" = simulator ]; then
+      codesign --force --sign - "$app/Frameworks/Libmpv.framework"
+      codesign --force --sign - --preserve-metadata=entitlements "$app"
+    fi
     ;;
   *) sed -n '2,14p' "$0"; exit 2 ;;
 esac
