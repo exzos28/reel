@@ -237,6 +237,8 @@ languages:
   ja: "Japonés"
   zh: "Chino"
   ko: "Coreano"
+  kk: "Kazajo"
+  uz: "Uzbeko"
 
 series:
   season: "Temporada %{number}"
@@ -370,6 +372,10 @@ settings:
   language:
     title: "Idioma"
     about: "Títulos, descripciones y nombres de episodios; reel también los usa para buscar versiones."
+  audio_language:
+    title: "Idioma del audio"
+    about: "El idioma en que se reproducen las películas que lo tienen. Elegir una pista en el reproductor lo cambia."
+    same: "Igual que el idioma de la app"
   source:
     title: "Fuente de búsqueda"
     about: "Dónde busca reel las versiones de una película o un episodio. Una dirección Torznab y su clave API."

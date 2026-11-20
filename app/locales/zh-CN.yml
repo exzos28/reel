@@ -237,6 +237,8 @@ languages:
   ja: "日语"
   zh: "中文"
   ko: "韩语"
+  kk: "哈萨克语"
+  uz: "乌兹别克语"
 
 series:
   season: "第 %{number} 季"
@@ -370,6 +372,10 @@ settings:
   language:
     title: "语言"
     about: "片名、简介和分集标题的语言；reel 也会用这些片名搜索资源。"
+  audio_language:
+    title: "音频语言"
+    about: "影片有该语言的音轨时就用它播放。在播放器里选择音轨会改变它。"
+    same: "与应用语言相同"
   source:
     title: "搜索源"
     about: "reel 查找电影或剧集资源的地方：一个 Torznab 地址及其 API 密钥。"

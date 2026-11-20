@@ -237,6 +237,8 @@ languages:
   ja: Japanese
   zh: Chinese
   ko: Korean
+  kk: "Kazakh"
+  uz: "Uzbek"
 
 series:
   season: "Season %{number}"
@@ -370,6 +372,11 @@ settings:
   language:
     title: Language
     about: Titles, descriptions and episode names; reel also searches releases by them.
+  # Which audio track plays: a language, or the app's; a pick in the player sets it.
+  audio_language:
+    title: "Audio language"
+    about: "The language films play in when they have it. Picking a track in the player changes it."
+    same: "Same as app language"
   source:
     title: Search source
     about: Where reel looks for releases of a film or an episode. A Torznab address and its API key.

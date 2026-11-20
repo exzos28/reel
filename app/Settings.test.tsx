@@ -16,7 +16,7 @@ test("Settings: Interface, reached with the remote, holds Menu position; Center 
   await app.press("label:Settings");
   expect(app.shows("nav-right")).toBe(true); // the default
   expect(app.texts()).not.toContain("Menu position"); // in Interface now
-  for (let i = 0; i < 4; i++) await app.keyboard.press("down"); // language, buffer, source, stream details
+  for (let i = 0; i < 5; i++) await app.keyboard.press("down"); // language, audio language, buffer, source, stream details
   await app.keyboard.press("enter"); // Interface
   expect(app.texts()).toContain("Menu position");
   expect(app.texts()).toContain("Loading animation");
@@ -135,6 +135,41 @@ test("Settings: the language row opens the languages on the right; OK picks one,
   await app.keyboard.press("enter");
   expect(chosen).toEqual(["ru-RU"]);
   expect(app.shows("choice-panel")).toBe(false);
+});
+
+test("Settings: Audio language says the app's until one is picked; OK on a language asks the core", async () => {
+  const chosen: string[] = [];
+  const app = await openApp({
+    modules: {
+      "app/native": {
+        ...SOURCE,
+        "Settings.load": JSON.stringify({
+          language: "en", bufferMB: 256, bufferChoices: [{ mb: 256, default: true }], streamDetails: false,
+          audioLanguage: "", audioLanguages: ["en", "ru", "kk"],
+        }),
+        "Settings.setAudioLanguage": (code: string) => (chosen.push(code), code),
+      },
+    },
+  });
+  await app.press("label:Settings");
+  expect(app.texts()).toContain("Audio language");
+  expect(app.texts()).toContain("Same as app language"); // the value on its row
+  await app.press("label:Audio language");
+  expect(app.shows("choice-panel")).toBe(true);
+  for (const l of ["English", "Russian", "Kazakh"]) expect(app.texts()).toContain(l);
+  await app.keyboard.press("down"); // from the app's language to English
+  await app.keyboard.press("down"); // to Russian
+  await app.keyboard.press("enter");
+  expect(chosen).toEqual(["ru"]);
+  expect(app.shows("choice-panel")).toBe(false);
+  expect(app.texts()).toContain("Russian"); // the row's value now
+  // Back to the app's language: the first choice.
+  await app.press("label:Audio language");
+  await app.keyboard.press("up");
+  await app.keyboard.press("up");
+  await app.keyboard.press("enter");
+  expect(chosen).toEqual(["ru", ""]);
+  expect(app.texts()).toContain("Same as app language");
 });
 
 test("Settings: Back closes the language panel before it leaves", async () => {
