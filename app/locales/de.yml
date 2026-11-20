@@ -569,7 +569,6 @@ saved:
     saving_left: "%{percent} % · %{have} von %{size} · noch etwa %{time}"
     paused: "Pausiert · %{have} von %{size}"
     waiting: "Startet, wenn die aktuelle Wiedergabe endet"
-    saved: "Gespeichert · %{size}"
     unavailable: "Laufwerk nicht verbunden"
   failed:
     no_source: "Kein Release zum Speichern gefunden"

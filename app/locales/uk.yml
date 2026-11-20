@@ -569,7 +569,6 @@ saved:
     saving_left: "%{percent}% · %{have} з %{size} · залишилося близько %{time}"
     paused: "На паузі · %{have} з %{size}"
     waiting: "Почнеться, коли закінчиться поточний перегляд"
-    saved: "Збережено · %{size}"
     unavailable: "Його диск не підключено"
   failed:
     no_source: "Не знайшлося роздачі для збереження"

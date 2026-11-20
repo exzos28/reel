@@ -569,7 +569,6 @@ saved:
     saving_left: "%{percent}% · %{have}/%{size} · 剩余约 %{time}"
     paused: "已暂停 · %{have}/%{size}"
     waiting: "当前观看的影片停止后开始"
-    saved: "已保存 · %{size}"
     unavailable: "存储磁盘未连接"
   failed:
     no_source: "找不到可保存的资源"

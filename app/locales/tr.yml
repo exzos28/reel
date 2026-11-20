@@ -569,7 +569,6 @@ saved:
     saving_left: "%{percent}% · %{have}/%{size} · yaklaşık %{time} kaldı"
     paused: "Duraklatıldı · %{have}/%{size}"
     waiting: "İzlediğin film durunca başlar"
-    saved: "Kaydedildi · %{size}"
     unavailable: "Diski bağlı değil"
   failed:
     no_source: "Kaydedilecek sürüm bulunamadı"

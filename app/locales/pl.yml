@@ -569,7 +569,6 @@ saved:
     saving_left: "%{percent}% · %{have} z %{size} · zostało około %{time}"
     paused: "Wstrzymane · %{have} z %{size}"
     waiting: "Zacznie się, gdy skończy się bieżące oglądanie"
-    saved: "Zapisano · %{size}"
     unavailable: "Jego dysk nie jest podłączony"
   failed:
     no_source: "Nie znaleziono wydania do zapisania"

@@ -569,7 +569,6 @@ saved:
     saving_left: "%{percent}% · %{have}/%{size} · 残り約%{time}"
     paused: "一時停止中 · %{have}/%{size}"
     waiting: "視聴中の映画を止めると開始します"
-    saved: "保存済み · %{size}"
     unavailable: "保存先のディスクが接続されていません"
   failed:
     no_source: "保存できるリリースが見つかりません"

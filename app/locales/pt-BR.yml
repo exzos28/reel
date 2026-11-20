@@ -569,7 +569,6 @@ saved:
     saving_left: "%{percent}% · %{have} de %{size} · cerca de %{time} restantes"
     paused: "Pausado · %{have} de %{size}"
     waiting: "Começa quando você parar de assistir"
-    saved: "Salvo · %{size}"
     unavailable: "O disco dele não está conectado"
   failed:
     no_source: "Nenhuma versão encontrada para salvar"

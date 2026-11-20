@@ -558,7 +558,6 @@ saved:
     saving_left: "%{percent}% · %{have} из %{size} · осталось около %{time}"
     paused: "На паузе · %{have} из %{size}"
     waiting: Начнётся, когда закончится текущий просмотр
-    saved: "Сохранено · %{size}"
     unavailable: Его диск не подключён
   failed:
     no_source: Не нашлось раздачи для сохранения

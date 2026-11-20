@@ -572,7 +572,6 @@ saved:
     saving_left: "%{percent}% · %{have} of %{size} · about %{time} left"
     paused: "Paused · %{have} of %{size}"
     waiting: Starts when the film you watch stops
-    saved: "Saved · %{size}"
     unavailable: Its disk is not connected
   failed:
     no_source: No release found to save
