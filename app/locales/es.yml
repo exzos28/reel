@@ -72,6 +72,7 @@ title:
   add_to_list_spoken: "Añadir a Mi lista"
   remove_from_list_spoken: "Quitar de Mi lista"
   trailer: "Tráiler"
+  other_releases: "Otras versiones"
   save: "Guardar"
   saving: "Guardando %{percent} %"
   saving_some: "Guardando %{count} de %{total}"

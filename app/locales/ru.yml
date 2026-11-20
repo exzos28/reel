@@ -72,6 +72,7 @@ title:
   add_to_list_spoken: Добавить в «Буду смотреть»
   remove_from_list_spoken: Убрать из «Буду смотреть»
   trailer: Трейлер
+  other_releases: Другие раздачи
   save: Сохранить
   saving: "Сохраняется %{percent}%"
   saving_some: "Сохраняется %{count} из %{total}"

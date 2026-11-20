@@ -1,10 +1,10 @@
-// A hero's actions: the white Play, the grey list toggle and Trailer, and
-// the release button on its own line under them.
-import { Text, View, type ViewStyle } from "nsh";
+// A hero's actions: the white Play (on a title's page split, the release it plays inside it),
+// the grey list toggle, Save and Trailer.
+import { Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { Button } from "../kit/Button";
 import { row } from "../kit/shape";
-import { cs, targetSlop, ts, u } from "../theme";
+import { cs, font, radius, targetSlop, ts, u } from "../theme";
 import playIcon from "../icons/play.svg";
 import plusIcon from "../icons/plus.svg";
 import checkIcon from "../icons/check.svg";
@@ -12,16 +12,18 @@ import chevronIcon from "../icons/chevron.svg";
 import trailerIcon from "../icons/trailer.svg";
 import savedIcon from "../icons/saved.svg";
 import type { SaveState } from "../library";
+import type { releaseLine } from "../catalog";
+import { ShortRelease } from "./HeroMeta";
 import { Icon } from "../kit/Icon";
-import { rounded } from "../kit/shape";
 import { alpha, colors, focusRing } from "../theme";
+import { labelText, oneLine } from "../kit/text";
 
 /** The row they sit in; `wrap`: with the release line beside them. */
 export const actionsRow = (wrap: boolean): ViewStyle =>
   wrap ? { ...row(u(16)), flexWrap: "wrap", marginTop: u(12) } : { flexDirection: "row", gap: u(16), marginTop: u(12) };
 
-export function PlayButton(props: { label: () => string; focused: () => boolean; onPress: () => void; disabled?: () => boolean }) {
-  return <Button kind="primary" icon={() => playIcon} label={props.label} focused={props.focused} onPress={props.onPress} disabled={props.disabled} />;
+export function PlayButton(props: { label: () => string; focused: () => boolean; onPress: () => void; disabled?: () => boolean; height?: number; grow?: boolean }) {
+  return <Button kind="primary" icon={() => playIcon} label={props.label} focused={props.focused} onPress={props.onPress} disabled={props.disabled} height={props.height} grow={props.grow} />;
 }
 
 /** "My list" / "Add to list" (`addKey`), "In my list" with a check once added. */
@@ -38,37 +40,106 @@ export function ListButton(props: { inList: () => boolean; addKey: string; focus
 }
 
 /** "Trailer": opens the title's trailer outside the app. */
-export function TrailerButton(props: { focused: () => boolean; onPress: () => void }) {
-  return <Button kind="secondary" icon={() => trailerIcon} label={() => t("title.trailer")} focused={props.focused} onPress={props.onPress} />;
+export function TrailerButton(props: { focused: () => boolean; onPress: () => void; height?: number; grow?: boolean }) {
+  return <Button kind="secondary" icon={() => trailerIcon} label={() => t("title.trailer")} focused={props.focused} onPress={props.onPress} height={props.height} grow={props.grow} />;
 }
 
-const releaseButtonStyle = (focused: boolean): ViewStyle => ({
-  ...row(u(14)),
-  height: cs(60),
-  marginTop: u(16),
-  paddingHorizontal: cs(24),
-  ...rounded(),
-  backgroundColor: alpha(colors.raise(), 0.7),
-  ...focusRing(focused, "row"),
+/** The split Play's height: two lines in the white part (TV pixels); the buttons beside it and
+ * Play without a release keep it. */
+export const SPLIT_HEIGHT = 84;
+const SPLIT = SPLIT_HEIGHT;
+const playEdge = (side: "left" | "right"): ViewStyle =>
+  side === "left"
+    ? { borderTopLeftRadius: radius(), borderBottomLeftRadius: radius(), borderCurve: "continuous" }
+    : { borderTopRightRadius: radius(), borderBottomRightRadius: radius(), borderCurve: "continuous" };
+const splitStyle = (stretch: boolean): ViewStyle => ({
+  flexDirection: "row",
+  alignItems: "stretch",
+  height: cs(SPLIT),
+  ...(stretch ? { alignSelf: "stretch" } : {}),
+});
+const playPartStyle = (focused: boolean, stretch: boolean): ViewStyle => ({
+  ...row(u(16)),
+  flexGrow: stretch ? 1 : 0,
+  flexShrink: 1,
+  minWidth: stretch ? 0 : cs(480),
+  maxWidth: stretch ? undefined : cs(760),
+  paddingHorizontal: cs(26),
+  backgroundColor: colors.snow(),
+  ...playEdge("left"),
+  ...focusRing(focused),
+});
+const morePartStyle = (focused: boolean): ViewStyle => ({
+  width: cs(76),
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: colors.snow(),
+  ...playEdge("right"),
+  ...focusRing(focused),
+});
+/** The seam between the two parts: a thin dark line, inset top and bottom. */
+const seamStyle = (): ViewStyle => ({ width: 1, backgroundColor: colors.snow(), paddingVertical: cs(16) });
+const seamLine = (): ViewStyle => ({ flexGrow: 1, backgroundColor: alpha(colors.ink(), 0.18) });
+const playLabelStyle = (): TextStyle => ({ ...labelText(colors.ink()), fontSize: ts(26), fontWeight: 600 });
+const subStyle = (): TextStyle => ({ fontFamily: font, fontSize: ts(20), color: alpha(colors.ink(), 0.66) });
+/** The watched part along the white part's bottom. */
+const trackStyle = (): ViewStyle => ({ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.max(2, cs(4)), backgroundColor: alpha(colors.ink(), 0.12), borderBottomLeftRadius: radius() });
+const watchedStyle = (part: number): ViewStyle => ({ width: `${Math.round(Math.min(1, part) * 100)}%`, height: "100%", borderBottomLeftRadius: radius(), backgroundColor: colors.ink() });
+/** The release line while it is coming: pulsing, as the release list's skeleton does. */
+const pendingStyle = (): TextStyle => ({
+  ...subStyle(),
+  animationName: "pulse",
+  animationDuration: 1400,
+  animationIterationCount: "infinite",
+  animationFrameRate: 30,
 });
 
-/** The release Play uses, as a button that opens the list of the others:
- * "1080p WEB · 4.7 GB · 125 sharing ▾" (`name` bold, then `rest`). */
-export function ReleaseButton(props: { name: () => string; rest: () => string; focused: () => boolean; onPress: () => void }) {
+/** Play with the release it plays inside it (concept B): the white part says "Resume 14:30" and
+ * under it "1080p BluRay · 25 GB · 22 people sharing" (`release`; while it is coming,
+ * `pending`'s words, pulsing), the watched part along its bottom (`progress`); past a seam, ⌄
+ * opens the other releases. Each part is its own focus stop. `stretch`: as wide as its row. */
+export function SplitPlay(props: {
+  label: () => string;
+  release: () => ReturnType<typeof releaseLine> | null;
+  pending: () => string | null;
+  progress: () => number;
+  playFocused: () => boolean;
+  moreFocused: () => boolean;
+  onPlay: () => void;
+  onMore: () => void;
+  stretch: boolean;
+}) {
   return (
-    <View role="button" hitSlop={targetSlop(cs(60))} onPress={props.onPress} hoverStyle={{ backgroundColor: colors.raise() }} style={releaseButtonStyle(props.focused())}>
-      <Text style={{ fontSize: ts(24), color: colors.ash() }}>
-        <Text style={{ fontWeight: 600, color: colors.snow() }}>{props.name()}</Text>
-        {props.rest() ? ` · ${props.rest()}` : ""}
-      </Text>
-      <Icon src={() => chevronIcon} size={22} color={() => colors.snow()} />
+    <View style={splitStyle(props.stretch)}>
+      <View role="button" accessibilityLabel={props.label()} hitSlop={targetSlop(cs(SPLIT))} onPress={props.onPlay} hoverStyle={{ opacity: 0.9 }} style={playPartStyle(props.playFocused(), props.stretch)}>
+        <Icon src={() => playIcon} size={26} color={() => colors.ink()} />
+        <View style={{ flexShrink: 1, minWidth: 0, gap: u(2) }}>
+          <Text style={{ ...playLabelStyle(), ...oneLine }}>{props.label()}</Text>
+          <If when={props.release()} else={<Text testID="release-row-skeleton" style={{ ...pendingStyle(), ...oneLine }}>{props.pending() ?? ""}</Text>}>
+            <ShortRelease line={() => props.release()!} style={subStyle} />
+          </If>
+        </View>
+        <If when={props.progress() > 0 && props.progress() < 1}>
+          <View style={trackStyle()}>
+            <View style={watchedStyle(props.progress())} />
+          </View>
+        </If>
+      </View>
+      <View style={seamStyle()}>
+        <View style={seamLine()} />
+      </View>
+      <View role="button" accessibilityLabel={t("title.other_releases")} hitSlop={targetSlop(cs(76))} onPress={props.onMore} hoverStyle={{ opacity: 0.9 }} style={morePartStyle(props.moreFocused())}>
+        <Icon src={() => chevronIcon} size={26} color={() => colors.ink()} />
+      </View>
     </View>
   );
 }
 
+const SAVING = new Set(["saving", "searching", "resolving", "waiting"]);
+
 /** Save (design/offline-downloads.md): "Save", then what is saved of the title: "Saving 34%",
  * a show's "Saving 2 of 5", "Paused", "Saved" with a check. */
-export function SaveButton(props: { state: () => SaveState; show: () => boolean; focused: () => boolean; onPress: () => void; disabled?: () => boolean }) {
+export function SaveButton(props: { state: () => SaveState; show: () => boolean; focused: () => boolean; onPress: () => void; disabled?: () => boolean; height?: number; grow?: boolean }) {
   const s = props.state;
   const label = () => {
     switch (s().state) {
@@ -89,5 +160,19 @@ export function SaveButton(props: { state: () => SaveState; show: () => boolean;
         return t("title.save");
     }
   };
-  return <Button kind="secondary" icon={() => (s().state === "saved" ? checkIcon : savedIcon)} label={label} focused={props.focused} onPress={props.onPress} disabled={props.disabled} />;
+  /** A film's part saved, while it saves (a show's count says how it goes). */
+  const fill = () => (!props.show() && SAVING.has(s().state) ? s().progress : null);
+  return (
+    <Button
+      kind="secondary"
+      icon={() => (s().state === "saved" ? checkIcon : savedIcon)}
+      label={label}
+      focused={props.focused}
+      onPress={props.onPress}
+      disabled={props.disabled}
+      height={props.height}
+      grow={props.grow}
+      fill={fill}
+    />
+  );
 }

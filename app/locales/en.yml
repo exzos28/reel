@@ -72,6 +72,7 @@ title:
   add_to_list_spoken: Add to Watchlist
   remove_from_list_spoken: Remove from Watchlist
   trailer: Trailer
+  other_releases: Other releases
   save: Save
   saving: "Saving %{percent}%"
   saving_some: "Saving %{count} of %{total}"

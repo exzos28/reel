@@ -4,8 +4,12 @@ import { Text, View, type TextStyle } from "nsh";
 import { source } from "../preferences";
 import { badgeText, lengthText, releaseLine, scoreSource, votesText, yearsText, type Score, type Summary } from "../catalog";
 import { Badge } from "../kit/Badge";
+import { Icon } from "../kit/Icon";
+import { oneLine } from "../kit/text";
 import { row } from "../kit/shape";
-import { colors, ts, type, u } from "../theme";
+import { caps } from "../platform";
+import { colors, iconPt, ts, type, u } from "../theme";
+import personIcon from "../icons/person.svg";
 
 /** 24, a step under the about's 26: the two do not compete. */
 const metaLabel = (color: string, fontWeight?: number): TextStyle => ({
@@ -53,18 +57,46 @@ export function MetaLine(props: { item: () => Summary }) {
   );
 }
 
-/** The release Play uses: its name bold, then size, people sharing, start. */
+/** A release line in short: "1080p WEB · 23 GB · 650 👤" (the people sharing as a number and a
+ * person icon), one line, its words cut with an ellipsis before the number does; a screen reader
+ * says it whole (`line().spoken`). `name`: the name's colour and weight (bold over a still). */
+export function ShortRelease(props: { line: () => ReturnType<typeof releaseLine>; style: () => TextStyle; name?: TextStyle }) {
+  const lead = () => [props.line().size, props.line().fast].filter(Boolean).join(" · ");
+  const size = () => (props.style().fontSize as number) ?? ts(22);
+  return (
+    <View accessibilityLabel={props.line().spoken} style={{ ...row(u(6)), flexShrink: 1, minWidth: 0 }}>
+      <Text style={{ ...props.style(), ...oneLine, flexShrink: 1 }}>
+        <Text style={props.name ?? {}}>{props.line().name}</Text>
+        {` · ${lead()} · ${props.line().peers}`}
+      </Text>
+      <Icon src={() => personIcon} size={iconPt(size() * 0.9)} color={() => props.style().color as string} />
+    </View>
+  );
+}
+
+/** The release Play uses: its name bold, then size, people sharing, start (on touch in short,
+ * `ShortRelease`, so it keeps to one line). */
 export function ReleaseText(props: { item: () => Summary; withStart?: boolean; size?: number }) {
   const line = () => releaseLine(props.item().release!, props.withStart ?? true);
   const style = () => ({ ...type.meta(), fontSize: ts(props.size ?? 22), color: colors.ash() });
+  const name: TextStyle = { fontWeight: 500, color: colors.snow() };
   return (
     // With a source its line is kept while the release is still searched, so the buttons under it
     // do not move when it comes in.
     <If when={props.item().release} else={<If when={source().url !== ""}><Text style={style()}>{" "}</Text></If>}>
-      <Text style={style()}>
-        <Text style={{ fontWeight: 500, color: colors.snow() }}>{line().name}</Text>
-        {` · ${line().rest}`}
-      </Text>
+      <If
+        when={caps.touch}
+        else={
+          <Text style={style()}>
+            <Text style={name}>{line().name}</Text>
+            {` · ${line().rest}`}
+          </Text>
+        }
+      >
+        <View style={{ flexDirection: "row" }}>
+          <ShortRelease line={line} style={style} name={name} />
+        </View>
+      </If>
     </If>
   );
 }

@@ -72,6 +72,7 @@ title:
   add_to_list_spoken: "Listeme ekle"
   remove_from_list_spoken: "Listemden kaldır"
   trailer: "Fragman"
+  other_releases: "Diğer sürümler"
   save: "Kaydet"
   saving: "Kaydediliyor %{percent}%"
   saving_some: "Kaydediliyor: %{count}/%{total}"

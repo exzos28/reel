@@ -11,7 +11,7 @@ const app_ = (native: Native = NATIVE) => openApp({ modules: { "app/native": nat
 async function inception(native: Native = NATIVE) {
   const app = await app_(native);
   await app.keyboard.press("enter");
-  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing"); // the release button beside Play
+  expect(app.shows("label:1080p BluRay · 8 GB · 412 people sharing")).toBe(true); // the release, inside Play
   return app;
 }
 
@@ -50,7 +50,7 @@ test("a series keeps its episodes right under the hero and names its creator, st
   expect(texts).toContain("Frieren: Beyond Journey's End");
 });
 
-test("the release button opens the releases in a panel; OK picks one and closes it; Back closes it first", async () => {
+test("⌄ in Play opens the releases in a panel; OK picks one and closes it; Back closes it first", async () => {
   const chosen: number[] = [];
   const app = await inception({
     ...NATIVE,
@@ -60,14 +60,14 @@ test("the release button opens the releases in a panel; OK picks one and closes 
     },
   });
   expect(app.texts()).not.toContain("Releases");
-  await app.keyboard.press("down"); // the release button, its own row under the actions
+  await app.keyboard.press("right"); // ⌄, the other releases: the stop after Play
   await app.keyboard.press("enter");
   for (const s of ["Releases", "3 found, the best of each quality first"]) expect(app.texts()).toContain(s);
   for (const s of ["Starts fast", "Needs 58 Mbit/s internet"]) expect(app.texts()).not.toContain(s); // no note column
   await app.keyboard.press("escape"); // closes the panel, stays on the film
   expect(app.texts()).not.toContain("3 found, the best of each quality first");
   expect(app.texts()).toContain("More like this");
-  await app.keyboard.press("enter"); // the focus is back on the button: opens it again, on the one Play uses (1080p)
+  await app.keyboard.press("enter"); // the focus is back on ⌄: opens it again, on the one Play uses (1080p)
   await app.keyboard.press("down"); // 720p
   await app.keyboard.press("enter");
   expect(chosen).toEqual([1]);
@@ -81,29 +81,28 @@ test("Trailer shows only when the title has one", async () => {
   expect((await inception()).texts()).not.toContain("Trailer");
   const app = await inception(withTrailer);
   const texts = app.texts();
-  expect(texts.indexOf("Trailer")).toBeLessThan(texts.indexOf("1080p BluRay · 8 GB · 412 people sharing"));
+  expect(texts.indexOf("Resume 41:12")).toBeLessThan(texts.indexOf("Trailer")); // in the row after Play
   // The Watchlist is the page's header action, not one of the hero's.
   expect(texts).toContain("Watchlist");
 });
 
-test("Left and Right stay in the actions row; the release button is the row under it, Up returns to the action left", async () => {
+test("Left and Right walk one line: Play, ⌄, Trailer; Down from any of them goes on to the cast", async () => {
   const app = await inception(withTrailer);
+  await app.keyboard.press("right"); // ⌄
   await app.keyboard.press("right"); // Trailer
-  await app.keyboard.press("right"); // stays on it: the row ends there, the release button is not in it
+  await app.keyboard.press("right"); // stays on it: the row ends there
   await app.keyboard.press("enter");
   expect(app.openedUrls()).toEqual([TRAILER]);
   expect(app.texts()).not.toContain("Releases");
-  await app.keyboard.press("down"); // the release row
-  await app.keyboard.press("right"); // nothing beside it
+  await app.keyboard.press("left"); // ⌄
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("3 found, the best of each quality first");
-  await app.keyboard.press("escape"); // closes the panel, back on the release button
+  await app.keyboard.press("escape"); // closes the panel, back on ⌄
   expect(app.texts()).not.toContain("3 found, the best of each quality first");
-  await app.keyboard.press("up"); // back on Trailer, the action the focus came from
+  await app.keyboard.press("right"); // Trailer, beside it
   await app.keyboard.press("enter");
   expect(app.openedUrls()).toEqual([TRAILER, TRAILER]);
-  await app.keyboard.press("down");
-  await app.keyboard.press("down"); // past the release row: the next section, the cast
+  await app.keyboard.press("down"); // no release row under the actions any more: the cast
   await app.keyboard.press("enter"); // nothing opens on a person
   expect(app.texts()).not.toContain("3 found, the best of each quality first");
   expect(app.openedUrls()).toEqual([TRAILER, TRAILER]);
@@ -112,6 +111,7 @@ test("Left and Right stay in the actions row; the release button is the row unde
 test("Up from the actions reaches the Watchlist in the header; OK toggles it; Down returns to the action left", async () => {
   const toggled: string[] = [];
   const app = await inception({ ...withTrailer, "Catalog.toggleList": (id: string) => void toggled.push(id) });
+  await app.keyboard.press("right"); // ⌄
   await app.keyboard.press("right"); // Trailer
   await app.keyboard.press("up"); // the Watchlist
   await app.keyboard.press("left"); // stays: nothing beside it
@@ -138,7 +138,6 @@ test("the remote goes from the actions to the cast, then More like this, which o
       return true;
     },
   });
-  await app.keyboard.press("down"); // the release button
   await app.keyboard.press("down"); // the cast
   await app.keyboard.press("right");
   await app.keyboard.press("enter"); // nothing opens on a person
@@ -148,7 +147,6 @@ test("the remote goes from the actions to the cast, then More like this, which o
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("More like this"); // back on Inception, not Home
   await app.keyboard.press("up"); // the cast
-  await app.keyboard.press("up"); // the release button
   await app.keyboard.press("up"); // the actions, on Play
   expect(chosen).toEqual([]);
   await app.keyboard.press("escape");
@@ -176,20 +174,21 @@ test("a person without a photo shows their initials; a click on a similar title 
 
 const titleWith = (over: object) => ({ ...NATIVE, "Catalog.title": JSON.stringify({ ...JSON.parse(NATIVE["Catalog.title"] as string), ...over }) });
 
-test("while the release is not known, its row is a skeleton the remote passes over", async () => {
+test("while the release is not known, Play says it is searched under its label; Down goes on to the cast", async () => {
   const app = await app_(titleWith({ release: null, releases: [], releasesState: "searching" }));
   await app.keyboard.press("enter"); // Inception
   expect(app.shows("release-row-skeleton")).toBe(true);
-  await app.keyboard.press("down"); // past the skeleton: the cast
+  await app.keyboard.press("down"); // the cast
   await app.keyboard.press("enter"); // nothing opens on a person
   expect(app.texts()).not.toContain("Releases");
 });
 
-test("with no release at all, the row says why in the button's place", async () => {
+test("with no release at all, Play is plain and a line under it says why", async () => {
   const app = await app_(titleWith({ release: null, playable: false, releases: [], releasesState: "no_source" }));
   await app.keyboard.press("enter");
   expect(app.shows("release-row-skeleton")).toBe(false);
   expect(app.texts()).toContain("Add a search source in Settings to find releases.");
+  expect(app.shows("label:Other releases")).toBe(false);
 });
 
 test("touch, with no search source: Play opens the drawer that adds one, not the player", async () => {
@@ -221,4 +220,17 @@ test("with a source that did not answer, Play opens the drawer to fix it", async
   await app.press("label:Resume 41:12");
   expect(app.shows("source-panel")).toBe(true);
   expect(app.texts()).toContain("Your search source did not answer");
+});
+
+test("phone: the release sits in Play as one short line (the people sharing a number); ⌄ opens the releases; the Watchlist is a heart", async () => {
+  const native = titleWith({ trailer: TRAILER });
+  const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412");
+  expect(app.texts()).not.toContain("1080p BluRay · 8 GB · 412 people sharing");
+  expect(app.shows("label:1080p BluRay · 8 GB · 412 people sharing")).toBe(true); // said whole
+  expect(app.shows("label:Trailer")).toBe(true);
+  await app.press("label:Other releases");
+  expect(app.texts()).toContain("3 found, the best of each quality first");
 });

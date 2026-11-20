@@ -72,6 +72,7 @@ title:
   add_to_list_spoken: "Zur Merkliste hinzufügen"
   remove_from_list_spoken: "Von der Merkliste entfernen"
   trailer: "Trailer"
+  other_releases: "Andere Releases"
   save: "Speichern"
   saving: "Speichert %{percent} %"
   saving_some: "Speichert %{count} von %{total}"
