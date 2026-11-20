@@ -115,14 +115,12 @@ export function BrowseScreen(props: { page: Page }) {
   const page = scroller({ anchor: (viewport) => viewport / 3, memory: `browse:${props.page}` });
 
   showNav(() => (zone() === "nav" ? nav() : null));
-  useRootBack({
-    ctl: page,
-    onNav: () => zone() === "nav",
-    toNav: () => {
-      zone.set("nav");
-      nav.set(NAV.findIndex((n) => n.id === props.page));
-    },
-  });
+  /** The focus to the nav, on this page's item (wherever the nav was left). */
+  const toNav = () => {
+    zone.set("nav");
+    nav.set(NAV.findIndex((n) => n.id === props.page));
+  };
+  useRootBack({ ctl: page, onNav: () => zone() === "nav", toNav });
   useZones(
     zone,
     {
@@ -135,7 +133,7 @@ export function BrowseScreen(props: { page: Page }) {
       trending: {
         left: () => trend.set(clamp(trend() - 1, data().trending.length - 1)),
         right: () => trend.set(clamp(trend() + 1, data().trending.length - 1)),
-        up: () => zone.set("nav"),
+        up: toNav,
         down: () => (groups().length > 0 ? zone.set("filters") : toGrid()),
         enter: () => openTitle(data().trending[trend()].id),
       },
