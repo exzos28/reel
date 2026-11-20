@@ -123,7 +123,11 @@ define_class!(
         #[unsafe(method(foreground:))]
         fn foreground(&self, _n: &NSNotification) {
             if let Some(inner) = self.ivars().upgrade() {
-                inner.player.borrow().set_property("vid", "auto");
+                let player = inner.player.borrow();
+                // Its video comes back from what plays (a seek in its cache), not the stream:
+                // no "waiting for the stream" for it.
+                player.own_wait();
+                player.set_property("vid", "auto");
             }
         }
     }
@@ -180,6 +184,7 @@ impl Inner {
             // ("output image buffer is null", no picture on a device): start decoding again from
             // the keyframe at or before here (what plays is in mpv's cache already).
             if let Some(at) = player.property("time-pos").and_then(|t| t.parse::<f64>().ok()) {
+                player.own_wait();
                 player.command_args(&["seek", &format!("{at}"), "absolute+keyframes"]);
             }
         }

@@ -33,6 +33,40 @@ struct Shared {
     interval_ms: AtomicU64,
     /// The end was reached (mpv keeps the last frame: `keep-open`).
     at_end: AtomicBool,
+    /// A wait of the player's own is on (`Player::own_wait`), not the stream's.
+    own_wait: std::sync::Mutex<OwnWait>,
+}
+
+/// How long a wait of the player's own (its video back after the background, its output started
+/// again) is not reported as buffering: longer, it is reported after all.
+const OWN_WAIT: Duration = Duration::from_secs(8);
+
+/// A wait the player makes itself: mpv seeks to bring its video back (the video track after
+/// the background, a new output after a turn) and decodes from a keyframe, with what plays
+/// already in its cache or on the disk. That is no wait for the stream, which `buffer` says.
+#[derive(Default)]
+struct OwnWait {
+    until: Option<Instant>,
+    /// mpv began the wait (seeking or paused for its cache) since it was announced.
+    began: bool,
+}
+
+impl OwnWait {
+    fn start(&mut self, now: Instant) {
+        *self = OwnWait { until: Some(now + OWN_WAIT), began: false };
+    }
+
+    /// Whether mpv's wait now (`waiting`) is the player's own: hidden from the view. It ends once
+    /// mpv waited and stopped, at a seek of the viewer's, or after `OWN_WAIT`.
+    fn hides(&mut self, waiting: bool, now: Instant) -> bool {
+        let Some(until) = self.until else { return false };
+        if now >= until || (self.began && !waiting) {
+            self.until = None;
+            return false;
+        }
+        self.began |= waiting;
+        true
+    }
 }
 
 pub struct Player {
@@ -200,7 +234,12 @@ impl Player {
         for (i, (name, format)) in OBSERVED.iter().enumerate() {
             unsafe { (lib.observe_property)(handle, i as u64 + 1, cstr(name).as_ptr(), *format) };
         }
-        let shared = Arc::new(Shared { stop: AtomicBool::new(false), interval_ms: AtomicU64::new(250), at_end: AtomicBool::new(false) });
+        let shared = Arc::new(Shared {
+            stop: AtomicBool::new(false),
+            interval_ms: AtomicU64::new(250),
+            at_end: AtomicBool::new(false),
+            own_wait: Default::default(),
+        });
         let thread = {
             let shared = shared.clone();
             std::thread::Builder::new()
@@ -238,6 +277,13 @@ impl Player {
         let v = unsafe { CStr::from_ptr(p) }.to_string_lossy().into_owned();
         unsafe { (self.lib.free)(p.cast()) };
         Some(v)
+    }
+
+    /// What mpv waits for next (its video back after the background, a new output) is the
+    /// player's own, with the film at hand: not reported as buffering (`OWN_WAIT`).
+    #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
+    pub fn own_wait(&self) {
+        self.shared.own_wait.lock().unwrap().start(Instant::now());
     }
 
     /// Runs an mpv command (for the platform's view).
@@ -341,6 +387,8 @@ impl Player {
         if name == "seek" {
             let s = args.get("seconds").and_then(Value::as_f64).or_else(|| args.as_f64()).unwrap_or(0.0).max(0.0);
             self.shared.at_end.store(false, Ordering::Relaxed);
+            // The viewer's seek waits for the stream: it shows.
+            self.shared.own_wait.lock().unwrap().until = None;
             self.command(&["seek", &format!("{s}"), "absolute"]);
         }
     }
@@ -404,6 +452,14 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
         if shared.stop.load(Ordering::Relaxed) {
             return;
         }
+        // Waiting for data (or a seek), unless the wait is the player's own (`OwnWait`): looked
+        // at after every event and twice a second, so an own wait that lasts is told in time.
+        let waiting = cache_wait || seeking;
+        let now = waiting && !shared.own_wait.lock().unwrap().hides(waiting, Instant::now());
+        if now != buffering {
+            buffering = now;
+            emit("buffer", json!({ "isBuffering": now }));
+        }
         let event = unsafe { &*(lib.wait_event)(raw.0, 0.5) };
         match event.event_id {
             ffi::EVENT_NONE => {}
@@ -465,11 +521,6 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
                         } else {
                             cache_wait = on;
                         }
-                        let now = cache_wait || seeking;
-                        if now != buffering {
-                            buffering = now;
-                            emit("buffer", json!({ "isBuffering": now }));
-                        }
                     }
                     (b"eof-reached", ffi::FORMAT_FLAG) => {
                         if unsafe { *(p.data as *const c_int) } != 0 && !shared.at_end.swap(true, Ordering::Relaxed) {
@@ -517,4 +568,30 @@ fn get_f64(lib: &Lib, raw: Raw, name: &str) -> Option<f64> {
     let v = unsafe { CStr::from_ptr(p) }.to_str().ok().and_then(|s| s.parse().ok());
     unsafe { (lib.free)(p.cast()) };
     v
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_own_wait_is_hidden_until_it_is_over() {
+        let now = Instant::now();
+        let mut w = OwnWait::default();
+        assert!(!w.hides(true, now), "no own wait: mpv's waits show");
+        w.start(now);
+        assert!(w.hides(false, now), "announced, before mpv waits");
+        assert!(w.hides(true, now + Duration::from_secs(1)), "mpv seeks to bring its video back");
+        assert!(!w.hides(false, now + Duration::from_secs(2)), "the wait is over");
+        assert!(!w.hides(true, now + Duration::from_secs(3)), "a later wait is the stream's");
+    }
+
+    #[test]
+    fn an_own_wait_that_lasts_is_told_after_all() {
+        let now = Instant::now();
+        let mut w = OwnWait::default();
+        w.start(now);
+        assert!(w.hides(true, now + Duration::from_secs(1)));
+        assert!(!w.hides(true, now + OWN_WAIT), "still waiting after OWN_WAIT: buffering after all");
+    }
 }
