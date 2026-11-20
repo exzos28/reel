@@ -4,7 +4,8 @@
 // change the season, Back closes it. The seasons scroll sideways in one row, the episodes up and
 // down, each following where the keys are. On a phone it is a sheet (`Drawer`: from the bottom,
 // at the right held sideways) with its own ✕ and the season and its count as its title, so it
-// never covers the player's ✕ and title. Each row has the episode's number in a column of its own.
+// never covers the player's ✕ and title; elsewhere on touch the panel has a ✕ of its own. The season
+// shown is a lighter pill with a check. Each row has the episode's number in a column of its own.
 import { computed, Image, keymap, signal, Text, View, type JSX, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { episodeCode, episodes, runtime, shortDate, title, type Episode, type Summary } from "./catalog";
@@ -13,8 +14,14 @@ import { Drawer } from "./layout/Drawer";
 import { frame } from "./layout/chrome";
 import { byKeys } from "./focus/keys";
 import { onBack } from "./nav";
-import { alpha, colors, focusRing, font, radius, ringRoom, safe, showFocus, ts, type, u } from "./theme";
+import { alpha, colors, font, iconPt, radius, ringRoom, safe, selectedFill, showFocus, targetSlop, ts, type, u } from "./theme";
 import { Pressable } from "./kit/Pressable";
+import { Icon } from "./kit/Icon";
+import { pillStyle } from "./kit/Pill";
+import { row } from "./kit/shape";
+import { caps } from "./platform";
+import checkIcon from "./icons/check.svg";
+import plusIcon from "./icons/plus.svg";
 
 const panelStyle = (): ViewStyle => ({
   // Over the controls (the scrubber, the times, the volume), which come later in the player.
@@ -24,9 +31,12 @@ const panelStyle = (): ViewStyle => ({
 /** The seasons' row: room for the focus ring around a pill, the panel's edge under it. */
 const seasonsRowStyle = (): ViewStyle => ({ flexDirection: "row", gap: u(10), padding: ringRoom() });
 const seasonsStyle = (): ViewStyle => ({ marginHorizontal: -ringRoom(), marginVertical: -ringRoom() });
-const seasonStyle = (on: boolean, lit: boolean): ViewStyle => ({
-  height: u(52), paddingHorizontal: u(22), borderRadius: u(26), alignItems: "center", justifyContent: "center",
-  backgroundColor: on ? colors.snow() : colors.raise(), ...focusRing(lit),
+/** The season shown: a lighter fill and a check (selected), never the focus's white. */
+const seasonStyle = (on: boolean, lit: boolean): ViewStyle => pillStyle(selectedFill(on), lit, 22);
+/** The panel's head: its name, and on touch its ✕ (no Back key on screen; a tap beside it closes it too). */
+const headStyle = (): ViewStyle => ({ ...row(u(16)), justifyContent: "space-between", minHeight: u(56) });
+const closeStyle = (): ViewStyle => ({
+  width: u(56), height: u(56), borderRadius: u(28), alignItems: "center", justifyContent: "center", backgroundColor: colors.raise(),
 });
 const rowStyle = (current: boolean, lit: boolean, dim: boolean): ViewStyle => ({
   flexDirection: "row", alignItems: "center", gap: u(18), padding: u(10), borderRadius: radius(), borderCurve: "continuous",
@@ -100,7 +110,10 @@ export function PlayerEpisodes(props: {
             {(n) => (
               <Pressable haptic={season() !== n()} ref={seasonRow.follow(() => season() === n(), "nearest")} role="tab" accessibilityLabel={t("series.season", { number: n() })} accessibilityState={{ selected: season() === n() }}
                 onPress={() => (season.set(n()), at.set(-1))} style={seasonStyle(season() === n(), showFocus() && at() === -1 && season() === n())}>
-                <Text style={{ ...type.label(), color: season() === n() ? colors.ink() : colors.snow() }}>{t("series.season", { number: n() })}</Text>
+                <Text style={{ ...type.label(), color: season() === n() ? colors.snow() : colors.soft() }}>{t("series.season", { number: n() })}</Text>
+                <If when={season() === n()}>
+                  <Icon src={() => checkIcon} size={20} color={() => colors.snow()} />
+                </If>
               </Pressable>
             )}
           </Each>
@@ -143,7 +156,16 @@ export function PlayerEpisodes(props: {
       when={frame.panel === "bottom-sheet"}
       else={
         <View testID="episodes-panel" style={{ ...panelStyle(), bottom: props.bottom() }}>
-          <Text style={{ ...type.label(), color: colors.ash() }}>{t("player.episodes")}</Text>
+          <View style={headStyle()}>
+            <Text style={{ ...type.label(), color: colors.ash() }}>{t("player.episodes")}</Text>
+            <If when={caps.touch}>
+              <Pressable testID="episodes-close" role="button" accessibilityLabel={t("player.close_episodes")} hitSlop={targetSlop(u(56))} onPress={props.onClose} style={closeStyle()}>
+                <View style={{ transform: "rotate(45deg)" }}>
+                  <Icon src={() => plusIcon} size={iconPt(15)} />
+                </View>
+              </Pressable>
+            </If>
+          </View>
           {seasonsRow()}
           <Scroller ctl={episodeList} style={{ flex: 1 }}>{rows(episodeList.follow)}</Scroller>
         </View>
