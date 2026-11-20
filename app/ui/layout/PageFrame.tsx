@@ -9,7 +9,9 @@
 //   in the bar a scrolled title turns into (a desktop and a tablet carry it in their bars);
 // - the room under the content (the system's area, the tab bar, a TV's tail);
 // - on touch, a scrim under the status bar: over a hero a fade, solid once content is under it;
-//   solid from the start on a page without one.
+//   solid from the start on a page without one;
+// - a phone's pinned foot (the setup's main button): under the scrolling content, above the home
+//   indicator, within the thumb's reach (`footPinned`; elsewhere the screen keeps it inline).
 import { computed, effect, safeArea, Text, View, windowSize, type JSX, type TextStyle, type ViewRef, type ViewStyle } from "nsh";
 import { pageTitle } from "../kit/text";
 import { go, section, toTop } from "../nav";
@@ -52,6 +54,16 @@ const scrimStyle = (solid: boolean): ViewStyle => ({
     : { backgroundImage: `linear-gradient(180deg, ${alpha(colors.ink(), 0.7)} 0%, ${alpha(colors.ink(), 0)} 100%)` }),
 });
 
+/** Whether a page's `foot` is pinned under its content (a phone); elsewhere the frame does not
+ * show it and the screen lays its actions out inline. */
+export const footPinned = () => frame.nav === "tab-bar";
+const footStyle = (): ViewStyle => ({
+  paddingHorizontal: safe().x,
+  paddingTop: u(20),
+  paddingBottom: safeArea().bottom + u(20),
+  backgroundColor: colors.ink(),
+});
+
 export function PageFrame(props: {
   ctl: ScrollCtl;
   kind: PageKind;
@@ -69,11 +81,17 @@ export function PageFrame(props: {
   barTitle?: () => string;
   /** More room under the content, TV pixels. */
   bottom?: number;
+  /** The page's main action, pinned under the content where `footPinned()`. */
+  foot?: JSX.Element;
+  /** Whether this page is the one on top, where several are mounted outside the app's stack
+   * (the setup's steps); the stack's route says it otherwise. */
+  top?: () => boolean;
   children: JSX.Element;
 }) {
   const m = () => metrics(props.kind);
   const root = props.kind === "root";
-  const top = onTop();
+  const pinned = () => !!props.foot && footPinned();
+  const top = props.top ?? onTop();
   // The bars over the page turn solid once content is under them: past the top, or past the
   // hero's still on a page that opens with one (its text runs on under it, over the ink). This
   // page's own (its bar and scrim: a page kept under the top one keeps its own state); the app's
@@ -104,7 +122,7 @@ export function PageFrame(props: {
         />
       </If>
       <Scroller ctl={props.ctl} style={screenStyle()}>
-        <View style={{ paddingBottom: m().bottomRoom + u(props.bottom ?? 0) + tvTail() }}>
+        <View style={{ paddingBottom: (pinned() ? u(24) : m().bottomRoom) + u(props.bottom ?? 0) + tvTail() }}>
           {/* What is over the page takes its room (a hero runs under it instead). */}
           <View ref={props.topRef}>
             <If when={props.hero == null}>
@@ -128,6 +146,11 @@ export function PageFrame(props: {
           </If>
         </View>
       </Scroller>
+      <If when={pinned()}>
+        <View testID="page-foot" style={footStyle()}>
+          {props.foot}
+        </View>
+      </If>
       <If when={props.kind === "deep" && frame.nav === "tab-bar"}>
         <PhoneBackHead />
       </If>

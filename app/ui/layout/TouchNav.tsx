@@ -232,8 +232,9 @@ const BAR_FADE = 200;
 /** A disc's fill fading out where it becomes a bar's plain button. */
 const fadeFill = (plain: boolean): ViewStyle => ({ ...(plain ? { backgroundColor: "transparent" } : {}), transitionProperty: "colors", transitionDuration: BAR_FADE });
 
-/** Back, a disc (40 across, a 44 pt touch area); `plain`, its fill fades out (a bar's plain ‹). */
-function BackDisc(props: { label?: () => string; plain?: () => boolean }) {
+/** Back, a disc (40 across, a 44 pt touch area); `plain`, its fill fades out (a bar's plain ‹).
+ * Also the setup's, in its logo's place. */
+export function BackDisc(props: { label?: () => string; plain?: () => boolean }) {
   return (
     <Pressable role="button" accessibilityLabel={props.label?.() ?? t("nav.back")} onPress={handleBack} hitSlop={targetSlop(40)} style={{ ...disc(40), ...fadeFill(props.plain?.() ?? false) }}>
       <Icon src={() => backIcon} size={pt(20)} />

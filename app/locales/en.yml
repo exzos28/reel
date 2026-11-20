@@ -497,13 +497,14 @@ setup:
     recommended: Recommended
   source:
     title: Where should reel find films?
-    help: Enter your own, or get a ready one.
-    own_title: Your own source
-    rent_title: Or get a ready one
+    help: "reel doesn't search by itself. Give it a search source (Torznab): your own Jackett or Prowlarr, or get one in Telegram."
+    help_own: "reel doesn't search by itself. Give it a search source (Torznab): your own Jackett or Prowlarr."
+    own_title: "Or use your own"
+    rent_title: "Get a ready one"
     check: Check
+    checking: "Checking…"
     finish: Finish
     skip: Skip
-    footnote: "Torznab is a common way for search services to list torrent releases. reel does not search for video itself: it is a catalogue and a player, and finds what to play only through the source you give it."
   phone:
     title: Or set it up on your phone
     text: "Scan the code with the phone's camera, or open %{url} in its browser. This screen follows along."

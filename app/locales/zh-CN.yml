@@ -494,13 +494,14 @@ setup:
     recommended: "推荐"
   source:
     title: "reel 去哪里找影片？"
-    help: "输入你自己的搜索源，或获取现成的。"
-    own_title: "自己的搜索源"
-    rent_title: "或获取现成的"
+    help: "reel 本身不搜索。请给它一个搜索源（Torznab）：你自己的 Jackett 或 Prowlarr，或在 Telegram 中获取一个。"
+    help_own: "reel 本身不搜索。请给它一个搜索源（Torznab）：你自己的 Jackett 或 Prowlarr。"
+    own_title: "或使用你自己的"
+    rent_title: "获取现成的"
     check: "检查"
+    checking: "正在检查…"
     finish: "完成"
     skip: "跳过"
-    footnote: "Torznab 是搜索服务提供 torrent 资源列表的常用方式。reel 本身不搜索视频：它是一个影片目录和播放器，只通过你提供的搜索源查找要播放的内容。"
   phone:
     title: "或在手机上设置"
     text: "用手机相机扫描二维码，或在手机浏览器中打开 %{url}。此屏幕会同步更新。"

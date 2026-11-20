@@ -78,7 +78,7 @@ export function sourceForm() {
     state.set("saved");
   };
 
-  /** The line beside Save; `bad` when it is an error. */
+  /** The line beside Save; `bad` when it is an error, `ok` when the source answered. */
   const result = () => {
     const c = check();
     if (error()) return { text: error()!, bad: true };
@@ -87,11 +87,14 @@ export function sourceForm() {
     if (!c) return state() === "saved" && !source().url ? { text: t("settings.source.removed"), bad: false } : null;
     // Why, in a sentence the viewer can act on (the core says which); the source's own words otherwise.
     if (c.state === "failed") return { text: t(`settings.source.reason.${c.reason ?? "error"}`, { host: c.host || source().url, message: c.message }), bad: true };
-    return { text: c.movieImdb ? t("settings.source.ok_imdb") : t("settings.source.ok_text"), bad: false };
+    return { text: c.movieImdb ? t("settings.source.ok_imdb") : t("settings.source.ok_text"), bad: false, ok: true };
   };
+
+  /** Saving or checking: Check waits (it reads "Checking…"). */
+  const busy = () => state() === "saving" || state() === "checking";
 
   /** Saved and checked: the source answered. */
   const connected = () => state() === "saved" && !error() && check()?.state !== "failed" && check() != null;
 
-  return { url, key, edit, save, remove, recheck, result, connected };
+  return { url, key, edit, save, remove, recheck, result, connected, busy };
 }

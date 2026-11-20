@@ -41,14 +41,21 @@ Focus starts on the language in use. Down/Up walk the list, Down from the last g
 Right from the list goes nowhere (the QR is not a control). Back goes to the previous step; on
 the first it does nothing (setup is not skippable as a whole, but every step has an answer).
 
-Step 3 swaps the list for two fields (Address, API key), "Check and finish" and "Skip, add it
-later", and a status line under them ("Checking…", "Connected. Searches by IMDb id.", or what
-went wrong).
+Step 3 says under its title, in one line, what a search source is (Torznab: your own Jackett or
+Prowlarr, or a ready one from Telegram where the build names a partner), then the same blocks in
+the order of Settings' source drawer: the ready one, then your own fields (Address, API key) with
+Check and Skip. A status line under the fields has its room from the start ("Checking…" while
+Check is disabled, then a check mark and "Connected. It searches by IMDb id.", or what went wrong).
+Once connected, Check becomes Finish and Skip goes away: one thing left to press.
+
+Steps 2 and 3 have Back (‹) in the logo's place where there is a pointer or touch; a TV's remote
+Back, Android's system back and iOS's swipe go to the previous step too, with what was chosen
+and typed kept. "More languages" lists only the languages the step does not show already.
 
 ### Phone (393×852)
 
 Full screen, one step at a time: "Step 2 of 3", the question, one line of help, the choices as
-rows, the primary button at the bottom within thumb reach. No QR.
+rows, the primary button pinned at the bottom above the home indicator, full width. No QR.
 
 ## Settings, shorter
 
