@@ -12,16 +12,15 @@ import backIcon from "../icons/back.svg";
 import settingsIcon from "../icons/settings.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
-import { canGoBack, CATEGORIES, go, goHomeTab, handleBack, isCategory, openCategory, route, section, stack, type Destination, type Route } from "../nav";
+import { canGoBack, go, goHomeTab, handleBack, isCategory, route, section, stack, type Destination, type Route } from "../nav";
 import { look } from "../platform/look";
 import { alpha, colors, font, iconPt, targetSlop, u } from "../theme";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
 import { frameSolid } from "./frameState";
 import { windowControlsRoom } from "./chrome";
-import { CATEGORY_ROW, PHONE_BACK_HEAD, PHONE_HEAD, PHONE_TITLE_BAR, phoneRail, railWidth, TAB_ROW, TOP_ROW } from "./metrics";
-import { Rail, railLead } from "./Rail";
-import { scroller } from "./scrollCtl";
+import { PHONE_BACK_HEAD, PHONE_HEAD, PHONE_TITLE_BAR, phoneRail, railWidth, TAB_ROW, TOP_ROW } from "./metrics";
+import { CategoryTabs } from "./CategoryTabs";
 import savedIcon from "../icons/saved.svg";
 import searchIcon from "../icons/search.svg";
 import { librarySupported, savingOverall, watchSaved } from "../library";
@@ -162,41 +161,6 @@ export function PhoneTabBar() {
       <Each of={PHONE_TABS} key={(n) => n.id}>
         {(n) => <Tab label={t(n().label)} icon={n().icon} on={n().on} inRail={phoneRail()} saving={n().id === "saved"} onPress={n().go} />}
       </Each>
-    </View>
-  );
-}
-
-// ---- The categories at the top of a phone's Home ---------------------------------------
-
-/** Their icons: the nav's (All is Home's). */
-const categoryIcon = (id: Destination) => NAV.find((n) => n.id === id)?.icon ?? NAV[0].icon;
-const categoryTabStyle = (on: boolean): ViewStyle => ({
-  ...row(6),
-  height: CATEGORY_ROW,
-  borderBottomWidth: 2,
-  borderBottomColor: on ? colors.red() : "transparent",
-});
-const categoryText = (on: boolean): TextStyle => ({ fontFamily: font, fontSize: 16, fontWeight: on ? 600 : 500, color: on ? colors.snow() : colors.ash() });
-
-/** All, Movies, Series, Cartoons, Anime: what Home shows, the chosen one underlined in red. A row
- * that scrolls sideways where it does not fit; the chosen one shows. */
-function CategoryTabs() {
-  const tabs = scroller({ horizontal: true, anchor: railLead });
-  return (
-    <View role="tablist" accessibilityLabel={t("nav.categories")} style={{ borderBottomWidth: 1, borderBottomColor: colors.card(), paddingLeft: Math.max(0, windowControlsRoom() - 20) }}>
-      <Rail ctl={tabs} gap={40}>
-        <Each of={CATEGORIES} key={(c) => c}>
-          {(c) => {
-            const on = () => section() === c();
-            return (
-              <Pressable haptic={!on()} ref={tabs.follow(on)} role="tab" accessibilityLabel={t(c() === "home" ? "nav.all" : `nav.${c()}`)} accessibilityState={{ selected: on() }} onPress={() => openCategory(c())} style={categoryTabStyle(on())}>
-                <Icon src={() => categoryIcon(c())} size={pt(18)} color={() => (on() ? colors.snow() : colors.ash())} />
-                <Text style={categoryText(on())}>{t(c() === "home" ? "nav.all" : `nav.${c()}`)}</Text>
-              </Pressable>
-            );
-          }}
-        </Each>
-      </Rail>
     </View>
   );
 }
