@@ -64,9 +64,30 @@ pub fn starts_sideways(width: f64, height: f64) -> bool {
     width > 0.0 && height > 0.0 && width / height >= SIDEWAYS_FROM
 }
 
+/// A video track's picture as shown, from what its container says: the stored size, its pixel
+/// aspect (0 or less: square) and its rotation in degrees (a phone's upright clip is stored
+/// sideways and turned a quarter).
+pub fn shown_size(width: f64, height: f64, pixel_aspect: f64, rotation: f64) -> (f64, f64) {
+    let w = width * if pixel_aspect > 0.0 { pixel_aspect } else { 1.0 };
+    let quarter = (rotation.rem_euclid(180.0) - 90.0).abs() < 1.0;
+    if quarter { (height, w) } else { (w, height) }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::starts_sideways;
+    use super::{shown_size, starts_sideways};
+
+    #[test]
+    fn shown_size_applies_the_pixel_aspect_and_a_quarter_turn() {
+        assert_eq!(shown_size(1920.0, 1080.0, 1.0, 0.0), (1920.0, 1080.0));
+        let (w, h) = shown_size(720.0, 576.0, 64.0 / 45.0, 0.0); // anamorphic PAL 16:9
+        assert_eq!((w.round(), h), (1024.0, 576.0));
+        assert_eq!(shown_size(1920.0, 1080.0, 0.0, 90.0), (1080.0, 1920.0));
+        assert_eq!(shown_size(1920.0, 1080.0, 1.0, 270.0), (1080.0, 1920.0));
+        assert_eq!(shown_size(1920.0, 1080.0, 1.0, 180.0), (1920.0, 1080.0));
+        let (w, h) = shown_size(1920.0, 1080.0, 1.0, 90.0); // an upright phone clip
+        assert!(!starts_sideways(w, h));
+    }
 
     #[test]
     fn sixteen_nine_and_wider_turn_sideways() {
