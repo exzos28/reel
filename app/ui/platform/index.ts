@@ -59,10 +59,4 @@ export const caps = {
   /** The player turns the screen itself (a Rotate button): an iPhone, where the rotation lock
    * keeps a film upright otherwise. Not an iPad: its window does not turn for an app. */
   rotate: runtime.os === "ios" && family === "phone",
-  /** Settings and Saved are tabs of their own (a phone's tab bar: Home, Search, Saved,
-   * Settings), root pages. */
-  settingsTab: family === "phone",
-  /** Settings is a sheet in the middle of the window over the page (a tablet), never a page of
-   * a tab's stack. */
-  settingsSheet: family === "tablet",
 };

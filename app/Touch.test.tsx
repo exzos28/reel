@@ -1,6 +1,6 @@
 // Phone and tablet (design/navigation.md, "Tablet" and "Phone"): the tabs,
 // each tab keeping its own stack, a phone's Home with its categories at the
-// top, Settings as a sheet over the page (tablet), Back from a pushed page.
+// top, Settings and Saved as sections of their own (tablet), a narrow tablet as a phone, Back.
 import { expect, test } from "nsh/test";
 import { INCEPTION_NO_SOURCE, NATIVE, SEARCH_DUNE, openApp } from "./testEngine";
 
@@ -122,17 +122,15 @@ const tablet = (native: Record<string, unknown> = {}) =>
 
 const TABLET_TABS = ["home", "movies", "shows", "cartoons", "anime", "search"];
 
-test("tablet: each tab keeps its own pages, Settings is in none of them, the tab shown is the one selected", async () => {
+test("tablet: each tab keeps its own pages, Settings and Saved are in none of them, the tab shown is the one selected", async () => {
   const app = await tablet();
   expect(app.shows("top-row")).toBe(true);
-  // Home → a film → Settings, About: all in the sheet over the film.
+  // Home → a film → Settings, About: Settings' own pages, the film left on Home.
   await app.press("label:Inception >> nth=0");
-  await app.press("label:Settings");
+  await app.press("settings-button");
   expect(app.texts()).toContain("Loading animation");
   await app.press("label:About reel");
   expect(app.texts()).toContain("Data sources");
-  await app.press("label:Close");
-  expect(app.shows("settings-sheet")).toBe(false);
   // Search → a film, played and closed → Saving: Saved replaces what is shown.
   await app.press("label:Search");
   await app.press("label:Dune >> nth=0");
@@ -159,47 +157,102 @@ test("tablet: each tab keeps its own pages, Settings is in none of them, the tab
   expect(app.shows("top-tab-on-search")).toBe(true);
 });
 
-test("tablet: Settings opens as a sheet over the page and closes back to it", async () => {
+test("tablet: the selected tab chosen again over a page of it goes back to its root, one or two pages deep, after other tabs too", async () => {
+  const app = await tablet();
+  await app.press("label:Series");
+  await app.press("label:Severance >> nth=0");
+  expect(app.shows("label:Back to Series")).toBe(true);
+  await app.press("label:Series"); // the selected tab: its root, the show gone
+  expect(app.shows("label:Back to Series")).toBe(false);
+  expect(app.texts()).toContain("All series");
+  await app.press("label:Home");
+  await app.press("label:Inception >> nth=0");
+  await app.press("label:Leonardo DiCaprio >> nth=0"); // a person, two pages over Home
+  expect(app.texts()).toContain("Films and series");
+  await app.press("label:Home");
+  expect(app.texts()).toContain("Continue watching");
+  expect(app.texts()).not.toContain("Films and series");
+  expect(app.shows("label:Back to Home")).toBe(false);
+});
+
+test("phone: the selected tab chosen again over a page of it goes back to its root", async () => {
+  const app = await phone();
+  await app.press("label:Movies");
+  // Shown again after another tab (its native stack made anew), then a page pushed on it.
+  await app.press("label:Search");
+  await app.press("label:Home");
+  expect(app.texts()).toContain("All movies");
+  await app.press("label:Dune >> nth=0");
+  expect(app.shows("title-discs")).toBe(true);
+  await app.press("label:Home"); // the Home tab, selected: its root
+  expect(app.texts()).toContain("All movies");
+  expect(app.shows("title-discs")).toBe(false);
+});
+
+test("tablet: Settings is a section of its own: selected while open, kept where it was left, chosen again its root", async () => {
+  const app = await tablet();
+  await app.press("label:Inception >> nth=0");
+  await app.press("settings-button");
+  expect(app.shows("settings-button-on")).toBe(true);
+  expect(TABLET_TABS.some((tab) => app.shows(`top-tab-on-${tab}`))).toBe(false);
+  expect(app.texts()).toContain("Playback buffer");
+  expect(app.shows("label:Back to Home")).toBe(false); // its root: the logo, not Back
+  await app.press("label:About reel");
+  expect(app.texts()).toContain("Data sources");
+  expect(app.shows("label:Back to Settings")).toBe(true);
+  // Home: the film, where it was; never About.
+  await app.press("label:Home");
+  expect(app.shows("top-tab-on-home")).toBe(true);
+  expect(app.shows("settings-button")).toBe(true);
+  expect(app.shows("label:Back to Home")).toBe(true);
+  expect(app.texts()).not.toContain("Data sources");
+  await app.press("settings-button"); // where Settings was left
+  expect(app.texts()).toContain("Data sources");
+  await app.press("settings-button-on"); // chosen again: its root
+  expect(app.texts()).toContain("Playback buffer");
+  expect(app.shows("label:Back to Settings")).toBe(false);
+});
+
+test("tablet: Back from Settings' and Saved's roots goes back to where they were opened from", async () => {
   const app = await tablet();
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
-  await app.press("label:Settings");
-  expect(app.shows("settings-sheet")).toBe(true);
-  expect(app.texts()).toContain("Playback buffer");
-  expect(app.shows("label:Back to Settings")).toBe(false); // Settings is the sheet's first page
-  // The page under it stays the film, behind the sheet.
-  expect(app.shows("label:Back to Movies")).toBe(true);
+  await app.press("settings-button");
   await app.press("label:About reel");
-  expect(app.texts()).toContain("Data sources");
-  await app.keyboard.press("escape"); // Back: About, then Settings
+  await app.keyboard.press("escape"); // About, then Settings' root
   expect(app.texts()).toContain("Playback buffer");
   await app.keyboard.press("escape");
-  expect(app.shows("settings-sheet")).toBe(false);
-  expect(app.texts()).toContain("Saving 5%"); // the film, where it was
-  await app.press("label:Settings");
-  await app.press("settings-sheet-backdrop"); // a press outside
-  expect(app.shows("settings-sheet")).toBe(false);
-  await app.keyboard.press("escape"); // then Back leaves the film
-  expect(app.texts()).toContain("All movies");
+  expect(app.shows("top-tab-on-movies")).toBe(true);
+  expect(app.shows("label:Back to Movies")).toBe(true);
+  // Movies → Saved → Settings: Back to Saved, then to Movies, never back and forth.
+  await app.press("label:Saved");
+  await app.press("settings-button");
+  await app.keyboard.press("escape");
+  expect(app.shows("settings-button")).toBe(true);
+  expect(TABLET_TABS.some((tab) => app.shows(`top-tab-on-${tab}`))).toBe(false); // Saved
+  await app.keyboard.press("escape");
+  expect(app.shows("top-tab-on-movies")).toBe(true);
 });
 
-test("tablet: the search source's drawer opens over the sheet, and Back closes it before the sheet", async () => {
+test("tablet: the search source's drawer opens over Settings, and Back closes it before Settings", async () => {
   const app = await tablet();
-  await app.press("label:Settings");
+  await app.press("settings-button");
   await app.press("label:Search source");
   expect(app.shows("source-close")).toBe(true);
   await app.keyboard.press("escape");
   await app.wait(600); // the drawer slides away
   expect(app.shows("source-close")).toBe(false);
-  expect(app.shows("settings-sheet")).toBe(true);
+  expect(app.shows("settings-button-on")).toBe(true);
+  expect(app.texts()).toContain("Playback buffer");
 });
 
-test("tablet: a film whose search source did not answer opens Settings as the sheet over it", async () => {
+test("tablet: a film whose search source did not answer opens Settings, and Back returns to the film", async () => {
   const app = await tablet({ "Catalog.title": JSON.stringify({ ...INCEPTION_NO_SOURCE, releasesState: "failed" }) });
   await app.press("label:Inception >> nth=0");
   await app.press("label:Open Settings");
-  expect(app.shows("settings-sheet")).toBe(true);
-  await app.press("settings-sheet-close");
+  expect(app.shows("settings-button-on")).toBe(true);
+  expect(app.texts()).toContain("Playback buffer");
+  await app.keyboard.press("escape");
   expect(app.shows("label:Back to Home")).toBe(true);
 });
 
@@ -262,24 +315,88 @@ test("tablet: the top row turns solid once the page is under it", async () => {
   expect(app.shows("top-row-solid")).toBe(true); // where Movies was left
 });
 
-test("tablet in a narrow window: a phone's layout, and the top row again once it is wide", async () => {
+test("tablet in a narrow window: a phone's layout, Settings a tab of its own, and the top row again once it is wide", async () => {
   const app = await tabletAt(390, 844);
   expect(app.shows("tab-bar")).toBe(true);
   expect(app.shows("top-row")).toBe(false);
   for (const tab of ["Home", "Search", "Saved", "Settings"]) expect(app.shows(`label:${tab}`)).toBe(true);
   await app.press("label:Movies");
   expect(app.texts()).toContain("All movies");
-  // Settings as the tablet's sheet, over the current tab.
+  // Settings, a tab: no Back over it; Back goes to the category open last, as on a phone.
   await app.press("label:Settings");
   expect(app.texts()).toContain("Playback buffer");
+  expect(app.shows("back-head")).toBe(false);
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("All movies");
+  await app.press("label:Search");
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("All movies");
+  // Widened on Settings: the top row, Settings selected; Back to Movies.
+  await app.press("label:Settings");
   await app.setViewport(1180, 820);
   expect(app.shows("top-row")).toBe(true);
   expect(app.shows("tab-bar")).toBe(false);
+  expect(app.shows("settings-button-on")).toBe(true);
   expect(app.texts()).toContain("Playback buffer");
-  await app.press("label:Close");
+  await app.keyboard.press("escape");
   expect(app.texts()).toContain("All movies");
   await app.setViewport(390, 844);
   expect(app.shows("tab-bar")).toBe(true);
+});
+
+test("tablet: Settings opened on a tab in a narrow window becomes its own section once the window is wide", async () => {
+  const app = await tabletAt(390, 844, { "Catalog.title": JSON.stringify({ ...INCEPTION_NO_SOURCE, releasesState: "failed" }) });
+  await app.press("label:Inception >> nth=0");
+  await app.press("label:Open Settings"); // as on a phone: on top of the film
+  expect(app.texts()).toContain("Playback buffer");
+  await app.setViewport(1180, 820);
+  expect(app.shows("settings-button-on")).toBe(true);
+  expect(app.shows("label:Back to Inception")).toBe(false);
+  await app.press("label:Home"); // Home holds the film only
+  expect(app.shows("top-tab-on-home")).toBe(true);
+  expect(app.texts()).not.toContain("Playback buffer");
+  await app.press("settings-button");
+  await app.keyboard.press("escape"); // Back: to where Settings was opened
+  expect(app.shows("label:Back to Home")).toBe(true);
+});
+
+test("a narrow iPad's window and a phone show the same nav: the tabs, Home's categories, Settings and Saved as tabs, Back", async () => {
+  const native = {
+    ...NATIVE, "Library.supported": true, "Library.revision": 1,
+    "Library.list": JSON.stringify(NOTHING_SAVED), "Library.overall": JSON.stringify(IDLE), "Library.opening": "home",
+  };
+  const at = (pad: boolean) =>
+    openApp({
+      platform: "ios", width: 390, height: 844, safeArea: { top: 24, bottom: 20, left: 0, right: 0 },
+      modules: { ...(pad ? { nsh: { "platform.idiom": "pad" } } : {}), "app/native": native },
+    });
+  const PARTS = ["tab-bar", "nav-rail", "category-bar", "top-row", "back-head", "title-discs"];
+  const LABELS = ["Home", "Search", "Saved", "Settings", "All", "Movies", "Series", "Cartoons", "Anime", "All movies", "Playback buffer", "Save a film to watch it offline"];
+  const walk = async (app: Awaited<ReturnType<typeof openApp>>) => {
+    const seen: string[] = [];
+    const look = () => seen.push([...PARTS.filter((p) => app.shows(p)), ...LABELS.filter((l) => app.shows(`label:${l}`) || app.texts().includes(l))].join(","));
+    look();
+    await app.press("label:Movies");
+    look();
+    await app.press("label:Dune >> nth=0");
+    look();
+    await app.press("label:Settings");
+    look();
+    await app.keyboard.press("escape");
+    look();
+    await app.press("label:Saved");
+    look();
+    await app.keyboard.press("escape");
+    look();
+    await app.press("label:Search");
+    await app.keyboard.press("escape");
+    look();
+    return seen;
+  };
+  const pad = await walk(await at(true));
+  const phone = await walk(await at(false));
+  expect(pad).toEqual(phone);
+  expect(pad[3]).toContain("Playback buffer");
 });
 
 test("tablet: without a network at start, the app opens on Saved", async () => {

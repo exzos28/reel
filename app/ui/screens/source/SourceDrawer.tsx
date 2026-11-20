@@ -17,8 +17,6 @@ import { sourceForm } from "./sourceState";
 type Why = "missing" | "failed" | "edit" | "link";
 const shown = signal(false);
 const why = signal<Why>("missing");
-/** Whether the drawer is open (a tablet's Settings sheet under it leaves Back to it). */
-export const sourceDrawerOpen = () => shown();
 export const openSourceDrawer = (reason: Why = "missing") => {
   why.set(reason);
   shown.set(true);

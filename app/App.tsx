@@ -9,7 +9,7 @@
 // on a desktop, one window bar over every page (layout/WindowBar.tsx); on
 // touch, each tab's native stack with the phone's tab bar or the tablet's top
 // row (layout/TouchStack.tsx, layout/TouchNav.tsx).
-import { fpsEnabled, keymap, mount, setColorScheme, setFpsEnabled, UrlScheme, View } from "nsh";
+import { effect, fpsEnabled, untracked, keymap, mount, setColorScheme, setFpsEnabled, UrlScheme, View } from "nsh";
 import { setupWindow, WindowFrame } from "./ui/platform/window";
 import { appDrawn, bindPlatformInput, mapPlatformKeys } from "./ui/platform/remote";
 import { startDiagnostics } from "./ui/platform/diagnostics";
@@ -18,7 +18,7 @@ import { InterfaceScreen } from "./ui/screens/interface/InterfaceScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { PersonScreen } from "./ui/screens/person/PersonScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
-import { back, canGoBack, closeFirst, go, handleBack, isRoot, route, section, settingsOpen, stack, useHomeTab, useSettingsSheet, useTabStacks } from "./ui/nav";
+import { back, canGoBack, closeFirst, go, handleBack, isRoot, liftSettings, route, section, stack, useHomeTab, useOwnSections, useTabStacks } from "./ui/nav";
 import { screenFor } from "./ui/screens/RouteScreen";
 import { chrome, frame } from "./ui/layout/chrome";
 import { opening } from "./ui/library";
@@ -27,7 +27,6 @@ import { railWidth } from "./ui/layout/metrics";
 import { PhoneCategoryBar, PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
 import { SourceDrawer } from "./ui/screens/source/SourceDrawer";
 import { TouchStack } from "./ui/layout/TouchStack";
-import { SettingsSheet } from "./ui/layout/SettingsSheet";
 import { ExitDialog } from "./ui/layout/ExitDialog";
 import { keysInUse } from "./ui/focus/keys";
 import { Player } from "./ui/Player";
@@ -50,10 +49,15 @@ mapPlatformKeys();
 startDiagnostics();
 // A phone and a tablet keep a stack per tab (design/navigation.md, "History model").
 useTabStacks(caps.touch);
-// A phone's Home tab holds the categories (design/navigation.md, "Phone").
-useHomeTab(caps.settingsTab);
-// A tablet's Settings is a sheet over the page (design/navigation.md, "Tablet").
-useSettingsSheet(caps.settingsSheet);
+// A phone's Home tab holds the categories (design/navigation.md, "Phone"): a tablet's narrow
+// window is laid out as a phone's, its Home tab too.
+useHomeTab(() => frame().nav === "tab-bar");
+// A tablet's Saved and Settings are sections of their own beside its tabs (design/navigation.md,
+// "Tablet"); widened from a phone's layout, Settings opened on a tab leaves it for its own.
+useOwnSections(() => frame().nav === "top-row");
+effect(() => {
+  if (frame().nav === "top-row") untracked(liftSettings);
+});
 // A link that opens the app (reel://s?t=<key>&u=<address>, from a partner's bot): its source
 // fills the source's fields (the setup's step, else the drawer); nothing is saved until the
 // viewer saves it. Any other link is dropped (anyone can make one).
@@ -164,8 +168,7 @@ function App() {
             {() => (
               <View style={{ flex: 1 }}>
                 {/* Right of the phone's rail when it is held sideways. */}
-                {/* Under a tablet's Settings sheet the page is out of a screen reader's reach. */}
-                <View style={{ flex: 1, marginLeft: railWidth() }} accessibilityElementsHidden={settingsOpen()} importantForAccessibility={settingsOpen() ? "no-hide-descendants" : "auto"}>
+                <View style={{ flex: 1, marginLeft: railWidth() }}>
                   <TouchStack page={screenFor} />
                 </View>
                 <If when={frame().nav === "tab-bar"}>
@@ -174,10 +177,6 @@ function App() {
                 </If>
                 <If when={frame().nav === "top-row"}>
                   <TabletTopRow />
-                </If>
-                {/* A tablet's Settings, a sheet over the page: its narrow window's too. */}
-                <If when={caps.settingsSheet}>
-                  <SettingsSheet page={screenFor} />
                 </If>
               </View>
             )}
