@@ -335,6 +335,8 @@ compat:
 player:
   back: Back
   close: Close
+  expand_sheet: Show more
+  collapse_sheet: Show less
   close_tracks: Close audio and subtitles
   episodes: Episodes
   close_episodes: Close the episodes

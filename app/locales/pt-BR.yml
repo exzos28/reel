@@ -333,6 +333,8 @@ compat:
 player:
   back: "Voltar"
   close: "Fechar"
+  expand_sheet: "Mostrar mais"
+  collapse_sheet: "Mostrar menos"
   close_tracks: "Fechar áudio e legendas"
   episodes: "Episódios"
   close_episodes: "Fechar episódios"

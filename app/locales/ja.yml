@@ -333,6 +333,8 @@ compat:
 player:
   back: "戻る"
   close: "閉じる"
+  expand_sheet: "さらに表示"
+  collapse_sheet: "表示を減らす"
   close_tracks: "音声と字幕を閉じる"
   episodes: "エピソード"
   close_episodes: "エピソードを閉じる"

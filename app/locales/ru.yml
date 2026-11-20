@@ -333,6 +333,8 @@ compat:
 player:
   back: Назад
   close: Закрыть
+  expand_sheet: Показать больше
+  collapse_sheet: Показать меньше
   close_tracks: Закрыть звук и субтитры
   episodes: Серии
   close_episodes: Закрыть серии
