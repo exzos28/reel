@@ -355,9 +355,7 @@ player:
       other: "%{count} kişi bulundu, bağlanılıyor"
     fetching: "Başlangıç yükleniyor, %{percent}%"
     starting: "Başlatılıyor"
-  buffering: "Yükleniyor"
-  ahead_seconds: "%{seconds} sn hazır"
-  rate_from: "%{count} kişiden %{speed}"
+  waiting: "Akış bekleniyor"
   ready_ahead: "%{minutes} dk hazır"
   ready_ahead_short: "1 dakikadan az hazır"
   streaming: "akış hızı %{speed}"
@@ -438,7 +436,7 @@ settings:
   # What shows while a film loads or waits for more of the stream.
   loader:
     title: "Yükleme animasyonu"
-    about: "Film akışın devamını beklerken görünen şey."
+    about: "Film başlarken görünen şey."
     dinosaur: "Dinozor"
     logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not

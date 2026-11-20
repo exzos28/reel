@@ -199,8 +199,13 @@ Mockups: `tablet.html` frames `ipad-home`, `ipad-film`, `ipad-film-scrolled`,
   are pushed on it with Back.
 - Release panel: bottom sheet (top at ~40% of the height), grabber 36×5, ✕ 30 pt; swipe down,
   tap above or system back closes it; picking a release closes it.
-- Player: landscape; ✕ 40 pt at the landscape safe-area left (x 62 on a Dynamic Island phone),
-  title beside it, Audio and subtitles top-right, play controls centred; swipe down closes.
+- Player: a 16:9-or-wider film starts in landscape (the core decides from the picture's size once
+  loaded; iOS turns the screen, Rotate turns it back); ✕ 40 pt at the landscape safe-area left
+  (x 62 on a Dynamic Island phone), title beside it; −10 s, Play (larger) and +10 s in the middle
+  of the picture; at the bottom the timeline and times, then Audio and subtitles, Episodes and
+  Rotate, the row 16 pt above the safe area; swipe down closes. A wait mid-film is one line
+  ("Waiting for the stream") under the middle row (over it held sideways), no loader. Android has
+  no Rotate yet: it turns as the system does.
 - Android: system back on a pushed page = ←; on a root other than Home → Home tab; on Home →
   leaves the app (no dialog: the system's convention on phones).
 

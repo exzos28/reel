@@ -19,15 +19,18 @@ import { rounded } from "./kit/shape";
 import plusIcon from "./icons/plus.svg";
 import { streamDetails } from "./preferences";
 import { cachedAhead, currentJob, duration, firstFrame, readAt, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
+import { chrome, frame } from "./layout/chrome";
 import { alpha, colors, density, focusRing, font, iconPt, radius, safe, showFocus, targetSlop, ts as layoutTs, type, u as layoutU } from "./theme";
 
+/** A phone: play and ±10 s in the middle of the picture, under the thumbs; the bottom row keeps
+ * the timeline and the secondary buttons, lifted off the home indicator. */
+const PHONE = chrome === "phone";
 /** On a phone the player is held at arm's length over a film: its controls are one and a half
  * times the layout's size (a 68 px button 46 pt, not 31) and its text a quarter larger (times 18 pt). */
 const PHONE_CONTROLS = density === "compact" ? 1.5 : 1;
 const PHONE_TEXT = density === "compact" ? 1.25 : 1;
 const u = (px: number) => layoutU(px) * PHONE_CONTROLS;
 const ts = (px: number) => layoutTs(px) * PHONE_TEXT;
-import { chrome, frame } from "./layout/chrome";
 import { caps } from "./platform";
 import { playVolume, PlayerVolume, toggleMute, volumeDragEnd, volumeDragMove, volumeShown } from "./PlayerVolume";
 import { useFullscreen } from "./platform/window";
@@ -114,6 +117,14 @@ const topRowStyle = (full: boolean): ViewStyle => ({
 const BUTTONS = ["back", "play", "forward", "tracks", "episodes", "fullscreen", "rotate"] as const;
 type ButtonId = (typeof BUTTONS)[number];
 const PLAY_BUTTON = 1;
+/** The buttons a phone shows in the middle of the picture; the rest stay in the bottom row. */
+const MIDDLE: readonly ButtonId[] = ["back", "play", "forward"];
+/** A round button's size, TV pixels (times the phone's controls); the phone's middle Play is larger. */
+const BUTTON = 68;
+const BIG_BUTTON = 96;
+/** The bottom controls' distance from the screen's bottom: a phone's clear of the home indicator
+ * by 16 pt. */
+const controlsBottom = () => (PHONE ? Math.max(safe().y, safeArea().bottom + 16) : safe().y);
 
 interface Tracks {
   releases: Release[];
@@ -172,6 +183,9 @@ export function Player() {
   const buttons: ButtonId[] = BUTTONS.filter(
     (b) => (b !== "fullscreen" || caps.fullscreen) && (b !== "rotate" || caps.rotate) && (b !== "episodes" || episodeOf() != null),
   );
+  /** The bottom row's buttons: on a phone without those in the middle of the picture. */
+  const bottomButtons = PHONE ? buttons.filter((b) => !MIDDLE.includes(b)) : buttons;
+  const middleButtons = PHONE ? buttons.filter((b) => MIDDLE.includes(b)) : [];
   /** On touch, Episodes and Rotate keep to the right edge: the first of them pushes the rest there
    * (on a computer the volume has the right). */
   const rightFrom: ButtonId | undefined = caps.touch ? buttons.find((b) => b === "episodes" || b === "rotate") : undefined;
@@ -188,6 +202,17 @@ export function Player() {
     VideoEngine.turn(turned);
   };
   if (caps.rotate) cleanup(() => turned && VideoEngine.turn(false));
+  /** A phone held upright turns sideways for a wide film (the core says which) once, on the
+   * player's first load: not again for the next episode, which keeps what the viewer chose. */
+  let mayTurnSideways = PHONE && caps.rotate;
+  const turnForPicture = (width?: number, height?: number) => {
+    if (!mayTurnSideways) return;
+    mayTurnSideways = false;
+    const w = windowSize();
+    if (!width || !height || w.width > w.height || leaving() || !VideoEngine.sideways(width, height)) return;
+    turned = true;
+    VideoEngine.turn(true);
+  };
 
   // The tracks panel: three columns, the focus inside it while it is open.
   const panel = signal(false);
@@ -476,16 +501,23 @@ export function Player() {
     const s = core();
     return streamDetails() && s.phase === "ready" && !problem() && (s.peers ?? 0) > 0 ? streaming() : "";
   };
-  /** A stall while playing: how much is ready ahead and how fast it comes. */
-  const bufferingText = () => {
-    if (!streamDetails()) return "";
+  /** A stall or a slow seek while playing: waiting, and how fast the stream comes when the
+   * stream's details are on (Settings). What is ready ahead shows on the scrubber. */
+  const waitingText = () => {
     const s = core();
-    const ahead = Math.floor(timeline().ahead);
-    const first = ahead > 0 ? t("player.ahead_seconds", { seconds: ahead }) : t("player.buffering");
-    if (s.phase !== "ready") return first;
-    const speed = Fmt.speed(s.speed);
-    return `${first} · ${s.peers != null ? t("player.rate_from", { speed, count: s.peers }) : speed}`;
+    const words = t("player.waiting");
+    return streamDetails() && s.phase === "ready" ? `${words} · ${Fmt.speed(s.speed)}` : words;
   };
+  /** Where the waiting line sits from the picture's middle: under a phone's middle row held
+   * upright, over it held sideways (under it, the bottom controls are too near). */
+  const waitingBelow = () => {
+    if (!PHONE || !overlay() || card()) return 0;
+    const w = windowSize();
+    const off = u(BIG_BUTTON) / 2 + u(28);
+    return w.width > w.height ? -off : off;
+  };
+  /** A stall shows the controls: the scrubber has what is ready, and Play and Back are at hand. */
+  effect(() => { if (started() && buffering()) untracked(poke); });
   const aheadText = () => {
     if (!timeline().ranges.length || duration() <= 0) return "";
     const m = Math.floor(timeline().ahead / 60);
@@ -548,6 +580,7 @@ export function Player() {
           progressUpdateInterval={250}
           onLoad={(e) => {
             loaded.set(true);
+            turnForPicture(e.width, e.height);
             duration.set(e.duration);
             resumeTo = 0;
             // Resume: once, where the viewer stopped.
@@ -601,7 +634,7 @@ export function Player() {
       <SubtitleOverlay text={cue} lift={() => (overlay() && !card() ? controlsHeight() : 0)} />
 
       <If when={started() && !failed() && (buffering() || seekSlow())}>
-        <BufferingNote text={bufferingText} />
+        <BufferingNote text={waitingText} below={waitingBelow} />
       </If>
 
       <If when={staged() ? what() : null}>
@@ -668,7 +701,7 @@ export function Player() {
               {/* A tap beside the panel closes it, as the tracks panel's does. */}
               <Pressable feedback="none" role="button" accessibilityLabel={t("player.close_episodes")} onPress={() => episodesOpen.set(false)} style={panelBackdrop} />
               <PlayerEpisodes
-                bottom={() => controlsHeight() + safe().y + u(24)}
+                bottom={() => controlsHeight() + controlsBottom() + u(24)}
                 show={() => w().title}
                 season={() => episodeOf()?.season ?? w().season ?? 1}
                 episode={() => episodeOf()?.episode ?? w().episode ?? 1}
@@ -696,7 +729,7 @@ export function Player() {
           {/* A tap beside the panel closes it, as a sheet's does. */}
           <Pressable feedback="none" role="button" accessibilityLabel={t("player.close_tracks")} onPress={() => panel.set(false)} style={panelBackdrop} />
           <TracksPanel
-            bottom={() => controlsHeight() + safe().y + u(24)}
+            bottom={() => controlsHeight() + controlsBottom() + u(24)}
             rows={(col) => trackRows(col, menu().audio, menu().subtitles, shortReleases())}
             isSelected={isSelected}
             focused={(col, i) => panelCol() === col && panelRow() === i}
@@ -705,9 +738,27 @@ export function Player() {
           />
         </If>
 
+        {/* A phone's middle: −10 s, Play (larger), +10 s over the picture's centre. */}
+        <If when={ready() && middleButtons.length > 0 && !panel() && !episodesOpen() && !card()}>
+          <View testID="player-middle" style={middleStyle()}>
+            <Each of={middleButtons} key="index">
+              {(id) => (
+                <RoundButton
+                  icon={() => icon(id())}
+                  label={() => label(id())}
+                  size={id() === "play" ? BIG_BUTTON : BUTTON}
+                  focused={() => row() === "buttons" && buttons[button()] === id() && !panel()}
+                  selected={() => false}
+                  onPress={() => { poke(); button.set(buttons.indexOf(id())); run(id()); }}
+                />
+              )}
+            </Each>
+          </View>
+        </If>
+
         {/* Bottom: engine line, scrubber, times, buttons. */}
         <If when={ready()}>
-          <View onLayout={(e) => controlsHeight.set(e.bounds.size.height)} style={{ position: "absolute", left: safe().x, right: safe().x, bottom: safe().y }}>
+          <View onLayout={(e) => controlsHeight.set(e.bounds.size.height)} style={{ position: "absolute", left: safe().x, right: safe().x, bottom: controlsBottom() }}>
             <If when={streamDetails()}>
             <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", minHeight: u(32) }}>
               <If when={aheadText() !== ""}>
@@ -739,15 +790,16 @@ export function Player() {
                   <PlayerVolume onUse={poke} />
                 </View>
               </If>
-              <Each of={buttons} key="index">
+              <Each of={bottomButtons} key="index">
                 {(id, i) => (
-                  <View style={{ marginLeft: id() === rightFrom ? "auto" : id() === "tracks" ? u(22) : 0 }}>
+                  <View style={{ marginLeft: id() === rightFrom ? "auto" : id() === "tracks" && i() > 0 ? u(22) : 0 }}>
                     <RoundButton
                       icon={() => icon(id())}
                       label={() => label(id())}
-                      focused={() => row() === "buttons" && button() === i() && !panel()}
+                      size={BUTTON}
+                      focused={() => row() === "buttons" && buttons[button()] === id() && !panel()}
                       selected={() => (id() === "tracks" && panel()) || (id() === "episodes" && episodesOpen())}
-                      onPress={() => { poke(); button.set(i()); run(id()); }}
+                      onPress={() => { poke(); button.set(buttons.indexOf(id())); run(id()); }}
                     />
                   </View>
                 )}
@@ -844,10 +896,18 @@ function Scrubber(props: {
   );
 }
 
+/** A phone's middle row, centred on the picture; presses beside its buttons reach the picture. */
+const middleStyle = (): ViewStyle => ({
+  position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "box-none",
+  flexDirection: "row", alignItems: "center", justifyContent: "center", gap: u(56),
+});
+
 /** A round player button: its icon only (the label is for screen readers). */
 function RoundButton(props: {
   icon: () => ImageAsset;
   label: () => string;
+  /** Its diameter, TV pixels (times the phone's controls). */
+  size: number;
   focused: () => boolean;
   selected: () => boolean;
   onPress: () => void;
@@ -860,13 +920,13 @@ function RoundButton(props: {
         onPress={props.onPress}
         hoverStyle={{ backgroundColor: colors.control() }}
         style={{
-          width: u(68), height: u(68), borderRadius: 999, borderCurve: "continuous",
+          width: u(props.size), height: u(props.size), borderRadius: 999, borderCurve: "continuous",
           alignItems: "center", justifyContent: "center",
           backgroundColor: props.selected() ? colors.control() : alpha(colors.raise(), 0.85),
           ...focusRing(props.focused()),
         }}
       >
-        <Image src={props.icon()} style={{ width: u(34), height: u(34), tintColor: colors.snow() }} />
+        <Image src={props.icon()} style={{ width: u(props.size / 2), height: u(props.size / 2), tintColor: colors.snow() }} />
       </Pressable>
     </View>
   );

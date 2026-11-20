@@ -211,6 +211,8 @@ export const VideoEngine: VideoEngineModule = {
   views: () => false,
   fullscreen: () => {},
   turn: () => {},
+  // A browser turns no screen.
+  sideways: () => false,
 };
 
 export const Hosted: HostedModule = {

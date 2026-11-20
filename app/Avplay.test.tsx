@@ -19,7 +19,7 @@ const status = JSON.stringify({
   start: 100,
   stage: "starting",
 });
-/** Settings with the stream's details on, so a stall says "Buffering". */
+/** Settings with the stream's details on, so a stall says how fast the stream comes. */
 const DETAILS = {
   "Settings.load": JSON.stringify({ language: "en", bufferMB: 256, bufferChoices: [{ mb: 256, default: true }], streamDetails: true }),
 };
@@ -243,25 +243,27 @@ test("a seek the core could not get ready stays where it plays", async () => {
 test("a stall shows the buffering note until AVPlay has enough again", async () => {
   const { app, event } = await playing();
   await event({ type: "buffering", buffering: true });
-  const note = () => app.texts().some((t) => t.startsWith("Buffering"));
+  const note = () => app.texts().some((t) => t.startsWith("Waiting for the stream"));
   await app.wait(400);
   expect(note()).toBe(true);
+  expect(app.texts()).toContain("Waiting for the stream · 3.4 MB/s"); // the stream's details are on
+  // No loader over the picture: what is ready shows on the scrubber, which the stall brings up.
+  expect(app.shows("loader-logo")).toBe(false);
+  expect(app.shows("loader-dinosaur")).toBe(false);
+  expect(app.shows("scrubber")).toBe(true);
   await event({ type: "buffering", buffering: false });
   expect(note()).toBe(false);
 });
 
-test("a stall shows the loader Settings picked: the blinking reel by default, the dinosaur instead", async () => {
-  const logo = await playing();
-  await logo.event({ type: "buffering", buffering: true });
-  await logo.app.wait(400);
+test("the start shows the loader Settings picked: the blinking reel by default, the dinosaur instead", async () => {
+  const logo = await tv();
+  expect(logo.app.shows("stage")).toBe(true);
   expect(logo.app.shows("loader-logo")).toBe(true);
   expect(logo.app.shows("loader-dinosaur")).toBe(false);
 
-  const dino = await playing({
+  const dino = await tv({
     "Settings.load": JSON.stringify({ language: "en", bufferMB: 256, bufferChoices: [{ mb: 256, default: true }], streamDetails: true, loader: "dinosaur" }),
   });
-  await dino.event({ type: "buffering", buffering: true });
-  await dino.app.wait(400);
   expect(dino.app.shows("loader-dinosaur")).toBe(true);
   expect(dino.app.shows("loader-logo")).toBe(false);
 });

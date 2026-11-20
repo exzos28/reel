@@ -355,9 +355,7 @@ player:
       other: "找到 %{count} 位分享者，正在连接"
     fetching: "正在加载开头 %{percent}%"
     starting: "即将播放"
-  buffering: "缓冲中"
-  ahead_seconds: "已缓冲 %{seconds} 秒"
-  rate_from: "%{speed}，来自 %{count} 人"
+  waiting: "正在等待数据流"
   ready_ahead: "已缓冲 %{minutes} 分钟"
   ready_ahead_short: "已缓冲不到 1 分钟"
   streaming: "速度 %{speed}"
@@ -438,7 +436,7 @@ settings:
   # What shows while a film loads or waits for more of the stream.
   loader:
     title: "加载动画"
-    about: "影片等待后续数据时显示的画面。"
+    about: "影片启动时显示的画面。"
     dinosaur: "恐龙"
     logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not

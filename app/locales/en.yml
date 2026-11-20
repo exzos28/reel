@@ -357,9 +357,7 @@ player:
       other: "Found %{count} people, connecting"
     fetching: "Fetching the start, %{percent}%"
     starting: Starting
-  buffering: Buffering
-  ahead_seconds: "%{seconds} s ready ahead"
-  rate_from: "%{speed} from %{count} people"
+  waiting: "Waiting for the stream"
   ready_ahead: "%{minutes} min ready ahead"
   ready_ahead_short: Less than a minute ready ahead
   streaming: "streaming at %{speed}"
@@ -441,7 +439,7 @@ settings:
   # What shows while a film loads or waits for more of the stream.
   loader:
     title: Loading animation
-    about: What shows while a film waits for more of the stream.
+    about: "What shows while a film starts."
     dinosaur: Dinosaur
     logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not

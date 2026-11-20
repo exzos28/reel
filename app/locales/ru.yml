@@ -355,9 +355,7 @@ player:
       other: "Найдено раздающих: %{count}, подключаемся"
     fetching: "Загружаем начало, %{percent}%"
     starting: Запускаем
-  buffering: Загрузка
-  ahead_seconds: "В запасе %{seconds} с"
-  rate_from: "%{speed} от %{count} чел."
+  waiting: "Ожидание потока"
   ready_ahead: "В запасе %{minutes} мин"
   ready_ahead_short: В запасе меньше минуты
   streaming: "поток %{speed}"
@@ -433,7 +431,7 @@ settings:
     right: Справа
   loader:
     title: Анимация загрузки
-    about: Что видно, пока фильм ждёт продолжения потока.
+    about: "Что видно, пока фильм запускается."
     dinosaur: Динозавр
     logo: reel
   source_drawer:

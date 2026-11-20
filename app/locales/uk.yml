@@ -355,9 +355,7 @@ player:
       other: "Знайдено людей: %{count}, підключаємося"
     fetching: "Завантажуємо початок, %{percent}%"
     starting: "Запускаємо"
-  buffering: "Завантаження"
-  ahead_seconds: "У запасі %{seconds} с"
-  rate_from: "%{speed} від %{count} ос."
+  waiting: "Очікування потоку"
   ready_ahead: "У запасі %{minutes} хв"
   ready_ahead_short: "У запасі менше хвилини"
   streaming: "потік %{speed}"
@@ -438,7 +436,7 @@ settings:
   # What shows while a film loads or waits for more of the stream.
   loader:
     title: "Анімація завантаження"
-    about: "Що видно, поки фільм чекає на продовження потоку."
+    about: "Що видно, поки фільм запускається."
     dinosaur: "Динозавр"
     logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not
