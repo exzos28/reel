@@ -2,7 +2,9 @@
 // and commits once on release, a vertical swipe leaves it as it was.
 import { expect, open, test } from "nsh/test";
 
-const slider = () => open("./tests/TrackSliderApp.tsx", { clock: {} });
+// Android: the headless pointer counts a pan from the press, as Android does (on iOS the slider
+// counts it from where UIKit recognized it, which the headless runner does not play).
+const slider = () => open("./tests/TrackSliderApp.tsx", { clock: {}, platform: "android" });
 
 test("a tap puts it where it lands, once", async () => {
   const app = await slider();

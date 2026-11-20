@@ -10,6 +10,7 @@
 // opens the platform starts no pan. JS hears no move, so while a drag goes on it reads the
 // value at `SCRUB_HZ` for what follows it in words (the time beside the scrubber).
 import { cleanup, computed, createAnimatedValue, effect, signal, untracked, View, type JSX, type PressEvent, type ViewStyle, type WheelEvent } from "nsh";
+import { runtime } from "../platform";
 import { alpha, colors, focusRing, targetSlop } from "../theme";
 import { Pressable } from "./Pressable";
 
@@ -20,6 +21,10 @@ const HELD_SCALE = 1.35;
 /** How long after a press goes up without a tap the thumb waits for the drag that took the
  * press over (on iOS the two come in separate turns), ms; then it goes back. */
 const SETTLE_MS = 100;
+/** iOS counts a pan's translation from where it was recognized, not from where the finger went
+ * down (UIKit's), and takes the press from the finger there: the drag counts from where that
+ * press ended. Elsewhere it counts from the press. */
+const fromRecognition = runtime.os === "ios";
 
 export function TrackSlider(props: {
   testID?: string;
@@ -62,6 +67,8 @@ export function TrackSlider(props: {
   /** Its pan is on (`onHold` said true). */
   let dragging = false;
   let pressX = 0;
+  /** iOS: the pan's translation when it began, until the press it took over says where it was. */
+  let began: number | null = null;
   let last = -1;
   let poll: ReturnType<typeof setInterval> | undefined;
   let settle: ReturnType<typeof setTimeout> | undefined;
@@ -80,9 +87,19 @@ export function TrackSlider(props: {
     if (!down) base.set(at);
   });
 
+  /** iOS: where the press the pan took over ended. */
+  let upX: number | null = null;
+  /** iOS: the drag counts from `x` less the translation it began with. */
+  const anchor = (x: number) => {
+    if (began == null) return;
+    pressX = x - began;
+    began = null;
+    base.set(Math.min(Math.max(pressX, 0), untracked(width)));
+  };
   /** The thumb goes where the press landed, and grows. */
   const press = (x: number) => {
     clearTimeout(settle);
+    if (!down) upX = null;
     pressX = x;
     base.set(Math.min(Math.max(x, 0), untracked(width)));
     if (!down) grow.timing(HELD_SCALE, { duration: 120 });
@@ -140,13 +157,18 @@ export function TrackSlider(props: {
       onPress={(e: PressEvent) => commit(e.position.x)}
       // The press is over with no tap: the drag that took it over comes with it (or just
       // before it). Neither (the pointer moved up or down): the thumb goes back.
-      onPressUp={() => {
+      onPressUp={(e: PressEvent) => {
         clearTimeout(settle);
-        if (!dragging) settle = setTimeout(cancel, SETTLE_MS);
+        if (dragging) return anchor(e.position.x);
+        upX = e.position.x;
+        settle = setTimeout(cancel, SETTLE_MS);
       }}
-      onPanStart={() => {
+      onPanStart={(e) => {
         clearTimeout(settle);
+        began = fromRecognition ? e.translation.x : null;
+        const up = upX;
         press(pressX);
+        if (up != null) anchor(up);
         dragging = true;
         last = -1;
         props.onHold?.(true);
@@ -162,7 +184,10 @@ export function TrackSlider(props: {
       }}
       // Let go where the thumb is drawn: the value the pan moved, whichever way the platform
       // counts its translation.
-      onPanEnd={(e) => (e.cancelled ? cancel() : commit(pressX + (e.value?.x ?? e.translation.x)))}
+      onPanEnd={(e) => {
+        if (e.cancelled) cancel();
+        else commit(pressX + (e.value?.x ?? e.translation.x));
+      }}
       onWheel={props.onWheel}
       style={[{ height: props.height, justifyContent: "center" }, props.style]}
     >
