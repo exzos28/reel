@@ -25,6 +25,7 @@ import { scroller } from "./scrollCtl";
 import savedIcon from "../icons/saved.svg";
 import searchIcon from "../icons/search.svg";
 import { librarySupported } from "../library";
+import { pressFeedback } from "../kit/pressFeedback";
 
 /** The tabs: the nav's destinations but Settings. */
 const TABS = NAV.filter((n) => n.id !== "settings" && n.id !== "saved");
@@ -55,8 +56,9 @@ function Logo() {
 
 /** Settings, a round button: it pushes Settings on the current tab (a 44 pt touch area). */
 function SettingsButton(props: { size: number }) {
+  const press = pressFeedback();
   return (
-    <View role="button" accessibilityLabel={t("nav.settings")} onPress={openSettings} hitSlop={targetSlop(props.size)} style={disc(props.size, isSettings())}>
+    <View role="button" accessibilityLabel={t("nav.settings")} onPress={openSettings} onPressDown={press.onPressDown} onPressUp={press.onPressUp} hitSlop={targetSlop(props.size)} style={{ ...disc(props.size, isSettings()), opacity: press.on() ? 0.7 : 1 }}>
       <Icon src={() => settingsIcon} size={pt(props.size * 0.47)} color={() => (isSettings() ? colors.snow() : colors.dim())} />
     </View>
   );
@@ -220,8 +222,9 @@ export const phoneDisc = (side: "left" | "right"): ViewStyle => ({ position: "ab
 
 /** Back, a disc (40 across, a 44 pt touch area). */
 function BackDisc() {
+  const press = pressFeedback();
   return (
-    <View role="button" accessibilityLabel={t("nav.back")} onPress={handleBack} hitSlop={targetSlop(40)} style={disc(40)}>
+    <View role="button" accessibilityLabel={t("nav.back")} onPress={handleBack} onPressDown={press.onPressDown} onPressUp={press.onPressUp} hitSlop={targetSlop(40)} style={{ ...disc(40), opacity: press.on() ? 0.7 : 1 }}>
       <Icon src={() => backIcon} size={pt(20)} />
     </View>
   );
@@ -313,18 +316,19 @@ function underName(): string {
 
 /** Back in the logo's place: iPad's "‹ Movies" capsule; Android's ← disc, then the logo. */
 function TabletBack() {
+  const press = pressFeedback();
   return (
     <If
       when={android}
       else={
-        <View role="button" accessibilityLabel={t("nav.back_to", { page: underName() })} onPress={handleBack} style={capsuleStyle()}>
+        <View role="button" accessibilityLabel={t("nav.back_to", { page: underName() })} onPress={handleBack} onPressDown={press.onPressDown} onPressUp={press.onPressUp} style={{ ...capsuleStyle(), opacity: press.on() ? 0.7 : 1 }}>
           <Icon src={() => backIcon} size={pt(20)} />
           <Text style={capsuleText()}>{underName()}</Text>
         </View>
       }
     >
       <View style={row(12)}>
-        <View role="button" accessibilityLabel={t("nav.back_to", { page: underName() })} onPress={handleBack} style={disc(44)}>
+        <View role="button" accessibilityLabel={t("nav.back_to", { page: underName() })} onPress={handleBack} onPressDown={press.onPressDown} onPressUp={press.onPressUp} style={{ ...disc(44), opacity: press.on() ? 0.7 : 1 }}>
           <Icon src={() => backIcon} size={pt(20)} />
         </View>
         <Logo />
