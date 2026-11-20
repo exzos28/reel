@@ -206,6 +206,7 @@ export const VideoEngine: VideoEngineModule = {
   // A TV's web view has no native views of reel's.
   views: () => false,
   fullscreen: () => {},
+  turn: () => {},
 };
 
 export const Hosted: HostedModule = {

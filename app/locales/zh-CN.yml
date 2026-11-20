@@ -320,6 +320,7 @@ player:
   unmute: "取消静音"
   volume: "音量"
   exit_fullscreen: "退出全屏"
+  rotate: "旋转屏幕"
   stage:
     searching: "正在查找资源"
     finding: "正在查找分享者"

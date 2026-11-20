@@ -49,6 +49,8 @@ fn ios_components(components: &nsh_platform_ios::Components) {
     mpv::register_ios(components);
     // The screen stays on while something saves (and while a film plays: the mpv view).
     adapters::ios_awake::watch();
+    // reel's dark background under the UI from the first frame (NSH's root is white).
+    adapters::ios_awake::paint_root();
 }
 
 /// The mpv video view on Windows (Direct2D in the view), where libmpv is found.
@@ -211,6 +213,16 @@ impl VideoEngine {
         crate::adapters::android_views::fullscreen(on);
         #[cfg(not(target_os = "android"))]
         let _ = on;
+    }
+
+    /// Turns the screen to landscape (`true`) or portrait, whatever the device's rotation lock
+    /// says: the player's Rotate button (iOS; elsewhere nothing). The device turning it back
+    /// (rotation unlocked) still turns it.
+    pub fn turn(landscape: bool) {
+        #[cfg(target_os = "ios")]
+        crate::adapters::ios_awake::turn(landscape);
+        #[cfg(not(target_os = "ios"))]
+        let _ = landscape;
     }
 
     /// Whether reel's own native views are registered on this device (Android: the Java ones

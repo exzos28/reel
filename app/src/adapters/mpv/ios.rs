@@ -3,9 +3,9 @@
 //! VideoToolbox), as MPVKit's own iOS demo does. iOS has no desktop OpenGL, so the macOS view's
 //! render API path (`view.rs`) does not apply.
 //!
-//! mpv reads the layer's size only when its video output starts (MPVKit's MoltenVK context
-//! reports no resize), so a new size restarts the output (`vo` set again): a rotation or a
-//! split-view change blinks once. Files load once the layer has a size (`LoadGate`), else mpv
+//! mpv reads the layer's size only when its video output is set up for a video (MPVKit's
+//! MoltenVK context reports no resize), so a new size while a picture shows reloads the video
+//! (`video-reload`): a rotation or a split-view change blinks once. Files load once the layer has a size (`LoadGate`), else mpv
 //! would start its output at 0×0.
 
 use std::{
@@ -164,18 +164,20 @@ impl Inner {
         self.size.set((w, h));
         let _: () = unsafe { msg_send![&*self.layer, setDrawableSize: CGSize { width: w, height: h }] };
         let player = self.player.borrow();
-        tracing::warn!("reel mpv: layer {w}x{h}{}", if first { ", output starts" } else { ", output restarts" });
+        tracing::warn!("reel mpv: layer {w}x{h}{}", if first { ", output starts" } else { ", resized" });
         if first {
             player.set_window(Retained::as_ptr(&self.layer) as *const c_void as i64);
             player.set_property("vo", VO);
             if let Some(gate) = self.gate.borrow_mut().take() {
                 gate.open(self.lib, player.raw());
             }
-        } else {
-            // mpv took the size at the start of its output: start it again at this one.
-            player.set_property("vo", "null");
-            player.set_property("vo", VO);
+        } else if player.property("vo-configured").as_deref() == Some("yes") {
+            // A picture shows: mpv took the layer's size when its output was set up for this
+            // video, so the video is set up again (from where it is), which reads the new size.
+            // Not `vo` off and on: during a file's start that left it without a picture.
+            player.command_args(&["video-reload"]);
         }
+        // No picture yet: the output reads the size it needs when the video starts.
     }
 }
 

@@ -62,7 +62,7 @@ objc2-core-foundation = { version = "0.3", features = ["CFDate"] }
 libc = "0.2"
 nsh-platform-ios = { version = "0.5.1", default-features = false }
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", features = ["NSNotification", "NSString"] }
+objc2-foundation = { version = "0.3", features = ["NSNotification", "NSString", "NSArray"] }
 objc2-ui-kit = { version = "0.3", features = ["UIView", "UIResponder", "UIWindow", "UIScreen", "UIApplication"] }
 objc2-quartz-core = { version = "0.3", features = ["CALayer", "CATransaction", "objc2-core-foundation"] }
 objc2-core-foundation = { version = "0.3", features = ["CFCGTypes"] }

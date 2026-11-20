@@ -59,3 +59,62 @@ fn apply() {
     }
     unsafe { dispatch_async_f(&raw const _dispatch_main_q, on as usize as *mut c_void, set) };
 }
+
+/// reel's background (`colors.ink`, nsh.json) behind everything on iOS: NSH paints the window's
+/// root white ("as in React Native"), which showed as a white flash at start, before the UI drew,
+/// and through the player's dialog as it faded in. Called on the main thread.
+pub fn paint_root() {
+    use objc2::{msg_send, rc::Retained, runtime::AnyObject};
+    let Some(mtm) = MainThreadMarker::new() else { return };
+    let app = UIApplication::sharedApplication(mtm);
+    let ink: Retained<AnyObject> = unsafe {
+        msg_send![objc2::class!(UIColor), colorWithRed: 15.0f64 / 255.0, green: 15.0f64 / 255.0, blue: 15.0f64 / 255.0, alpha: 1.0f64]
+    };
+    unsafe {
+        let scenes: Retained<AnyObject> = msg_send![&app, connectedScenes];
+        let scenes: Retained<objc2_foundation::NSArray<AnyObject>> = msg_send![&scenes, allObjects];
+        for scene in scenes.iter() {
+            let responds: bool = msg_send![&scene, respondsToSelector: objc2::sel!(windows)];
+            if !responds {
+                continue;
+            }
+            let windows: Retained<objc2_foundation::NSArray<AnyObject>> = msg_send![&scene, windows];
+            for window in windows.iter() {
+                let _: () = msg_send![&window, setBackgroundColor: &*ink];
+                let root: Option<Retained<AnyObject>> = msg_send![&window, rootViewController];
+                if let Some(root) = root {
+                    let view: Option<Retained<AnyObject>> = msg_send![&root, view];
+                    if let Some(view) = view {
+                        let _: () = msg_send![&view, setBackgroundColor: &*ink];
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Asks the window's scene for landscape or portrait (iOS 16+'s geometry request: it works with the
+/// rotation lock on, which a phone's own turning does not).
+pub fn turn(landscape: bool) {
+    extern "C" fn run(context: *mut c_void) {
+        use objc2::{msg_send, rc::Retained, runtime::AnyObject};
+        let Some(mtm) = MainThreadMarker::new() else { return };
+        // UIInterfaceOrientationMask: portrait 1 << 1, landscape (left and right) 1 << 3 | 1 << 4.
+        let mask: usize = if context.is_null() { 1 << 1 } else { (1 << 3) | (1 << 4) };
+        let Some(class) = objc2::runtime::AnyClass::get(c"UIWindowSceneGeometryPreferencesIOS") else { return };
+        let app = UIApplication::sharedApplication(mtm);
+        unsafe {
+            let prefs: Retained<AnyObject> = msg_send![msg_send![class, alloc], initWithInterfaceOrientations: mask];
+            let scenes: Retained<AnyObject> = msg_send![&app, connectedScenes];
+            let scenes: Retained<objc2_foundation::NSArray<AnyObject>> = msg_send![&scenes, allObjects];
+            for scene in scenes.iter() {
+                let responds: bool = msg_send![&scene, respondsToSelector: objc2::sel!(requestGeometryUpdateWithPreferences:errorHandler:)];
+                if responds {
+                    let none: *const AnyObject = std::ptr::null();
+                    let _: () = msg_send![&scene, requestGeometryUpdateWithPreferences: &*prefs, errorHandler: none];
+                }
+            }
+        }
+    }
+    unsafe { dispatch_async_f(&raw const _dispatch_main_q, landscape as usize as *mut c_void, run) };
+}

@@ -132,7 +132,7 @@ pub fn command(lib: &'static Lib, raw: Raw, args: &[&str]) {
     }
 }
 
-const OBSERVED: [(&str, c_int); 8] = [
+const OBSERVED: [(&str, c_int); 9] = [
     // The byte of the file mpv has read to: with demuxer-cache-time, where bytes are in time.
     ("stream-pos", ffi::FORMAT_INT64),
     ("time-pos", ffi::FORMAT_DOUBLE),
@@ -144,6 +144,8 @@ const OBSERVED: [(&str, c_int); 8] = [
     ("seeking", ffi::FORMAT_FLAG),
     ("track-list", ffi::FORMAT_STRING),
     ("eof-reached", ffi::FORMAT_FLAG),
+    // What decodes the video ("videotoolbox", "mediacodec", "no": the CPU), for the log.
+    ("hwdec-current", ffi::FORMAT_STRING),
 ];
 
 impl Player {
@@ -218,6 +220,24 @@ impl Player {
         if r < 0 {
             tracing::warn!("reel mpv: wid: {}", ffi::error_text(self.lib, r));
         }
+    }
+
+    /// A property's value as text (None: unavailable).
+    #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
+    pub fn property(&self, name: &str) -> Option<String> {
+        let p = unsafe { (self.lib.get_property_string)(self.raw.0, cstr(name).as_ptr()) };
+        if p.is_null() {
+            return None;
+        }
+        let v = unsafe { CStr::from_ptr(p) }.to_string_lossy().into_owned();
+        unsafe { (self.lib.free)(p.cast()) };
+        Some(v)
+    }
+
+    /// Runs an mpv command (for the platform's view).
+    #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
+    pub fn command_args(&self, args: &[&str]) {
+        self.command(args);
     }
 
     #[cfg_attr(not(target_os = "android"), allow(dead_code))]
@@ -427,6 +447,10 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
                         if unsafe { *(p.data as *const c_int) } != 0 && !shared.at_end.swap(true, Ordering::Relaxed) {
                             emit("end", json!({}));
                         }
+                    }
+                    (b"hwdec-current", ffi::FORMAT_STRING) => {
+                        let how = unsafe { CStr::from_ptr(*(p.data as *const *const c_char)) }.to_string_lossy();
+                        tracing::warn!("reel mpv: decoding with {}", if how.is_empty() || how == "no" { "the CPU" } else { &how });
                     }
                     (b"track-list", ffi::FORMAT_STRING) => {
                         let list = unsafe { CStr::from_ptr(*(p.data as *const *const c_char)) }.to_string_lossy();

@@ -98,8 +98,7 @@ export function Scroller(props: { ctl: ScrollCtl; style?: ViewStyle; onScroll?: 
         // Where reel moves it with the wheel itself, the system's wheel is off (it would move it too).
         scrollable={!OWN_WHEEL}
         scrollbar={false}
-        // No overscroll bounce anywhere: content stops at its edges.
-        bounces={false}
+        // The platform's overscroll bounce where it has one (iOS, macOS): content springs back at its edges.
         scrollEventThrottle={16}
         onScroll={(e: ScrollEvent) => {
           c.remember(c.horizontal ? e.offset.x : e.offset.y);

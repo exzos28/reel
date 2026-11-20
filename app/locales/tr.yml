@@ -320,6 +320,7 @@ player:
   unmute: "Sesi aç"
   volume: "Ses düzeyi"
   exit_fullscreen: "Tam ekrandan çık"
+  rotate: "Ekranı döndür"
   stage:
     searching: "Sürüm aranıyor"
     finding: "Paylaşanlar aranıyor"

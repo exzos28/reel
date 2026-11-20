@@ -1,7 +1,7 @@
 // The nav on touch (design/navigation.md, "Tablet" and "Phone"). The tabs are
-// Home, Movies, Shows, Anime and Search; Settings is a button that pushes it
-// on the current tab. Phone: a bottom tab bar on every page but the player,
-// and a head over a root page (logo, Settings) that scrolls away with it.
+// Home, Movies, Shows, Anime and Search. Phone: a bottom tab bar on every page but the player,
+// Settings its last tab, and a head over a root page (the logo) that scrolls away with it.
+// Tablet: Settings is a button that pushes it on the current tab.
 // Tablet: one top row on every page: the logo (Back in its place on a deeper
 // page), the floating tabs centred, Add to list on a title, Settings; solid
 // once content is under it.
@@ -101,8 +101,8 @@ const indicatorStyle = (on: boolean): ViewStyle => ({
 });
 const tabText = (on: boolean): TextStyle => ({ fontFamily: font, fontSize: android ? 12 : 10.5, fontWeight: 500, color: on ? colors.snow() : colors.ash() });
 
-/** The phone's tabs: the destinations that fit (Home, Movies, Series, Search), then More for
- * the others (Cartoons, Anime), which it lists in a sheet. */
+/** The phone's tabs: the destinations that fit (Home, Movies, Series, Search), More for the
+ * others (Cartoons, Anime), which it lists in a sheet, and Settings last. */
 const PHONE_TABS: Destination[] = ["home", "movies", "shows", "search"];
 const MORE = TABS.filter((n) => !PHONE_TABS.includes(n.id));
 const inMore = () => MORE.some((n) => n.id === section());
@@ -131,6 +131,7 @@ export function PhoneTabBar() {
           {(n) => <Tab label={t(`nav.${n().id}`)} icon={n().icon} on={() => section() === n().id} inRail={phoneRail()} onPress={() => go(n().id)} />}
         </Each>
         <Tab label={t("nav.more")} icon={moreIcon} on={inMore} inRail={phoneRail()} onPress={() => more.set(true)} />
+        <Tab label={t("nav.settings")} icon={settingsIcon} on={() => section() === "settings"} inRail={phoneRail()} onPress={() => go("settings")} />
       </View>
       <If when={more()}>
         <ChoicePanel
@@ -160,12 +161,11 @@ const headStyle = (): ViewStyle => ({
   zIndex: 3,
 });
 
-/** The top of a phone's root page: the logo and Settings; it scrolls away with the page. */
+/** The top of a phone's root page: the logo (Settings is a tab); it scrolls away with the page. */
 export function PhoneHead() {
   return (
     <View style={headStyle()}>
       <Logo />
-      <SettingsButton size={40} />
     </View>
   );
 }

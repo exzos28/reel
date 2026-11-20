@@ -320,6 +320,7 @@ player:
   unmute: Unmute
   volume: Volume
   exit_fullscreen: Exit full screen
+  rotate: Rotate screen
   stage:
     searching: Looking for a release
     finding: Finding people sharing it
