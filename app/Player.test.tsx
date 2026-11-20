@@ -344,7 +344,7 @@ test("phone: an episode picked in the Episodes sheet plays", async () => {
   expect(app.texts()).toContain("S3:E3 · Pain");
 });
 
-test("phone: Play and ±10 s sit in the middle of the picture, the bottom row keeps the rest", async () => {
+test("phone: Play and ±10 s sit in the middle of the picture, the rest at the top", async () => {
   const app = await phonePlaying(PORTRAIT);
   expect(app.shows("player-middle")).toBe(true);
   expect(app.shows("label:Pause")).toBe(true);
@@ -478,4 +478,14 @@ test("iPad: a film without releases has no Release column in its tracks", async 
   await app.press("label:Audio and subtitles");
   expect(app.texts()).toContain("Subtitles");
   expect(app.texts()).not.toContain("Release");
+});
+
+test("phone: the secondary buttons sit at the top, the bottom keeps the timeline", async () => {
+  for (const screen of [PORTRAIT, SIDEWAYS]) {
+    const app = await phonePlaying(screen);
+    expect(app.shows("player-top-buttons")).toBe(true);
+    expect(app.shows("player-top-buttons >> label:Audio and subtitles")).toBe(true);
+    expect(app.shows("player-top-buttons >> label:Rotate screen")).toBe(true);
+    expect(app.shows("scrubber")).toBe(true);
+  }
 });

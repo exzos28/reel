@@ -22,8 +22,9 @@ import { cachedAhead, currentJob, duration, firstFrame, readAt, playing as what,
 import { chrome, frame, sideSafeArea, windowControlsRoom } from "./layout/chrome";
 import { alpha, colors, density, focusRing, font, iconPt, radius, safe, showFocus, targetSlop, ts as layoutTs, type, u as layoutU } from "./theme";
 
-/** A phone: play and ±10 s in the middle of the picture, under the thumbs; the bottom row keeps
- * the timeline and the secondary buttons, lifted off the home indicator. */
+/** A phone: play and ±10 s in the middle of the picture, under the thumbs; the secondary buttons
+ * at the top right, opposite the ✕; the bottom keeps only the timeline, lifted off the home
+ * indicator. */
 const PHONE = () => chrome() === "phone";
 /** On a phone the player is held at arm's length over a film: its controls are one and a half
  * times the layout's size (a 68 px button 46 pt, not 31) and its text a quarter larger (times 18 pt). */
@@ -184,8 +185,12 @@ export function Player() {
   const buttons: ButtonId[] = BUTTONS.filter(
     (b) => (b !== "fullscreen" || caps.fullscreen) && (b !== "rotate" || caps.rotate) && (b !== "episodes" || episodeOf() != null),
   );
-  /** The bottom row's buttons: on a phone without those in the middle of the picture. */
-  const bottomButtons = PHONE() ? buttons.filter((b) => !MIDDLE.includes(b)) : buttons;
+  /** The bottom row's buttons: none on a phone, whose bottom keeps only the timeline (its
+   * secondary buttons are at the top, `topButtons`; Play and ±10 s in the middle). */
+  const bottomButtons = PHONE() ? [] : buttons;
+  /** A phone's secondary buttons (Audio and subtitles, Episodes, Rotate): at the top right,
+   * opposite the ✕, so the picture keeps the room a bottom row took. */
+  const topButtons = PHONE() ? buttons.filter((b) => !MIDDLE.includes(b)) : [];
   const middleButtons = PHONE() ? buttons.filter((b) => MIDDLE.includes(b)) : [];
   /** On touch, Episodes and Rotate keep to the right edge: the first of them pushes the rest there
    * (on a computer the volume has the right). */
@@ -782,6 +787,23 @@ export function Player() {
               <Text style={{ ...type.meta(), color: colors.soft() }}>{status()}</Text>
             </If>
           </View>
+          {/* A phone's secondary buttons, at the right, centred on the ✕'s line. */}
+          <If when={ready() && topButtons.length > 0}>
+            <View testID="player-top-buttons" style={topButtonsStyle()}>
+              <Each of={topButtons} key="index">
+                {(id) => (
+                  <RoundButton
+                    icon={() => icon(id())}
+                    label={() => label(id())}
+                    size={BUTTON}
+                    focused={() => row() === "buttons" && buttons[button()] === id() && !panel()}
+                    selected={() => (id() === "tracks" && panel()) || (id() === "episodes" && episodesOpen())}
+                    onPress={() => { poke(); button.set(buttons.indexOf(id())); run(id()); }}
+                  />
+                )}
+              </Each>
+            </View>
+          </If>
         </View>
 
         <If when={episodesOpen() ? what() : null}>
@@ -880,6 +902,7 @@ export function Player() {
                 {duration() > 0 ? t("player.left", { time: Fmt.position(Math.max(Math.ceil(duration()) - shownSecond(), 0)) }) : ""}
               </Text>
             </View>
+            <If when={bottomButtons.length > 0 || volumeShown}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: u(14), marginTop: u(26) }}>
               {/* On the right: the volume (computers). */}
               <If when={volumeShown}>
@@ -902,6 +925,7 @@ export function Player() {
                 )}
               </Each>
             </View>
+            </If>
           </View>
         </If>
       </If>
@@ -993,6 +1017,11 @@ function Scrubber(props: {
     </TrackSlider>
   );
 }
+
+/** A phone's top-right buttons: pushed to the right edge, centred on the ✕'s line. */
+const topButtonsStyle = (): ViewStyle => ({
+  marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: u(14), marginTop: (CLOSE() - u(BUTTON)) / 2,
+});
 
 /** A phone's middle row, centred on the picture; presses beside its buttons reach the picture. */
 const middleStyle = (): ViewStyle => ({
@@ -1134,7 +1163,8 @@ function UpNext(props: {
   return (
     <View
       style={{
-        position: "absolute", right: safe().x, bottom: u(96), width: u(720), maxWidth: "90%",
+        // A phone's: at the controls' bottom, clear of the home indicator.
+        position: "absolute", right: safe().x, bottom: PHONE() ? controlsBottom() : u(96), width: u(720), maxWidth: "90%",
         padding: u(22), borderRadius: radius() + u(22), borderCurve: "continuous", backgroundColor: alpha(colors.card(), 0.95),
         boxShadow: `0 ${u(24)}px ${u(60)}px ${alpha(colors.ink(), 0.6)}`,
       }}
