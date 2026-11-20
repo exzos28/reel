@@ -30,6 +30,11 @@ pub fn pick(files: &[(usize, String, u64)], episode: Option<(u16, u16)>, through
         return videos.iter().max_by_key(|(_, _, len)| *len).map(|(i, _, _)| *i);
     };
     let episodes: Vec<&(usize, String, u64)> = videos.into_iter().filter(|(_, p, _)| !is_extra(p)).collect();
+    // The episode's own number in its season (TMDB numbers some shows through the show).
+    let ep = match through {
+        Some(t) => t.local(ep)?,
+        None => ep,
+    };
 
     // Names with the season and episode.
     let said: Vec<(&(usize, String, u64), crate::release::ReleaseInfo, Option<u16>)> = episodes
@@ -243,6 +248,12 @@ mod tests {
         let f = files(&["[SOFCJ-Raws] Naruto - 001 (DVDRip).mkv", "[SOFCJ-Raws] Naruto - 057 (DVDRip).mkv", "[SOFCJ-Raws] Naruto - 058 (DVDRip).mkv"]);
         assert_eq!(pick(&f, Some((2, 1)), naruto.through_of(2)), Some(2));
         assert_eq!(pick(&f, Some((1, 57)), naruto.through_of(1)), Some(1));
+        // TMDB's own Naruto numbers its seasons through: S2's first is 53, in the pack's 053.
+        let tmdb = Numbering(vec![52, 52, 54, 62]);
+        let f = files(&["[SOFCJ-Raws] Naruto - 052 (DVDRip).mkv", "[SOFCJ-Raws] Naruto - 053 (DVDRip).mkv", "[SOFCJ-Raws] Naruto - 054 (DVDRip).mkv"]);
+        assert_eq!(pick(&f, Some((2, 53)), tmdb.through_of(2)), Some(1));
+        let own = files(&["Naruto.S02E01.mkv", "Naruto.S02E02.mkv"]);
+        assert_eq!(pick(&own, Some((2, 54)), tmdb.through_of(2)), Some(1), "S2E54 is the season's second");
         // A season's own pack keeps its own numbers, even when TMDB counts it one short.
         let own = files(&["Show - 01.mkv", "Show - 02.mkv", "Show - 24.mkv"]);
         assert_eq!(pick(&own, Some((3, 2)), Numbering(vec![20, 20, 23]).through_of(3)), Some(1));

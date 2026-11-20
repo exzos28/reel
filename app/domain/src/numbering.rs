@@ -18,6 +18,26 @@ pub struct Through {
     pub size: u16,
 }
 
+impl Through {
+    /// Episode `e`'s number in its season. TMDB numbers some shows' episodes through the show
+    /// within each season (Naruto's season 2 runs 53–104): a number past the season's size that
+    /// falls in its range is one of those.
+    pub fn local(&self, e: u16) -> Option<u16> {
+        if (1..=self.size).contains(&e) {
+            Some(e)
+        } else if (self.start..self.start + self.size).contains(&e) {
+            Some(e - self.start + 1)
+        } else {
+            None
+        }
+    }
+
+    /// Episode `e`'s number through the show.
+    pub fn absolute(&self, e: u16) -> Option<u16> {
+        self.local(e).map(|l| self.start + l - 1)
+    }
+}
+
 /// Episodes per regular season, from season 1 (TMDB's); empty when not known.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Numbering(pub Vec<u16>);
@@ -34,9 +54,10 @@ impl Numbering {
         Some(before.iter().sum::<u16>() + 1)
     }
 
-    /// The number through the show of (`season`, `episode`).
+    /// The number through the show of (`season`, `episode`); `episode` may be the season's own
+    /// number or, as TMDB numbers some shows, the show's (`Through::local`).
     pub fn absolute(&self, season: u16, episode: u16) -> Option<u16> {
-        (episode >= 1 && episode <= self.size(season)?).then(|| self.start(season).map(|s| s + episode - 1))?
+        self.through_of(season)?.absolute(episode)
     }
 
     /// Season `season`'s place in the show's numbering.
@@ -101,6 +122,14 @@ pub fn holds(info: &ReleaseInfo, season: u16, episode: Option<u16>, n: &Numberin
             },
         };
     }
+    // The season's own number of the episode (TMDB numbers some shows through the show).
+    let episode = match (episode, n.through_of(season)) {
+        (Some(e), Some(t)) => match t.local(e) {
+            Some(l) => Some(l),
+            None => return Holds::No,
+        },
+        (e, _) => e,
+    };
     match episode {
         Some(e) => match info.season {
             Some(s) if s != season => Holds::No,
@@ -138,6 +167,9 @@ mod tests {
         assert_eq!(n.absolute(2, 1), Some(23));
         assert_eq!(n.absolute(15, 20), Some(327));
         assert_eq!(n.absolute(1, 23), None, "past the season");
+        // TMDB numbers some shows through within each season: S2E23 is S2E1.
+        assert_eq!(n.absolute(2, 23), Some(23));
+        assert_eq!(n.absolute(2, 45), None);
         assert_eq!(n.of_absolute(23), Some((2, 1)));
         assert_eq!(Numbering::default().absolute(1, 1), None);
     }
@@ -154,6 +186,9 @@ mod tests {
         let s1 = parse("Сверхъестественное / Supernatural / S1E1-22 of 22 (…) [2005]");
         assert_eq!(holds(&s1, 1, Some(22), &n), Holds::Named);
         assert_eq!(holds(&s1, 2, Some(1), &n), Holds::No);
+        // An episode TMDB numbers through the show (S2E23) is its season's first.
+        let s2 = parse("Сверхъестественное / Supernatural / S2E1-22 of 22 (…) [2006]");
+        assert_eq!(holds(&s2, 2, Some(23), &n), Holds::Named);
         // A total not the show's: not this show numbered through.
         let other = parse("Show / S1E1-500 of 500");
         assert_eq!(holds(&other, 2, Some(1), &n), Holds::No);
