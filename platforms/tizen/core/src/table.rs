@@ -228,6 +228,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Library", "revision", |a| {
         no_args(&a)?;
         ret(Library::revision())
+    })
+    .sync("Library", "overall", |a| {
+        no_args(&a)?;
+        ret(Library::overall())
     });
 
     r.sync("Sources", "search", |a| {

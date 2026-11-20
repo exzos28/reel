@@ -703,7 +703,8 @@ impl Library {
 
     /// The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free",
     /// "folder"}}`, each item `{"id","key","title","label","image","season","number","state",
-    /// "size","have","progress","speed","peers","message","folder"}`.
+    /// "size","have","progress","speed","peers","left","message","folder"}`; `left` (an item's
+    /// and a group's): minutes it still takes, rounded, null when not known.
     pub fn list() -> String {
         library::list().to_string()
     }
@@ -738,6 +739,11 @@ impl Library {
     pub fn revision() -> f64 {
         library::revision() as f64
     }
+
+    /// The Saved tab's mark: `{"saving","progress"}` (see `library::overall`).
+    pub fn overall() -> String {
+        library::overall().to_string()
+    }
 }
 
 /// Formatting shared by every platform.
@@ -767,6 +773,17 @@ impl Fmt {
             format!("{} GB", gb.round() as u64)
         } else {
             format!("{gb:.1} GB")
+        }
+    }
+
+    /// Bytes saved of a size, `[have, size]`, as "35 of 700 MB" says them: the first without
+    /// its unit when both have the same (`["35", "700 MB"]`), else both whole
+    /// (`["700 MB", "1.4 GB"]`).
+    pub fn size_of(have: f64, size: f64) -> Vec<String> {
+        let (h, s) = (Self::size(have), Self::size(size));
+        match (h.rsplit_once(' '), s.rsplit_once(' ')) {
+            (Some((n, a)), Some((_, b))) if a == b => vec![n.to_owned(), s],
+            _ => vec![h, s],
         }
     }
 
@@ -803,6 +820,14 @@ mod tests {
         assert_eq!(Fmt::size(1024.0 * 1024.0 * 1024.0), "1 GB");
         assert_eq!(Fmt::size(1.4 * 1024.0 * 1024.0 * 1024.0), "1.4 GB");
         assert_eq!(Fmt::size(12.3 * 1024.0 * 1024.0 * 1024.0), "12 GB");
+    }
+
+    #[test]
+    fn size_of() {
+        let mb = 1024.0 * 1024.0;
+        assert_eq!(Fmt::size_of(35.0 * mb, 700.0 * mb), ["35", "700 MB"]);
+        assert_eq!(Fmt::size_of(700.0 * mb, 1.4 * 1024.0 * mb), ["700 MB", "1.4 GB"]);
+        assert_eq!(Fmt::size_of(1.2 * 1024.0 * mb, 3.4 * 1024.0 * mb), ["1.2", "3.4 GB"]);
     }
 
     #[test]

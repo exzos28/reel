@@ -11,8 +11,9 @@ use std::collections::VecDeque;
 const WINDOW: f64 = 60.0;
 /// The samples must span this many seconds before they say anything.
 const MIN_SPAN: f64 = 20.0;
-/// The two halves of the window may differ this many times at most.
-const MAX_SWING: f64 = 3.0;
+/// The two halves of the window may differ this many times at most (a torrent is bursty: a
+/// tighter bound would switch the time on and off).
+const MAX_SWING: f64 = 4.0;
 /// Longer than this is no time worth saying.
 const MAX_MINUTES: f64 = 99.0 * 60.0;
 

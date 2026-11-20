@@ -117,6 +117,8 @@ Formatting shared by every platform.
   Called from: `ui/Player.tsx`, `ui/catalog.ts`.
 - `size(bytes: f64) -> String`: A size in bytes as "256 MB", "1 GB", "1.4 GB".
   Called from: `ui/Player.tsx`, `ui/screens/saved/SavedGroupRow.tsx`, `ui/screens/saved/SavedRow.tsx`, `ui/screens/saved/SavedScreen.tsx`, `ui/screens/settings/SettingsScreen.tsx`, `ui/screens/settings/choices.ts`, `ui/screens/title/SaveDrawer.tsx`.
+- `sizeOf(have: f64, size: f64) -> Vec<String>` (`size_of`): Bytes saved of a size, `[have, size]`, as "35 of 700 MB" says them: the first without its unit when both have the same (`["35", "700 MB"]`), else both whole (`["700 MB", "1.4 GB"]`).
+  Called from: nothing in the UI.
 - `speed(mib_per_s: f64) -> String`: A download speed in MiB/s as "3.4 MB/s" (one decimal under 10, whole above).
   Called from: `ui/Player.tsx`, `ui/kit/SpeedLine.tsx`.
 
@@ -158,10 +160,13 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `item(key: String) -> String`: One key's state for its button: `{"state","progress","id","message"}` (see `library::item`).
   JSON: `{"state","progress","id","message"}`
   Called from: `ui/library.ts`.
-- `list() -> String`: The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, each item `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`.
-  JSON: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`
+- `list() -> String`: The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, each item `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","left","message","folder"}`; `left` (an item's and a group's): minutes it still takes, rounded, null when not known.
+  JSON: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","left","message","folder"}`
   Called from: `ui/library.ts`.
 - `openFolder() -> bool` (`open_folder`): Opens the folder saved films go into in the system's file manager (desktops); false where there is none or it did not open.
+  Called from: `ui/library.ts`.
+- `overall() -> String`: The Saved tab's mark: `{"saving","progress"}` (see `library::overall`).
+  JSON: `{"saving","progress"}`
   Called from: `ui/library.ts`.
 - `pause(id: u32)`: Pauses saving the item (its whole torrent: episodes of one pack pause together).
   Called from: `ui/library.ts`.
@@ -173,7 +178,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `resume(id: u32)`: Goes on saving a paused item.
   Called from: `ui/library.ts`.
 - `revision() -> f64`: Goes up when anything the Saved screen and the Save buttons show changed.
-  Called from: nothing in the UI.
+  Called from: `ui/library.ts`.
 - `save(keys: String) -> bool`: Saves the catalog keys in `keys` (a JSON array: a film, or episodes) once their release is known; what is saved already stays. False when this device saves nothing.
   Called from: `ui/library.ts`.
 - `setFolder(folder: String) -> String` (`set_folder`): Saves new items into `folder` from now on: "" when done, else why not.

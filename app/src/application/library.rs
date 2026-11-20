@@ -17,7 +17,7 @@ use serde_json::{Value, json};
 
 use super::catalog::{self, SaveAsk};
 use crate::wiring::keep;
-use reel_domain::{episode, keys::episode_key};
+use reel_domain::{episode, eta, keys::episode_key};
 
 /// How long a key may wait for its release before it is given up on.
 const SEARCH_FOR: Duration = Duration::from_secs(150);
@@ -200,7 +200,7 @@ pub fn plan(show: &str, season: u32) -> Value {
 /// "speed","peers","items":[item…]}` (speed and people of its torrents, each counted once): a film's holds its one item, a show's its episodes (by season and
 /// number); groups newest first. Items as `Keep::list` gives them.
 pub fn list() -> Value {
-    let all = items();
+    let all = with_left(items());
     let state = |i: &Value| i["state"].as_str().unwrap_or("").to_owned();
     // A title is in one place: Saving while anything of it saves (its saved episodes with it),
     // else Ready to watch; what failed is listed apart.
@@ -259,10 +259,72 @@ fn groups(items: Vec<Value>) -> Vec<Value> {
                 "checking": items.iter().any(|i| i["checking"] == true),
                 "speed": speed,
                 "peers": peers,
+                "left": group_left(&items),
                 "items": items,
             })
         })
         .collect()
+}
+
+/// Bytes an item still lacks.
+fn remaining(i: &Value) -> u64 {
+    i["size"].as_u64().unwrap_or(0).saturating_sub(i["have"].as_u64().unwrap_or(0))
+}
+
+fn unfinished(i: &Value) -> bool {
+    UNFINISHED.contains(&i["state"].as_str().unwrap_or(""))
+}
+
+/// The items with `"left"`: minutes each still takes, rounded as said (`eta::minutes_left`),
+/// null unless it saves at a rate the engine measured steady. The rate is its torrent's, so an
+/// episode of a pack others of which still save says nothing: its show's row says how long
+/// they all take.
+fn with_left(items: Vec<Value>) -> Vec<Value> {
+    let sharing = |t: &Value| items.iter().filter(|i| unfinished(i) && t.is_string() && i["torrent"] == *t).count();
+    let left: Vec<Option<u32>> = items
+        .iter()
+        .map(|i| {
+            let rate = if i["state"] == "saving" && sharing(&i["torrent"]) == 1 { i["rate"].as_f64() } else { None };
+            rate.and_then(|r| eta::minutes_left(remaining(i), r))
+        })
+        .collect();
+    items
+        .into_iter()
+        .zip(left)
+        .map(|(mut i, left)| {
+            i["left"] = json!(left);
+            i
+        })
+        .collect()
+}
+
+/// Minutes until every unfinished item of a title is saved: all that is left of them over
+/// their torrents' rates together. Null when one of them does not save at a known rate (paused,
+/// waiting, just started) or nothing is unfinished.
+fn group_left(items: &[Value]) -> Option<u32> {
+    let unfinished: Vec<&Value> = items.iter().filter(|i| unfinished(i)).collect();
+    if unfinished.is_empty() {
+        return None;
+    }
+    let mut rates: HashMap<&str, f64> = HashMap::new();
+    for i in &unfinished {
+        let rate = if i["state"] == "saving" { i["rate"].as_f64() } else { None };
+        rates.insert(i["torrent"].as_str()?, rate?);
+    }
+    eta::minutes_left(unfinished.iter().map(|i| remaining(i)).sum(), rates.values().sum())
+}
+
+/// The Saved tab's mark: `{"saving","progress"}`; saving while anything is being found or
+/// saved (not only paused), progress the share saved of everything unfinished (paused too, so
+/// it does not jump back when one pauses).
+pub fn overall() -> Value {
+    let all = items();
+    let unfinished: Vec<&Value> = all.iter().filter(|i| unfinished(i)).collect();
+    let searching = ASKED.lock().unwrap().as_ref().is_some_and(|a| a.values().any(|v| matches!(v, Asked::Searching)));
+    let saving = searching || unfinished.iter().any(|i| i["state"] != "paused");
+    let size: u64 = unfinished.iter().map(|i| i["size"].as_u64().unwrap_or(0)).sum();
+    let have: u64 = unfinished.iter().map(|i| i["have"].as_u64().unwrap_or(0)).sum();
+    json!({ "saving": saving, "progress": if size > 0 { have as f64 / size as f64 } else { 0.0 } })
 }
 
 pub fn set_running(id: u32, on: bool) {
@@ -321,5 +383,42 @@ mod tests {
         assert_eq!(g[0]["items"][0]["number"], 1, "episodes in order");
         assert_eq!(g[0]["progress"], 0.5);
         assert_eq!(g[1]["show"], false);
+    }
+
+    const MB: u64 = 1024 * 1024;
+
+    fn saving(n: u64, torrent: &str, have: u64, rate: Option<f64>) -> Value {
+        json!({ "key": format!("tmdb:tv:1:s1e{n}"), "season": 1, "number": n, "state": "saving", "torrent": torrent, "size": 700 * MB, "have": have, "rate": rate })
+    }
+
+    #[test]
+    fn an_item_says_how_long_it_takes_only_at_a_known_rate() {
+        // The review's case: 35 of 700 MB at 0.1 MB/s.
+        let i = |rate| with_left(vec![saving(1, "a", 35 * MB, rate)]).remove(0);
+        assert_eq!(i(Some(0.1 * MB as f64))["left"], 110);
+        assert_eq!(i(None)["left"], Value::Null);
+        let mut paused = saving(1, "a", 35 * MB, Some(MB as f64));
+        paused["state"] = json!("paused");
+        assert_eq!(with_left(vec![paused])[0]["left"], Value::Null, "a paused one takes no time");
+    }
+
+    #[test]
+    fn a_show_takes_what_is_left_of_it_over_its_torrents_rates() {
+        let rate = Some(MB as f64);
+        // Two episodes of one pack, 600 MB left of each, the pack at 1 MB/s: 20 min.
+        let g = groups(with_left(vec![saving(1, "a", 100 * MB, rate), saving(2, "a", 100 * MB, rate)]));
+        assert_eq!(g[0]["left"], 20);
+        assert_eq!(g[0]["items"][0]["left"], Value::Null, "an episode of a pack others of which save says nothing");
+        // Two seasons from two torrents, 1 MB/s each: 2 MB/s together.
+        let g = groups(with_left(vec![saving(1, "a", 100 * MB, rate), saving(2, "b", 100 * MB, rate)]));
+        assert_eq!(g[0]["left"], 10);
+        let mut done = saving(3, "a", 700 * MB, None);
+        done["state"] = json!("saved");
+        let g = groups(with_left(vec![saving(1, "a", 100 * MB, rate), done.clone()]));
+        assert_eq!(g[0]["left"], 10, "a saved episode adds nothing");
+        assert_eq!(g[0]["items"][0]["left"], 10, "the last one saving of its pack says its own");
+        let g = groups(with_left(vec![saving(1, "a", 100 * MB, rate), saving(2, "b", 100 * MB, None)]));
+        assert_eq!(g[0]["left"], Value::Null, "one without a rate: not known");
+        assert_eq!(groups(vec![done])[0]["left"], Value::Null);
     }
 }
