@@ -80,6 +80,10 @@ title:
   saved: Saved
   saved_one: 1 episode saved
   saved_some: "%{count} episodes saved"
+  save_size: "Save · %{size}"
+  no_space_title: "Not enough space"
+  no_space_about: "Needs %{needed}, %{free} free on this device."
+  save_smaller: "Save %{quality} · %{size}"
 
 card:
   left: "%{time} left"
@@ -133,6 +137,14 @@ release:
   sharing: "%{count} people sharing"
   sharing_short: "%{count} sharing"
   pack: "season pack %{size}"
+  # A voiced audio language: "Russian MVO", "English dub".
+  voiced: "%{language} %{voice}"
+  # How an audio language is voiced: a dub, a voice-over by several, two or one voices.
+  voice:
+    dub: "dub"
+    mvo: "MVO"
+    dvo: "DVO"
+    avo: "AVO"
   fast: starts in seconds
   note:
     starts_fast: Starts fast
@@ -326,6 +338,9 @@ player:
   close_tracks: Close audio and subtitles
   episodes: Episodes
   close_episodes: Close the episodes
+  season_episodes:
+    one: "Season %{number} · %{count} episode"
+    other: "Season %{number} · %{count} episodes"
   now_playing: Playing now
   fullscreen: Full screen
   mute: Mute
@@ -506,7 +521,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: Saved
-  empty: Nothing saved yet. Save a film or a season from its page to watch it without the internet.
+  empty: "Save a film to watch it offline"
+  browse: "Browse films"
   saving: Saving
   while_open: while reel is open
   ready: Ready to watch
@@ -531,6 +547,8 @@ saved:
     checking: Checking what is saved…
     resolving: Finding people who share it…
     saving: "%{percent}% · %{have} of %{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent}% · %{have} of %{size} · about %{time} left"
     paused: "Paused · %{have} of %{size}"
     waiting: Starts when the film you watch stops
     saved: "Saved · %{size}"
@@ -557,6 +575,9 @@ saved:
     save_one: Save 1 episode
     choose: Choose episodes
     more: "%{size} more"
+    free: "%{free} free"
+    more_free: "%{size} · %{free} free"
+    no_room: "Not enough space: needs %{size}, %{free} free"
     new: new
 
 confirm:

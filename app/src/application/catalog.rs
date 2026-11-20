@@ -29,7 +29,7 @@ use super::{progress, settings};
 use crate::wiring::{metadata, playback};
 use reel_domain::discover::{DiscoverKind, Filter};
 use reel_domain::numbering::{self, Holds, Numbering, Through};
-use reel_domain::{compat, episode, release, typo};
+use reel_domain::{compat, episode, fit, release, typo};
 
 mod details;
 mod filters;
@@ -711,25 +711,72 @@ fn quality_rank(r: &Value) -> u64 {
     r["info"]["resolution"].as_u64().unwrap_or(0)
 }
 
-/// The release's own words for where it comes from: "BluRay", "WEB HDR".
-fn source_label(r: &Value) -> String {
-    let info = &r["info"];
-    let mut parts: Vec<&str> = Vec::new();
-    parts.push(match info["source"].as_str() {
+/// Where the release comes from: "BluRay", "WEB" ("" when its name does not say).
+fn source_name(r: &Value) -> &'static str {
+    match r["info"]["source"].as_str() {
         Some("remux") => "Remux",
         Some("bluray") => "BluRay",
         Some("web") => "WEB",
         Some("hdtv") => "HDTV",
         Some("dvd") => "DVD",
         _ => "",
-    });
-    if info["dolby_vision"] == true {
-        parts.push("DV");
-    } else if info["hdr"] == true {
-        parts.push("HDR");
     }
-    parts.retain(|p| !p.is_empty());
-    parts.join(" ")
+}
+
+/// The release's own words for where it comes from: "BluRay", "WEB HDR".
+fn source_label(r: &Value) -> String {
+    let info = &r["info"];
+    let hdr = if info["dolby_vision"] == true {
+        "DV"
+    } else if info["hdr"] == true {
+        "HDR"
+    } else {
+        ""
+    };
+    [source_name(r), hdr].into_iter().filter(|p| !p.is_empty()).collect::<Vec<_>>().join(" ")
+}
+
+/// The picture in a release row's second line: codec, then Dolby Vision and HDR, "H.265 · DV ·
+/// HDR" (no words to translate); "" when the name says none of them.
+fn video_label(r: &Value) -> String {
+    let info = &r["info"];
+    let codec = match info["codec"].as_str() {
+        Some("x264") => "H.264",
+        Some("x265") => "H.265",
+        Some("av1") => "AV1",
+        _ => "",
+    };
+    let dv = if info["dolby_vision"] == true { "DV" } else { "" };
+    // A Dolby Vision release's HDR10 layer, or HDR alone.
+    let hdr = if info["hdr10"] == true || (info["hdr"] == true && info["dolby_vision"] != true) { "HDR" } else { "" };
+    [codec, dv, hdr].into_iter().filter(|p| !p.is_empty()).collect::<Vec<_>>().join(" · ")
+}
+
+/// A release row's second line and its spoken label, as parts the UI words and joins: `{"text"}`
+/// as it is, `{"audio":[{"language","voice"}…]}` the audio languages (`language` ISO 639-1 or
+/// null, `voice` "dub", "mvo", "dvo", "avo" or null), `{"key",…}` a key with its values.
+/// The line: audio first (what the choice turns on), the picture, the size. Spoken: the name,
+/// the line, the people sharing and how it starts; the release's own name is left out (long
+/// and noisy read aloud).
+fn release_parts(r: &Value, peers: u64, mbit: u64) -> (Vec<Value>, Vec<Value>) {
+    let mut line = Vec::new();
+    if let Some(a) = r["info"]["languages"].as_array().filter(|a| !a.is_empty()) {
+        line.push(json!({ "audio": a }));
+    }
+    let video = video_label(r);
+    if !video.is_empty() {
+        line.push(json!({ "text": video }));
+    }
+    let size = size(r);
+    if !size.is_empty() {
+        line.push(if r["seasonPack"] == true { json!({ "key": "release.pack", "size": size }) } else { json!({ "text": size }) });
+    }
+    let name = [quality(r), source_name(r).to_owned()].into_iter().filter(|p| !p.is_empty()).collect::<Vec<_>>().join(" ");
+    let mut spoken = vec![json!({ "text": name })];
+    spoken.extend(line.iter().cloned());
+    spoken.push(json!({ "key": "release.sharing", "count": peers }));
+    spoken.push(json!({ "key": format!("release.note.{}", start_note(peers, mbit)), "mbit": mbit }));
+    (line, spoken)
 }
 
 fn peers(r: &Value) -> u64 {
@@ -767,49 +814,62 @@ fn plays_now(peers: u64, mbit: u64) -> bool {
     peers >= 50 && mbit <= PLAYS_NOW_MBIT
 }
 
-/// The tallest picture Play picks by itself (None: any). A phone or a tablet shows no more than
-/// 1080p's worth: a 4K release only costs it time and space (the viewer can still choose one).
-static PICTURE_CAP: Mutex<Option<u32>> = Mutex::new(None);
-
-/// Sets `PICTURE_CAP` (0: none).
-pub fn set_picture_cap(lines: u32) {
-    *PICTURE_CAP.lock().unwrap() = (lines > 0).then_some(lines);
-}
-
-/// The release Play uses: the user's choice, else the best quality that plays now (within the
-/// device's picture cap when one under it plays now), else the one most people share. An index
-/// into `releases`.
+/// The release Play uses: the user's choice, else the best quality that plays now; on a device
+/// with limits (`fit::limits`: a phone, a tablet) the best that plays now within them, else the
+/// most shared one within them, before any other. An index into `releases`.
 fn chosen(key: &str, releases: &[Value], minutes: u32, episodes: u32) -> Option<usize> {
-    let cap = *PICTURE_CAP.lock().unwrap();
-    chosen_within(cap, key, releases, minutes, episodes)
-}
-
-/// `chosen` with the picture cap given (tests pass it rather than set the process-wide one).
-fn chosen_within(cap: Option<u32>, key: &str, releases: &[Value], minutes: u32, episodes: u32) -> Option<usize> {
-    if releases.is_empty() {
-        return None;
-    }
     if let Some(&i) = CHOSEN.lock().unwrap().get(key)
         && i < releases.len()
     {
         return Some(i);
     }
-    // A season plays from a pack when there is one: it holds every episode.
-    let packs = parse_season_key(key).is_some() && releases.iter().any(|r| r["seasonPack"] == true);
-    let rs = releases.iter().enumerate().filter(|(_, r)| !packs || r["seasonPack"] == true);
-    let within = |r: &Value| cap.is_none_or(|c| r["info"]["resolution"].as_u64().is_none_or(|h| h as u32 <= c));
-    let now = rs.clone().filter(|(_, r)| plays_now(peers(r), mbit(r, minutes, episodes)));
-    now.clone()
-        .filter(|(_, r)| within(r))
-        .max_by_key(|(i, r)| (quality_rank(r), peers(r), std::cmp::Reverse(*i)))
-        .or_else(|| now.max_by_key(|(i, r)| (quality_rank(r), peers(r), std::cmp::Reverse(*i))))
-        .or_else(|| rs.max_by_key(|(i, r)| (peers(r), std::cmp::Reverse(*i))))
-        .map(|(i, _)| i)
+    picked_within(fit::limits(compat::family()), key, releases, minutes, episodes, |_| true)
 }
 
-/// Four signal bars for the people sharing.
-fn bars(peers: u64) -> u8 {
-    reel_domain::release::swarm_tier(peers)
+/// How long one runs when the catalog does not say, minutes: a film's or an episode's usual
+/// length, so a release's size still says what it costs per hour.
+const FILM_MINUTES: u32 = 120;
+const EPISODE_MINUTES: u32 = 45;
+
+/// Whether release `r` of `key` keeps to `limits`: its picture and its bytes per hour (a pack's
+/// share per episode; a pack of a season whose episode count is not known is judged by its
+/// picture alone).
+fn release_within(limits: fit::Limits, key: &str, r: &Value, minutes: u32, episodes: u32) -> bool {
+    let lines = r["info"]["resolution"].as_u64().map(|h| h as u32);
+    let pack = r["seasonPack"] == true;
+    let bytes = r["size"].as_f64().unwrap_or(0.0);
+    if pack && episodes <= 1 {
+        return fit::within(limits, lines, 0.0, 0);
+    }
+    let share = if pack { episodes as f64 } else { 1.0 };
+    let episode = parse_key(key).1.is_some() || parse_season_key(key).is_some();
+    let minutes = if minutes > 0 { minutes } else if episode { EPISODE_MINUTES } else { FILM_MINUTES };
+    fit::within(limits, lines, bytes / share, minutes)
+}
+
+/// The release Play picks by itself among those `allowed` lets through (Save's smaller one: those
+/// that fit the free space), the user's choice aside. Without limits: the best quality that plays
+/// now, else the most shared. With them: the best that plays now within them, else the best within
+/// them that enough people share (10, under that it barely starts), and only then the rest as
+/// without limits.
+fn picked_within(limits: fit::Limits, key: &str, releases: &[Value], minutes: u32, episodes: u32, allowed: impl Fn(&Value) -> bool) -> Option<usize> {
+    // A season plays from a pack when there is one: it holds every episode.
+    let packs = parse_season_key(key).is_some() && releases.iter().any(|r| r["seasonPack"] == true && allowed(r));
+    let rs = releases.iter().enumerate().filter(|(_, r)| allowed(r) && (!packs || r["seasonPack"] == true));
+    let best = |(i, r): &(usize, &Value)| (quality_rank(r), peers(r), std::cmp::Reverse(*i));
+    let shared = |(i, r): &(usize, &Value)| (peers(r), std::cmp::Reverse(*i));
+    let now = rs.clone().filter(|(_, r)| plays_now(peers(r), mbit(r, minutes, episodes)));
+    let limited = limits != fit::Limits::NONE;
+    let within = |r: &Value| release_within(limits, key, r, minutes, episodes);
+    let first = if limited {
+        now.clone()
+            .filter(|(_, r)| within(r))
+            .max_by_key(best)
+            .or_else(|| rs.clone().filter(|(_, r)| within(r) && peers(r) >= 10).max_by_key(best))
+    } else {
+        None
+    };
+    first.or_else(|| now.max_by_key(best)).or_else(|| rs.max_by_key(shared)).map(|(i, _)| i)
 }
 
 /// How long one of `key` runs and how many episodes a pack of its season holds.
@@ -842,16 +902,19 @@ fn releases_json(key: &str, info: &Info) -> Vec<Value> {
         .map(|&(i, top)| {
             let r = &releases[i];
             let (p, m) = (peers(r), mbit(r, minutes, episodes));
+            let (line, spoken) = release_parts(r, p, m);
             json!({
                 "index": i,
                 "quality": quality(r),
                 "source": source_label(r),
+                // In the releases sheet, without HDR: its second line says it (`line`).
+                "origin": source_name(r),
                 // The release's full name.
                 "group": r["title"],
                 "size": size(r),
-                "tracks": [],
+                "line": line,
+                "spoken": spoken,
                 "peers": p,
-                "bars": bars(p),
                 "note": start_note(p, m),
                 "mbit": m,
                 "selected": Some(i) == pick,
@@ -1059,13 +1122,25 @@ pub enum SaveAsk {
     No(&'static str),
 }
 
-pub fn save_request(key: &str) -> SaveAsk {
+/// What saving `key` takes. `pick`: the id of a film's release to save instead of the one Play
+/// uses (Save's smaller one, `smaller_release`), which leaves Play's as it is.
+pub fn save_request(key: &str, pick: Option<&str>) -> SaveAsk {
     let (show, ep) = parse_key(key);
-    let source = match play_source(key) {
-        PlaySource::Ready(source, episode, through) => (source, episode, through),
-        PlaySource::Searching => return SaveAsk::Searching,
-        PlaySource::None => return SaveAsk::No("no_source"),
-        PlaySource::NotInRelease => return SaveAsk::No("not_in_release"),
+    let source = match pick {
+        Some(id) if ep.is_none() => match search_of(key) {
+            Some(Search { releases: Some(rs), .. }) => match rs.iter().find(|r| r["id"] == id).and_then(|r| text(&r["source"])) {
+                Some(source) => (source, None, None),
+                None => return SaveAsk::No("no_source"),
+            },
+            Some(Search { failed: Some(_), .. }) => return SaveAsk::No("no_source"),
+            _ => return SaveAsk::Searching,
+        },
+        _ => match play_source(key) {
+            PlaySource::Ready(source, episode, through) => (source, episode, through),
+            PlaySource::Searching => return SaveAsk::Searching,
+            PlaySource::None => return SaveAsk::No("no_source"),
+            PlaySource::NotInRelease => return SaveAsk::No("not_in_release"),
+        },
     };
     let Some(t) = peek(&Call::Title(show.to_owned())) else { return SaveAsk::Searching };
     let info = Info { id: show.to_owned(), ..from_title(&t) };
@@ -1089,6 +1164,55 @@ pub fn save_request(key: &str) -> SaveAsk {
         image: image.unwrap_or_default(),
         cover: info.still.clone().unwrap_or_default(),
     })
+}
+
+/// The bytes saving `key` takes, when known: a film's release (or `pick`, by id); an episode's
+/// file in its season's pack once the pack's files are read, or its own release. None while
+/// searching or when the files are not known yet.
+pub fn save_size(key: &str, pick: Option<&str>) -> Option<u64> {
+    let (show, ep) = parse_key(key);
+    let bytes = |r: &Value| r["size"].as_f64().filter(|b| *b > 0.0).map(|b| b as u64);
+    let Some((s, e)) = ep else {
+        let releases = releases_of(key);
+        let r = match pick {
+            Some(id) => releases.iter().find(|r| r["id"] == id)?,
+            None => {
+                let info = from_title(&peek(&Call::Title(show.to_owned()))?);
+                let (minutes, episodes) = length_of(key, &info);
+                &releases[chosen(key, &releases, minutes, episodes)?]
+            }
+        };
+        return bytes(r);
+    };
+    match play_source(key) {
+        PlaySource::Ready(source, Some(_), through) => {
+            if let Some(files) = torrent_files(&source) {
+                let i = episode::pick(&files, Some((s as u16, e as u16)), through)?;
+                return files.iter().find(|f| f.0 == i).map(|f| f.2);
+            }
+            // Its own release (not a pack): the release is the episode.
+            let from = plays_from(key);
+            let r = releases_of(&from).into_iter().find(|r| text(&r["source"]).as_deref() == Some(source.as_str()))?;
+            if r["seasonPack"] == true { None } else { bytes(&r) }
+        }
+        _ => None,
+    }
+}
+
+/// A film's release to save instead of Play's when that one does not fit: the one Play would
+/// pick by itself among those whose size `fits`. `{"id","quality","source","size"}` (bytes).
+pub fn smaller_release(key: &str, fits: impl Fn(u64) -> bool) -> Option<Value> {
+    let (show, ep) = parse_key(key);
+    if ep.is_some() {
+        return None;
+    }
+    let info = from_title(&peek(&Call::Title(show.to_owned()))?);
+    let releases = releases_of(key);
+    let (minutes, episodes) = length_of(key, &info);
+    let size = |r: &Value| r["size"].as_f64().filter(|b| *b > 0.0).map(|b| b as u64);
+    let i = picked_within(fit::limits(compat::family()), key, &releases, minutes, episodes, |r| size(r).is_some_and(&fits))?;
+    let r = &releases[i];
+    Some(json!({ "id": r["id"], "quality": quality(r), "source": source_label(r), "size": size(r) }))
 }
 
 /// How many episodes of a show have aired, from what the catalog has now (never asking the

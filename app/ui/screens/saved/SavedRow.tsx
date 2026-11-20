@@ -11,7 +11,7 @@ import { labelText, metaText, oneLine } from "../../kit/text";
 import { Fmt } from "../../native";
 import type { SavedItem } from "../../library";
 import { alpha, colors, cs, density, targetSlop, u } from "../../theme";
-import { episodeCode } from "../../catalog";
+import { episodeCode, runtime } from "../../catalog";
 import { SpeedLine } from "../../kit/SpeedLine";
 import pauseIcon from "../../icons/pause.svg";
 import playIcon from "../../icons/play.svg";
@@ -48,15 +48,26 @@ function episodeLine(i: SavedItem) {
   return i.label ? `${episodeCode(i.season, i.number)} · ${i.label}` : episodeCode(i.season, i.number);
 }
 
-/** The state in words: "34% · 1.2 GB of 3.4 GB", "Paused", "Saved · 2.1 GB", why it failed. */
+/** Saving in words: "5% · 35 of 700 MB · about 1 h 50 min left" (the time when the core knows
+ * it), a film's, an episode's or a show's. */
+export function savingText(progress: number, have: number, size: number, left: number | null): string {
+  const [h, s] = Fmt.sizeOf(have, size);
+  const words = { percent: Math.floor(progress * 100), have: h, size: s };
+  return left == null ? t("saved.state.saving", words) : t("saved.state.saving_left", { ...words, time: runtime(left) });
+}
+
+/** The state in words: "34% · 1.2 of 3.4 GB · about 25 min left", "Paused", "Saved · 2.1 GB",
+ * why it failed. */
 export function stateLine(i: SavedItem): string {
   const size = Fmt.size(i.size);
   if (i.checking && (i.state === "saving" || i.state === "paused")) return t("saved.state.checking");
   switch (i.state) {
     case "saving":
-      return t("saved.state.saving", { percent: Math.floor(i.progress * 100), have: Fmt.size(i.have), size });
-    case "paused":
-      return t("saved.state.paused", { have: Fmt.size(i.have), size });
+      return savingText(i.progress, i.have, i.size, i.left);
+    case "paused": {
+      const [have, of] = Fmt.sizeOf(i.have, i.size);
+      return t("saved.state.paused", { have, size: of });
+    }
     case "saved":
       return t("saved.state.saved", { size });
     case "failed":

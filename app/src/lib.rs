@@ -254,6 +254,14 @@ impl Settings {
         reel_domain::compat::device().unwrap_or_default().to_owned()
     }
 
+    /// Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows",
+    /// "linux", "tablet", "phone"), once at start: what Play and Save pick by themselves follows
+    /// from it (a phone keeps to 1080p and a size per hour, `fit::limits`). False for an
+    /// unknown name.
+    pub fn set_family(name: String) -> bool {
+        reel_domain::compat::set_family(&name).is_some()
+    }
+
     /// Loads the settings from `data_dir` (the app's data directory, empty
     /// when the host has none) and configures the engine from them; JSON
     /// `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`. `languages`: the system's
@@ -628,12 +636,6 @@ impl Sources {
         }
     }
 
-    /// The tallest picture Play picks by itself, in lines (1080 on a phone or a tablet: 4K costs it
-    /// time and space for nothing it can show); 0: any. The viewer can still choose any release.
-    pub fn set_picture_cap(lines: u32) {
-        catalog::set_picture_cap(lines);
-    }
-
     /// Sets the player profile of this device (what it can play): "mpv",
     /// "apple_avplayer", "android_mediaplayer", "tizen". Releases it cannot
     /// play are hidden from searches. False for an unknown name.
@@ -654,7 +656,7 @@ impl Sources {
 
     /// `{"state":"pending"}`, `{"state":"done","releases":[…]}` (ranked: each
     /// `{"id","title","source","infohash","size","seeders","peers","indexer",
-    /// "info":{resolution,hdr,dolby_vision,codec,source,season,episodes,season_pack},
+    /// "info":{resolution,hdr,dolby_vision,languages,codec,source,season,episodes,season_pack},
     /// "seasonPack"}`), `{"state":"done","caps":{…}}` for a check, or
     /// `{"state":"failed","message"}`.
     pub fn result(id: u32) -> String {
@@ -695,15 +697,30 @@ impl Library {
         library::title(&id, show).to_string()
     }
 
-    /// The Save drawer for a season: `{"episodes":[{"key","number","title","size","state",
-    /// "progress","locked"}],"saved","total","size"}`.
-    pub fn plan(show: String, season: u32) -> String {
-        library::plan(&show, season).to_string()
+    /// The Save drawer for a season, with the keys ticked in it (`picked`, a JSON array):
+    /// `{"episodes":[{"key","number","title","size","state","progress","locked"}],"saved",
+    /// "total","size","free","picked":{"count","size","fits"}}` (see `library::plan`).
+    pub fn plan(show: String, season: u32, picked: String) -> String {
+        let picked: Vec<String> = serde_json::from_str(&picked).unwrap_or_default();
+        library::plan(&show, season, &picked).to_string()
+    }
+
+    /// Save on a film's page: `{"size","free","fits","smaller":{"id","quality","source","size"}}`
+    /// (see `library::offer`): the size for its button, and whether it fits the free space.
+    pub fn offer(key: String) -> String {
+        library::offer(&key).to_string()
+    }
+
+    /// Saves film `key` from release `release` (the id `offer`'s `smaller` gives) instead of
+    /// the one Play uses, which stays as it is.
+    pub fn save_release(key: String, release: String) -> bool {
+        library::save_release(&key, &release)
     }
 
     /// The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free",
     /// "folder"}}`, each item `{"id","key","title","label","image","season","number","state",
-    /// "size","have","progress","speed","peers","message","folder"}`.
+    /// "size","have","progress","speed","peers","left","message","folder"}`; `left` (an item's
+    /// and a group's): minutes it still takes, rounded, null when not known.
     pub fn list() -> String {
         library::list().to_string()
     }
@@ -738,6 +755,11 @@ impl Library {
     pub fn revision() -> f64 {
         library::revision() as f64
     }
+
+    /// The Saved tab's mark: `{"saving","progress"}` (see `library::overall`).
+    pub fn overall() -> String {
+        library::overall().to_string()
+    }
 }
 
 /// Formatting shared by every platform.
@@ -767,6 +789,17 @@ impl Fmt {
             format!("{} GB", gb.round() as u64)
         } else {
             format!("{gb:.1} GB")
+        }
+    }
+
+    /// Bytes saved of a size, `[have, size]`, as "35 of 700 MB" says them: the first without
+    /// its unit when both have the same (`["35", "700 MB"]`), else both whole
+    /// (`["700 MB", "1.4 GB"]`).
+    pub fn size_of(have: f64, size: f64) -> Vec<String> {
+        let (h, s) = (Self::size(have), Self::size(size));
+        match (h.rsplit_once(' '), s.rsplit_once(' ')) {
+            (Some((n, a)), Some((_, b))) if a == b => vec![n.to_owned(), s],
+            _ => vec![h, s],
         }
     }
 
@@ -803,6 +836,14 @@ mod tests {
         assert_eq!(Fmt::size(1024.0 * 1024.0 * 1024.0), "1 GB");
         assert_eq!(Fmt::size(1.4 * 1024.0 * 1024.0 * 1024.0), "1.4 GB");
         assert_eq!(Fmt::size(12.3 * 1024.0 * 1024.0 * 1024.0), "12 GB");
+    }
+
+    #[test]
+    fn size_of() {
+        let mb = 1024.0 * 1024.0;
+        assert_eq!(Fmt::size_of(35.0 * mb, 700.0 * mb), ["35", "700 MB"]);
+        assert_eq!(Fmt::size_of(700.0 * mb, 1.4 * 1024.0 * mb), ["700 MB", "1.4 GB"]);
+        assert_eq!(Fmt::size_of(1.2 * 1024.0 * mb, 3.4 * 1024.0 * mb), ["1.2", "3.4 GB"]);
     }
 
     #[test]

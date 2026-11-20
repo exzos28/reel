@@ -198,8 +198,16 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         ret(Library::title(id, show))
     })
     .sync("Library", "plan", |a| {
-        let (show, season): (String, u32) = args(a)?;
-        ret(Library::plan(show, season))
+        let (show, season, picked): (String, u32, String) = args(a)?;
+        ret(Library::plan(show, season, picked))
+    })
+    .sync("Library", "offer", |a| {
+        let (key,): (String,) = args(a)?;
+        ret(Library::offer(key))
+    })
+    .sync("Library", "saveRelease", |a| {
+        let (key, release): (String, String) = args(a)?;
+        ret(Library::save_release(key, release))
     })
     .sync("Library", "list", |a| {
         no_args(&a)?;
@@ -228,15 +236,15 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Library", "revision", |a| {
         no_args(&a)?;
         ret(Library::revision())
+    })
+    .sync("Library", "overall", |a| {
+        no_args(&a)?;
+        ret(Library::overall())
     });
 
     r.sync("Sources", "search", |a| {
         let (request,): (String,) = args(a)?;
         ret(Sources::search(request))
-    })
-    .sync("Sources", "setPictureCap", |a| {
-        let (lines,): (u32,) = args(a)?;
-        ret(Sources::set_picture_cap(lines))
     })
     .sync("Sources", "setProfile", |a| {
         let (name,): (String,) = args(a)?;
@@ -373,6 +381,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Fmt", "size", |a| {
         let (bytes,): (f64,) = args(a)?;
         ret(Fmt::size(bytes))
+    })
+    .sync("Fmt", "sizeOf", |a| {
+        let (have, size): (f64, f64) = args(a)?;
+        ret(Fmt::size_of(have, size))
     })
     .sync("Fmt", "speed", |a| {
         let (mib_per_s,): (f64,) = args(a)?;

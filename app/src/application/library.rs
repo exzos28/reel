@@ -17,7 +17,7 @@ use serde_json::{Value, json};
 
 use super::catalog::{self, SaveAsk};
 use crate::wiring::keep;
-use reel_domain::{episode, keys::episode_key};
+use reel_domain::{episode, eta, fit, keys::episode_key};
 
 /// How long a key may wait for its release before it is given up on.
 const SEARCH_FOR: Duration = Duration::from_secs(150);
@@ -70,6 +70,15 @@ fn items() -> Vec<Value> {
 /// Saves each key once its release is known (a film, or episodes). Keys already saved or
 /// being saved are left as they are.
 pub fn save(keys: &[String]) -> bool {
+    save_from(keys, None)
+}
+
+/// Saves film `key` from its release `release` (an id, Save's smaller one) instead of Play's.
+pub fn save_release(key: &str, release: &str) -> bool {
+    save_from(&[key.to_owned()], Some(release.to_owned()))
+}
+
+fn save_from(keys: &[String], release: Option<String>) -> bool {
     if !supported() {
         return false;
     }
@@ -80,11 +89,17 @@ pub fn save(keys: &[String]) -> bool {
         }
         set_asked(key, Some(Asked::Searching));
         let key = key.clone();
+        let release = release.clone();
         std::thread::spawn(move || {
             let started = Instant::now();
             loop {
-                match catalog::save_request(&key) {
+                match catalog::save_request(&key, release.as_deref()) {
                     SaveAsk::Ready(request) => {
+                        // Not started when it does not fit (the Save button and the drawer say
+                        // so first; this holds when several start at once).
+                        if !claim(&key, catalog::save_size(&key, release.as_deref())) {
+                            return set_asked(&key, Some(Asked::No("no_space")));
+                        }
                         let r = keep().add(request);
                         set_asked(&key, r.err().map(|_| Asked::No("failed")));
                         return;
@@ -97,6 +112,70 @@ pub fn save(keys: &[String]) -> bool {
         });
     }
     true
+}
+
+/// Bytes set aside per key that starts saving, until its item knows its own size (an item is
+/// added before its torrent is read, with no size): saves started together each count the others.
+static CLAIMED: Mutex<Option<HashMap<String, u64>>> = Mutex::new(None);
+
+/// What is still to come on the disk: what is left of each unfinished item, and what is set
+/// aside for keys whose item does not know its size yet (or is not added yet), `key` aside.
+fn pending(items: &[Value], claimed: &HashMap<String, u64>, key: &str) -> u64 {
+    let left: u64 = items
+        .iter()
+        .filter(|i| i["key"] != key && UNFINISHED.contains(&i["state"].as_str().unwrap_or("")))
+        .map(|i| i["size"].as_u64().unwrap_or(0).saturating_sub(i["have"].as_u64().unwrap_or(0)))
+        .sum();
+    let set_aside: u64 = claimed
+        .iter()
+        .filter(|(k, _)| k.as_str() != key)
+        .filter(|(k, _)| match items.iter().find(|i| i["key"] == k.as_str()) {
+            Some(i) => UNFINISHED.contains(&i["state"].as_str().unwrap_or("")) && i["size"].as_u64().unwrap_or(0) == 0,
+            None => matches!(asked(k), Some(Asked::Searching)),
+        })
+        .map(|(_, b)| *b)
+        .sum();
+    left + set_aside
+}
+
+/// Free bytes on the folder's volume, when known.
+fn free() -> Option<u64> {
+    keep().space()["free"].as_u64()
+}
+
+/// Sets `size` aside for `key` when it fits (`fit::fits`); true. A size or free space not known
+/// lets it start: the engine waits for space (`waiting_space`) if the disk fills.
+fn claim(key: &str, size: Option<u64>) -> bool {
+    let mut all = CLAIMED.lock().unwrap();
+    let all = all.get_or_insert_with(HashMap::new);
+    let (Some(size), Some(free)) = (size, free()) else { return true };
+    if !fit::fits(size, free, pending(&items(), all, key)) {
+        return false;
+    }
+    all.insert(key.to_owned(), size);
+    true
+}
+
+/// Save on a film's page (design/offline-downloads.md, "Fit"): `{"size","free","fits",
+/// "smaller"}`. `size`: bytes its release takes (null while not known); `fits`: true, false, or
+/// null while the size or the free space is not known; `smaller`: when it does not fit, the
+/// release to save instead (`{"id","quality","source","size"}`), null when none fits.
+pub fn offer(key: &str) -> Value {
+    let size = catalog::save_size(key, None);
+    let free = free();
+    let all = items();
+    let pending = pending(&all, CLAIMED.lock().unwrap().get_or_insert_with(HashMap::new), key);
+    let fits = verdict(size, free, pending);
+    let smaller = match (fits, free) {
+        (Some(false), Some(free)) => catalog::smaller_release(key, |s| fit::fits(s, free, pending)),
+        _ => None,
+    };
+    json!({ "size": size, "free": free, "fits": fits, "smaller": smaller })
+}
+
+/// Whether `size` fits `free` with `pending` to come: None while either is not known.
+fn verdict(size: Option<u64>, free: Option<u64>, pending: u64) -> Option<bool> {
+    Some(fit::fits(size?, free?, pending))
 }
 
 /// One key's state for its button: `{"state","progress","id","message"}`; state is
@@ -159,7 +238,10 @@ pub fn title(id: &str, show: bool) -> Value {
 /// The Save drawer for a season: `{"episodes":[{"key","number","title","size","state",
 /// "progress","locked"}],"saved","total","size"}`. Sizes are bytes, null until the release's
 /// files are known; `locked`: saved or being saved, so the drawer does not pick it again.
-pub fn plan(show: &str, season: u32) -> Value {
+/// `picked`: the keys ticked in the drawer: `"picked":{"count","size","fits"}` (bytes of those
+/// whose size is known; `fits` true, false, or null while a size or the free space is not
+/// known), and `"free"` (bytes, null when not known).
+pub fn plan(show: &str, season: u32, picked: &[String]) -> Value {
     let files = catalog::season_files(show, season);
     let through = catalog::through_of(show, season);
     let all = items();
@@ -192,7 +274,33 @@ pub fn plan(show: &str, season: u32) -> Value {
         .collect();
     let saved = episodes.iter().filter(|e| e["locked"] == true).count();
     let size: Option<u64> = episodes.iter().map(|e| e["size"].as_u64()).sum();
-    json!({ "episodes": episodes, "saved": saved, "total": episodes.len(), "size": size })
+    let ticked: Vec<&Value> = episodes.iter().filter(|e| e["locked"] != true && picked.iter().any(|k| e["key"] == k.as_str())).collect();
+    let known: u64 = ticked.iter().filter_map(|e| e["size"].as_u64()).sum();
+    let unknown = ticked.iter().any(|e| e["size"].as_u64().is_none());
+    let free = free();
+    let pending = pending(&all, CLAIMED.lock().unwrap().get_or_insert_with(HashMap::new), "");
+    let fits = picked_fit(ticked.len(), known, unknown, free, pending);
+    json!({
+        "episodes": episodes,
+        "saved": saved,
+        "total": episodes.len(),
+        "size": size,
+        "free": free,
+        "picked": { "count": ticked.len(), "size": known, "fits": fits },
+    })
+}
+
+/// Whether the drawer's ticked episodes fit: false as soon as those of known size do not (more
+/// only adds), null while one's size or the free space is not known, true otherwise.
+fn picked_fit(count: usize, known: u64, unknown: bool, free: Option<u64>, pending: u64) -> Option<bool> {
+    if count == 0 {
+        return Some(true);
+    }
+    match verdict(Some(known), free, pending)? {
+        false => Some(false),
+        true if unknown => None,
+        true => Some(true),
+    }
 }
 
 /// The Saved screen: `{"saving":[group…],"ready":[group…],"failed":[group…],"space"}`.
@@ -200,7 +308,7 @@ pub fn plan(show: &str, season: u32) -> Value {
 /// "speed","peers","items":[item…]}` (speed and people of its torrents, each counted once): a film's holds its one item, a show's its episodes (by season and
 /// number); groups newest first. Items as `Keep::list` gives them.
 pub fn list() -> Value {
-    let all = items();
+    let all = with_left(items());
     let state = |i: &Value| i["state"].as_str().unwrap_or("").to_owned();
     // A title is in one place: Saving while anything of it saves (its saved episodes with it),
     // else Ready to watch; what failed is listed apart.
@@ -259,10 +367,72 @@ fn groups(items: Vec<Value>) -> Vec<Value> {
                 "checking": items.iter().any(|i| i["checking"] == true),
                 "speed": speed,
                 "peers": peers,
+                "left": group_left(&items),
                 "items": items,
             })
         })
         .collect()
+}
+
+/// Bytes an item still lacks.
+fn remaining(i: &Value) -> u64 {
+    i["size"].as_u64().unwrap_or(0).saturating_sub(i["have"].as_u64().unwrap_or(0))
+}
+
+fn unfinished(i: &Value) -> bool {
+    UNFINISHED.contains(&i["state"].as_str().unwrap_or(""))
+}
+
+/// The items with `"left"`: minutes each still takes, rounded as said (`eta::minutes_left`),
+/// null unless it saves at a rate the engine measured steady. The rate is its torrent's, so an
+/// episode of a pack others of which still save says nothing: its show's row says how long
+/// they all take.
+fn with_left(items: Vec<Value>) -> Vec<Value> {
+    let sharing = |t: &Value| items.iter().filter(|i| unfinished(i) && t.is_string() && i["torrent"] == *t).count();
+    let left: Vec<Option<u32>> = items
+        .iter()
+        .map(|i| {
+            let rate = if i["state"] == "saving" && sharing(&i["torrent"]) == 1 { i["rate"].as_f64() } else { None };
+            rate.and_then(|r| eta::minutes_left(remaining(i), r))
+        })
+        .collect();
+    items
+        .into_iter()
+        .zip(left)
+        .map(|(mut i, left)| {
+            i["left"] = json!(left);
+            i
+        })
+        .collect()
+}
+
+/// Minutes until every unfinished item of a title is saved: all that is left of them over
+/// their torrents' rates together. Null when one of them does not save at a known rate (paused,
+/// waiting, just started) or nothing is unfinished.
+fn group_left(items: &[Value]) -> Option<u32> {
+    let unfinished: Vec<&Value> = items.iter().filter(|i| unfinished(i)).collect();
+    if unfinished.is_empty() {
+        return None;
+    }
+    let mut rates: HashMap<&str, f64> = HashMap::new();
+    for i in &unfinished {
+        let rate = if i["state"] == "saving" { i["rate"].as_f64() } else { None };
+        rates.insert(i["torrent"].as_str()?, rate?);
+    }
+    eta::minutes_left(unfinished.iter().map(|i| remaining(i)).sum(), rates.values().sum())
+}
+
+/// The Saved tab's mark: `{"saving","progress"}`; saving while anything is being found or
+/// saved (not only paused), progress the share saved of everything unfinished (paused too, so
+/// it does not jump back when one pauses).
+pub fn overall() -> Value {
+    let all = items();
+    let unfinished: Vec<&Value> = all.iter().filter(|i| unfinished(i)).collect();
+    let searching = ASKED.lock().unwrap().as_ref().is_some_and(|a| a.values().any(|v| matches!(v, Asked::Searching)));
+    let saving = searching || unfinished.iter().any(|i| i["state"] != "paused");
+    let size: u64 = unfinished.iter().map(|i| i["size"].as_u64().unwrap_or(0)).sum();
+    let have: u64 = unfinished.iter().map(|i| i["have"].as_u64().unwrap_or(0)).sum();
+    json!({ "saving": saving, "progress": if size > 0 { have as f64 / size as f64 } else { 0.0 } })
 }
 
 pub fn set_running(id: u32, on: bool) {
@@ -321,5 +491,71 @@ mod tests {
         assert_eq!(g[0]["items"][0]["number"], 1, "episodes in order");
         assert_eq!(g[0]["progress"], 0.5);
         assert_eq!(g[1]["show"], false);
+    }
+
+    const MB: u64 = 1024 * 1024;
+
+    fn saving(n: u64, torrent: &str, have: u64, rate: Option<f64>) -> Value {
+        json!({ "key": format!("tmdb:tv:1:s1e{n}"), "season": 1, "number": n, "state": "saving", "torrent": torrent, "size": 700 * MB, "have": have, "rate": rate })
+    }
+
+    #[test]
+    fn an_item_says_how_long_it_takes_only_at_a_known_rate() {
+        // The review's case: 35 of 700 MB at 0.1 MB/s.
+        let i = |rate| with_left(vec![saving(1, "a", 35 * MB, rate)]).remove(0);
+        assert_eq!(i(Some(0.1 * MB as f64))["left"], 110);
+        assert_eq!(i(None)["left"], Value::Null);
+        let mut paused = saving(1, "a", 35 * MB, Some(MB as f64));
+        paused["state"] = json!("paused");
+        assert_eq!(with_left(vec![paused])[0]["left"], Value::Null, "a paused one takes no time");
+    }
+
+    #[test]
+    fn a_show_takes_what_is_left_of_it_over_its_torrents_rates() {
+        let rate = Some(MB as f64);
+        // Two episodes of one pack, 600 MB left of each, the pack at 1 MB/s: 20 min.
+        let g = groups(with_left(vec![saving(1, "a", 100 * MB, rate), saving(2, "a", 100 * MB, rate)]));
+        assert_eq!(g[0]["left"], 20);
+        assert_eq!(g[0]["items"][0]["left"], Value::Null, "an episode of a pack others of which save says nothing");
+        // Two seasons from two torrents, 1 MB/s each: 2 MB/s together.
+        let g = groups(with_left(vec![saving(1, "a", 100 * MB, rate), saving(2, "b", 100 * MB, rate)]));
+        assert_eq!(g[0]["left"], 10);
+        let mut done = saving(3, "a", 700 * MB, None);
+        done["state"] = json!("saved");
+        let g = groups(with_left(vec![saving(1, "a", 100 * MB, rate), done.clone()]));
+        assert_eq!(g[0]["left"], 10, "a saved episode adds nothing");
+        assert_eq!(g[0]["items"][0]["left"], 10, "the last one saving of its pack says its own");
+        let g = groups(with_left(vec![saving(1, "a", 100 * MB, rate), saving(2, "b", 100 * MB, None)]));
+        assert_eq!(g[0]["left"], Value::Null, "one without a rate: not known");
+        assert_eq!(groups(vec![done])[0]["left"], Value::Null);
+    }
+
+
+    const GIB: u64 = 1024 * 1024 * 1024;
+
+    #[test]
+    fn what_is_still_to_come_counts_unfinished_items_and_sizes_set_aside() {
+        let item = |key: &str, state: &str, size: u64, have: u64| json!({ "key": key, "state": state, "size": size, "have": have });
+        let items = vec![
+            item("a", "saving", 10 * GIB, 4 * GIB),
+            item("b", "saved", 5 * GIB, 5 * GIB),
+            // Added, its torrent not read yet: no size of its own.
+            item("c", "resolving", 0, 0),
+        ];
+        let claimed: HashMap<String, u64> = [("c".to_owned(), 3 * GIB), ("a".to_owned(), 10 * GIB), ("gone".to_owned(), 7 * GIB)].into();
+        assert_eq!(pending(&items, &claimed, "new"), 6 * GIB + 3 * GIB, "a's 6 left, c's 3 set aside; a counted once, a key with no item and no ask not at all");
+        assert_eq!(pending(&items, &claimed, "c"), 6 * GIB, "its own aside");
+    }
+
+    #[test]
+    fn the_drawer_says_whether_the_ticked_episodes_fit() {
+        let free = Some(19 * GIB);
+        assert_eq!(picked_fit(0, 0, false, free, 0), Some(true), "nothing ticked");
+        assert_eq!(picked_fit(4, 5 * GIB, false, free, 0), Some(true));
+        assert_eq!(picked_fit(8, 40 * GIB, false, free, 0), Some(false));
+        assert_eq!(picked_fit(8, 40 * GIB, true, free, 0), Some(false), "already over with what is known");
+        assert_eq!(picked_fit(8, 5 * GIB, true, free, 0), None, "a size not known yet");
+        assert_eq!(picked_fit(4, 5 * GIB, false, None, 0), None, "the free space not known");
+        assert_eq!(picked_fit(4, 5 * GIB, false, free, 14 * GIB), Some(false), "with what still saves");
     }
 }

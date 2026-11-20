@@ -7,6 +7,9 @@ use std::sync::LazyLock;
 use regex::Regex;
 use serde::Serialize;
 
+mod languages;
+pub use languages::{AudioLanguage, audio_languages};
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct ReleaseInfo {
     /// Vertical resolution: 2160, 1080, 720, 576, 480.
@@ -18,6 +21,8 @@ pub struct ReleaseInfo {
     pub dolby_vision: bool,
     /// Audio formats the name mentions: "dts", "truehd", "atmos", "eac3", "ac3", "aac", "flac", "opus".
     pub audio: Vec<&'static str>,
+    /// The audio languages the name says, and how each is voiced (`audio_languages`).
+    pub languages: Vec<AudioLanguage>,
     /// "x265", "x264", "av1".
     pub codec: Option<&'static str>,
     /// "remux", "bluray", "web", "hdtv", "dvd".
@@ -101,6 +106,7 @@ pub fn parse(name: &str) -> ReleaseInfo {
     if info.audio.contains(&"eac3") {
         info.audio.retain(|a| *a != "ac3");
     }
+    info.languages = audio_languages(name);
     info.codec = if AV1.is_match(name) {
         Some("av1")
     } else if X265.is_match(name) {
@@ -160,18 +166,6 @@ pub fn parse(name: &str) -> ReleaseInfo {
 /// How good the picture is, for ranking (higher is better); unknown is low.
 pub fn quality_score(info: &ReleaseInfo) -> u32 {
     resolution_score(info) + source_score(info)
-}
-
-/// How well a release is shared, in the steps the signal bars show (1 to 4: under 10, 10–29,
-/// 30–199, 200 and more people). What starts a film fastest: a stronger step wins over a better
-/// picture, as Play and the list of releases rank them.
-pub fn swarm_tier(peers: u64) -> u8 {
-    match peers {
-        200.. => 4,
-        30..200 => 3,
-        10..30 => 2,
-        _ => 1,
-    }
 }
 
 /// The picture size alone: what ranks releases first (people sharing come next, then the source).

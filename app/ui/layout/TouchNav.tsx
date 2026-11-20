@@ -6,7 +6,7 @@
 // Tablet: one top row on every page: the logo (Back in its place on a deeper
 // page), the floating tabs centred, Add to list on a title, Settings; solid
 // once content is under it.
-import { safeArea, signal, Text, View, windowSize, type ImageAsset, type TextStyle, type ViewStyle } from "nsh";
+import { safeArea, Text, View, windowSize, type ImageAsset, type JSX, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { title as titleOf, titleText, toggleList } from "../catalog";
 import backIcon from "../icons/back.svg";
@@ -19,13 +19,14 @@ import { alpha, colors, font, iconPt, targetSlop, u } from "../theme";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
 import { frameSolid } from "./frameState";
-import { CATEGORY_ROW, PHONE_BACK_HEAD, PHONE_HEAD, phoneRail, railWidth, TAB_ROW, TOP_ROW } from "./metrics";
+import { CATEGORY_ROW, PHONE_BACK_HEAD, PHONE_HEAD, PHONE_TITLE_BAR, phoneRail, railWidth, TAB_ROW, TOP_ROW } from "./metrics";
 import { Rail, railLead } from "./Rail";
 import { scroller } from "./scrollCtl";
 import savedIcon from "../icons/saved.svg";
 import searchIcon from "../icons/search.svg";
-import { librarySupported } from "../library";
+import { librarySupported, savingOverall, watchSaved } from "../library";
 import { Pressable } from "../kit/Pressable";
+import { ProgressRing } from "../kit/SaveMark";
 
 /** The tabs: the nav's destinations but Settings. */
 const TABS = NAV.filter((n) => n.id !== "settings" && n.id !== "saved");
@@ -106,6 +107,10 @@ const indicatorStyle = (on: boolean): ViewStyle => ({
 });
 const tabText = (on: boolean): TextStyle => ({ fontFamily: font, fontSize: android ? 12 : 10.5, fontWeight: 500, color: on ? colors.snow() : colors.ash() });
 
+/** The Saved tab's mark while anything saves: a small ring of how much of it is saved, at the
+ * icon's top right (design/offline-downloads.md). */
+const markStyle = (): ViewStyle => ({ position: "absolute", top: 0, right: android ? 16 : 10 });
+
 /** The phone's tabs: Home (the categories, chosen at the top of its page), Search, Saved where
  * this device saves, Settings. */
 const PHONE_TABS: { id: Destination; label: string; icon: ImageAsset; on: () => boolean; go: () => void }[] = [
@@ -115,11 +120,16 @@ const PHONE_TABS: { id: Destination; label: string; icon: ImageAsset; on: () => 
   { id: "settings", label: "nav.settings", icon: settingsIcon, on: () => section() === "settings", go: () => go("settings") },
 ];
 
-function Tab(props: { label: string; icon: ImageAsset; on: () => boolean; inRail: boolean; onPress: () => void }) {
+function Tab(props: { label: string; icon: ImageAsset; on: () => boolean; inRail: boolean; saving?: boolean; onPress: () => void }) {
   return (
     <Pressable haptic={!props.on()} role="tab" accessibilityLabel={props.label} accessibilityState={{ selected: props.on() }} onPress={props.onPress} style={tabStyle(props.inRail)}>
       <View style={indicatorStyle(props.on())}>
         <Icon src={() => props.icon} size={pt(21)} color={() => (props.on() ? colors.snow() : colors.ash())} />
+        <If when={props.saving && savingOverall().saving}>
+          <View testID="saved-progress" style={markStyle()}>
+            <ProgressRing progress={() => savingOverall().progress} size={12} stroke={2.5} background={() => (props.on() ? colors.raise() : colors.ink())} />
+          </View>
+        </If>
       </View>
       <Text style={tabText(props.on())}>{props.label}</Text>
     </Pressable>
@@ -129,6 +139,7 @@ function Tab(props: { label: string; icon: ImageAsset; on: () => boolean; inRail
 /** The phone's tabs: a bar under the content, or (held sideways) a rail at its left. Tapping
  * the selected tab pops it to its root. */
 export function PhoneTabBar() {
+  watchSaved();
   return (
     <View
       testID={phoneRail() ? "nav-rail" : "tab-bar"}
@@ -137,7 +148,7 @@ export function PhoneTabBar() {
       style={phoneRail() ? railStyle() : tabBarStyle()}
     >
       <Each of={PHONE_TABS} key={(n) => n.id}>
-        {(n) => <Tab label={t(n().label)} icon={n().icon} on={n().on} inRail={phoneRail()} onPress={n().go} />}
+        {(n) => <Tab label={t(n().label)} icon={n().icon} on={n().on} inRail={phoneRail()} saving={n().id === "saved"} onPress={n().go} />}
       </Each>
     </View>
   );
@@ -216,23 +227,78 @@ export function PhoneCategoryBar() {
   );
 }
 
-/** A phone's disc over a page, at its top corner under the status bar. */
-export const phoneDisc = (side: "left" | "right"): ViewStyle => ({ position: "absolute", top: safeArea().top + 4, [side]: 16, zIndex: 3 });
+/** How long the title bar takes to come and go, ms. */
+const BAR_FADE = 200;
+/** A disc's fill fading out where it becomes a bar's plain button. */
+const fadeFill = (plain: boolean): ViewStyle => ({ ...(plain ? { backgroundColor: "transparent" } : {}), transitionProperty: "colors", transitionDuration: BAR_FADE });
 
-/** Back, a disc (40 across, a 44 pt touch area); also the setup's, in its logo's place. */
-export function BackDisc() {
+/** Back, a disc (40 across, a 44 pt touch area); `plain`, its fill fades out (a bar's plain ‹).
+ * Also the setup's, in its logo's place. */
+export function BackDisc(props: { label?: () => string; plain?: () => boolean }) {
   return (
-    <Pressable role="button" accessibilityLabel={t("nav.back")} onPress={handleBack} hitSlop={targetSlop(40)} style={disc(40)}>
+    <Pressable role="button" accessibilityLabel={props.label?.() ?? t("nav.back")} onPress={handleBack} hitSlop={targetSlop(40)} style={{ ...disc(40), ...fadeFill(props.plain?.() ?? false) }}>
       <Icon src={() => backIcon} size={pt(20)} />
     </Pressable>
   );
 }
 
-/** Back over a title's hero; it scrolls away with the page. */
-export function PhoneTitleBack() {
+/** Over a title's hero: Back and the header action (Add to list) as discs at the top corners;
+ * once the page has scrolled past the hero (`solid`) the standard bar under the status bar, the
+ * same buttons now plain (their fills fade out), the title between them: iOS's centred, Android's
+ * after ← (design/navigation.md, "Phone"). Fixed: it stays as the page scrolls. */
+const titleBarStyle = (solid: boolean): ViewStyle => ({
+  ...row(0),
+  justifyContent: "space-between",
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  height: safeArea().top + PHONE_TITLE_BAR,
+  paddingTop: safeArea().top,
+  paddingLeft: 16,
+  paddingRight: 16 + safeArea().right,
+  zIndex: 10,
+  pointerEvents: "box-none",
+  backgroundColor: solid ? alpha(colors.ink(), 0.96) : "transparent",
+  borderBottomWidth: 1,
+  borderBottomColor: solid ? colors.card() : "transparent",
+  transitionProperty: "colors",
+  transitionDuration: BAR_FADE,
+});
+/** iOS: centred across the bar, clear of the buttons; Android: after ← at Material's 72 keyline. */
+const barTitleSide = 16 + 40 + 12;
+const barTitleStyle = (solid: boolean): TextStyle => ({
+  position: "absolute",
+  bottom: 0,
+  height: PHONE_TITLE_BAR,
+  lineHeight: PHONE_TITLE_BAR,
+  left: android ? 72 : barTitleSide,
+  right: barTitleSide + safeArea().right,
+  numberOfLines: 1,
+  textAlign: android ? "left" : "center",
+  fontFamily: font,
+  fontSize: android ? 22 : 17,
+  fontWeight: android ? 400 : 600,
+  color: colors.snow(),
+  opacity: solid ? 1 : 0,
+  transitionProperty: "opacity",
+  transitionDuration: BAR_FADE,
+});
+
+export function PhoneTitleBar(props: { testID?: string; solid: () => boolean; title?: () => string; action?: JSX.Element }) {
+  const hidden = () => !props.solid();
   return (
-    <View style={phoneDisc("left")}>
-      <BackDisc />
+    <View testID={props.testID} style={titleBarStyle(props.solid())}>
+      <Text
+        role="header"
+        accessibilityElementsHidden={hidden()}
+        importantForAccessibility={hidden() ? "no-hide-descendants" : "auto"}
+        style={barTitleStyle(props.solid())}
+      >
+        {props.title?.() ?? ""}
+      </Text>
+      <BackDisc label={() => t("nav.back_to", { page: underName() })} plain={props.solid} />
+      {props.action}
     </View>
   );
 }

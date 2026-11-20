@@ -116,7 +116,9 @@ Formatting shared by every platform.
 - `position(seconds: u32) -> String`: Playback position in seconds as "1:12:40" / "4:05".
   Called from: `ui/Player.tsx`, `ui/catalog.ts`.
 - `size(bytes: f64) -> String`: A size in bytes as "256 MB", "1 GB", "1.4 GB".
-  Called from: `ui/Player.tsx`, `ui/screens/saved/SavedGroupRow.tsx`, `ui/screens/saved/SavedRow.tsx`, `ui/screens/saved/SavedScreen.tsx`, `ui/screens/settings/SettingsScreen.tsx`, `ui/screens/settings/choices.ts`, `ui/screens/title/SaveDrawer.tsx`.
+  Called from: `ui/Player.tsx`, `ui/layout/HeroActions.tsx`, `ui/screens/saved/SavedGroupRow.tsx`, `ui/screens/saved/SavedRow.tsx`, `ui/screens/saved/SavedScreen.tsx`, `ui/screens/settings/SettingsScreen.tsx`, `ui/screens/settings/choices.ts`, `ui/screens/title/SaveDrawer.tsx`, `ui/screens/title/TitleScreen.tsx`.
+- `sizeOf(have: f64, size: f64) -> Vec<String>` (`size_of`): Bytes saved of a size, `[have, size]`, as "35 of 700 MB" says them: the first without its unit when both have the same (`["35", "700 MB"]`), else both whole (`["700 MB", "1.4 GB"]`).
+  Called from: `ui/screens/saved/SavedRow.tsx`.
 - `speed(mib_per_s: f64) -> String`: A download speed in MiB/s as "3.4 MB/s" (one decimal under 10, whole above).
   Called from: `ui/Player.tsx`, `ui/kit/SpeedLine.tsx`.
 
@@ -158,23 +160,31 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `item(key: String) -> String`: One key's state for its button: `{"state","progress","id","message"}` (see `library::item`).
   JSON: `{"state","progress","id","message"}`
   Called from: `ui/library.ts`.
-- `list() -> String`: The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, each item `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`.
-  JSON: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`
+- `list() -> String`: The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, each item `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","left","message","folder"}`; `left` (an item's and a group's): minutes it still takes, rounded, null when not known.
+  JSON: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","left","message","folder"}`
+  Called from: `ui/library.ts`.
+- `offer(key: String) -> String`: Save on a film's page: `{"size","free","fits","smaller":{"id","quality","source","size"}}` (see `library::offer`): the size for its button, and whether it fits the free space.
+  JSON: `{"size","free","fits","smaller":{"id","quality","source","size"}}`
   Called from: `ui/library.ts`.
 - `openFolder() -> bool` (`open_folder`): Opens the folder saved films go into in the system's file manager (desktops); false where there is none or it did not open.
   Called from: `ui/library.ts`.
+- `overall() -> String`: The Saved tab's mark: `{"saving","progress"}` (see `library::overall`).
+  JSON: `{"saving","progress"}`
+  Called from: `ui/library.ts`.
 - `pause(id: u32)`: Pauses saving the item (its whole torrent: episodes of one pack pause together).
   Called from: `ui/library.ts`.
-- `plan(show: String, season: u32) -> String`: The Save drawer for a season: `{"episodes":[{"key","number","title","size","state", "progress","locked"}],"saved","total","size"}`.
-  JSON: `{"episodes":[{"key","number","title","size","state", "progress","locked"}],"saved","total","size"}`
+- `plan(show: String, season: u32, picked: String) -> String`: The Save drawer for a season, with the keys ticked in it (`picked`, a JSON array): `{"episodes":[{"key","number","title","size","state","progress","locked"}],"saved", "total","size","free","picked":{"count","size","fits"}}` (see `library::plan`).
+  JSON: `{"episodes":[{"key","number","title","size","state","progress","locked"}],"saved", "total","size","free","picked":{"count","size","fits"}}`
   Called from: `ui/library.ts`.
 - `remove(id: u32)`: Stops saving the item and deletes its files.
   Called from: `ui/library.ts`.
 - `resume(id: u32)`: Goes on saving a paused item.
   Called from: `ui/library.ts`.
 - `revision() -> f64`: Goes up when anything the Saved screen and the Save buttons show changed.
-  Called from: nothing in the UI.
+  Called from: `ui/library.ts`.
 - `save(keys: String) -> bool`: Saves the catalog keys in `keys` (a JSON array: a film, or episodes) once their release is known; what is saved already stays. False when this device saves nothing.
+  Called from: `ui/library.ts`.
+- `saveRelease(key: String, release: String) -> bool` (`save_release`): Saves film `key` from release `release` (the id `offer`'s `smaller` gives) instead of the one Play uses, which stays as it is.
   Called from: `ui/library.ts`.
 - `setFolder(folder: String) -> String` (`set_folder`): Saves new items into `folder` from now on: "" when done, else why not.
   Called from: nothing in the UI.
@@ -240,6 +250,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/preferences.ts`.
 - `setContentLanguage(tag: String) -> String` (`set_content_language`): Saves the content language (titles, descriptions, episode names; one of `contentLanguages` from `load`) and drops what was asked in the old one; the language in effect.
   Called from: `ui/preferences.ts`.
+- `setFamily(name: String) -> bool` (`set_family`): Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows", "linux", "tablet", "phone"), once at start: what Play and Save pick by themselves follows from it (a phone keeps to 1080p and a size per hour, `fit::limits`). False for an unknown name.
+  Called from: `ui/platform/index.ts`.
 - `setLanguage(tag: String)` (`set_language`): Saves the UI language (a BCP 47 tag).
   Called from: nothing in the UI.
 - `setLoader(loader: String) -> String` (`set_loader`): Saves the loading animation ("logo" or "dinosaur"; another value is refused); the one in effect.
@@ -260,13 +272,11 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 
 - `check() -> u32`: Checks the saved source (`t=caps`); a job id for `result`, 0 when none is set.
   Called from: `ui/preferences.ts`.
-- `result(id: u32) -> String`: `{"state":"pending"}`, `{"state":"done","releases":[…]}` (ranked: each `{"id","title","source","infohash","size","seeders","peers","indexer", "info":{resolution,hdr,dolby_vision,codec,source,season,episodes,season_pack}, "seasonPack"}`), `{"state":"done","caps":{…}}` for a check, or `{"state":"failed","message"}`.
-  JSON: `{"state":"pending"}`, `{"state":"done","releases":[…]}`, `{"id","title","source","infohash","size","seeders","peers","indexer", "info":{resolution,hdr,dolby_vision,codec,source,season,episodes,season_pack}, "seasonPack"}`, `{"state":"done","caps":{…}}`, `{"state":"failed","message"}`
+- `result(id: u32) -> String`: `{"state":"pending"}`, `{"state":"done","releases":[…]}` (ranked: each `{"id","title","source","infohash","size","seeders","peers","indexer", "info":{resolution,hdr,dolby_vision,languages,codec,source,season,episodes,season_pack}, "seasonPack"}`), `{"state":"done","caps":{…}}` for a check, or `{"state":"failed","message"}`.
+  JSON: `{"state":"pending"}`, `{"state":"done","releases":[…]}`, `{"id","title","source","infohash","size","seeders","peers","indexer", "info":{resolution,hdr,dolby_vision,languages,codec,source,season,episodes,season_pack}, "seasonPack"}`, `{"state":"done","caps":{…}}`, `{"state":"failed","message"}`
   Called from: `ui/preferences.ts`.
 - `search(request: String) -> u32`: Searches for a film or an episode. `request` is JSON `{"imdb","title","year","season","episode"}` (imdb, year, season and episode optional). A search id for `result`; 0 when no source is set.
   Called from: nothing in the UI.
-- `setPictureCap(lines: u32)` (`set_picture_cap`): The tallest picture Play picks by itself, in lines (1080 on a phone or a tablet: 4K costs it time and space for nothing it can show); 0: any. The viewer can still choose any release.
-  Called from: `App.tsx`.
 - `setProfile(name: String) -> bool` (`set_profile`): Sets the player profile of this device (what it can play): "mpv", "apple_avplayer", "android_mediaplayer", "tizen". Releases it cannot play are hidden from searches. False for an unknown name.
   Called from: nothing in the UI.
 

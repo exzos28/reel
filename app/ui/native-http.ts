@@ -168,6 +168,9 @@ export const Catalog: CatalogModule = {
 export const Settings: SettingsModule = {
   load: s("Settings", "load"),
   device: s("Settings", "device"),
+  // The core serving the web build knows its device already (a TV's profile, a development
+  // host's stand-in): the family the page lays itself out for adds nothing.
+  setFamily: () => true,
   setBufferMb: s("Settings", "setBufferMb"),
   setStreamDetails: s("Settings", "setStreamDetails"),
   setNavPosition: s("Settings", "setNavPosition"),
@@ -184,7 +187,6 @@ export const Settings: SettingsModule = {
 
 export const Sources: SourcesModule = {
   search: s("Sources", "search"),
-  setPictureCap: s("Sources", "setPictureCap"),
   // The core on the TV already runs with the "tizen" profile (set by the service at start).
   setProfile: s("Sources", "setProfile"),
   check: s("Sources", "check"),
@@ -228,7 +230,9 @@ export const Library: LibraryModule = {
   save: () => false,
   item: () => '{"state":"none","progress":0}',
   title: () => '{"state":"none","saved":0,"saving":0,"progress":0}',
-  plan: () => '{"episodes":[],"saved":0,"total":0,"size":null}',
+  plan: () => '{"episodes":[],"saved":0,"total":0,"size":null,"free":null,"picked":{"count":0,"size":0,"fits":true}}',
+  offer: () => '{"size":null,"free":null,"fits":null,"smaller":null}',
+  saveRelease: () => false,
   list: () => '{"saving":[],"ready":[],"failed":[],"space":{"saved":0,"free":null,"folder":null}}',
   pause: () => {},
   resume: () => {},
@@ -236,6 +240,7 @@ export const Library: LibraryModule = {
   setFolder: () => "",
   openFolder: () => false,
   revision: () => 0,
+  overall: () => '{"saving":false,"progress":0}',
 };
 
 // Fmt is pure and also registered in the wasm32 build, which `ui/native.ts` uses. Over HTTP
@@ -243,6 +248,7 @@ export const Library: LibraryModule = {
 export const Fmt: FmtModule = {
   position: s("Fmt", "position"),
   size: s("Fmt", "size"),
+  sizeOf: s("Fmt", "sizeOf"),
   speed: s("Fmt", "speed"),
   hoursMinutes: s("Fmt", "hoursMinutes"),
 };

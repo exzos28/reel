@@ -33,10 +33,10 @@ use crate::{
     engine::{self, Fetched},
     leases,
 };
-use reel_domain::{compat, episode, ports::KeepRequest, redact::redact, subtitles::files};
+use reel_domain::{compat, episode, eta::Eta, ports::KeepRequest, redact::redact, subtitles::files};
 
 /// Kept free on the folder's volume when deciding whether an item fits.
-const RESERVE: u64 = 512 * 1024 * 1024;
+const RESERVE: u64 = reel_domain::fit::RESERVE;
 /// How often the background checks what completed.
 const TICK: Duration = Duration::from_secs(2);
 /// How long getting a torrent may take (the source's link, a magnet's metadata from peers)
@@ -771,6 +771,7 @@ pub fn tick() {
                 changed = true;
             }
         }
+        sample(torrent_bytes(lib));
         let mut done = Vec::new();
         let hashes: Vec<String> = lib.live.keys().cloned().collect();
         for hash in hashes {
@@ -801,6 +802,57 @@ pub fn tick() {
         }
         delete_files(&dir, unused);
     }
+}
+
+/// Each torrent's bytes over the last minute, for the time its items still take (`Eta`). Kept
+/// apart from the library (memory only); sampled by `tick()`, which runs whatever is on screen.
+/// By torrent, not by item: the episodes of a season pack share its speed, and one finishing
+/// does not start the measure over.
+static ETAS: Mutex<Option<HashMap<String, Eta>>> = Mutex::new(None);
+
+/// Seconds on a monotonic clock, from the first call.
+fn clock() -> f64 {
+    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    START.get_or_init(std::time::Instant::now).elapsed().as_secs_f64()
+}
+
+/// Bytes on disk of each live torrent that has an item saving, its items saving and saved
+/// counted (so one finishing keeps the sum going); not while it checks its files or stopped.
+fn torrent_bytes(lib: &Library) -> Vec<(String, u64)> {
+    lib.live
+        .iter()
+        .filter(|(hash, _)| lib.of(hash).any(|i| i.state == State::Saving))
+        .filter_map(|(hash, (_, handle))| {
+            let stats = handle.stats();
+            if stats.error.is_some() || matches!(stats.state, librqbit::TorrentStatsState::Initializing { .. }) {
+                return None;
+            }
+            let bytes = lib
+                .of(hash)
+                .filter(|i| matches!(i.state, State::Saving | State::Saved))
+                .flat_map(|i| i.files.iter())
+                .map(|f| stats.file_progress.get(f.0).copied().unwrap_or(0).min(f.2))
+                .sum();
+            Some((hash.clone(), bytes))
+        })
+        .collect()
+}
+
+/// Takes this tick's bytes of the torrents saving now; the rest (paused, waiting, checking,
+/// done, removed) start over when they save again.
+fn sample(samples: Vec<(String, u64)>) {
+    let at = clock();
+    let mut etas = ETAS.lock().unwrap();
+    let etas = etas.get_or_insert_with(HashMap::new);
+    etas.retain(|hash, _| samples.iter().any(|s| &s.0 == hash));
+    for (hash, bytes) in samples {
+        etas.entry(hash).or_default().push(at, bytes);
+    }
+}
+
+/// The torrent's bytes a second over the last minute, None while that is not known or unstable.
+fn rate(hash: &str) -> Option<f64> {
+    ETAS.lock().unwrap().as_ref()?.get(hash)?.rate()
 }
 
 // ---- What the screens read -------------------------------------------------------------
@@ -838,6 +890,9 @@ pub fn list() -> Value {
                     "progress": if size > 0 { have as f64 / size as f64 } else { 0.0 },
                     "checking": checking,
                     "speed": live.as_ref().map(|l| l.download_speed.mbps),
+                    // Its torrent's bytes a second over the last minute (null: not known yet,
+                    // or too unstable to say how long it takes).
+                    "rate": if state == "saving" && !checking { i.infohash.as_deref().and_then(rate) } else { None },
                     "peers": live.as_ref().map(|l| l.snapshot.peer_stats.live),
                     "message": i.message,
                     "folder": i.dir,

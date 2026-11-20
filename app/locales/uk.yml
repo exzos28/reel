@@ -80,6 +80,10 @@ title:
   saved: "Збережено"
   saved_one: "Збережено 1 серію"
   saved_some: "Збережено серій: %{count}"
+  save_size: "Зберегти · %{size}"
+  no_space_title: "Бракує місця"
+  no_space_about: "Потрібно %{needed}, вільно %{free} на цьому пристрої."
+  save_smaller: "Зберегти %{quality} · %{size}"
 
 card:
   left: "Залишилося %{time}"
@@ -133,6 +137,12 @@ release:
   sharing: "Роздають %{count} ос."
   sharing_short: "%{count} ос."
   pack: "весь сезон, %{size}"
+  voiced: "%{language} (%{voice})"
+  voice:
+    dub: "дубляж"
+    mvo: "багатоголосий"
+    dvo: "двоголосий"
+    avo: "одноголосий"
   fast: "запуститься за секунди"
   note:
     starts_fast: "Запуститься швидко"
@@ -326,6 +336,9 @@ player:
   close_tracks: "Закрити звук і субтитри"
   episodes: "Серії"
   close_episodes: "Закрити серії"
+  season_episodes:
+    one: "Сезон %{number} · %{count} серія"
+    other: "Сезон %{number} · серій: %{count}"
   now_playing: "Зараз іде"
   fullscreen: "На весь екран"
   mute: "Вимкнути звук"
@@ -505,7 +518,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: "Збережене"
-  empty: "Поки нічого не збережено. Збережіть фільм або сезон на його сторінці, щоб дивитися без інтернету."
+  empty: "Збережіть фільм, щоб дивитися без інтернету"
+  browse: "Вибрати фільм"
   saving: "Зберігається"
   while_open: "поки reel відкрито"
   ready: "Можна дивитися"
@@ -530,6 +544,8 @@ saved:
     checking: "Перевіряється збережене…"
     resolving: "Шукаємо, хто роздає…"
     saving: "%{percent}% · %{have} з %{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent}% · %{have} з %{size} · залишилося близько %{time}"
     paused: "На паузі · %{have} з %{size}"
     waiting: "Почнеться, коли закінчиться поточний перегляд"
     saved: "Збережено · %{size}"
@@ -556,6 +572,9 @@ saved:
     save_one: "Зберегти 1 серію"
     choose: "Виберіть серії"
     more: "Ще %{size}"
+    free: "Вільно %{free}"
+    more_free: "%{size} · вільно %{free}"
+    no_room: "Бракує місця: потрібно %{size}, вільно %{free}"
     new: "нова"
 
 confirm:

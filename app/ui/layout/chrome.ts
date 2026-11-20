@@ -26,6 +26,14 @@ export const frame = {
   listInPage: chrome === "tv" || chrome === "phone",
 };
 
+/** A phone held sideways (its window wider than tall): a drawer that asks for it (`Drawer`'s
+ * `sideways`) is a full-height sheet at the right instead of a short one from the bottom. */
+export const phoneSideways = () => {
+  if (chrome !== "phone") return false;
+  const w = windowSize();
+  return w.width > w.height;
+};
+
 /** Content margin left and right of the safe area, points (desktop 64,
  * tablet 32, phone 20). A TV's comes from its title-safe 5% (`theme.safe`). */
 const MARGIN = { mac: 64, windows: 64, linux: 64, tablet: 32, phone: 20 } as const;

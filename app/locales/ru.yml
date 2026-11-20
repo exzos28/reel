@@ -80,6 +80,10 @@ title:
   saved: Сохранено
   saved_one: Сохранена 1 серия
   saved_some: "Сохранено серий: %{count}"
+  save_size: "Сохранить · %{size}"
+  no_space_title: "Не хватает места"
+  no_space_about: "Нужно %{needed}, свободно %{free} на этом устройстве."
+  save_smaller: "Сохранить %{quality} · %{size}"
 
 card:
   left: "Осталось %{time}"
@@ -134,6 +138,12 @@ release:
   sharing: "Раздают %{count} чел."
   sharing_short: "%{count} чел."
   pack: "весь сезон, %{size}"
+  voiced: "%{language} (%{voice})"
+  voice:
+    dub: "дубляж"
+    mvo: "многоголосый"
+    dvo: "двухголосый"
+    avo: "одноголосый"
   fast: запустится за секунды
   note:
     starts_fast: Запустится быстро
@@ -326,6 +336,9 @@ player:
   close_tracks: Закрыть звук и субтитры
   episodes: Серии
   close_episodes: Закрыть серии
+  season_episodes:
+    one: "Сезон %{number} · %{count} серия"
+    other: "Сезон %{number} · серий: %{count}"
   now_playing: Сейчас идёт
   fullscreen: Во весь экран
   mute: Выключить звук
@@ -494,7 +507,8 @@ menu:
 
 saved:
   title: Сохранённое
-  empty: Пока ничего не сохранено. Сохраните фильм или сезон на его странице, чтобы смотреть без интернета.
+  empty: "Сохраните фильм, чтобы смотреть без интернета"
+  browse: "Выбрать фильм"
   saving: Сохраняется
   while_open: пока reel открыт
   ready: Можно смотреть
@@ -519,6 +533,8 @@ saved:
     checking: Проверяется сохранённое…
     resolving: Ищем, кто раздаёт…
     saving: "%{percent}% · %{have} из %{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent}% · %{have} из %{size} · осталось около %{time}"
     paused: "На паузе · %{have} из %{size}"
     waiting: Начнётся, когда закончится текущий просмотр
     saved: "Сохранено · %{size}"
@@ -545,6 +561,9 @@ saved:
     save_one: Сохранить 1 серию
     choose: Выберите серии
     more: "Ещё %{size}"
+    free: "Свободно %{free}"
+    more_free: "%{size} · свободно %{free}"
+    no_room: "Не хватает места: нужно %{size}, свободно %{free}"
     new: новая
 
 confirm:

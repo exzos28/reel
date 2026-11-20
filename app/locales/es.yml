@@ -80,6 +80,10 @@ title:
   saved: "Guardado"
   saved_one: "1 episodio guardado"
   saved_some: "Episodios guardados: %{count}"
+  save_size: "Guardar · %{size}"
+  no_space_title: "No hay espacio suficiente"
+  no_space_about: "Necesita %{needed}; hay %{free} libres en este dispositivo."
+  save_smaller: "Guardar %{quality} · %{size}"
 
 card:
   left: "Quedan %{time}"
@@ -133,6 +137,12 @@ release:
   sharing: "Compartido por %{count}"
   sharing_short: "Comparten: %{count}"
   pack: "temporada completa, %{size}"
+  voiced: "%{language} (%{voice})"
+  voice:
+    dub: "doblaje"
+    mvo: "MVO"
+    dvo: "DVO"
+    avo: "AVO"
   fast: "empieza en segundos"
   note:
     starts_fast: "Empieza rápido"
@@ -326,6 +336,9 @@ player:
   close_tracks: "Cerrar audio y subtítulos"
   episodes: "Episodios"
   close_episodes: "Cerrar episodios"
+  season_episodes:
+    one: "Temporada %{number} · %{count} episodio"
+    other: "Temporada %{number} · %{count} episodios"
   now_playing: "Reproduciendo"
   fullscreen: "Pantalla completa"
   mute: "Silenciar"
@@ -505,7 +518,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: "Guardado"
-  empty: "Aún no has guardado nada. Guarda una película o una temporada desde su página para verla sin internet."
+  empty: "Guarda una película para verla sin conexión"
+  browse: "Explorar películas"
   saving: "Guardando"
   while_open: "mientras reel esté abierto"
   ready: "Listo para ver"
@@ -530,6 +544,8 @@ saved:
     checking: "Comprobando lo guardado…"
     resolving: "Buscando quién comparte…"
     saving: "%{percent} % · %{have} de %{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent} % · %{have} de %{size} · quedan unos %{time}"
     paused: "En pausa · %{have} de %{size}"
     waiting: "Empezará cuando termine lo que estás viendo"
     saved: "Guardado · %{size}"
@@ -556,6 +572,9 @@ saved:
     save_one: "Guardar 1 episodio"
     choose: "Elegir episodios"
     more: "%{size} más"
+    free: "%{free} libres"
+    more_free: "%{size} · %{free} libres"
+    no_room: "No hay espacio suficiente: necesita %{size}, hay %{free} libres"
     new: "nuevo"
 
 confirm:

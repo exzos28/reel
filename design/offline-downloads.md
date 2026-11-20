@@ -12,10 +12,16 @@ Words: **Save** and **Saved**, never "Download". Mockups: `concept/mac-saved.htm
 
 ## What the user gets
 
-- **Save** between Play and Add to List. On a film it saves the release the catalog picks at
-  once (another release: from the release list). On a series it opens the **Save drawer**
-  (a sheet on the phone): seasons as tabs ("5 of 12 on Mac"), "Whole season", episodes with
-  checkboxes and sizes, the free space, and "Save 4 episodes".
+- **Save** between Play and Add to List. On a film it names what it takes ("Save · 700 MB") and
+  saves the release the catalog picks at once (another release: from the release list); when
+  that does not fit (see Fit) it does not start but asks: "Not enough space" / "Needs 25 GB,
+  19 GB free on this device." with Cancel and the smaller release the core picks among those
+  that fit ("Save 720p · 1.4 GB"; Play's release stays as it was), or "Other releases" when
+  none fits. On a series it opens the **Save drawer** (a sheet on the phone): seasons as tabs
+  ("5 of 12 on Mac"), "Whole season", episodes with checkboxes and sizes, the free space at the
+  foot ("4.5 GB · 19 GB free"), and "Save 4 episodes"; ticked episodes that do not fit turn the
+  line red ("Not enough space: needs 25 GB, 19 GB free") and Save off. While an episode's size
+  is not known yet (the pack's files are still being read) the drawer does not judge.
 - Reopened while saving, the drawer shows what is saved or saving checked and locked, with its
   state; the button counts only what is new. The drawer only adds; removing is on the Saved
   screen. While episodes of a season are saved, new ones come from the same release (a season
@@ -83,8 +89,28 @@ engine/src/
 
 ## Application
 
-- The release to save: what plays here (iOS: MP4/MOV), seeders first, fits the free space; the
-  user's pick wins. An episode from a season pack saves only its file.
+- The release to save: the one Play uses (iOS: MP4/MOV; the user's pick wins), saved only when
+  it fits the free space; else the viewer chooses the smaller one the core names (above). An
+  episode from a season pack saves only its file.
+
+## Fit
+
+What Play (and so Save) picks by itself depends on the device (`domain/src/fit.rs`): the UI
+reports its platform family once (`Settings.setFamily`), the core decides.
+
+- **Phone and tablet**: up to 1080p (what the screen shows) and up to 5 GB per hour of runtime
+  (about 11 Mbit/s): every 1080p WEB-DL (2–4 GB/h) and the usual BluRay encodes (3–5 GB/h) are in,
+  a 1080p remux or an untouched disc (12–20 GB/h) and any 4K are out; a two-hour film is at most
+  10 GB. Within that: the best that plays now, else the best that 10 or more share, and only
+  then whatever plays now. A pack counts its share per episode; a runtime the catalog lacks counts
+  as 120 min (film) or 45 (episode). Big releases stay in the release list to pick by hand.
+- **TV and desktop**: no limits, as before (the best that plays now, else the most shared).
+- **Free space**: an item starts only when its size, a fiftieth of it more (pieces at the edges of
+  a file write into its neighbours, subtitles), what is left of every unfinished item, what is
+  set aside for items whose torrent is not read yet, and a reserve of 1 GiB fit on the folder's
+  volume. A size or a free space not known lets it start (the engine waits for space if the disk
+  fills, `waiting_space`). Free space is the volume's available bytes (iOS: without purgeable
+  space, so it may say less than Settings → Storage; `docs/todo.md`).
 - Metadata within TMDB's 6 months (`cache.rs`): refreshed while online; older than that offline,
   the library's own title and year are shown.
 

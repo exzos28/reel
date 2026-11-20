@@ -2,11 +2,15 @@
 // season's episodes under them, the one playing marked. A press (or OK) plays one at once; one
 // that has not aired is dimmed and does not play. Up/down move along the episodes, left/right
 // change the season, Back closes it. The seasons scroll sideways in one row, the episodes up and
-// down, each following where the keys are.
-import { computed, Image, keymap, signal, Text, View, type TextStyle, type ViewStyle } from "nsh";
+// down, each following where the keys are. On a phone it is a sheet (`Drawer`: from the bottom,
+// at the right held sideways) with its own ✕ and the season and its count as its title, so it
+// never covers the player's ✕ and title. Each row has the episode's number in a column of its own.
+import { computed, Image, keymap, signal, Text, View, type JSX, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { episodeCode, episodes, runtime, shortDate, title, type Episode, type Summary } from "./catalog";
-import { Scroller, scroller } from "./layout/Scroller";
+import { Scroller, scroller, type ScrollCtl } from "./layout/Scroller";
+import { Drawer } from "./layout/Drawer";
+import { frame } from "./layout/chrome";
 import { byKeys } from "./focus/keys";
 import { onBack } from "./nav";
 import { alpha, colors, focusRing, font, radius, ringRoom, safe, showFocus, ts, type, u } from "./theme";
@@ -29,7 +33,11 @@ const rowStyle = (current: boolean, lit: boolean, dim: boolean): ViewStyle => ({
   backgroundColor: lit ? colors.snow() : current ? colors.raise() : "transparent", opacity: dim ? 0.45 : 1,
 });
 const thumbStyle = (): ViewStyle => ({ width: u(208), height: u(117), borderRadius: radius(), overflow: "hidden", backgroundColor: colors.raise() });
-const nameStyle = (lit: boolean): TextStyle => ({ ...type.label(), color: lit ? colors.ink() : colors.snow(), numberOfLines: 2 });
+const nameStyle = (lit: boolean): TextStyle => ({ ...type.label(), color: lit ? colors.ink() : colors.snow(), numberOfLines: 2, textOverflow: "ellipsis" });
+/** The episode's number, a column of its own (the title does not repeat it). */
+const numberStyle = (lit: boolean): TextStyle => ({
+  ...type.label(), color: lit ? colors.ink() : colors.ash(), minWidth: u(34), textAlign: "right", fontVariant: ["tabular-nums"],
+});
 const metaStyle = (lit: boolean): TextStyle => ({ fontFamily: font, fontSize: ts(20), color: lit ? alpha(colors.ink(), 0.7) : colors.ash(), marginTop: u(4) });
 
 export function PlayerEpisodes(props: {
@@ -46,6 +54,8 @@ export function PlayerEpisodes(props: {
   const seasons = computed(() => (title(props.show().id)?.seasonList ?? []).map((s) => s.number));
   const season = signal(props.season());
   const list = computed(() => episodes(props.show().id, season()) ?? []);
+  /** How many the season has: the rows once they are there, the show's count until then. */
+  const count = () => list().length || (title(props.show().id)?.seasonList?.find((s) => s.number === season())?.episodes ?? 0);
   /** Where the keys are: the seasons' row (-1) or an episode. */
   const at = signal(Math.max(0, props.episode() - 1));
   const playable = (e: Episode) => !e.upcoming;
@@ -82,9 +92,7 @@ export function PlayerEpisodes(props: {
    * up/down move (a third down the list, as a page keeps its focus). */
   const seasonRow = scroller({ horizontal: true, anchor: (viewport) => viewport / 3 });
   const episodeList = scroller({ anchor: (viewport) => viewport / 3 });
-  return (
-    <View testID="episodes-panel" style={{ ...panelStyle(), bottom: props.bottom() }}>
-      <Text style={{ ...type.label(), color: colors.ash() }}>{t("player.episodes")}</Text>
+  const seasonsRow = () => (
       <If when={seasons().length > 1}>
         <Scroller ctl={seasonRow} style={seasonsStyle()}>
           <View style={seasonsRowStyle()}>
@@ -99,13 +107,15 @@ export function PlayerEpisodes(props: {
           </View>
         </Scroller>
       </If>
-      <Scroller ctl={episodeList} style={{ flex: 1 }}>
+  );
+  /** The rows; `follow` keeps the one with the keys in view (the panel's list, the sheet's). */
+  const rows = (follow: ScrollCtl["follow"]): JSX.Element => (
         <View style={{ gap: u(6) }}>
         <Each of={list()} key={(e) => e.id}>
           {(e, i) => {
             const current = () => season() === props.season() && e().number === props.episode();
             return (
-              <Pressable feedback="row" ref={episodeList.follow(() => at() === i())} role="button" accessibilityLabel={`${episodeCode(e().season, e().number)} ${e().title}`}
+              <Pressable feedback="row" ref={follow(() => at() === i())} role="button" accessibilityLabel={`${episodeCode(e().season, e().number)} ${e().title}`}
                 onPress={() => pick(e())} hoverStyle={{ backgroundColor: colors.raise() }} style={rowStyle(current(), lit(i()), !playable(e()))}>
                 <View style={thumbStyle()}>
                   <If when={e().thumb}>{(src) => <Image src={src()} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}</If>
@@ -115,8 +125,9 @@ export function PlayerEpisodes(props: {
                     </View>
                   </If>
                 </View>
+                <Text style={numberStyle(lit(i()))}>{String(e().number)}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={nameStyle(lit(i()))}>{`${e().number}. ${e().title}`}</Text>
+                  <Text style={nameStyle(lit(i()))}>{e().title}</Text>
                   <Text style={metaStyle(lit(i()))}>
                     {e().upcoming ? t("series.airs", { date: shortDate(e().date) }) : current() ? t("player.now_playing") : runtime(e().minutes)}
                   </Text>
@@ -126,7 +137,22 @@ export function PlayerEpisodes(props: {
           }}
         </Each>
         </View>
-      </Scroller>
-    </View>
+  );
+  return (
+    <If
+      when={frame.panel === "bottom-sheet"}
+      else={
+        <View testID="episodes-panel" style={{ ...panelStyle(), bottom: props.bottom() }}>
+          <Text style={{ ...type.label(), color: colors.ash() }}>{t("player.episodes")}</Text>
+          {seasonsRow()}
+          <Scroller ctl={episodeList} style={{ flex: 1 }}>{rows(episodeList.follow)}</Scroller>
+        </View>
+      }
+    >
+      <Drawer id="episodes" sideways open={() => true} onClose={props.onClose}
+        title={() => t(`player.season_episodes.${count() === 1 ? "one" : "other"}`, { number: season(), count: count() })} head={seasons().length > 1 ? seasonsRow : undefined}>
+        {(sheetList) => rows(sheetList.follow)}
+      </Drawer>
+    </If>
   );
 }

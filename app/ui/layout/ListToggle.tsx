@@ -34,13 +34,16 @@ const pillStyle = (inList: boolean, focused: boolean): ViewStyle => ({
   backgroundColor: fill(inList),
   ...focusRing(focused),
 });
-const discStyle = (inList: boolean): ViewStyle => ({
+/** `plain`: in a bar (a phone's scrolled title), the disc's fill fades out. */
+const discStyle = (inList: boolean, plain: boolean): ViewStyle => ({
   width: DISC,
   height: DISC,
   ...rounded(999),
   alignItems: "center",
   justifyContent: "center",
-  backgroundColor: fill(inList),
+  backgroundColor: plain ? "transparent" : fill(inList),
+  transitionProperty: "colors",
+  transitionDuration: 200,
 });
 const labelStyle = (inList: boolean): TextStyle => ({
   fontFamily: font,
@@ -49,7 +52,7 @@ const labelStyle = (inList: boolean): TextStyle => ({
   color: inList ? colors.snow() : colors.dim(),
 });
 
-export function ListToggle(props: { inList: () => boolean; focused: () => boolean; onPress: () => void }) {
+export function ListToggle(props: { inList: () => boolean; focused: () => boolean; onPress: () => void; plain?: () => boolean }) {
   const label = () => (props.inList() ? t("title.in_list") : t("title.add_to_list"));
   /** What a screen reader says: the action, not the button's short words. */
   const spoken = () => (props.inList() ? t("title.remove_from_list_spoken") : t("title.add_to_list_spoken"));
@@ -68,7 +71,7 @@ export function ListToggle(props: { inList: () => boolean; focused: () => boolea
         </Pressable>
       }
     >
-      <Pressable haptic role="button" hitSlop={targetSlop(DISC)} accessibilityLabel={spoken()} onPress={props.onPress} style={discStyle(props.inList())}>
+      <Pressable haptic role="button" hitSlop={targetSlop(DISC)} accessibilityLabel={spoken()} onPress={props.onPress} style={discStyle(props.inList(), props.plain?.() ?? false)}>
         <Icon src={discIcon} size={iconPt(20)} color={discTint} />
       </Pressable>
     </If>

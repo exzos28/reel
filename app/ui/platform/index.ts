@@ -38,6 +38,9 @@ function detect(): Family {
 }
 
 export const family: Family = detect();
+// The core picks releases for this kind of device (a phone keeps to 1080p and a sane size):
+// told once, before anything asks it for one.
+Settings.setFamily(family);
 const desktop = family === "mac" || family === "windows" || family === "linux";
 const touch = family === "tablet" || family === "phone";
 

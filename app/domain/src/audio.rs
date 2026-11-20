@@ -31,8 +31,8 @@ fn words(title: &str) -> impl Iterator<Item = &str> {
     title.split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty())
 }
 
-/// What a word says of the voice, if anything.
-fn voice_word(w: &str) -> Option<Voice> {
+/// What a word (lower case) says of the voice, if anything.
+pub(crate) fn voice_word(w: &str) -> Option<Voice> {
     Some(match w {
         "dub" | "dubbed" | "dubbing" => Voice::Dub,
         "mvo" => Voice::Mvo,

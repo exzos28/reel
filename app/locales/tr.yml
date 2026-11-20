@@ -80,6 +80,10 @@ title:
   saved: "Kaydedildi"
   saved_one: "1 bölüm kaydedildi"
   saved_some: "%{count} bölüm kaydedildi"
+  save_size: "Kaydet · %{size}"
+  no_space_title: "Yeterli alan yok"
+  no_space_about: "%{needed} gerekiyor, bu cihazda %{free} boş."
+  save_smaller: "%{quality} kaydet · %{size}"
 
 card:
   left: "%{time} kaldı"
@@ -133,6 +137,12 @@ release:
   sharing: "%{count} kişi paylaşıyor"
   sharing_short: "%{count} kişi"
   pack: "tüm sezon, %{size}"
+  voiced: "%{language} (%{voice})"
+  voice:
+    dub: "dublaj"
+    mvo: "MVO"
+    dvo: "DVO"
+    avo: "AVO"
   fast: "saniyeler içinde başlar"
   note:
     starts_fast: "Hızlı başlar"
@@ -326,6 +336,9 @@ player:
   close_tracks: "Ses ve altyazıyı kapat"
   episodes: "Bölümler"
   close_episodes: "Bölümleri kapat"
+  season_episodes:
+    one: "%{number}. Sezon · %{count} bölüm"
+    other: "%{number}. Sezon · %{count} bölüm"
   now_playing: "Şimdi oynatılıyor"
   fullscreen: "Tam ekran"
   mute: "Sesi kapat"
@@ -505,7 +518,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: "Kaydedilenler"
-  empty: "Henüz kaydedilen bir şey yok. İnternetsiz izlemek için bir filmi veya sezonu kendi sayfasından kaydet."
+  empty: "Çevrimdışı izlemek için bir film kaydet"
+  browse: "Filmlere göz at"
   saving: "Kaydediliyor"
   while_open: "reel açıkken"
   ready: "İzlemeye hazır"
@@ -530,6 +544,8 @@ saved:
     checking: "Kaydedilenler kontrol ediliyor…"
     resolving: "Paylaşanlar aranıyor…"
     saving: "%{percent}% · %{have}/%{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent}% · %{have}/%{size} · yaklaşık %{time} kaldı"
     paused: "Duraklatıldı · %{have}/%{size}"
     waiting: "İzlediğin film durunca başlar"
     saved: "Kaydedildi · %{size}"
@@ -556,6 +572,9 @@ saved:
     save_one: "1 bölümü kaydet"
     choose: "Bölümleri seç"
     more: "%{size} daha"
+    free: "%{free} boş"
+    more_free: "%{size} · %{free} boş"
+    no_room: "Yeterli alan yok: %{size} gerekiyor, %{free} boş"
     new: "yeni"
 
 confirm:

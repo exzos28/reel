@@ -23,7 +23,7 @@ test("phone: Home, Search and Settings at the bottom; the categories at the top 
   await app.press("label:Home"); // chosen again: its root
   expect(app.texts()).toContain("All movies");
   await app.press("label:Dune >> nth=0");
-  await app.press("label:Back");
+  await app.press("label:Back to Movies");
   await app.press("label:Series"); // a category from the top: from its top
   expect(app.texts()).toContain("All series");
   await app.press("label:Anime");
@@ -53,8 +53,32 @@ test("phone: the back disc over a title's hero goes back; the Watchlist is the d
   const app = await phone();
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
+  expect(app.shows("title-discs")).toBe(true);
   expect(app.shows("label:Add to Watchlist")).toBe(true);
-  await app.press("label:Back");
+  await app.press("label:Back to Movies");
+  expect(app.texts()).toContain("All movies");
+});
+
+test("phone: a title scrolled past its hero keeps a bar with Back, its name and the Watchlist; the status bar's scrim is solid", async () => {
+  const app = await phone();
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  expect(app.shows("status-scrim")).toBe(true); // a fade over the hero
+  await app.scroll("label:1080p BluRay · 8 GB · 412 people sharing", 600);
+  await app.wait(300); // the bar fades in
+  expect(app.shows("title-bar")).toBe(true);
+  expect(app.shows("status-scrim-solid")).toBe(true);
+  expect(app.shows("label:Add to Watchlist")).toBe(true);
+  // A title opened from it starts over its hero; back on this one, its bar is still up. (The
+  // test engine answers every title with Inception's details.)
+  await app.press("label:Arrival >> nth=0");
+  await app.wait(300);
+  expect(app.shows("title-discs")).toBe(true);
+  expect(app.shows("title-bar")).toBe(false);
+  await app.press("label:Back to Inception");
+  await app.wait(300);
+  expect(app.shows("title-bar")).toBe(true);
+  await app.press("label:Back to Movies");
   expect(app.texts()).toContain("All movies");
 });
 
@@ -81,7 +105,7 @@ test("phone: ⌄ in Play opens the releases in a bottom sheet; ✕ closes it", a
   await app.press("label:Close");
   await app.wait(600); // the sheet slides away
   expect(app.texts()).not.toContain("3 found, the best of each quality first");
-  await app.press("label:Back");
+  await app.press("label:Back to Movies");
   expect(app.texts()).toContain("All movies");
 });
 
@@ -117,6 +141,7 @@ test("first run: the setup takes the screen, Next walks the steps, Skip ends it 
   expect(app.texts()).toContain("How much space can reel use while playing?");
   await app.press("label:Next");
   expect(app.texts()).toContain("Where should reel find films?");
+  expect(app.shows("status-scrim-solid")).toBe(true); // nothing of the page shows under the clock
   expect(app.shows("page-foot")).toBe(true); // Skip and Check pinned above the home indicator
   await app.press("label:Skip");
   expect(finished).toBe(1);
