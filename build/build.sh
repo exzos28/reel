@@ -272,6 +272,7 @@ case "$target" in
     fresh_out
     package ios-simulator
     bundle="$(one "$pkg/*.app")"
+    "$repo/platforms/ios/launch/apply.sh" "$bundle"
     # The video player: libmpv's framework in the app (it plays MKV, every codec).
     "$repo/build/libmpv.sh" bundle-ios "$bundle"
     # The app must stay universal: UIDeviceFamily 1 (iPhone) and 2 (iPad).
@@ -292,6 +293,7 @@ case "$target" in
     # Unsigned first: libmpv's framework goes in, then everything is signed together.
     package ios
     bundle="$(one "$pkg/*.app")"
+    "$repo/platforms/ios/launch/apply.sh" "$bundle"
     "$repo/build/libmpv.sh" bundle-ios "$bundle" device
     if [ -n "${REEL_IOS_SIGN_IDENTITY:-}" ]; then
       [ -f "${REEL_IOS_PROFILE:-}" ] || die "REEL_IOS_PROFILE is not a file (a .mobileprovision)"
