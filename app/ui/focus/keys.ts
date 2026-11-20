@@ -1,7 +1,7 @@
 // Arrow keys that move the focus: the scroll views follow the focus they
 // move, and not one a pointer press moved.
 
-import { signal } from "nsh";
+import { cleanup, signal } from "nsh";
 
 /** When an arrow key last moved the focus (`byKeys`). */
 let keyedAt = -Infinity;
@@ -25,4 +25,16 @@ export function byKeys(bindings: Record<string, (e: { keystroke: string }) => vo
     };
   }
   return out;
+}
+
+/** Binds keys over every binding there is now, a screen's that mounts in the same turn included
+ * (the player's end mounts the title under the source drawer as it opens): a moment later, so
+ * they are the newest; removed with the component. For an overlay that owns the keys. */
+export function bindOnTop(bind: () => () => void) {
+  let off: (() => void) | undefined;
+  const timer = setTimeout(() => (off = bind()), 0);
+  cleanup(() => {
+    clearTimeout(timer);
+    off?.();
+  });
 }

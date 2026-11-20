@@ -14,6 +14,7 @@ import { cellWidth, Grid, GRID_GAP, GRID_ROW_GAP, gridColumnsNow, gridRows } fro
 import { PageFrame } from "../../layout/PageFrame";
 import { SectionTitle } from "../../layout/Section";
 import { scroller } from "../../layout/Scroller";
+import { forgetScroll } from "../../layout/scrollCtl";
 import { openTitle, stack } from "../../nav";
 import { colors, safe, u } from "../../theme";
 import { GridCard } from "../browse/GridCard";
@@ -51,6 +52,9 @@ export function PersonScreen(props: { id: string }) {
   const key = `${depth}:${props.id}`;
   // Only pages still under this one are come back to.
   for (const k of kept.keys()) if (Number(k.split(":")[0]) > depth) kept.delete(k);
+  // A focus that starts over starts at the page's top; one come back to finds the page where it was.
+  const memory = `person:${key}`;
+  if (!kept.has(key)) forgetScroll(memory);
   const cell = signal(kept.get(key) ?? 0);
   const columns = computed(() => gridColumnsNow());
   const rows = computed(() => gridRows<Summary>(items(), columns()));
@@ -63,7 +67,7 @@ export function PersonScreen(props: { id: string }) {
   };
 
   /** The page puts the focused grid row in its upper third. */
-  const page = scroller({ anchor: (viewport) => viewport / 3 });
+  const page = scroller({ anchor: (viewport) => viewport / 3, memory });
   useZones(() => "grid" as const, {
     grid: {
       left: () => cell() % columns() > 0 && cell.set(cell() - 1),

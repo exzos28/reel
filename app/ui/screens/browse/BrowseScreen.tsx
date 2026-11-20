@@ -5,12 +5,14 @@
 // rows and columns (Up from its first row: the pills). OK on a pill opens its
 // panel on the right (Up/Down, OK picks, Back closes); OK on a card opens the
 // title. Back closes the panel, then takes the focus to the nav, then Home. A new grid puts the grid's focus on its first card.
-// The grid has no end: within two rows of its last (or when the page scrolls near it) the
-// core is asked for its next page, which lands under the rows shown; the focus stays.
+// The grid has no end: within a page of its last row (or when the page scrolls near it) the
+// core is asked for its next page, which lands under the rows shown; the focus stays. Down on
+// the last row while that page comes goes on down once it lands (a held Down keeps going).
 import { computed, effect, Text, untracked, View, type ViewRef } from "nsh";
 import { t } from "nsh/i18n";
 import { browse, browseMore, chooseFilter, clearFilters, type Summary } from "../../catalog";
 import { caps } from "../../platform";
+import { keyed } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
 import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
@@ -30,8 +32,9 @@ import { GridCard } from "./GridCard";
 import { GridTail } from "./GridTail";
 import { Trending } from "./Trending";
 
-/** The next page is asked for when the focus is this many rows from the grid's last. */
-const NEAR_ROWS = 2;
+/** The next page is asked for when the focus is this many rows from the grid's last: about a
+ * page of the core's (20 titles) ahead, so a held Down rarely waits for one. */
+const NEAR_ROWS = 4;
 
 export function BrowseScreen(props: { page: Page }) {
   const data = computed(() => browse(props.page));
@@ -105,6 +108,20 @@ export function BrowseScreen(props: { page: Page }) {
     if (Math.floor(cell() / columns()) >= rows().length - 1 - NEAR_ROWS) askMore();
   });
 
+  /** Down was pressed on this card of the grid's last row while more was coming (null: not): the
+   * focus moves on down once the next page lands, if it is still there and the keys still drive
+   * (a held Down; not one press long ago). */
+  let downFrom: number | null = null;
+  effect(() => {
+    count();
+    untracked(() => {
+      const from = downFrom;
+      if (from === null || cell() + columns() >= count()) return;
+      downFrom = null;
+      if (zone() === "grid" && cell() === from && keyed()) cell.set(from + columns());
+    });
+  });
+
   const toGrid = () => {
     if (count() === 0) return;
     zone.set("grid");
@@ -115,14 +132,12 @@ export function BrowseScreen(props: { page: Page }) {
   const page = scroller({ anchor: (viewport) => viewport / 3, memory: `browse:${props.page}` });
 
   showNav(() => (zone() === "nav" ? nav() : null));
-  useRootBack({
-    ctl: page,
-    onNav: () => zone() === "nav",
-    toNav: () => {
-      zone.set("nav");
-      nav.set(NAV.findIndex((n) => n.id === props.page));
-    },
-  });
+  /** The focus to the nav, on this page's item (wherever the nav was left). */
+  const toNav = () => {
+    zone.set("nav");
+    nav.set(NAV.findIndex((n) => n.id === props.page));
+  };
+  useRootBack({ ctl: page, onNav: () => zone() === "nav", toNav });
   useZones(
     zone,
     {
@@ -135,7 +150,7 @@ export function BrowseScreen(props: { page: Page }) {
       trending: {
         left: () => trend.set(clamp(trend() - 1, data().trending.length - 1)),
         right: () => trend.set(clamp(trend() + 1, data().trending.length - 1)),
-        up: () => zone.set("nav"),
+        up: toNav,
         down: () => (groups().length > 0 ? zone.set("filters") : toGrid()),
         enter: () => openTitle(data().trending[trend()].id),
       },
@@ -165,6 +180,10 @@ export function BrowseScreen(props: { page: Page }) {
         },
         down: () => {
           if (cell() + columns() < count()) cell.set(cell() + columns());
+          else if (data().more) {
+            downFrom = cell();
+            askMore();
+          }
         },
         enter: () => openTitle(data().all[cell()].id),
       },

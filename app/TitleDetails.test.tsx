@@ -82,6 +82,7 @@ const withTrailer = { ...NATIVE, "Catalog.title": JSON.stringify({ ...JSON.parse
 test("Trailer shows only when the title has one", async () => {
   expect((await inception()).texts()).not.toContain("Trailer");
   const app = await inception(withTrailer);
+  await app.keyboard.press("down"); // off the row: the focused control draws last, over its neighbours
   const texts = app.texts();
   expect(texts.indexOf("Resume 41:12")).toBeLessThan(texts.indexOf("Trailer")); // in the row after Play
   // Add to list is the page's header action, not one of the hero's.

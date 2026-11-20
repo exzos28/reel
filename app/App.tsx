@@ -140,6 +140,9 @@ function App() {
   setupWindow();
   // Back: Escape (a TV remote's Back arrives as Escape), through what is open first.
   keymap.bind({ escape: handleBack });
+  // A TV's focus is reel's alone (kit/Pressable): Tab from a keyboard moves nothing unseen. A form
+  // where Tab goes on to the next field (the setup, the source drawer) binds it itself.
+  if (caps.remote) keymap.bind({ tab: () => {}, "shift+tab": () => {} });
   // The platform's own: a desktop's shortcuts and menu, Android's system back.
   bindPlatformInput({ back: handleBack, systemBack, go });
   const playing = playerUp;

@@ -1,6 +1,7 @@
 // One title screen's focus, kept while the player or a deeper screen shows;
 // another title starts over: on Play, in the season the viewer is in.
 import { signal } from "nsh";
+import { forgetScroll } from "../../layout/scrollCtl";
 import { stack } from "../../nav";
 
 /** `header`: Add to list, top-right; `actions`: the hero's row (`action` says which);
@@ -31,6 +32,10 @@ type Saved = [Zone, HeroAction, number, number, number, number];
  * opens one on top of another; Back finds the focus where it was). */
 const saved = new Map<string, Saved>();
 
+/** The title page's scroll memory (`scroller({ memory })`): where it was left, kept as long as
+ * its focus is, so Back to it shows the focused row where it was (a cast card under the fold). */
+export const titleScroll = (id: string) => `title:${stack().length - 1}:${id}`;
+
 /** Starts the focus over when `id` is not the title shown last (or takes
  * it back to where it was on `id`). */
 export function focusTitle(id: string, startSeason: number) {
@@ -42,7 +47,10 @@ export function focusTitle(id: string, startSeason: number) {
   const open = new Set(stack().flatMap((r, at) => (r.name === "title" ? [`${at}:${r.id}`] : [])));
   for (const k of saved.keys()) if (!open.has(k)) saved.delete(k);
   shown = key;
-  const [z, a, s, i, c, m] = saved.get(key) ?? ["actions", "play", startSeason, 0, 0, 0];
+  const back = saved.get(key);
+  // A focus that starts over starts at the page's top.
+  if (!back) forgetScroll(titleScroll(id));
+  const [z, a, s, i, c, m] = back ?? ["actions", "play", startSeason, 0, 0, 0];
   saved.delete(key);
   zone.set(z);
   action.set(a);

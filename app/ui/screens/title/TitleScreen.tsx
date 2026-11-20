@@ -24,7 +24,7 @@ import { isSaved, NO_PLAN, save as saveKeys, saveOffer, saveRelease, seasonPlan,
 import { ConfirmDialog, type Confirm } from "../../layout/ConfirmDialog";
 import { Fmt } from "../../native";
 import { SaveDrawer } from "./SaveDrawer";
-import { openSourceDrawer } from "../source/SourceDrawer";
+import { openSourceDrawer, sourceDrawerOpen } from "../source/SourceDrawer";
 import { playGate } from "../source/playGate";
 import { pickReleaseFor, play as startPlay, playing } from "../../playback";
 import { safe, u } from "../../theme";
@@ -33,7 +33,7 @@ import { AboutBlock, hasAbout } from "./AboutBlock";
 import { LazyBlock } from "../../layout/LazyBlock";
 import { CastRow } from "./CastRow";
 import { DetailsBlock, hasDetails } from "./DetailsBlock";
-import { action, castAt, focusTitle, item, releaseAt, season, similarAt, zone, type HeroAction, type Zone } from "./focus";
+import { action, castAt, focusTitle, item, releaseAt, season, similarAt, titleScroll, zone, type HeroAction, type Zone } from "./focus";
 import { ReleasePanel } from "./ReleasePanel";
 import { SeriesEpisodes } from "./SeriesEpisodes";
 import { shelfCardWidth, wideCardHeight } from "../home/WideCard";
@@ -215,8 +215,9 @@ export function TitleScreen(props: { id: string }) {
     const row = heroRow();
     action.set(row[clamp(actionAt() + by, row.length - 1)]);
   };
-  /** The focused action as the hero shows it (Play when the row lost it). */
-  const focusedAction = () => (zone() === "actions" ? heroRow()[actionAt()] : null);
+  /** The focused action as the hero shows it (Play when the row lost it; none under the source
+   * drawer, which has the focus while it is open). */
+  const focusedAction = () => (zone() === "actions" && !sourceDrawerOpen() ? heroRow()[actionAt()] : null);
   /** Where the focus lands in a season's episodes: where the viewer is, else the first. */
   const firstItem = () => {
     const r = data().resume;
@@ -260,7 +261,7 @@ export function TitleScreen(props: { id: string }) {
   };
 
   /** The page puts the focused row (or the season tabs) in its upper third. */
-  const page = scroller({ anchor: (viewport) => viewport / 3 });
+  const page = scroller({ anchor: (viewport) => viewport / 3, memory: titleScroll(props.id) });
 
   useZones(
     zone,

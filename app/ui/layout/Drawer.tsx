@@ -127,9 +127,12 @@ const closeStyle = (place: Place): ViewStyle => ({
 /** How far in from a drawer's sides its rows start, points: a row that scrolls sideways (the
  * Save drawer's seasons) runs out to the edge by this much, so the cut shows it goes on. */
 export const drawerPad = () => (frame().panel === "tv" ? u(48) : phone() ? PHONE_PAD : 16);
+/** A TV panel's sides: 48 from its left edge, the screen's title-safe inset on the right (a set
+ * may crop the screen's edge). */
+const tvSides = (): ViewStyle => ({ paddingLeft: u(48), paddingRight: safe().x });
 const contentStyle = (): ViewStyle =>
   frame().panel === "tv"
-    ? { paddingHorizontal: u(48), paddingTop: safe().y, paddingBottom: safe().y, gap: u(20) }
+    ? { ...tvSides(), paddingTop: safe().y, paddingBottom: safe().y, gap: u(20) }
     : phone() ? { paddingHorizontal: PHONE_PAD, paddingTop: 8, paddingBottom: PHONE_FOOT, gap: 12 }
     : { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, gap: 12 };
 
@@ -147,7 +150,7 @@ function CloseButton(props: { onPress: () => void; place: Place; id: string }) {
 /** What stays at the drawer's foot under the scrolling rows (its main action). */
 const footerStyle = (): ViewStyle => ({
   ...(frame().panel === "tv"
-    ? { paddingHorizontal: u(48), paddingTop: u(20), paddingBottom: safe().y, gap: u(12) }
+    ? { ...tvSides(), paddingTop: u(20), paddingBottom: safe().y, gap: u(12) }
     : phone() ? { paddingHorizontal: PHONE_PAD, paddingTop: 12, paddingBottom: PHONE_FOOT, gap: 10 }
     : { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, gap: 10 }),
   borderTopWidth: 1,

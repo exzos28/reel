@@ -8,7 +8,7 @@ import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
 import { NAV } from "../../layout/navItems";
 import { PageFrame } from "../../layout/PageFrame";
-import { openSourceDrawer } from "../source/SourceDrawer";
+import { openSourceDrawer, sourceDrawerOpen } from "../source/SourceDrawer";
 import { playGate } from "../source/playGate";
 import { scroller } from "../../layout/Scroller";
 import { showNav } from "../../layout/navState";
@@ -46,14 +46,12 @@ export function HomeScreen() {
   const page = scroller({ anchor: (viewport) => viewport / 3, memory: "home" });
 
   showNav(() => (zone() === "nav" ? navAt() : null));
-  useRootBack({
-    ctl: page,
-    onNav: () => zone() === "nav",
-    toNav: () => {
-      zone.set("nav");
-      navAt.set(0);
-    },
-  });
+  /** The focus to the nav, on Home's item (the page's section, wherever the nav was left). */
+  const toNav = () => {
+    zone.set("nav");
+    navAt.set(0);
+  };
+  useRootBack({ ctl: page, onNav: () => zone() === "nav", toNav });
   useZones(zone, {
     nav: {
       left: () => navAt.set(Math.max(navAt() - 1, 0)),
@@ -64,7 +62,7 @@ export function HomeScreen() {
     hero: {
       left: () => heroAt.set(Math.max(heroAt() - 1, 0)),
       right: () => heroAt.set(Math.min(heroAt() + 1, heroActions.length - 1)),
-      up: () => zone.set("nav"),
+      up: toNav,
       down: () => zone.set("shelves"),
       enter: () => heroActions[heroAt()](),
     },
@@ -89,7 +87,8 @@ export function HomeScreen() {
       <View ref={page.follow(() => zone() !== "shelves", "start")}>
         <HomeHero
           item={hero}
-          focusedAt={() => (zone() === "hero" ? heroAt() : null)}
+          // Under the source drawer (Play without a source) Play shows no focus: the drawer has it.
+          focusedAt={() => (zone() === "hero" && !sourceDrawerOpen() ? heroAt() : null)}
           onPlay={playFocused}
           onToggle={heroActions[1]}
           onOpen={() => openTitle(hero().id)}

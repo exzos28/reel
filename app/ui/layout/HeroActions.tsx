@@ -3,7 +3,7 @@
 import { Text, View, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { Button } from "../kit/Button";
-import { row } from "../kit/shape";
+import { rounded, row } from "../kit/shape";
 import { cs, font, radius, targetSlop, ts, u } from "../theme";
 import playIcon from "../icons/play.svg";
 import plusIcon from "../icons/plus.svg";
@@ -16,7 +16,7 @@ import { Fmt } from "../native";
 import type { releaseLine } from "../catalog";
 import { ShortRelease } from "./HeroMeta";
 import { Icon } from "../kit/Icon";
-import { alpha, colors, focusRing } from "../theme";
+import { alpha, colors, focusRing, showFocus } from "../theme";
 import { labelText, oneLine } from "../kit/text";
 import { Pressable } from "../kit/Pressable";
 
@@ -54,43 +54,50 @@ const playEdge = (side: "left" | "right"): ViewStyle =>
   side === "left"
     ? { borderTopLeftRadius: radius(), borderBottomLeftRadius: radius(), borderCurve: "continuous" }
     : { borderTopRightRadius: radius(), borderBottomRightRadius: radius(), borderCurve: "continuous" };
-const splitStyle = (stretch: boolean): ViewStyle => ({
+/** The split as one control: the focus's ring and lift go around both parts (a ring around one
+ * part ran into the other), and the part the focus is on stays white (`lit`). */
+const splitStyle = (stretch: boolean, focused: boolean): ViewStyle => ({
   flexDirection: "row",
   alignItems: "stretch",
   height: cs(SPLIT),
   ...(stretch ? { flexGrow: 1 } : {}),
+  ...rounded(),
+  ...focusRing(focused),
 });
-const playPartStyle = (focused: boolean, stretch: boolean): ViewStyle => ({
+/** A part's fill: white, or grey while the focus is on the other part. */
+const partFill = (lit: boolean) => (lit ? colors.snow() : colors.raise());
+/** What is written on a part: dark on white, white on grey. */
+const onPart = (lit: boolean) => (lit ? colors.ink() : colors.snow());
+const playPartStyle = (lit: boolean, stretch: boolean): ViewStyle => ({
   ...row(u(16)),
   flexGrow: stretch ? 1 : 0,
   flexShrink: 1,
   minWidth: stretch ? 0 : cs(480),
   maxWidth: stretch ? undefined : cs(760),
   paddingHorizontal: cs(26),
-  backgroundColor: colors.snow(),
+  backgroundColor: partFill(lit),
   ...playEdge("left"),
-  ...focusRing(focused),
 });
-const morePartStyle = (focused: boolean): ViewStyle => ({
+const morePartStyle = (lit: boolean): ViewStyle => ({
   width: cs(76),
   alignItems: "center",
   justifyContent: "center",
-  backgroundColor: colors.snow(),
+  backgroundColor: partFill(lit),
   ...playEdge("right"),
-  ...focusRing(focused),
 });
-/** The seam between the two parts: a thin dark line, inset top and bottom. */
-const seamStyle = (): ViewStyle => ({ width: 1, backgroundColor: colors.snow(), paddingVertical: cs(16) });
+/** The seam between the two parts: a thin dark line, inset top and bottom, on white; a gap while
+ * one part is grey. */
+const seamStyle = (bothLit: boolean): ViewStyle => ({ width: 1, backgroundColor: bothLit ? colors.snow() : "transparent", paddingVertical: cs(16) });
 const seamLine = (): ViewStyle => ({ flexGrow: 1, backgroundColor: alpha(colors.ink(), 0.18) });
-const playLabelStyle = (): TextStyle => ({ ...labelText(colors.ink()), fontSize: ts(26), fontWeight: 600 });
+const playLabelStyle = (lit: boolean): TextStyle => ({ ...labelText(onPart(lit)), fontSize: ts(26), fontWeight: 600 });
 /** At least 13 pt and dark enough on the white part (4.5:1 and more). */
-const subStyle = (): TextStyle => ({ fontFamily: font, fontSize: Math.max(13, ts(20)), color: alpha(colors.ink(), 0.72) });
+const subStyle = (lit = true): TextStyle => ({ fontFamily: font, fontSize: Math.max(13, ts(20)), color: alpha(onPart(lit), 0.72) });
 /** The watched part along the white part's bottom. */
 const trackStyle = (): ViewStyle => ({ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.max(2, cs(4)), backgroundColor: alpha(colors.ink(), 0.12), borderBottomLeftRadius: radius() });
 const watchedStyle = (part: number): ViewStyle => ({ width: `${Math.round(Math.min(1, part) * 100)}%`, height: "100%", borderBottomLeftRadius: radius(), backgroundColor: colors.ink() });
 /** The release line while it is coming: pulsing, as the release list's skeleton does. */
-const pendingStyle = (): TextStyle => ({
-  ...subStyle(),
+const pendingStyle = (lit: boolean): TextStyle => ({
+  ...subStyle(lit),
   animationName: "pulse",
   animationDuration: 1400,
   animationIterationCount: "infinite",
@@ -112,14 +119,17 @@ export function SplitPlay(props: {
   onMore: () => void;
   stretch: boolean;
 }) {
+  /** Each part is white but while the focus shows on the other. */
+  const playLit = () => !(props.moreFocused() && showFocus());
+  const moreLit = () => !(props.playFocused() && showFocus());
   return (
-    <View style={splitStyle(props.stretch)}>
-      <Pressable role="button" accessibilityLabel={props.label()} hitSlop={targetSlop(cs(SPLIT))} onPress={props.onPlay} hoverStyle={{ opacity: 0.9 }} style={playPartStyle(props.playFocused(), props.stretch)}>
-        <Icon src={() => playIcon} size={26} color={() => colors.ink()} />
+    <View testID="split-play" style={splitStyle(props.stretch, props.playFocused() || props.moreFocused())}>
+      <Pressable role="button" accessibilityLabel={props.label()} hitSlop={targetSlop(cs(SPLIT))} onPress={props.onPlay} hoverStyle={{ opacity: 0.9 }} style={playPartStyle(playLit(), props.stretch)}>
+        <Icon src={() => playIcon} size={26} color={() => onPart(playLit())} />
         <View style={{ flexShrink: 1, minWidth: 0, gap: u(2) }}>
-          <Text style={{ ...playLabelStyle(), ...oneLine }}>{props.label()}</Text>
-          <If when={props.release()} else={<Text testID="release-row-skeleton" style={{ ...pendingStyle(), ...oneLine }}>{props.pending() ?? ""}</Text>}>
-            <ShortRelease line={() => props.release()!} style={subStyle} />
+          <Text style={{ ...playLabelStyle(playLit()), ...oneLine }}>{props.label()}</Text>
+          <If when={props.release()} else={<Text testID="release-row-skeleton" style={{ ...pendingStyle(playLit()), ...oneLine }}>{props.pending() ?? ""}</Text>}>
+            <ShortRelease line={() => props.release()!} style={() => subStyle(playLit())} />
           </If>
         </View>
         <If when={props.progress() > 0 && props.progress() < 1}>
@@ -128,11 +138,13 @@ export function SplitPlay(props: {
           </View>
         </If>
       </Pressable>
-      <View style={seamStyle()}>
-        <View style={seamLine()} />
+      <View style={seamStyle(playLit() && moreLit())}>
+        <If when={playLit() && moreLit()}>
+          <View style={seamLine()} />
+        </If>
       </View>
-      <Pressable role="button" accessibilityLabel={t("title.other_releases")} hitSlop={targetSlop(cs(76))} onPress={props.onMore} hoverStyle={{ opacity: 0.9 }} style={morePartStyle(props.moreFocused())}>
-        <Icon src={() => chevronIcon} size={26} color={() => colors.ink()} />
+      <Pressable testID="split-play-more" role="button" accessibilityLabel={t("title.other_releases")} hitSlop={targetSlop(cs(76))} onPress={props.onMore} hoverStyle={{ opacity: 0.9 }} style={morePartStyle(moreLit())}>
+        <Icon src={() => chevronIcon} size={26} color={() => onPart(moreLit())} />
       </Pressable>
     </View>
   );
