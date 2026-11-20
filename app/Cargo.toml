@@ -17,7 +17,7 @@ engine = ["dep:reel-engine"]
 [dependencies]
 # Logs that reach the platform's log (Android's logcat through NSH), unlike stderr.
 tracing = "0.1"
-nsh-core = "0.5.1"
+nsh-core = "0.6.1"
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 
@@ -48,7 +48,7 @@ syn = { version = "2", default-features = false, features = ["full", "parsing"] 
 [target.'cfg(target_os = "macos")'.dependencies]
 # The mpv video view (`src/adapters/mpv`): a native component on NSH's AppKit host.
 libc = "0.2"
-nsh-platform-macos = { version = "0.5.1", default-features = false }
+nsh-platform-macos = { version = "0.6.1", default-features = false }
 objc2 = "0.6"
 objc2-foundation = "0.3"
 objc2-app-kit = { version = "0.3", features = ["NSView", "NSResponder"] }
@@ -60,7 +60,7 @@ objc2-core-foundation = { version = "0.3", features = ["CFDate"] }
 [target.'cfg(target_os = "ios")'.dependencies]
 # The mpv video view on iOS (`src/adapters/mpv/ios.rs`): a native component on NSH's UIKit host.
 libc = "0.2"
-nsh-platform-ios = { version = "0.5.1", default-features = false }
+nsh-platform-ios = { version = "0.6.1", default-features = false }
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", features = ["NSNotification", "NSString", "NSArray"] }
 objc2-ui-kit = { version = "0.3", features = ["UIView", "UIResponder", "UIWindow", "UIScreen", "UIApplication"] }
@@ -75,12 +75,12 @@ libc = "0.2"
 # platform. Not 32-bit ARM: that is the Samsung TV's core (platforms/tizen), which has no GTK and draws
 # no native views (the TV's AVPlay plays).
 [target.'cfg(all(target_os = "linux", not(target_arch = "arm")))'.dependencies]
-nsh-platform-linux = { version = "0.5.1", default-features = false }
+nsh-platform-linux = { version = "0.6.1", default-features = false }
 gtk4 = { version = "0.11", features = ["v4_14"] }
 
 # Windows: the mpv video view (`src/adapters/mpv/windows.rs`), drawn with Direct2D from mpv's Direct3D 11 frames.
 [target.'cfg(windows)'.dependencies]
-nsh-platform-windows = { version = "0.5.1", default-features = false }
+nsh-platform-windows = { version = "0.6.1", default-features = false }
 windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_LibraryLoader", "Win32_Graphics_Direct2D", "Win32_Graphics_Direct2D_Common", "Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D11", "Win32_Graphics_Dxgi", "Win32_Graphics_Dxgi_Common"] }
 
 # Android: servers' certificates are checked against Mozilla's roots built in (src/http_client.rs).
