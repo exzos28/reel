@@ -239,7 +239,8 @@ impl VideoEngine {
     }
 
     /// Whether reel's own native views are registered on this device (Android: the Java ones
-    /// `build/android-views.sh` adds to the APK; registered on the first call).
+    /// `build/android-views.sh` adds to the APK; registered on the first call, and on every
+    /// activity made after it).
     pub fn views() -> bool {
         #[cfg(target_os = "android")]
         return crate::adapters::android_views::installed();

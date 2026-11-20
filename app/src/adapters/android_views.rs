@@ -2,7 +2,9 @@
 //! `build/android-views.sh`): NSH registers native components only from Java
 //! (`NshView.registerComponent`), and an app `nsh package` builds has no Java of its own to
 //! call it, so this calls `app.reel.views.Install.install()` once, through JNI: the JVM the
-//! app runs in, the app's class loader (where reel's classes are), the call.
+//! app runs in, the app's class loader (where reel's classes are), the call. From then on
+//! `Install` registers them on every activity's NshView, a new one included (an activity the
+//! system makes again while the process lives on).
 
 use std::{
     ffi::{CStr, c_char, c_void},
@@ -13,7 +15,8 @@ use std::{
 use jni_sys::{JNI_OK, JNI_VERSION_1_6, JNIEnv, JavaVM, jboolean, jint, jobject, jsize, jvalue};
 // (jboolean is Rust's bool in jni-sys 0.4.)
 
-/// Whether reel's views are registered (installed once; false when anything is missing).
+/// Whether reel's views are registered (installed once, then on every new activity by
+/// `Install`; false when anything is missing).
 pub fn installed() -> bool {
     static DONE: OnceLock<bool> = OnceLock::new();
     *DONE.get_or_init(|| match unsafe { install() } {
