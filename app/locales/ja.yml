@@ -355,9 +355,7 @@ player:
       other: "%{count}人見つかりました。接続しています"
     fetching: "冒頭を読み込み中 %{percent}%"
     starting: "まもなく再生"
-  buffering: "読み込み中"
-  ahead_seconds: "%{seconds}秒分を先読み済み"
-  rate_from: "%{count}人から %{speed}"
+  waiting: "ストリームを待っています"
   ready_ahead: "%{minutes}分ぶんを先読み済み"
   ready_ahead_short: "先読みは1分未満"
   streaming: "%{speed} で受信中"
@@ -438,7 +436,7 @@ settings:
   # What shows while a film loads or waits for more of the stream.
   loader:
     title: "読み込みアニメーション"
-    about: "映画がストリームの続きを待っている間に表示されます。"
+    about: "映画の開始を待つ間に表示されます。"
     dinosaur: "恐竜"
     logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not

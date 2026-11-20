@@ -355,9 +355,7 @@ player:
       other: "%{count} personnes trouvées, connexion"
     fetching: "Chargement du début, %{percent} %"
     starting: "Démarrage"
-  buffering: "Chargement"
-  ahead_seconds: "%{seconds} s d'avance"
-  rate_from: "%{speed} · partages : %{count}"
+  waiting: "En attente du flux"
   ready_ahead: "%{minutes} min d'avance"
   ready_ahead_short: "Moins d'une minute d'avance"
   streaming: "flux à %{speed}"
@@ -438,7 +436,7 @@ settings:
   # What shows while a film loads or waits for more of the stream.
   loader:
     title: "Animation de chargement"
-    about: "Ce qui s'affiche pendant qu'un film attend la suite du flux."
+    about: "Ce qui s'affiche pendant qu'un film démarre."
     dinosaur: "Dinosaure"
     logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not

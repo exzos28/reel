@@ -399,7 +399,8 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
             }
             ffi::EVENT_FILE_LOADED => {
                 duration = get_f64(lib, raw, "duration").unwrap_or(duration);
-                emit("load", json!({ "duration": duration }));
+                let (width, height) = picture_size(lib, raw);
+                emit("load", json!({ "duration": duration, "width": width, "height": height }));
             }
             ffi::EVENT_END_FILE if !event.data.is_null() => {
                 let end = unsafe { &*(event.data as *const ffi::EventEndFile) };
@@ -468,6 +469,21 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
             _ => {}
         }
     }
+}
+
+/// The picture's size as shown (pixels; 0 × 0 when there is no video track): the decoder's once it
+/// has one, else what the container says of the video track (just loaded, nothing decoded yet),
+/// its pixel aspect and rotation applied.
+fn picture_size(lib: &Lib, raw: Raw) -> (f64, f64) {
+    let shown = (get_f64(lib, raw, "dwidth"), get_f64(lib, raw, "dheight"));
+    if let (Some(w), Some(h)) = shown
+        && w > 0.0
+        && h > 0.0
+    {
+        return (w, h);
+    }
+    let track = |name: &str| get_f64(lib, raw, &format!("current-tracks/video/{name}")).unwrap_or(0.0);
+    reel_domain::play::shown_size(track("demux-w"), track("demux-h"), track("demux-par"), track("demux-rotation"))
 }
 
 fn get_f64(lib: &Lib, raw: Raw, name: &str) -> Option<f64> {

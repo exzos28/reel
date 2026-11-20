@@ -56,7 +56,8 @@ export interface VideoSurfaceProps {
   subtitleLift?: number;
   style?: ViewStyle;
   surfaceRef?: (r: SurfaceRef) => void;
-  onLoad?: (e: { duration: number }) => void;
+  /** Loaded: how long the film is, and its picture's size as shown (pixels) where the view says. */
+  onLoad?: (e: { duration: number; width?: number; height?: number }) => void;
   onProgress?: (e: { currentTime: number; duration: number; cached?: number; readAt?: number; readTime?: number }) => void;
   onBuffer?: (e: { isBuffering: boolean }) => void;
   onEnd?: () => void;
@@ -84,7 +85,7 @@ interface MpvProps {
 }
 
 interface MpvEvents {
-  load: { duration: number };
+  load: { duration: number; width?: number; height?: number };
   /** `cached`: seconds of the film the view holds ahead of `currentTime` (mpv's cache). */
   progress: { currentTime: number; duration: number; cached?: number; readAt?: number; readTime?: number };
   buffer: { isBuffering: boolean };
@@ -234,11 +235,11 @@ function NativeSurface(props: VideoSurfaceProps) {
   );
 }
 
-/** Headless tests: loads at once and plays its first frame, then stands still. */
+/** Headless tests: loads at once (a 1920×1080 picture) and plays its first frame, then stands still. */
 function StillSurface(props: VideoSurfaceProps) {
   const timer = setTimeout(() => {
     props.surfaceRef?.({ seek: () => {} });
-    props.onLoad?.({ duration: 0 });
+    props.onLoad?.({ duration: 0, width: 1920, height: 1080 });
     props.onProgress?.({ currentTime: 0, duration: 0 });
   }, 0);
   cleanup(() => clearTimeout(timer));

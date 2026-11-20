@@ -334,3 +334,33 @@ test("phone: Episodes is a sheet titled with the season and its count, the numbe
   expect(app.shows("episodes-panel")).toBe(false);
   expect(app.shows("scrubber")).toBe(true);
 });
+
+test("phone: Play and ±10 s sit in the middle of the picture, the bottom row keeps the rest", async () => {
+  const app = await phonePlaying(PORTRAIT);
+  expect(app.shows("player-middle")).toBe(true);
+  expect(app.shows("label:Pause")).toBe(true);
+  expect(app.shows("label:Back 10 seconds")).toBe(true);
+  expect(app.shows("label:Forward 10 seconds")).toBe(true);
+  expect(app.shows("label:Audio and subtitles")).toBe(true);
+  expect(app.shows("label:Rotate screen")).toBe(true);
+  await app.press("label:Pause");
+  expect(app.shows("label:Play")).toBe(true);
+});
+
+test("phone held upright: a wide film turns the screen sideways once it loads, and upright again on leaving", async () => {
+  const turns: boolean[] = [];
+  const app = await phonePlaying(PORTRAIT, { "VideoEngine.sideways": (w: number, h: number) => w / h >= 1.7, "VideoEngine.turn": (l: boolean) => { turns.push(l); } });
+  expect(turns).toEqual([true]);
+  await app.press("label:Close");
+  await app.wait(600);
+  expect(turns).toEqual([true, false]);
+});
+
+test("phone: a narrow film, or one already sideways, does not turn the screen", async () => {
+  const turns: boolean[] = [];
+  const narrow = { "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } };
+  await phonePlaying(PORTRAIT, narrow);
+  expect(turns).toEqual([]);
+  await phonePlaying(SIDEWAYS, { ...narrow, "VideoEngine.sideways": true });
+  expect(turns).toEqual([]);
+});
