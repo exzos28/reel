@@ -5,20 +5,23 @@
 // - desktop: an NSH Sheet at the right, over the window bar, the full height, with ✕;
 // - tablet: a floating sheet at the right, under the status bar, with ✕ (a short list of choices
 //   is a popover instead: ChoicePanel);
-// - phone: a sheet from the bottom, with a grabber (swiped down to close) and ✕; held sideways,
-//   a drawer that asks for it (`sideways`: the player's) is a full-height sheet at the right.
-//   Its heading stays put and only the rows scroll under it. From the bottom it is as tall as
-//   its rows, up to `MEDIUM` of the screen; a longer list grows to `LARGE` once it is dragged
-//   up or its grabber is pressed (iOS's medium and large), and it keeps clear of the home
-//   indicator and the keyboard.
+// - phone: a sheet from the bottom, with a grabber and ✕; held sideways, a drawer that asks for
+//   it (`sideways`: the player's) is a full-height sheet at the right. Its heading stays put and
+//   only the rows scroll under it. From the bottom it is as tall as its rows (one detent); a list
+//   taller than `MEDIUM` of the screen opens there and grows to `LARGE`, as tall as its rows at
+//   most (iOS's medium and large detents). NSH's `Sheet` moves it: a drag follows the finger on
+//   the UI thread and a release springs to a detent with the finger's speed, or closes it. At
+//   medium the rows hold still, so a drag on them moves the sheet; at large they scroll, and a
+//   drag down from their top moves the sheet (on iOS the same drag). The grabber's press goes
+//   from one detent to the other; it keeps clear of the home indicator and the keyboard.
 // Back (through the page's closer, or the sheet's Escape), ✕ or a press outside
 // closes it.
 //
 // The TV keeps reel's own panel: on Android (Android TV), after an NSH Sheet has
 // been open, Escape (the remote's Back in the tests) no longer reached the app's key
 // bindings in a headless run, and the remote must always reach Back.
-import { effect, keyboardFrame, safeArea, signal, Text, View, windowSize, type JSX, type ViewStyle } from "nsh";
-import { Sheet } from "nsh/base";
+import { effect, keyboardFrame, safeArea, signal, Text, untracked, View, windowSize, type JSX, type ViewStyle } from "nsh";
+import { Sheet, type SheetDetent } from "nsh/base";
 import { titleBar } from "../platform/titlebar";
 import { t } from "nsh/i18n";
 import { Icon } from "../kit/Icon";
@@ -59,12 +62,21 @@ const PHONE_FOOT = 16;
 /** A bottom sheet's heights, of the window's: where a long list opens, and where it grows to. */
 const MEDIUM = 0.6;
 const LARGE = 0.9;
+/** A list up to this much taller than the medium height stays one detent, as tall as its rows. */
+const MEDIUM_SLACK = 1.15;
 /** The grabber and the room over it, points. */
 const GRABBER_ROOM = 13;
-/** The keyboard's height over the home indicator: NSH lifts a bottom sheet by it. */
-const keyboardLift = () => Math.max(0, keyboardFrame().height - safeArea().bottom);
-/** The tallest a bottom sheet gets: under the status bar and over the keyboard. */
-const room = () => windowSize().height - safeArea().top - 8 - keyboardLift();
+/** The grabber's press area reaches this far, points: a 44-point target over the title's top; over
+ * a head (the tracks' tabs) only the room above it, `HEAD_ROOM`, so the head keeps its presses. */
+const GRABBER_REACH = 44;
+const HEAD_ROOM = 8;
+/** The keyboard is up: NSH then lifts a bottom sheet over it, at its largest detent. */
+const keyboardUp = () => keyboardFrame().height - safeArea().bottom > 0;
+/** The tallest a bottom sheet gets: under the status bar (NSH keeps it over the keyboard). */
+const room = () => windowSize().height - safeArea().top - 8;
+/** Each drawer's rows as they last measured (by its id and title: the choices share one id): it
+ * opens at the height it had. */
+const lastRows = new Map<string, number>();
 
 function sheetStyle(place: Place): ViewStyle {
   if (place === "side")
@@ -89,7 +101,7 @@ function sheetStyle(place: Place): ViewStyle {
 const controlsRoom = () => (frame().panel === "side-sheet" && titleBar().right > 0 ? titleBar().height : 0);
 const underControls = (): ViewStyle => ({ paddingTop: controlsRoom() });
 const grabberStyle = (): ViewStyle => ({ width: 36, height: 5, borderRadius: 3, alignSelf: "center", backgroundColor: "#4A4A4A" });
-/** The grabber's press area: the strip over the heading. */
+/** The grabber's strip over the heading; pressed (a long list's), it reaches `GRABBER_REACH`. */
 const grabberArea = (): ViewStyle => ({ height: GRABBER_ROOM, justifyContent: "flex-end", alignSelf: "stretch" });
 /** The system's insets inside a sheet that has them on its sides: a sideways phone's (the notch
  * side, the home indicator), and the home indicator under a bottom sheet. */
@@ -147,12 +159,14 @@ type BodyProps = {
   footer?: () => JSX.Element;
   /** The sheet's insets (a phone's safe area). */
   inset?: () => { top: number; right: number; bottom: number };
-  /** A phone sheet's: the heading's, the rows' and the foot's heights as they lay out, and a
-   * drag of the rows let go `offset` points down them. */
+  /** A phone sheet's: the heading's and the rows' heights as they lay out, and whether the rows
+   * scroll (at medium they hold still and the sheet takes the drag). */
   onHeading?: (height: number) => void;
   onRows?: (height: number) => void;
-  onFooter?: (height: number) => void;
-  onDragEnd?: (offset: number) => void;
+  scrollable?: () => boolean;
+  /** How much of the rows' area is under the screen's edge (a bottom sheet at medium): the rows
+   * scroll and follow the focus in what shows. */
+  hidden?: () => number;
 };
 
 /** The title, the note under it and the head (room on the right for the ✕ where there is one). */
@@ -183,7 +197,7 @@ function Body(props: BodyProps) {
         <Heading {...props} />
       </View>
     </If>
-    <Scroller ctl={list} style={{ flex: 1 }} onContent={props.onRows} onDragEnd={props.onDragEnd}>
+    <Scroller ctl={list} style={{ flex: 1 }} onContent={props.onRows} scrollable={props.scrollable}>
       <View style={{ ...contentStyle(), ...(pinned ? { paddingTop: 0 } : null), paddingBottom: (contentStyle().paddingBottom as number) + (props.footer ? 0 : inset().bottom) }}>
         <If when={!pinned}>
           <Heading {...props} />
@@ -191,8 +205,11 @@ function Body(props: BodyProps) {
         {props.children(list)}
       </View>
     </Scroller>
+    <If when={props.hidden}>
+      <View style={{ height: props.hidden!() }} />
+    </If>
     <If when={props.footer}>
-      <View style={{ ...footerStyle(), paddingBottom: (footerStyle().paddingBottom as number) + inset().bottom }} onLayout={(e) => props.onFooter?.(e.bounds.size.height)}>
+      <View style={{ ...footerStyle(), paddingBottom: (footerStyle().paddingBottom as number) + inset().bottom }}>
         {props.footer!()}
       </View>
     </If>
@@ -227,26 +244,48 @@ export function Drawer(props: {
   const close = () => props.open() && props.onClose();
   const place = (): Place => (props.sideways && phoneSideways() ? "side" : frame().panel);
   const inset = () => insets(place());
-  // A bottom sheet's height: its parts as they lay out, the rows at the longest they have been
-  // since it opened (a switch to a shorter list does not drop it), up to `MEDIUM` until it grows.
+  const bottom = () => place() === "bottom-sheet";
+  // A bottom sheet's detents: its parts as they lay out, the rows at the longest they have been
+  // since it opened (a switch to a shorter list does not drop it). It opens at the height its rows
+  // had last time (the detents set before it comes in: a change while it comes in would land it
+  // at the old one first); a drawer opened the first time guesses a long list until they measure.
   const heading = signal(0);
-  const rows = signal(0);
+  const remembered = () => `${props.id}:${props.title?.() ?? ""}`;
+  const rows = signal(lastRows.get(untracked(remembered)) ?? 0);
   const foot = signal(0);
   const expanded = signal(false);
+  /** The rows' first height since it opened replaces the remembered one. */
+  let fresh = true;
   effect(() => {
     if (!props.open()) return;
-    rows.set(0);
+    fresh = true;
+    untracked(() => rows.set(lastRows.get(remembered()) ?? 0));
     expanded.set(false);
   });
+  const measuredRows = (h: number) => {
+    const next = fresh ? h : Math.max(rows(), h);
+    fresh = false;
+    lastRows.set(untracked(remembered), next);
+    rows.set(next);
+  };
   const natural = () => GRABBER_ROOM + heading() + rows() + foot();
   const medium = () => Math.min(room(), windowSize().height * MEDIUM);
-  const large = () => Math.min(room(), windowSize().height * LARGE);
-  /** Taller than the medium height: it can grow. */
-  const long = () => natural() > medium() + 1;
-  const height = () => (rows() === 0 ? medium() : Math.min(natural(), expanded() ? large() : medium()));
-  const grow = (offset: number) => offset > 0 && long() && !expanded() && expanded.set(true);
-  const sheetHeight = (): ViewStyle =>
-    place() === "bottom-sheet" ? { height: height(), transitionProperty: "height", transitionDuration: 250, transitionTimingFunction: "ease-out" } : {};
+  const large = () => Math.min(room(), windowSize().height * LARGE, rows() === 0 ? Infinity : natural());
+  /** Much taller than the medium height (or not measured yet): two detents. */
+  const long = () => rows() === 0 || natural() > medium() * MEDIUM_SLACK;
+  const detents = (): SheetDetent[] => (long() ? [{ height: medium() }, { height: large() }] : [{ height: Math.min(natural(), room()) }]);
+  const detent = (): SheetDetent | undefined => (long() ? { height: expanded() ? large() : medium() } : undefined);
+  /** It stands at its largest detent: large, or the keyboard is up. */
+  const top = () => !long() || expanded() || keyboardUp();
+  /** At medium the rows hold still (a drag on them moves the sheet) and end at the screen's edge. */
+  const hidden = () => (top() ? 0 : Math.max(0, large() - medium()));
+  /** A bottom sheet's foot: NSH keeps it at the bottom of what shows, at every detent. */
+  const sheetFooter = () => (
+    <View style={{ ...footerStyle(), paddingBottom: (footerStyle().paddingBottom as number) + safeArea().bottom, backgroundColor: colors.card() }}
+      onLayout={(e) => foot.set(e.bounds.size.height)}>
+      {props.footer!()}
+    </View>
+  );
   return (
     <If
       when={frame().panel !== "tv"}
@@ -264,25 +303,40 @@ export function Drawer(props: {
       <Sheet
         testID={`${props.id}-sheet`}
         open={props.open()}
-        side={place() === "bottom-sheet" ? "bottom" : "right"}
-        closeOnSwipe={place() === "bottom-sheet"}
+        side={bottom() ? "bottom" : "right"}
+        closeOnSwipe={bottom()}
         // Back (Escape, Android's back) closes it: the top overlay takes the key.
         closeOnEscape
         onOpenChange={(e) => !e.open && close()}
-        popupStyle={{ ...sheetStyle(place()), ...sheetHeight() }}
+        detents={bottom() ? detents() : undefined}
+        detent={bottom() ? detent() : undefined}
+        // Heights come back as the core keeps them (32-bit): the larger one is large.
+        onDetentChange={(e) => expanded.set(long() && ((e.detent as { height?: number }).height ?? 0) > medium() + 1)}
+        footer={bottom() && props.footer ? sheetFooter() : undefined}
+        // The dialog's name for screen readers.
+        accessibilityLabel={props.title?.() ?? props.label?.()}
+        popupStyle={sheetStyle(place())}
         backdropStyle={{ backgroundColor: veil() }}
       >
-        <View testID={`${props.id}-panel`} accessibilityLabel={props.title ? undefined : props.label?.()} style={{ flex: 1, ...underControls() }}>
-          <If when={place() === "bottom-sheet"}>
-            {/* Pressed, a long list's sheet grows to its large height, or back. */}
-            <Pressable feedback="none" testID={`${props.id}-grabber`} role="button" accessibilityLabel={t(expanded() ? "player.collapse_sheet" : "player.expand_sheet")}
-              disabled={!long()} hitSlop={{ top: 8, bottom: 8 }} onPress={() => expanded.set(!expanded())} style={grabberArea()}>
-              <View style={grabberStyle()} />
-            </Pressable>
+        <View testID={`${props.id}-panel`} style={{ flex: 1, ...underControls() }}>
+          <If when={bottom()}>
+            {/* A long list's: pressed, it goes to the other detent; screen readers adjust it. A
+                short list's only shows it can be dragged down. */}
+            <If when={long()} else={<View testID={`${props.id}-grabber`} style={grabberArea()}><View style={grabberStyle()} /></View>}>
+              <Pressable feedback="none" testID={`${props.id}-grabber`} role="adjustable"
+                accessibilityLabel={t(expanded() ? "player.collapse_sheet" : "player.expand_sheet")}
+                accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+                onAccessibilityAction={(e) => expanded.set(e.actionName === "increment")}
+                hitSlop={{ bottom: props.head ? HEAD_ROOM : GRABBER_REACH - GRABBER_ROOM }} onPress={() => expanded.set(!expanded())} style={{ ...grabberArea(), zIndex: 1 }}>
+                <View style={grabberStyle()} />
+              </Pressable>
+            </If>
           </If>
           <CloseButton id={props.id} onPress={close} place={place()} />
-          <Body title={props.title} note={props.note} head={props.head} footer={props.footer} inset={inset}
-            onHeading={heading.set} onRows={(h) => rows.set(Math.max(rows(), h))} onFooter={foot.set} onDragEnd={grow}>
+          <Body title={props.title} note={props.note} head={props.head} footer={bottom() ? undefined : props.footer}
+            inset={() => (bottom() && props.footer ? { top: 0, right: 0, bottom: 0 } : inset())}
+            onHeading={heading.set} onRows={bottom() ? measuredRows : undefined}
+            scrollable={bottom() ? top : undefined} hidden={bottom() ? hidden : undefined}>
             {props.children}
           </Body>
         </View>

@@ -63,13 +63,14 @@ function Bar(props: { ctl: ScrollCtl; shown: () => boolean }) {
 }
 
 /** `style` is the outer view's (size, background); `onScroll` hears where
- * the content is, `onDragEnd` where a finger let it go, `onContent` how long the content is. */
+ * the content is, `onContent` how long the content is. */
 export function Scroller(props: {
   ctl: ScrollCtl;
   style?: ViewStyle;
   onScroll?: (e: ScrollEvent) => void;
-  onDragEnd?: (offset: number) => void;
   onContent?: (length: number) => void;
+  /** Off, a drag on it does not scroll it (a bottom sheet at medium takes the drag). */
+  scrollable?: () => boolean;
   children: JSX.Element;
 }) {
   const c = props.ctl;
@@ -103,7 +104,7 @@ export function Scroller(props: {
         testID={c.domId}
         horizontal={c.horizontal}
         // Where reel moves it with the wheel itself, the system's wheel is off (it would move it too).
-        scrollable={!OWN_WHEEL}
+        scrollable={!OWN_WHEEL && (props.scrollable?.() ?? true)}
         scrollbar={false}
         // The platform's overscroll bounce where it has one (iOS, macOS): content springs back at its edges.
         scrollEventThrottle={16}
@@ -114,7 +115,6 @@ export function Scroller(props: {
           props.onScroll?.(e);
         }}
         onScrollDragStart={stopAll}
-        onScrollDragEnd={(e) => props.onDragEnd?.(c.horizontal ? e.offset.x : e.offset.y)}
         style={c.horizontal ? undefined : { flex: 1 }}
       >
         <View
