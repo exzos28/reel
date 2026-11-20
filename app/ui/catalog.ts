@@ -407,7 +407,7 @@ export const lengthText = (s: Summary) => (s.kind === "show" ? kindText(s) : s.m
  * or "Movie" / "3 seasons"; a film without a year says its kind; a notice card nothing. */
 export function facetText(s: Summary, facet: Facet) {
   if (s.notice) return "";
-  if (facet === "role") return [s.year != null ? String(s.year) : "", s.role ?? ""].filter(Boolean).join(" · ");
+  if (facet === "role") return [s.year != null ? String(s.year) : "", s.role ?? ""].filter(Boolean).join(" · ") || kindText(s);
   return facet === "year" && s.year != null ? String(s.year) : kindText(s);
 }
 

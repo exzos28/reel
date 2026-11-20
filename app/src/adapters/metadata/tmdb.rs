@@ -212,8 +212,9 @@ impl Tmdb {
             // A title they are credited in twice (two names of one part): the first the source lists.
             .filter(|(c, _)| seen.insert(c.id.clone()))
             .map(|(c, part)| {
-                // "Self" (an appearance as themselves) is no part.
-                if let Some(part) = part.map(|p| p.trim().to_owned()).filter(|p| !p.is_empty() && p != "Self") {
+                // An appearance as themselves ("Self", "Himself", "Self - Host") is no part.
+                let themselves = |p: &str| ["Self", "Himself", "Herself", "Themselves"].iter().any(|s| p.starts_with(s));
+                if let Some(part) = part.map(|p| p.trim().to_owned()).filter(|p| !p.is_empty() && !themselves(p)) {
                     parts.insert(c.id.clone(), part);
                 }
                 c

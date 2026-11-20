@@ -279,9 +279,7 @@ export function SavedScreen() {
             <View style={sectionStyle()}>
               <Text style={sectionTitle()}>{t("saved.ready")}</Text>
             </View>
-            <If when={savedCards} else={sectionRows("ready")}>
-              {readyCards()}
-            </If>
+            {savedCards ? readyCards() : sectionRows("ready")}
           </If>
           <If when={list().failed.length > 0}>
             <View style={sectionStyle()}>
