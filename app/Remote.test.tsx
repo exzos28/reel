@@ -31,3 +31,13 @@ test("TV: Up from Trending goes to the page's own item in the nav", async () => 
   await app.keyboard.press("enter");
   expect(app.texts()).toContain("All movies");
 });
+
+test("TV: the hero's way to the title's page is a button that says Details", async () => {
+  const app = await app_();
+  expect(app.texts()).toContain("Details");
+  await app.keyboard.press("up"); // the hero, on Resume
+  await app.keyboard.press("right");
+  await app.keyboard.press("right"); // Details
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("Director");
+});
