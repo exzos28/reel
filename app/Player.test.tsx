@@ -512,3 +512,32 @@ test("phone: the secondary buttons sit at the top, the bottom keeps the timeline
   }
 });
 
+// A phone's middle has Play: the waiting line is in the bottom row, between the times, and the
+// controls stay up while it waits.
+test("phone: a slow seek's waiting line is in the bottom row between the times, not over Play", async () => {
+  for (const screen of [PORTRAIT, SIDEWAYS]) {
+    const app = await phonePlaying(screen, {
+      ...DETAILS,
+      // The place comes long after it is asked for.
+      "Engine.seek": () => new Promise<string>((r) => setTimeout(() => r(JSON.stringify({ state: "ready" })), 9000)),
+    });
+    await app.press("label:Forward 10 seconds");
+    await app.wait(1500); // the press rested: the place is asked for, and takes long
+    expect(app.shows("player-bottom >> buffering")).toBe(true);
+    expect(app.texts()).toContain("Waiting for the stream · 3.4 MB/s");
+    expect(app.shows("player-middle >> label:Pause")).toBe(true);
+    await app.wait(6000); // longer than the controls stay on their own
+    expect(app.shows("player-bottom >> buffering")).toBe(true);
+    expect(app.shows("scrubber")).toBe(true);
+  }
+});
+
+test("iPad: the waiting line stays a note at the picture's middle", async () => {
+  const app = await phonePlaying({ width: 1180, height: 820, safeArea: { top: 24, bottom: 20, left: 0, right: 0 } }, {
+    "Engine.seek": () => new Promise<string>((r) => setTimeout(() => r(JSON.stringify({ state: "ready" })), 3000)),
+  }, "Play", { nsh: { "platform.idiom": "pad" } });
+  await app.press("label:Forward 10 seconds");
+  await app.wait(1500);
+  expect(app.shows("buffering")).toBe(true);
+  expect(app.shows("player-bottom >> buffering")).toBe(false);
+});

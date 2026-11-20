@@ -9,8 +9,8 @@
 // buttons on the buttons row), Up/Down switch rows, Escape closes the
 // panel, then hides the overlay, then leaves. Near the end of an episode
 // the Up next card (tv-player-end.html) takes the remote instead.
-import { cleanup, computed, createAnimatedValue, effect, Image, keymap, lifecycle, safeArea, Scroll, signal, Text, untracked, View, windowSize, type ImageAsset, type ViewStyle } from "nsh";
-import { BufferingNote, PlayerStage, type StageLine } from "./PlayerStage";
+import { cleanup, computed, createAnimatedValue, effect, Image, keymap, lifecycle, safeArea, Scroll, signal, Text, untracked, View, windowSize, type ImageAsset, type TextStyle, type ViewStyle } from "nsh";
+import { BufferingNote, PlayerStage, WaitingLine, type StageLine } from "./PlayerStage";
 import { t } from "nsh/i18n";
 import { Catalog, Fmt, VideoEngine } from "./native";
 import { episodeCode, episodeText, runtime, titleText, type Episode, type Release } from "./catalog";
@@ -127,6 +127,8 @@ const BIG_BUTTON = 96;
 /** The bottom controls' distance from the screen's bottom: a phone's clear of the home indicator
  * by 16 pt. */
 const controlsBottom = () => (PHONE() ? Math.max(safe().y, safeArea().bottom + 16) : safe().y);
+/** The times under the scrubber (and a phone's waiting line between them). */
+const timeText = (color: string): TextStyle => ({ fontFamily: font, fontSize: ts(24), fontWeight: 500, color });
 
 interface Tracks {
   releases: Release[];
@@ -253,6 +255,9 @@ export function Player() {
   const picked = signal<Record<number, number>>({});
   /** The bottom controls' height: the subtitles sit above them while they show. */
   const controlsHeight = signal(0);
+  /** The widths of the times under the scrubber (current, left), on a phone: its waiting line
+   * sits between them. */
+  const timeWidths = signal<[number, number]>([0, 0]);
   /** The picture's width over its height, once the view says. */
   const pictureAspect = signal<number | undefined>(undefined);
   /** The phone's middle buttons show (Play and ±10 s over the picture's centre). */
@@ -353,8 +358,28 @@ export function Player() {
   });
   cleanup(() => clearInterval(tick));
 
+  /** A seek on its way (the core fetches the place, then the view goes there): the loader
+   * shows, and the view's times are the old place's, so the scrubber keeps the target and the
+   * next press counts from it. */
+  const seekPending = signal(false);
+  /** The loader for a seek: only once it has taken `STALL_MS` (a seek into what is downloaded
+   * is there before that, and a loader would only flicker). */
+  const seekSlow = signal(false);
+  let seekSlowTimer: ReturnType<typeof setTimeout> | undefined;
+  cleanup(() => clearTimeout(seekSlowTimer));
+  const seekStarted = () => {
+    seekPending.set(true);
+    clearTimeout(seekSlowTimer);
+    seekSlowTimer = setTimeout(() => seekSlow.set(seekPending()), STALL_MS);
+  };
+  const seekOver = () => {
+    seekPending.set(false);
+    clearTimeout(seekSlowTimer);
+    seekSlow.set(false);
+  };
   // The overlay hides on its own only while the film plays (not paused,
-  // not buffering as `onBuffer` says), the panel is closed and no slider is held.
+  // not buffering as `onBuffer` says, on a phone no seek waiting either: its waiting line is in
+  // the controls), the panel is closed and no slider is held.
   /** What the swipe down to close moves (nothing is drawn by it): it makes the player's pan
    * vertical, so it never takes a sideways drag from the scrubber. */
   const closeDrag = createAnimatedValue(0);
@@ -364,7 +389,7 @@ export function Player() {
     held.set(on);
     if (!on) poke();
   };
-  const mayHide = () => started() && !paused() && !buffering() && !error() && !panel() && !episodesOpen() && !held();
+  const mayHide = () => started() && !paused() && !buffering() && !(PHONE() && seekSlow()) && !error() && !panel() && !episodesOpen() && !held();
   let hideTimer: ReturnType<typeof setTimeout> | undefined;
   const scheduleHide = () => {
     clearTimeout(hideTimer);
@@ -387,25 +412,6 @@ export function Player() {
   effect(() => { if (mayHide()) scheduleHide(); });
   cleanup(() => clearTimeout(hideTimer));
 
-  /** A seek on its way (the core fetches the place, then the view goes there): the loader
-   * shows, and the view's times are the old place's, so the scrubber keeps the target and the
-   * next press counts from it. */
-  const seekPending = signal(false);
-  /** The loader for a seek: only once it has taken `STALL_MS` (a seek into what is downloaded
-   * is there before that, and a loader would only flicker). */
-  const seekSlow = signal(false);
-  let seekSlowTimer: ReturnType<typeof setTimeout> | undefined;
-  cleanup(() => clearTimeout(seekSlowTimer));
-  const seekStarted = () => {
-    seekPending.set(true);
-    clearTimeout(seekSlowTimer);
-    seekSlowTimer = setTimeout(() => seekSlow.set(seekPending()), STALL_MS);
-  };
-  const seekOver = () => {
-    seekPending.set(false);
-    clearTimeout(seekSlowTimer);
-    seekSlow.set(false);
-  };
   const seekTo = (seconds: number) => {
     const d = duration();
     surface?.seek(Math.max(0, d > 0 ? Math.min(seconds, d) : seconds));
@@ -599,16 +605,13 @@ export function Player() {
     const words = t("player.waiting");
     return streamDetails() && s.phase === "ready" ? `${words} · ${Fmt.speed(s.speed)}` : words;
   };
-  /** Where the waiting line sits from the picture's middle: under a phone's middle row held
-   * upright, over it held sideways (under it, the bottom controls are too near). */
-  const waitingBelow = () => {
-    if (!PHONE() || !overlay() || card()) return 0;
-    const w = windowSize();
-    const off = u(BIG_BUTTON) / 2 + u(28);
-    return w.width > w.height ? -off : off;
-  };
-  /** A stall shows the controls: the scrubber has what is ready, and Play and Back are at hand. */
-  effect(() => { if (started() && buffering()) untracked(poke); });
+  /** The waiting line shows: a stall or a slow seek while the film plays. On a phone it is in
+   * the controls' bottom row, between the times (Play is at the picture's middle); elsewhere a
+   * note at the middle. */
+  const waiting = () => started() && !failed() && (buffering() || seekSlow());
+  /** A stall shows the controls: the scrubber has what is ready, and Play and Back are at hand;
+   * a phone's for a slow seek too, as its waiting line is in them. */
+  effect(() => { if (started() && (buffering() || (PHONE() && seekSlow()))) untracked(poke); });
   const aheadText = () => {
     if (!timeline().ranges.length || duration() <= 0) return "";
     const m = Math.floor(timeline().ahead / 60);
@@ -735,8 +738,8 @@ export function Player() {
 
       <SubtitleOverlay text={cue} above={subtitlesAbove} aspect={pictureAspect} />
 
-      <If when={started() && !failed() && (buffering() || seekSlow())}>
-        <BufferingNote text={waitingText} below={waitingBelow} />
+      <If when={!PHONE() && waiting()}>
+        <BufferingNote text={waitingText} />
       </If>
 
       <If when={staged() ? what() : null}>
@@ -881,7 +884,7 @@ export function Player() {
 
         {/* Bottom: engine line, scrubber, times, buttons. */}
         <If when={ready()}>
-          <View onLayout={(e) => controlsHeight.set(e.bounds.size.height)} style={{ position: "absolute", left: safe().x, right: safe().x, bottom: controlsBottom() }}>
+          <View testID="player-bottom" onLayout={(e) => controlsHeight.set(e.bounds.size.height)} style={{ position: "absolute", left: safe().x, right: safe().x, bottom: controlsBottom() }}>
             <If when={streamDetails()}>
             <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", minHeight: u(32) }}>
               <If when={aheadText() !== ""}>
@@ -903,12 +906,18 @@ export function Player() {
               onSeek={(s) => { poke(); seekNow(s); }}
             />
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: u(16) }}>
-              <Text style={{ fontFamily: font, fontSize: ts(24), fontWeight: 500, color: colors.snow() }}>
-                {Fmt.position(shownSecond())}
-              </Text>
-              <Text style={{ fontFamily: font, fontSize: ts(24), fontWeight: 500, color: colors.ash() }}>
-                {duration() > 0 ? t("player.left", { time: Fmt.position(Math.max(Math.ceil(duration()) - shownSecond(), 0)) }) : ""}
-              </Text>
+              <View onLayout={PHONE() ? (e) => timeWidths.set([e.bounds.size.width, timeWidths()[1]]) : undefined}>
+                <Text style={timeText(colors.snow())}>{Fmt.position(shownSecond())}</Text>
+              </View>
+              <View onLayout={PHONE() ? (e) => timeWidths.set([timeWidths()[0], e.bounds.size.width]) : undefined}>
+                <Text style={timeText(colors.ash())}>
+                  {duration() > 0 ? t("player.left", { time: Fmt.position(Math.max(Math.ceil(duration()) - shownSecond(), 0)) }) : ""}
+                </Text>
+              </View>
+              {/* A phone's waiting line, at the row's middle, clear of the wider time. */}
+              <If when={PHONE() && waiting()}>
+                <WaitingLine text={waitingText} side={() => Math.max(...timeWidths()) + u(16)} style={() => timeText(colors.soft())} />
+              </If>
             </View>
             <If when={bottomButtons.length > 0 || volumeShown}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: u(14), marginTop: u(26) }}>
