@@ -458,8 +458,8 @@ settings:
   loader:
     title: "加载动画"
     about: "影片启动时显示的画面。"
+    none: "无"
     dinosaur: "恐龙"
-    logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not
   # answer (failed), from Settings (edit).
   source_drawer:

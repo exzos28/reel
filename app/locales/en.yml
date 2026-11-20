@@ -461,8 +461,8 @@ settings:
   loader:
     title: Loading animation
     about: "What shows while a film starts."
+    none: None
     dinosaur: Dinosaur
-    logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not
   # answer (failed), from Settings (edit).
   source_drawer:

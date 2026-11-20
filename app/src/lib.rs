@@ -326,7 +326,7 @@ impl Settings {
         settings::set_nav_position(&position)
     }
 
-    /// Saves the loading animation ("logo" or "dinosaur"; another value is refused); the one in
+    /// Saves the loading animation ("none" or "dinosaur"; another value is refused); the one in
     /// effect.
     pub fn set_loader(loader: String) -> String {
         settings::set_loader(&loader)
