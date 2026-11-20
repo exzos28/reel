@@ -71,9 +71,10 @@ engine/src/
 - **Folder**: default `<dataDir>/saved`, on Windows `%LOCALAPPDATA%` (NSH's `dataDir` there is the
   roaming `%APPDATA%`). Changing it moves nothing: old items stay, new ones go there. A missing
   folder (disk unplugged) makes its items `unavailable`, not removed.
-- **Restart**: unfinished items are added again from their .torrent. librqbit without session
-  persistence re-hashes the files at each start; fine on desktops for v1, a patch storing the
-  bitfield beside the manifest later.
+- **Restart**: unfinished items are added again from their .torrent, with the bitfield of verified
+  pieces stored beside it (`<hash>.bitv`, librqbit's `fastresume_folder`, no session
+  persistence), so they go on without hashing the files again. A bitfield the files do not hold
+  (a file missing or short, a sampled piece that fails) means a full check.
 - **With streaming**: while a stream plays, saving is paused except the torrent the stream reads.
 - **Space**: measured on the folder's volume: what is left of every active item plus a reserve. A
   write error is `waiting_space`, not `failed`.
