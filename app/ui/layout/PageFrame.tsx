@@ -59,9 +59,10 @@ const scrimStyle = (solid: boolean): ViewStyle => ({
     : { backgroundImage: `linear-gradient(180deg, ${alpha(colors.ink(), 0.7)} 0%, ${alpha(colors.ink(), 0)} 100%)` }),
 });
 
-/** Whether the page shows its title (and a screen its lead under it): not on a phone's category
- * page (Home's tabs over it already say where you are, and the room goes to the content). */
-export const pageTitleShown = () => !(phoneTitle() && isCategory(section()));
+/** Whether a page of this kind shows its title (and a screen its lead under it): not on a phone's
+ * category page, the root of a category's stack (Home's tabs over it already say where you are,
+ * and the room goes to the content); a page pushed on it (a person) shows its own. */
+export const pageTitleShown = (kind: PageKind) => !(phoneTitle() && kind === "root" && isCategory(section()));
 
 /** Whether a page's `foot` is pinned under its content (a phone); elsewhere the frame does not
  * show it and the screen lays its actions out inline. */
@@ -139,10 +140,10 @@ export function PageFrame(props: {
             <If when={props.hero == null}>
               <View style={{ height: m().headBottom }} />
             </If>
-            <If when={props.title && !props.titleLead && pageTitleShown()}>
+            <If when={props.title && !props.titleLead && pageTitleShown(props.kind)}>
               <Text style={titleStyle(m().titleTop - m().headBottom)}>{props.title!()}</Text>
             </If>
-            <If when={props.title && props.titleLead && pageTitleShown()}>
+            <If when={props.title && props.titleLead && pageTitleShown(props.kind)}>
               <View style={leadRowStyle(m().titleTop - m().headBottom)}>
                 {props.titleLead!()}
                 <Text style={{ ...pageTitle(), flexShrink: 1 }}>{props.title!()}</Text>

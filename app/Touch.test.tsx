@@ -54,6 +54,21 @@ test("phone: Settings is a tab of its own, without Back; Back from it goes to th
   expect(app.texts()).toContain("All movies");
 });
 
+test("a person opened on a category's tab shows their name and photo, on a phone and in a narrow iPad window", async () => {
+  for (const pad of [false, true]) {
+    const app = await openApp({
+      platform: "ios", width: 390, height: 844, safeArea: { top: 24, bottom: 20, left: 0, right: 0 },
+      modules: { ...(pad ? { nsh: { "platform.idiom": "pad" } } : {}), "app/native": NATIVE },
+    });
+    await app.press("label:Movies");
+    expect(app.texts()).not.toContain("Discover the latest and greatest films"); // the category's root: its tabs say it
+    await app.press("label:Dune >> nth=0");
+    await app.press("label:Leonardo DiCaprio >> nth=0");
+    expect(app.texts()).toContain("Films and series");
+    expect(app.texts()).toContain("Leonardo DiCaprio"); // the page's title, over the films
+  }
+});
+
 test("phone held sideways: the tabs are a rail at the left", async () => {
   const app = await openApp({ platform: "ios", width: 852, height: 393, safeArea: { top: 0, bottom: 21, left: 62, right: 62 }, modules: { "app/native": NATIVE } });
   expect(app.shows("nav-rail")).toBe(true);
