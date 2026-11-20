@@ -8,6 +8,7 @@ import { t } from "nsh/i18n";
 import { aboutText, genresText, lengthText, titleText, toggleList, yearsText, type Summary } from "../catalog";
 import playIcon from "../icons/play.svg";
 import { ListToggle } from "../layout/ListToggle";
+import { wheelPage } from "../layout/Scroller";
 import { caps } from "../platform";
 import { alpha, colors, ts, u } from "../theme";
 import { Badge } from "./Badge";
@@ -69,7 +70,7 @@ export function PreviewBody(props: { item: () => Summary; width: number; onOpen:
   const s = props.item;
   const still = (props.width * 9) / 16;
   return (
-    <View testID="preview" style={{ width: props.width, overflow: "hidden", ...rounded(cardRadius() + u(6)) }}>
+    <View testID="preview" onWheel={wheelPage} style={{ width: props.width, overflow: "hidden", ...rounded(cardRadius() + u(6)) }}>
       <Pressable onPress={props.onOpen} style={{ height: still }}>
         <Picture item={s} src={() => s().card ?? s().still} titleSize={30} style={{ height: still }} />
         <View style={shadeStyle()} />
