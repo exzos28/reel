@@ -176,6 +176,12 @@ impl Inner {
             // output makes another (a video reload keeps it), so the output starts again here.
             player.set_property("vo", "null");
             player.set_property("vo", VO);
+            // VideoToolbox decodes on from where it was without its reference frames then
+            // ("output image buffer is null", no picture on a device): start decoding again from
+            // the keyframe at or before here (what plays is in mpv's cache already).
+            if let Some(at) = player.property("time-pos").and_then(|t| t.parse::<f64>().ok()) {
+                player.command_args(&["seek", &format!("{at}"), "absolute+keyframes"]);
+            }
         }
         // No picture yet: the output starts at the layer's size when the video starts. Starting
         // it again now, while the file opens, left the film without a picture.
