@@ -219,8 +219,8 @@ export function PhoneCategoryBar() {
 /** A phone's disc over a page, at its top corner under the status bar. */
 export const phoneDisc = (side: "left" | "right"): ViewStyle => ({ position: "absolute", top: safeArea().top + 4, [side]: 16, zIndex: 3 });
 
-/** Back, a disc (40 across, a 44 pt touch area). */
-function BackDisc() {
+/** Back, a disc (40 across, a 44 pt touch area); also the setup's, in its logo's place. */
+export function BackDisc() {
   return (
     <Pressable role="button" accessibilityLabel={t("nav.back")} onPress={handleBack} hitSlop={targetSlop(40)} style={disc(40)}>
       <Icon src={() => backIcon} size={pt(20)} />

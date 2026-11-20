@@ -481,13 +481,14 @@ setup:
     recommended: "Önerilen"
   source:
     title: "reel filmleri nerede bulsun?"
-    help: "Kendi kaynağını gir veya hazır bir tane al."
-    own_title: "Kendi kaynağın"
-    rent_title: "Veya hazır bir kaynak"
+    help: "reel kendi başına arama yapmaz. Ona bir arama kaynağı (Torznab) ver: kendi Jackett veya Prowlarr'ın ya da Telegram'dan hazır bir tane."
+    help_own: "reel kendi başına arama yapmaz. Ona bir arama kaynağı (Torznab) ver: kendi Jackett veya Prowlarr'ın."
+    own_title: "Ya da kendininkini kullan"
+    rent_title: "Hazır bir tane al"
     check: "Kontrol et"
+    checking: "Kontrol ediliyor…"
     finish: "Bitir"
     skip: "Atla"
-    footnote: "Torznab, arama hizmetlerinin torrent sürümlerini listelemek için kullandığı yaygın bir yöntemdir. reel kendisi video aramaz: bir katalog ve oynatıcıdır, neyin oynatılacağını yalnızca senin verdiğin kaynak üzerinden bulur."
   phone:
     title: "Veya telefonundan kur"
     text: "Kodu telefonunun kamerasıyla tara veya telefonun tarayıcısında %{url} adresini aç. Bu ekran kendiliğinden güncellenir."

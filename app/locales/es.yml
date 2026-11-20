@@ -481,13 +481,14 @@ setup:
     recommended: "Recomendado"
   source:
     title: "¿Dónde debe buscar películas reel?"
-    help: "Introduce la tuya o consigue una lista."
-    own_title: "Tu propia fuente"
-    rent_title: "O consigue una lista"
+    help: "reel no busca por sí mismo. Dale una fuente de búsqueda (Torznab): tu propio Jackett o Prowlarr, o consigue una en Telegram."
+    help_own: "reel no busca por sí mismo. Dale una fuente de búsqueda (Torznab): tu propio Jackett o Prowlarr."
+    own_title: "O usa la tuya"
+    rent_title: "Consigue una lista"
     check: "Comprobar"
+    checking: "Comprobando…"
     finish: "Terminar"
     skip: "Omitir"
-    footnote: "Torznab es una forma habitual de que los servicios de búsqueda muestren versiones de torrent. reel no busca vídeos por sí mismo: es un catálogo y un reproductor, y solo encuentra qué reproducir a través de la fuente que le indiques."
   phone:
     title: "O configúralo desde tu móvil"
     text: "Escanea el código con la cámara del móvil o abre %{url} en su navegador. Esta pantalla se actualizará sola."

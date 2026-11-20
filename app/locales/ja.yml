@@ -481,13 +481,14 @@ setup:
     recommended: "おすすめ"
   source:
     title: "reel はどこで映画を探しますか？"
-    help: "ご自身のソースを入力するか、すぐ使えるソースを入手してください。"
-    own_title: "自分のソース"
+    help: "reel 自体は検索しません。検索ソース（Torznab）を指定してください：ご自身の Jackett や Prowlarr、または Telegram で入手できます。"
+    help_own: "reel 自体は検索しません。検索ソース（Torznab）を指定してください：ご自身の Jackett や Prowlarr。"
+    own_title: "または自分のソースを使う"
     rent_title: "すぐ使えるソースを入手"
     check: "確認"
+    checking: "確認中…"
     finish: "完了"
     skip: "スキップ"
-    footnote: "Torznab は、検索サービスが torrent のリリース一覧を提供する一般的な方式です。reel 自体は動画を検索しません。reel はカタログとプレーヤーで、再生するものは指定されたソースからのみ探します。"
   phone:
     title: "スマートフォンでも設定できます"
     text: "スマートフォンのカメラでコードをスキャンするか、ブラウザで %{url} を開いてください。この画面も自動で切り替わります。"
