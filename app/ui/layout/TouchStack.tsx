@@ -1,14 +1,13 @@
 // The pages on touch: the current tab's native stack (NSH `NavStack`: iOS's
 // swipe back, Android's predictive and system back). `nav.ts` stays where the
 // history lives: the stack follows its routes, and a page the user went back
-// from (a swipe, the system back) goes back into it. Each tab has its own
-// stack state; switching tabs shows the other tab's.
+// from (a swipe, the system back) goes back into it. Each tab shown gets a
+// native stack of its own, made from that tab's routes.
 import { effect, type JSX } from "nsh";
-import { createNavStack, NavPage, NavStack, type NavStackState } from "nsh/base";
+import { createNavStack, NavPage, NavStack } from "nsh/base";
 import { keepTab, section, stack, type Destination, type Route } from "../nav";
 import { PageRoute } from "./frameState";
 
-const stacks = new Map<Destination, NavStackState<Route>>();
 const same = (a: readonly Route[], b: readonly Route[]) => a.length === b.length && a.every((r, i) => r === b[i]);
 
 /** One page. reel draws every page's top itself (the frame: the head, Back, the discs over a
@@ -24,12 +23,10 @@ function Page(props: { route: Route; children: JSX.Element }) {
 }
 
 function TabStack(props: { tab: Destination; page: (r: Route) => JSX.Element }) {
-  let state = stacks.get(props.tab);
-  if (!state) {
-    state = createNavStack<Route>([...stack()]);
-    stacks.set(props.tab, state);
-  }
-  const s = state;
+  // A new state each time the tab is shown, from its routes in the history (nav.ts keeps each
+  // tab's): a state kept from the tab's last showing belongs to a native stack that is gone,
+  // and the one now shown did not pop to it (a tab chosen again stayed on its page).
+  const s = createNavStack<Route>([...stack()]);
   // The history moved (a push, Back, a tab chosen again): the stack follows.
   effect(() => {
     const routes = stack();

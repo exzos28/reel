@@ -157,6 +157,38 @@ test("tablet: each tab keeps its own pages, Settings and Saved are in none of th
   expect(app.shows("top-tab-on-search")).toBe(true);
 });
 
+test("tablet: the selected tab chosen again over a page of it goes back to its root, one or two pages deep, after other tabs too", async () => {
+  const app = await tablet();
+  await app.press("label:Series");
+  await app.press("label:Severance >> nth=0");
+  expect(app.shows("label:Back to Series")).toBe(true);
+  await app.press("label:Series"); // the selected tab: its root, the show gone
+  expect(app.shows("label:Back to Series")).toBe(false);
+  expect(app.texts()).toContain("All series");
+  await app.press("label:Home");
+  await app.press("label:Inception >> nth=0");
+  await app.press("label:Leonardo DiCaprio >> nth=0"); // a person, two pages over Home
+  expect(app.texts()).toContain("Films and series");
+  await app.press("label:Home");
+  expect(app.texts()).toContain("Continue watching");
+  expect(app.texts()).not.toContain("Films and series");
+  expect(app.shows("label:Back to Home")).toBe(false);
+});
+
+test("phone: the selected tab chosen again over a page of it goes back to its root", async () => {
+  const app = await phone();
+  await app.press("label:Movies");
+  // Shown again after another tab (its native stack made anew), then a page pushed on it.
+  await app.press("label:Search");
+  await app.press("label:Home");
+  expect(app.texts()).toContain("All movies");
+  await app.press("label:Dune >> nth=0");
+  expect(app.shows("title-discs")).toBe(true);
+  await app.press("label:Home"); // the Home tab, selected: its root
+  expect(app.texts()).toContain("All movies");
+  expect(app.shows("title-discs")).toBe(false);
+});
+
 test("tablet: Settings is a section of its own: selected while open, kept where it was left, chosen again its root", async () => {
   const app = await tablet();
   await app.press("label:Inception >> nth=0");
