@@ -5,14 +5,14 @@
 // Tablet: one top row on every page: the logo (Back in its place on a deeper
 // page), the floating tabs centred, Add to list on a title, Saved and Settings (sections of their
 // own, each its own stack); solid once content is under it. A tablet's narrow window is a phone's.
-import { safeArea, signal, Text, View, windowSize, type ImageAsset, type JSX, type TextStyle, type ViewStyle } from "nsh";
+import { createAnimatedValue, safeArea, signal, Text, View, windowSize, type ImageAsset, type JSX, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { person as personOf, title as titleOf, titleText, toggleList } from "../catalog";
 import backIcon from "../icons/back.svg";
 import settingsIcon from "../icons/settings.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
-import { canGoBack, go, goHomeTab, handleBack, isCategory, route, section, stack, type Destination, type Route } from "../nav";
+import { canGoBack, go, goHomeTab, handleBack, isCategory, route, section, sectionBackTo, stack, type Destination, type Route } from "../nav";
 import { look } from "../platform/look";
 import { alpha, colors, font, iconPt, targetSlop, u } from "../theme";
 import { ListToggle } from "./ListToggle";
@@ -367,7 +367,11 @@ const measureRoom: ViewStyle = { position: "absolute", top: 0, left: 0, width: 4
 function underName(): string {
   const s = stack();
   const r: Route | undefined = s[s.length - 2];
-  if (!r) return "";
+  if (!r) {
+    // Saved's or Settings' root: where they were opened from.
+    const to = sectionBackTo();
+    return to ? t(`nav.${to}`) : "";
+  }
   if (r.name === "title") {
     const x = titleOf(r.id);
     return x ? titleText(x) : t("nav.back");
@@ -451,7 +455,10 @@ export function TabletTopRow() {
   const labelled = signal(0);
   const logo = signal(0);
   const right = signal(0);
-  const leftNeed = () => (canGoBack() ? BACK_ROOM : logo());
+  /** Back in the logo's place: a page under this one, or Saved's or Settings' root (Back goes to
+   * where they were opened from). */
+  const backed = () => canGoBack() || sectionBackTo() !== null;
+  const leftNeed = () => (backed() ? BACK_ROOM : logo());
   const edge = () => Math.max(ROW_EDGE + sideSafeArea().left, windowControlsRoom());
   const labels = () =>
     labelled() > 0 &&
@@ -480,7 +487,7 @@ export function TabletTopRow() {
         </View>
       </View>
       <View style={sideStyle(false, 0)}>
-        <If when={canGoBack()} else={<View onLayout={(e) => logo.set(e.bounds.size.width)}><Logo /></View>}>
+        <If when={backed()} else={<View onLayout={(e) => logo.set(e.bounds.size.width)}><Logo /></View>}>
           <TabletBack />
         </If>
       </View>
@@ -497,5 +504,30 @@ export function TabletTopRow() {
         </View>
       </View>
     </View>
+  );
+}
+
+/** How far a swipe from the left edge goes, or how fast, to go back, points and points a second. */
+const EDGE_SWIPE = 60;
+const EDGE_FLICK = 500;
+const edgeStyle = (): ViewStyle => ({ position: "absolute", left: 0, top: topRowBottom(), bottom: 0, width: 20, zIndex: 9 });
+
+/** The left edge's swipe back on Saved's and Settings' roots (a tablet's): no native stack under
+ * them takes it (their root is the stack's first page), so this strip does, as the pages over
+ * them do natively. */
+export function TabletEdgeBack() {
+  const drag = createAnimatedValue(0);
+  return (
+    <If when={sectionBackTo() !== null}>
+      <View
+        testID="edge-back"
+        style={edgeStyle()}
+        pan={{ x: drag }}
+        onPanEnd={(e) => {
+          drag.set(0);
+          if (!e.cancelled && (e.translation.x > EDGE_SWIPE || e.velocity.x > EDGE_FLICK)) handleBack();
+        }}
+      />
+    </If>
   );
 }

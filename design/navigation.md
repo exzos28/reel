@@ -154,9 +154,10 @@ Mockups: `desktop.html` frames `mac-home`, `mac-movies-scrolled`, `mac-film`,
 
 Top row 60 pt under the status bar (iPad 24 pt, Android 32 dp; take `safeArea().top`):
 
-- Left (x 24): on a root the logo; on a deeper page the back button in its place — iPad: a
+- Left (x 24): on a root the logo; on a deeper page, and on Saved's and Settings' roots (Back
+  goes where they were opened from, else Home), the back button in its place — iPad: a
   40 pt capsule "‹ Movies" (chevron 20 + previous page's title 16/500); Android: a 40 dp disc
-  with ← (48 dp touch target), then the logo.
+  with ← (48 dp touch target), then the logo. The left edge's swipe goes back on those roots too.
 - Centre: the floating tab bar (44 pt capsule, 36 pt tabs, label 15/500): Home, Movies, Series,
   Anime, Search (icon only).
 - Right: on a title Add to list, then Saved (where the device saves; a ring of the overall saving

@@ -221,7 +221,7 @@ test("tablet: Settings is a section of its own: selected while open, kept where 
   expect(app.shows("settings-button-on")).toBe(true);
   expect(TABLET_TABS.some((tab) => app.shows(`top-tab-on-${tab}`))).toBe(false);
   expect(app.texts()).toContain("Playback buffer");
-  expect(app.shows("label:Back to Home")).toBe(false); // its root: the logo, not Back
+  expect(app.shows("label:Back to Home")).toBe(true); // its root: Back to where it was opened
   await app.press("label:About reel");
   expect(app.texts()).toContain("Data sources");
   expect(app.shows("label:Back to Settings")).toBe(true);
@@ -257,6 +257,26 @@ test("tablet: Back from Settings' and Saved's roots goes back to where they were
   expect(TABLET_TABS.some((tab) => app.shows(`top-tab-on-${tab}`))).toBe(false); // Saved
   await app.keyboard.press("escape");
   expect(app.shows("top-tab-on-movies")).toBe(true);
+});
+
+test("tablet: Saved's and Settings' roots show Back to where they were opened from; it and the left edge's swipe go there", async () => {
+  const app = await tabletAt();
+  await app.press("label:Movies");
+  expect(app.shows("edge-back")).toBe(false); // a tab's root: nothing to go back to
+  await app.press("label:Saved");
+  expect(app.shows("label:Back to Movies")).toBe(true);
+  await app.drag("edge-back", { x: 120 });
+  expect(app.shows("top-tab-on-movies")).toBe(true);
+  expect(app.shows("label:Back to Movies")).toBe(false);
+  await app.press("settings-button");
+  await app.press("label:Back to Movies");
+  expect(app.shows("top-tab-on-movies")).toBe(true);
+  // Opened again, it goes back once; then Back goes Home.
+  await app.press("label:Saved");
+  await app.press("settings-button");
+  expect(app.shows("label:Back to Saved")).toBe(true);
+  await app.press("label:Back to Saved");
+  expect(app.shows("label:Back to Movies")).toBe(true);
 });
 
 test("tablet: the search source's drawer opens over Settings, and Back closes it before Settings", async () => {
