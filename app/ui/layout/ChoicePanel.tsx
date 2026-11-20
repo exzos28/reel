@@ -26,8 +26,12 @@ const POP_WIDTH = 320;
 const POP_ROWS_MOST = 0.55;
 const POP_MARGIN = 12;
 const POP_GAP = 8;
-const popBackdrop = (): ViewStyle => ({ top: 0, left: 0, width: windowSize().width, height: windowSize().height, backgroundColor: alpha(colors.ink(), 0.3) });
-const popCard = (anchored: boolean): ViewStyle => ({
+/** The backdrop's overlay: a fixed box over the whole screen. */
+const popCover: ViewStyle = { top: 0, left: 0, right: 0, bottom: 0 };
+const popBackdrop = (): ViewStyle => ({ flex: 1, backgroundColor: alpha(colors.ink(), 0.3) });
+/** Without an anchor the card's overlay is a fixed box in the middle across, a fifth down. */
+const popMiddle = (): ViewStyle => ({ left: (windowSize().width - POP_WIDTH) / 2, top: windowSize().height * 0.2 });
+const popCard = (): ViewStyle => ({
   width: POP_WIDTH,
   ...rounded(14),
   backgroundColor: colors.card(),
@@ -35,8 +39,6 @@ const popCard = (anchored: boolean): ViewStyle => ({
   borderColor: alpha(colors.snow(), 0.08),
   boxShadow: `0 12px 40px ${alpha(colors.ink(), 0.6)}`,
   overflow: "hidden",
-  // Without an anchor: a fixed box, in the middle across and a fifth down.
-  ...(anchored ? {} : { left: (windowSize().width - POP_WIDTH) / 2, top: windowSize().height * 0.2 }),
 });
 const popHead = (): ViewStyle => ({ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8, gap: 4 });
 
@@ -112,11 +114,11 @@ function Popover(props: Props) {
   const most = () => windowSize().height * POP_ROWS_MOST;
   const anchor = props.anchor?.();
   return [
-    <Overlay>
+    <Overlay style={popCover}>
       <Pressable feedback="none" testID={`${id}-backdrop`} accessibilityLabel={props.title()} onPress={props.onClose} style={popBackdrop()} />
     </Overlay>,
-    <Overlay anchor={anchor ?? null} placement="bottom" align="end" offset={POP_GAP} margin={POP_MARGIN} onCancel={props.onClose}>
-      <View testID={`${id}-panel`} style={popCard(!!anchor)}>
+    <Overlay anchor={anchor ?? null} placement="bottom" align="end" offset={POP_GAP} margin={POP_MARGIN} onCancel={props.onClose} style={anchor ? undefined : popMiddle()}>
+      <View testID={`${id}-panel`} style={popCard()}>
         <View style={popHead()}>
           <Text style={labelText()}>{props.title()}</Text>
           <If when={props.note?.()}>
