@@ -1,7 +1,7 @@
 // The history (ui/nav.ts): destinations as roots, the page's section, a
 // tab's own stack on touch, and Back closing what is open before it leaves.
 import { expect, test } from "nsh/test";
-import { back, canGoBack, go, handleBack, openAbout, openInterface, openSettings, openTitle, route, section, settingsOpen, sheet, stack, toTop, useSettingsSheet, useTabStacks } from "./ui/nav";
+import { back, canGoBack, go, handleBack, liftSettings, openAbout, openInterface, openSettings, openTitle, route, section, stack, toTop, useOwnSections, useTabStacks } from "./ui/nav";
 
 const names = () => stack().map((r) => r.name);
 
@@ -70,25 +70,59 @@ test("choosing the current destination at its root keeps its route: a native sta
   expect(stack().length).toBe(1);
 });
 
-test("a tablet's Settings is a sheet with pages of its own: the tab's stack never holds it", () => {
+test("a tablet's Settings is a section of its own: its pages on its stack, never a tab's; Back from its root goes where it was opened", () => {
   useTabStacks(true);
-  useSettingsSheet(true);
+  useOwnSections(() => true);
   go("home");
   openTitle("tt1");
   openSettings();
   openInterface();
-  expect(sheet().map((r) => r.name)).toEqual(["settings", "interface"]);
+  expect(names()).toEqual(["settings", "interface"]);
+  expect(section()).toBe("settings");
+  go("home");
+  expect(names()).toEqual(["home", "title"]); // Home never holds Settings' pages
+  openSettings(); // to Settings' root
+  expect(names()).toEqual(["settings"]);
+  back();
   expect(names()).toEqual(["home", "title"]);
-  back(); // Interface, then Settings: the sheet closes
-  expect(sheet().map((r) => r.name)).toEqual(["settings"]);
+  useOwnSections(() => false);
+  useTabStacks(false);
+});
+
+test("a tablet's Back from Saved and Settings goes where each was opened once: they never send Back to each other forever", () => {
+  useTabStacks(true);
+  useOwnSections(() => true);
+  go("movies");
+  go("saved");
+  go("settings");
+  back(); // to Saved
+  expect(section()).toBe("saved");
+  go("settings");
+  go("saved");
+  back(); // to Settings
+  expect(section()).toBe("settings");
+  back(); // to Saved, where Settings was opened first
+  expect(section()).toBe("saved");
+  back(); // Saved already went back once: Home
+  expect(section()).toBe("home");
+  useOwnSections(() => false);
+  useTabStacks(false);
+});
+
+test("a tablet's window widened: Settings opened on a tab moves to its own section", () => {
+  useTabStacks(true);
+  go("home");
+  go("movies");
+  openTitle("tt1");
+  openSettings(); // a phone's layout: on top of the film
   openAbout();
+  expect(names()).toEqual(["movies", "title", "settings", "about"]);
+  useOwnSections(() => true);
+  liftSettings();
+  expect(names()).toEqual(["settings", "about"]);
   back();
-  back();
-  expect(settingsOpen()).toBe(false);
-  expect(names()).toEqual(["home", "title"]);
-  openSettings();
-  go("search"); // a destination closes it
-  expect(settingsOpen()).toBe(false);
-  useSettingsSheet(false);
+  back(); // Settings' root: back to Movies' film
+  expect(names()).toEqual(["movies", "title"]);
+  useOwnSections(() => false);
   useTabStacks(false);
 });

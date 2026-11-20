@@ -2,10 +2,9 @@
 // Home, Movies, Shows, Anime and Search. Phone: a bottom tab bar (Home, Search, Saved, Settings)
 // on every page but the player, and a head over a root page (the logo; on a category's page
 // Home's tabs: All, Movies, Series, Cartoons, Anime) that scrolls away with it.
-// Tablet: Settings is a button that opens it as a sheet over the page (layout/SettingsSheet).
 // Tablet: one top row on every page: the logo (Back in its place on a deeper
-// page), the floating tabs centred, Add to list on a title, Settings; solid
-// once content is under it.
+// page), the floating tabs centred, Add to list on a title, Saved and Settings (sections of their
+// own, each its own stack); solid once content is under it. A tablet's narrow window is a phone's.
 import { safeArea, signal, Text, View, windowSize, type ImageAsset, type JSX, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { person as personOf, title as titleOf, titleText, toggleList } from "../catalog";
@@ -13,8 +12,7 @@ import backIcon from "../icons/back.svg";
 import settingsIcon from "../icons/settings.svg";
 import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
-import { canGoBack, CATEGORIES, go, goHomeTab, handleBack, isCategory, openCategory, openSettings, route, section, settingsOpen, stack, type Destination, type Route } from "../nav";
-import { caps } from "../platform";
+import { canGoBack, CATEGORIES, go, goHomeTab, handleBack, isCategory, openCategory, route, section, stack, type Destination, type Route } from "../nav";
 import { look } from "../platform/look";
 import { alpha, colors, font, iconPt, targetSlop, u } from "../theme";
 import { ListToggle } from "./ListToggle";
@@ -41,8 +39,8 @@ const pt = iconPt;
 const tabBarHeight = () => TAB_ROW + safeArea().bottom;
 const topRowBottom = () => safeArea().top + TOP_ROW;
 
-/** Settings is open: a tablet's sheet, or a page of it on the stack. */
-const isSettings = () => settingsOpen() || route().name === "settings" || route().name === "about" || route().name === "interface";
+/** A page of Settings is shown: its own section, or (a phone's) on top of a tab. */
+const isSettings = () => section() === "settings" || route().name === "settings" || route().name === "about" || route().name === "interface";
 
 const disc = (size: number, selected = false): ViewStyle => ({
   width: size,
@@ -58,11 +56,22 @@ function Logo() {
   return <Text style={logoStyle()}>{t("app.name")}</Text>;
 }
 
-/** Settings, a round button: it opens the Settings sheet over the page (a 44 pt touch area). */
+/** Settings, a round button (a 44 pt touch area): a section of its own, like Saved (its own
+ * stack; chosen again, its root). */
+const settingsOn = () => section() === "settings";
 function SettingsButton(props: { size: number }) {
   return (
-    <Pressable role="button" accessibilityLabel={t("nav.settings")} onPress={openSettings} hitSlop={targetSlop(props.size)} style={disc(props.size, isSettings())}>
-      <Icon src={() => settingsIcon} size={pt(props.size * 0.47)} color={() => (isSettings() ? colors.snow() : colors.dim())} />
+    <Pressable
+      testID={settingsOn() ? "settings-button-on" : "settings-button"}
+      role="button"
+      accessibilityLabel={t("nav.settings")}
+      accessibilityState={{ selected: settingsOn() }}
+      haptic={!settingsOn()}
+      onPress={() => go("settings")}
+      hitSlop={targetSlop(props.size)}
+      style={disc(props.size, settingsOn())}
+    >
+      <Icon src={() => settingsIcon} size={pt(props.size * 0.47)} color={() => (settingsOn() ? colors.snow() : colors.dim())} />
     </Pressable>
   );
 }
@@ -120,10 +129,7 @@ const PHONE_TABS: { id: Destination; label: string; icon: ImageAsset; on: () => 
   { id: "home", label: "nav.home", icon: NAV[0].icon, on: () => isCategory(section()) && !isSettings(), go: goHomeTab },
   { id: "search", label: "nav.search", icon: searchIcon, on: () => section() === "search" && !isSettings(), go: () => go("search") },
   ...(librarySupported ? [{ id: "saved" as const, label: "nav.saved", icon: savedIcon, on: () => section() === "saved" && !isSettings(), go: () => go("saved") }] : []),
-  // A tablet's narrow window (a phone's layout) keeps the tablet's Settings: the sheet.
-  caps.settingsTab
-    ? { id: "settings", label: "nav.settings", icon: settingsIcon, on: () => section() === "settings", go: () => go("settings") }
-    : { id: "settings", label: "nav.settings", icon: settingsIcon, on: isSettings, go: openSettings },
+  { id: "settings", label: "nav.settings", icon: settingsIcon, on: () => section() === "settings", go: () => go("settings") },
 ];
 
 function Tab(props: { label: string; icon: ImageAsset; on: () => boolean; inRail: boolean; saving?: boolean; onPress: () => void }) {
@@ -443,8 +449,8 @@ function RowListToggle() {
   );
 }
 
-/** Saved is open (its own stack), and Settings is not over it. */
-const savedOn = () => section() === "saved" && !isSettings();
+/** Saved is open (its own stack). */
+const savedOn = () => section() === "saved";
 const ringRoom = 3;
 /** Saved's ring of the overall progress, around the disc while anything saves. */
 const savedRingStyle = (): ViewStyle => ({ position: "absolute", top: -ringRoom, left: -ringRoom, pointerEvents: "none" });
@@ -503,8 +509,7 @@ export function TabletTopRow() {
     </Each>
   );
   return (
-    // Under the Settings sheet the row is out of a screen reader's reach.
-    <View testID={frameSolid() ? "top-row-solid" : "top-row"} accessibilityElementsHidden={settingsOpen()} importantForAccessibility={settingsOpen() ? "no-hide-descendants" : "auto"} style={topRowStyle(frameSolid())}>
+    <View testID={frameSolid() ? "top-row-solid" : "top-row"} style={topRowStyle(frameSolid())}>
       <View style={measureRoom} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <View style={{ ...tabsGroup(false), alignSelf: "flex-start" }} onLayout={(e) => labelled.set(e.bounds.size.width)}>
           {tabs(false, false)}

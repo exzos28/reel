@@ -44,7 +44,7 @@ away; Search and Settings are nav items but open as deep pages with a back butto
 | Other ways back | — | ⌘[ / ⌘← (mac), Alt+← / Backspace (Win, Linux), mouse button 4, trackpad swipe (mac), Esc | Left-edge swipe (iPad), system back + predictive back (Android) | Edge swipe (iOS), system back + predictive back (Android) |
 | Panels | Side panel 1080 px, no close button | Side panel 460 pt under the bar, ✕ | Floating side sheet 440 pt under the status bar, ✕; a short choice (a setting, a filter): a popover 320 pt by what opened it | Bottom sheet with grabber, ✕ |
 | Player exit | Back (twice if the controls are up) | Back in the bar's Back slot, Esc | ✕ top-left, swipe down | ✕ top-left, swipe down |
-| Settings | Nav destination (gear selected) | Nav destination (gear selected) | A sheet in the middle over the current page (gear button) | A tab of its own |
+| Settings | Nav destination (gear selected) | Nav destination (gear selected) | A section of its own, like Saved (gear disc in the top row, selected while open) | A tab of its own |
 | Search | Nav destination | Nav destination | Icon tab in the tab bar | Fifth tab |
 
 Why, in one line each:
@@ -162,27 +162,30 @@ Top row 60 pt under the status bar (iPad 24 pt, Android 32 dp; take `safeArea().
 - Right: on a title Add to list, then Saved (where the device saves; a ring of the overall saving
   progress around it while something saves), then Settings: 40 pt discs, 10 apart. Saved is a
   destination with its own stack ("‹ Saved" on a page over it), selected fill while it is open;
-  Settings' while the Settings sheet is open.
+  Settings the same.
 - The side slots share what the tabs leave (the tabs stay centred; the right keeps its buttons'
   width); the tabs show their labels when they fit beside the logo or a 150 pt Back and the
   buttons (measured), else icons only (an upright iPad's title page, a narrow window).
 - Scroll: the row stays; solid ink 96% (with the status bar area) and a 1 pt `card` line under it
   once content is under it.
 - A window narrower than 600 pt (iPadOS's windowed mode, Split View, Android's multi-window) is
-  laid out as a phone's (tab bar, sheets from the bottom, phone sizes), live as it is resized;
-  Settings stays the sheet. In a window that does not fill the screen the system's window
+  laid out as a phone's, live as it is resized: the same tabs (Home, Search, Saved, Settings),
+  Home's categories, Settings and Saved as tabs, Back as on a phone (from Search, Saved or
+  Settings to the category open last), sheets from the bottom, phone sizes. Only what the device
+  decides differs (no Rotate in the player, the window controls' room). Settings opened on a tab
+  there (a title's Open Settings) moves to its own section once the window is wide again. In a window that does not fill the screen the system's window
   controls (●●●) sit at the top left: the logo, Back and the first tab start after them. A hero's
   Play takes the whole width with Save and Trailer under it where they do not fit in a row; a
   hero's title shrinks rather than break a word.
 - Without a network at start (the core decides), the app opens on Saved when something is saved.
-- Settings is a sheet in the middle of the window over the current page (iPad's form sheet:
-  540 × 640 pt, less in a smaller window; radius 22, over the page dimmed to 60 %), never a page
-  of a tab: a tab's stack holds only its root, titles and people, so a tab never opens on a
-  Settings page left there and the selected tab is always the one shown. Its head (56 pt): ‹ when
-  a page is open on it (Interface, About: "Back to Settings"), the page's title centred 17/600,
-  ✕ at the right. ✕, a press outside, Escape and the system's back close it (Back first leaves
-  Interface or About); a setting's choices and the search source's drawer open over it, and Back
-  closes them first. Under it the page and the top row are hidden from screen readers.
+- Saved and Settings are sections of their own beside the tabs, never pages of a tab: each has its
+  own stack (Interface and About are pushed on Settings, "‹ Settings" over them), its disc is
+  selected while it is open and no tab is, and chosen again it goes to its root. A tab's stack
+  holds only its root, titles and people, so a tab never opens on a Settings page left there and
+  the selected tab is always the one shown. Back from their root goes back to where they were
+  opened from (that tab's page, where it was left), once; then to Home. A title's Open Settings
+  opens Settings' root. A setting's choices (a popover) and the search source's drawer open over
+  Settings, and Back closes them first.
 - Release panel: floating side sheet 440 pt, inset 12, radius 22, over a dimmed page, ✕; swipe
   right or tap outside closes it.
 - Player: full-screen cover, status bar hidden, ✕ 44 pt at (24, 24) with the title beside it;
@@ -238,8 +241,9 @@ Mockups: `phone.html` frames `ios-home`, `ios-movies-scrolled`, `ios-film`,
   on top. Back pops; on a root, see the TV table (desktop: nothing).
 - **Phone and tablet:** one stack per tab (iOS and Material both keep a tab's place). Switching
   tabs keeps each tab's stack; tapping the selected tab pops it to its root. On a phone Settings
-  is a tab with About and Interface pushed on it; on a tablet it is a sheet over the page with
-  pages of its own (`nav.sheet`), outside every tab's stack. Only the shown tab's native stack
+  is a tab with About and Interface pushed on it; on a tablet Saved and Settings are sections of
+  their own beside the tabs (`nav.useOwnSections`), outside every tab's stack, and Back from their
+  root returns to where they were opened from. Only the shown tab's native stack
   writes the history; a pop another tab's stack reports late goes to that tab's kept stack.
 - The section of a page is the first route of its stack (`stack[0].name`); for About it is
   Settings.

@@ -248,7 +248,7 @@ export function SavedScreen() {
   const share = () => (free() != null && used() + free()! > 0 ? used() / (used() + free()!) : 0);
   return (
     <View style={{ flex: 1 }}>
-      <PageFrame ctl={page} kind={caps.touch && !caps.settingsTab ? "deep" : "root"} title={() => t("saved.title")}>
+      <PageFrame ctl={page} kind="root" title={() => t("saved.title")}>
         <View style={pageStyle()}>
           <If when={anySaved()}>
             <View style={row(u(20))}>
