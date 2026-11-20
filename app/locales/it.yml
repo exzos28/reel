@@ -512,6 +512,8 @@ saved:
     free: "Liberi: %{size}"
   state:
     searching: "Ricerca di una versione…"
+    # Opened again, what is already saved is checked before saving goes on.
+    checking: "Verifica di ciò che è salvato…"
     resolving: "Ricerca di chi condivide…"
     saving: "%{percent}% · %{have} di %{size}"
     paused: "In pausa · %{have} di %{size}"

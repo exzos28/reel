@@ -512,6 +512,8 @@ saved:
     free: "空き %{size}"
   state:
     searching: "リリースを探しています…"
+    # Opened again, what is already saved is checked before saving goes on.
+    checking: "保存済みのデータを確認しています…"
     resolving: "共有している人を探しています…"
     saving: "%{percent}% · %{have}/%{size}"
     paused: "一時停止中 · %{have}/%{size}"

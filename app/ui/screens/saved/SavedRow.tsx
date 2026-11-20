@@ -50,6 +50,7 @@ function episodeLine(i: SavedItem) {
 /** The state in words: "34% · 1.2 GB of 3.4 GB", "Paused", "Saved · 2.1 GB", why it failed. */
 export function stateLine(i: SavedItem): string {
   const size = Fmt.size(i.size);
+  if (i.checking && (i.state === "saving" || i.state === "paused")) return t("saved.state.checking");
   switch (i.state) {
     case "saving":
       return t("saved.state.saving", { percent: Math.floor(i.progress * 100), have: Fmt.size(i.have), size });
@@ -82,7 +83,7 @@ export function SavedRow(props: {
   const state = () => (
     <>
       <Text style={metaText(i().state === "failed" ? colors.soft() : colors.ash())}>{stateLine(i())}</Text>
-      <If when={unfinished()}>
+      <If when={unfinished() && !i().checking}>
         <View style={progressTrack()}>
           <View style={progressFill(i().progress)} />
         </View>

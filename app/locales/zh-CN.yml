@@ -512,6 +512,8 @@ saved:
     free: "可用 %{size}"
   state:
     searching: "正在查找资源…"
+    # Opened again, what is already saved is checked before saving goes on.
+    checking: "正在检查已保存的内容…"
     resolving: "正在查找分享者…"
     saving: "%{percent}% · %{have}/%{size}"
     paused: "已暂停 · %{have}/%{size}"

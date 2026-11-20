@@ -808,7 +808,11 @@ pub fn list() -> Value {
                     State::Saved => size,
                     _ => have(lib, i).unwrap_or(0),
                 };
-                let live = i.infohash.as_ref().and_then(|h| lib.live.get(h)).and_then(|(_, h)| h.stats().live);
+                let stats = i.infohash.as_ref().and_then(|h| lib.live.get(h)).map(|(_, h)| h.stats());
+                // Opened again, the torrent checks what is on the disk first: how much is saved
+                // is not known until it is done (it says 0 meanwhile).
+                let checking = matches!(stats.as_ref().map(|s| &s.state), Some(librqbit::TorrentStatsState::Initializing { .. }));
+                let live = stats.and_then(|s| s.live);
                 let state = if i.state == State::Saved && !i.video_path().is_some_and(|p| p.exists()) { "unavailable" } else { state_name(i.state) };
                 json!({
                     "id": i.id,
@@ -823,6 +827,7 @@ pub fn list() -> Value {
                     "size": size,
                     "have": have,
                     "progress": if size > 0 { have as f64 / size as f64 } else { 0.0 },
+                    "checking": checking,
                     "speed": live.as_ref().map(|l| l.download_speed.mbps),
                     "peers": live.as_ref().map(|l| l.snapshot.peer_stats.live),
                     "message": i.message,

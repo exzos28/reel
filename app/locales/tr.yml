@@ -512,6 +512,8 @@ saved:
     free: "%{size} boş"
   state:
     searching: "Sürüm aranıyor…"
+    # Opened again, what is already saved is checked before saving goes on.
+    checking: "Kaydedilenler kontrol ediliyor…"
     resolving: "Paylaşanlar aranıyor…"
     saving: "%{percent}% · %{have}/%{size}"
     paused: "Duraklatıldı · %{have}/%{size}"

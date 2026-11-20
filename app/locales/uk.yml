@@ -512,6 +512,8 @@ saved:
     free: "Вільно %{size}"
   state:
     searching: "Шукаємо роздачу…"
+    # Opened again, what is already saved is checked before saving goes on.
+    checking: "Перевіряється збережене…"
     resolving: "Шукаємо, хто роздає…"
     saving: "%{percent}% · %{have} з %{size}"
     paused: "На паузі · %{have} з %{size}"

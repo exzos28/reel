@@ -47,10 +47,14 @@ export function SavedGroupRow(props: {
   const state = () => (
     <If when={props.saving}>
       <View>
-        <Text style={metaText()}>{t("saved.state.saving", { percent: Math.floor(g().progress * 100), have: Fmt.size(g().have), size: Fmt.size(g().size) })}</Text>
-        <View style={progressTrack()}>
-          <View style={progressFill(g().progress)} />
-        </View>
+        <Text style={metaText()}>
+          {g().checking ? t("saved.state.checking") : t("saved.state.saving", { percent: Math.floor(g().progress * 100), have: Fmt.size(g().have), size: Fmt.size(g().size) })}
+        </Text>
+        <If when={!g().checking}>
+          <View style={progressTrack()}>
+            <View style={progressFill(g().progress)} />
+          </View>
+        </If>
         <If when={g().speed != null}>
           <SpeedLine speed={() => g().speed!} peers={() => g().peers} />
         </If>
