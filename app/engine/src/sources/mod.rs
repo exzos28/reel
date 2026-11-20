@@ -286,10 +286,27 @@ fn years_in(text: &str) -> Vec<u16> {
     words(text).iter().filter_map(|w| w.parse::<u16>().ok()).filter(|y| (1900..2100).contains(y)).collect()
 }
 
+/// A release's name without its `[…]` tags (year, genres, quality: "[2026, мистика,
+/// сверхъестественное, HDTV 1080p]" does not name a show "Сверхъестественное").
+fn untagged(release: &str) -> String {
+    let mut out = String::with_capacity(release.len());
+    let mut depth = 0u32;
+    for c in release.chars() {
+        match c {
+            '[' => depth += 1,
+            ']' => depth = depth.saturating_sub(1),
+            _ if depth == 0 => out.push(c),
+            _ => out.push(' '),
+        }
+    }
+    out
+}
+
 /// Whether a release's name is about the title: the words of one of its
-/// `names` are in it, in a row, and for a film a year it gives is the film's (±1).
+/// `names` are in it (outside its `[…]` tags), in a row, and for a film a year
+/// it gives is the film's (±1).
 fn is_about(release: &str, names: &[String], year: Option<u16>, film: bool) -> bool {
-    let have = words(release);
+    let have = words(&untagged(release));
     let named = names
         .iter()
         .map(|n| words(n))
@@ -376,7 +393,7 @@ fn rank(items: &[Item], query: &Query) -> (Vec<Value>, Vec<Value>) {
                 "peers": it.peers,
                 "indexer": it.indexer,
                 "info": info,
-                "seasonPack": if matches!(query, Query::Season { .. }) { info.episodes.len() != 1 } else { fit == 1 },
+                "seasonPack": if matches!(query, Query::Season { .. }) { info.episodes.len() != 1 } else { fit == 1 || info.episodes.len() > 1 },
             }),
         ));
     }
@@ -427,6 +444,9 @@ mod tests {
         let twelves = ["12 12 12".to_owned()];
         assert!(is_about("12 12 12 / S1E1 of 8 (Карен Мейн) [2026, WEB-DL 1080p]", &twelves, None, false));
         assert!(!is_about("Похищение / S1E1-12 of 12 [2026]", &twelves, None, false), "the words in a row, not anywhere");
+        let show = ["Сверхъестественное".to_owned()];
+        assert!(!is_about("Экстрасенсы. 3 S6 выпуск [2026, мистика, сверхъестественное, HDTV 1080p]", &show, None, false), "a genre in the tags is not the title");
+        assert!(is_about("Сверхъестественное / Supernatural / S6E1-22 (22) [2010, США, мистика, BDRip 720p]", &show, None, false));
     }
 
     #[test]
@@ -533,5 +553,7 @@ mod tests {
         let titles: Vec<_> = r.iter().map(|v| v["title"].as_str().unwrap()).collect();
         assert_eq!(titles, vec!["Flash.Gordon.S01E03.720p", "Flash.Gordon.S01.1080p"]);
         assert_eq!(r[1]["seasonPack"], true);
+        let r = rank(&[item("Flash.Gordon.S01E01-12.720p", 9)], &q).0;
+        assert_eq!(r[0]["seasonPack"], true, "episodes 1-12 hold it: a pack");
     }
 }

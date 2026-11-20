@@ -118,9 +118,10 @@ export function TitleScreen(props: { id: string }) {
   /** Play; with no search source the drawer that adds one (the player would only fail). A
    * saved film or episode plays from its file: no source, no network needed. */
   const play = (p: Parameters<typeof startPlay>[0]) => (data().playable || isSaved(p.id) ? startPlay(p) : openSourceDrawer());
+  // The episode stays set while the drawer slides out (else it shows the season's
+  // releases for a moment); openPanel sets it again.
   const closePanel = () => {
     const e = panelEpisode();
-    panelEpisode.set(null);
     if (e) enterList(Math.max(0, eps().findIndex((x) => x.id === e.id)));
     else zone.set("release");
   };
