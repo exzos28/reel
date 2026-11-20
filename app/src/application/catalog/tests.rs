@@ -151,6 +151,40 @@ fn home_shelves_from_meta() {
 }
 
 #[test]
+fn homes_hero_searches_for_its_release_line() {
+    let _g = fresh(true, true);
+    seed_matrix();
+    for k in ["movie", "tv", "movie-popular", "tv-popular", "anime"] {
+        seed(Call::Trending(k), json!({ "items": [] }));
+    }
+    save_progress(MATRIX, 2472.0, 8160.0);
+    // A cold start: Home's hero (the film watched last) searches for its release itself, so its
+    // line comes in without its page being opened; until it does, the line is kept for it.
+    let h = home();
+    assert_eq!(h["hero"]["id"], MATRIX);
+    assert!(search_of(MATRIX).is_some(), "Home started the hero's search");
+    assert_eq!(h["hero"]["releasesState"], "searching");
+    assert_eq!(h["hero"]["release"], Value::Null);
+    found(MATRIX, vec![release("The.Matrix.1999.1080p.BluRay", Some(1080), "bluray", 8.0, 120, false)]);
+    let h = home();
+    assert_eq!(h["hero"]["releasesState"], "done");
+    assert_eq!(h["hero"]["release"]["quality"], "1080p");
+    // Nothing found: no line to keep.
+    found(MATRIX, vec![]);
+    let h = home();
+    assert_eq!((h["hero"]["releasesState"].as_str(), &h["hero"]["release"]), (Some("done"), &Value::Null));
+    // No source: nothing is searched.
+    reset(true, false);
+    seed_matrix();
+    for k in ["movie", "tv", "movie-popular", "tv-popular", "anime"] {
+        seed(Call::Trending(k), json!({ "items": [] }));
+    }
+    save_progress(MATRIX, 2472.0, 8160.0);
+    assert_eq!(home()["hero"]["releasesState"], "no_source");
+    assert!(search_of(MATRIX).is_none());
+}
+
+#[test]
 fn without_tmdb_anime_and_a_notice() {
     let _g = fresh(false, false);
     let anime = crate::adapters::metadata::anilist::Anilist.map_cards(&fixture("anilist_trending.json"), &cx()).unwrap();

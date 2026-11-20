@@ -1603,7 +1603,8 @@ fn continuing() -> Vec<Value> {
     out
 }
 
-/// Home: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`. The hero is the
+/// Home: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`, the hero's summary with
+/// `releasesState` (its release line's search, `hero_releases`). The hero is the
 /// first card of the first shelf (Continue watching comes first: the title watched last);
 /// Continue watching and the catalog's shelves do not show it again (a shelf left empty
 /// drops out), unless nothing would be left under it (one title, a notice card); the
@@ -1611,7 +1612,10 @@ fn continuing() -> Vec<Value> {
 pub fn home() -> Value {
     let shelves = home_shelves();
     let all = list_of(&shelves);
-    let hero = all.first().map(|s| s["items"][0].clone()).unwrap_or(Value::Null);
+    let mut hero = all.first().map(|s| s["items"][0].clone()).unwrap_or(Value::Null);
+    if let Some(id) = hero["id"].as_str().filter(|_| hero["notice"].is_null()).map(str::to_owned) {
+        hero["releasesState"] = json!(hero_releases(&id));
+    }
     let rest: Vec<Value> = all
         .iter()
         .filter_map(|s| {
@@ -1623,6 +1627,22 @@ pub fn home() -> Value {
         .collect();
     let shelves = if rest.is_empty() { shelves } else { json!(rest) };
     json!({ "hero": hero, "shelves": shelves })
+}
+
+/// Starts the search for what Home's hero plays, as a title screen does, so its release line
+/// comes in without the title being opened; where that search is (`releases_state`'s words:
+/// "searching" while its full title is still on its way too).
+fn hero_releases(id: &str) -> &'static str {
+    if !has_source() {
+        return "no_source";
+    }
+    let Some(t) = meta(&Call::Title(id.to_owned())) else {
+        return if answered(&Call::Title(id.to_owned())) { "failed" } else { "searching" };
+    };
+    let info = Info { id: id.to_owned(), ..from_title(&t) };
+    let key = release_key(&info, &where_in(&info));
+    ensure_search(&key, &info);
+    releases_state(&key)
 }
 
 /// The trending lists Home's shelves come from (only AniList's without TMDB).

@@ -1,7 +1,6 @@
 // The lines under a hero's logotype: the scores with their sources, year,
 // length, the age rating and badges; the release Play uses.
 import { Text, View, type TextStyle } from "nsh";
-import { source } from "../preferences";
 import { badgeText, lengthText, releaseLine, scoreSource, votesText, yearsText, type Score, type Summary } from "../catalog";
 import { Badge } from "../kit/Badge";
 import { Icon } from "../kit/Icon";
@@ -85,13 +84,14 @@ export function ReleaseText(props: { item: () => Summary; withStart?: boolean; s
   const style = () => ({ ...type.meta(), fontSize: ts(props.size ?? 22), color: heroMeta() });
   const name: TextStyle = { fontWeight: 500, color: colors.snow() };
   return (
-    // With a source its line is kept while the release is still searched, so the buttons under it
-    // do not move when it comes in: an empty line a screen reader does not stop at.
+    // Its line is kept while the release is still searched (the core says so: Home's hero), so the
+    // buttons under it do not move when it comes in: an empty line a screen reader does not stop
+    // at. Nothing found, a failed search or no source: no line to wait for.
     <If
       when={props.item().release}
       else={
-        <If when={source().url !== ""}>
-          <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <If when={props.item().releasesState === "searching"}>
+          <View testID="hero-release-pending" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             <Text style={style()}>{" "}</Text>
           </View>
         </If>
