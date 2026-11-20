@@ -54,7 +54,7 @@ impl Playback for NoEngine {
         Ok(self.id())
     }
 
-    fn open_release(&self, _source: &str, _episode: Option<(u16, u16)>) -> Result<u32, String> {
+    fn open_release(&self, _source: &str, _episode: Option<(u16, u16)>, _through: Option<reel_domain::numbering::Through>) -> Result<u32, String> {
         Ok(self.id())
     }
 

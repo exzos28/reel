@@ -13,7 +13,9 @@
 //! - A torrent being saved is leased (`leases`): a stream of it reads the same files, and
 //!   closing the player never deletes them. Complete, it leaves the session with its files.
 //! - Files are deleted only when no other item uses the same path.
-//! - Unfinished items go on when the app starts again, from their .torrent.
+//! - Unfinished items go on when the app starts again, from their .torrent, and from the
+//!   pieces librqbit verified (`<hash>.bitv` beside it, vendored librqbit's fastresume) instead
+//!   of hashing the files again.
 
 use std::{
     collections::{HashMap, HashSet},
@@ -77,6 +79,9 @@ pub struct Item {
     pub cover: String,
     #[serde(default)]
     pub episode: Option<(u16, u16)>,
+    /// Its season's place in the show's numbering, for a pack numbered through it.
+    #[serde(default)]
+    pub through: Option<reel_domain::numbering::Through>,
     /// Its torrent's folder (`<folder>/<Title (year)>`; before the torrent is known, the one it
     /// would take).
     pub dir: PathBuf,
@@ -424,10 +429,12 @@ pub fn init(data_dir: &Path) {
                 fail_torrent(&hash, "interrupted");
                 continue;
             };
+            let fastresume = file.parent().map(Path::to_path_buf);
             core.rt.spawn(async move {
                 let options = AddTorrentOptions {
                     overwrite: true,
                     paused,
+                    fastresume_folder: fastresume,
                     only_files: Some(wanted.into_iter().collect()),
                     output_folder: Some(dir.to_string_lossy().into_owned()),
                     ..Default::default()
@@ -501,6 +508,7 @@ pub fn add(req: KeepRequest) -> Result<u32, String> {
             image: req.image.clone(),
             cover: req.cover.clone(),
             episode: req.episode,
+            through: req.through,
             dir,
             infohash: None,
             video: None,
@@ -576,7 +584,7 @@ async fn open_source(source: &str) -> Result<(AddTorrent<'static>, Option<String
 /// Adds the item's torrent (or finds it in the session) into the torrent's own folder, and
 /// selects its files.
 async fn resolve(id: u32, source: String) {
-    let Some((base, ep)) = with(|lib| lib.item_mut(id).map(|i| (i.dir.clone(), i.episode))).flatten() else { return };
+    let Some((base, ep, through)) = with(|lib| lib.item_mut(id).map(|i| (i.dir.clone(), i.episode, i.through))).flatten() else { return };
     let Ok(core) = engine::core() else { return };
     let started = std::time::Instant::now();
     let step = |what: &str| engine::log_line(&format!("saved {id} +{} ms {what}", started.elapsed().as_millis()));
@@ -607,6 +615,7 @@ async fn resolve(id: u32, source: String) {
         // Nothing until the item's files are known (below).
         only_files: Some(Vec::new()),
         output_folder: Some(dir.to_string_lossy().into_owned()),
+        fastresume_folder: with(|lib| lib.home.join("torrents")),
         ..Default::default()
     };
     // Another episode of the same pack saves it already: take that torrent as it is. Adding a
@@ -668,7 +677,7 @@ async fn resolve(id: u32, source: String) {
         Ok(all) => all,
         Err(e) => return fail(&format!("{e:#}")),
     };
-    let Some(video) = episode::pick(&all, ep) else {
+    let Some(video) = episode::pick(&all, ep, through) else {
         return fail(if ep.is_some() { "not_in_release" } else { "no_video" });
     };
     if compat::file_ok(&all[video].1, compat::profile()).is_err() {
@@ -944,6 +953,7 @@ pub fn remove(id: u32) {
         if let Some(h) = &item.infohash {
             if lib.of(h).next().is_none() {
                 let _ = std::fs::remove_file(lib.torrent_file(h));
+                let _ = std::fs::remove_file(lib.torrent_file(h).with_extension("bitv"));
             }
             if let Some((tid, handle)) = lib.live.get(h).cloned() {
                 if lib.of(h).any(Item::unfinished) {
@@ -1073,6 +1083,7 @@ mod tests {
             image: String::new(),
             cover: String::new(),
             episode: Some((1, 2)),
+            through: None,
             dir: PathBuf::from("/films/Show"),
             infohash: Some("ab".into()),
             video: Some(3),
@@ -1202,6 +1213,7 @@ mod tests {
             image: String::new(),
             cover: String::new(),
             episode: None,
+            through: None,
             dir: PathBuf::from(dir),
             infohash: Some(hash.into()),
             video: Some(0),

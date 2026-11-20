@@ -111,10 +111,11 @@ impl Engine {
 
     /// Starts playing a release a search found: `source` is its magnet or
     /// .torrent URL; `season`/`episode` (0 for a film) pick the episode's file
-    /// in a pack. A job id for `status`, 0 when the engine could not start.
+    /// in a pack, by the pack's own numbers (no show is named here, so no numbering through
+    /// it: Play's way, `play`, has that). A job id for `status`, 0 when the engine could not start.
     pub fn open_release(source: String, season: u32, episode: u32) -> u32 {
         let ep = (season > 0 && episode > 0).then(|| (season as u16, episode as u16));
-        playback().open_release(&source, ep).unwrap_or_else(|e| {
+        playback().open_release(&source, ep, None).unwrap_or_else(|e| {
             tracing::warn!("reel engine: {e}");
             0
         })
@@ -163,8 +164,9 @@ impl Engine {
         tracks::menu(job, &id, embedded.as_ref()).to_string()
     }
 
-    /// The viewer picked `choice` (a key of `tracks`); subtitles are
-    /// remembered for the title. The columns after it (as `tracks`).
+    /// The viewer picked `choice` (a key of `tracks`); subtitles and audio are
+    /// remembered for the title, and an audio pick's language becomes the one
+    /// audio is looked for in (`tracks::choose`). The columns after it (as `tracks`).
     pub fn choose_track(job: u32, id: String, embedded: String, choice: String) -> String {
         let embedded = parse_embedded(&embedded);
         tracks::choose(job, &id, embedded.as_ref(), &choice).to_string()
@@ -312,6 +314,13 @@ impl Settings {
         let now = settings::set_content_language(&tag);
         catalog::language_changed();
         now
+    }
+
+    /// Saves the audio language tracks are looked for in (ISO 639-1, one of `audioLanguages`
+    /// from `load`; empty: the app's language); the setting in effect ("" for the app's). A pick
+    /// in the tracks panel sets it too (`Engine.chooseTrack`).
+    pub fn set_audio_language(code: String) -> String {
+        settings::set_audio_language(&code)
     }
 
     /// Saves the UI language (a BCP 47 tag).

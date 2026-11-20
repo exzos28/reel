@@ -241,6 +241,8 @@ languages:
   ja: "日本語"
   zh: "中国語"
   ko: "韓国語"
+  kk: "カザフ語"
+  uz: "ウズベク語"
 
 series:
   season: "シーズン%{number}"
@@ -380,6 +382,10 @@ settings:
   language:
     title: "言語"
     about: "タイトル、あらすじ、エピソード名の言語です。reel はこのタイトルでもリリースを検索します。"
+  audio_language:
+    title: "音声の言語"
+    about: "その言語の音声がある映画は、その言語で再生されます。プレーヤーで音声トラックを選ぶと変わります。"
+    same: "アプリの言語と同じ"
   source:
     title: "検索ソース"
     about: "reel が映画やエピソードのリリースを探す場所です。Torznab のアドレスと API キーを入力します。"

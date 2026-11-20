@@ -113,6 +113,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         let (tag,): (String,) = args(a)?;
         ret(Settings::set_content_language(tag))
     })
+    .sync("Settings", "setAudioLanguage", |a| {
+        let (code,): (String,) = args(a)?;
+        ret(Settings::set_audio_language(code))
+    })
     .sync("Settings", "setStreamDetails", |a| {
         let (on,): (bool,) = args(a)?;
         ret(Settings::set_stream_details(on))

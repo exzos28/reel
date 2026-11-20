@@ -66,8 +66,8 @@ releases: `docs/releasing.md`.
 
 ## Build and test (from `app/`)
 
-- The checks run on GitHub (`.github/workflows/checks.yml`: ui-rules, test-crates, and one macOS
-  job with typecheck, no-engine and test-app); main accepts a PR only when they pass. Locally run
+- The checks run on GitHub (`.github/workflows/checks.yml`: ui-rules, test-crates, and the
+  Ubuntu jobs app, ui 2, ui 3 with typecheck, no-engine and the app's tests); main accepts a PR only when they pass. Locally run
   only what the change touches (`cargo test -p <crate>`, `nsh test <file>.test.tsx`); the pre-push
   hook runs only `dev/ui-rules.sh`, and `dev/checks.sh` runs every check here when wanted. The
   platform builds run on a PR with the `build` label (add it when a change touches a platform's

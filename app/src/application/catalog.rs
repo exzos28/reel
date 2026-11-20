@@ -28,7 +28,8 @@ use serde_json::{Value, json};
 use super::{progress, settings};
 use crate::wiring::{metadata, playback};
 use reel_domain::discover::{DiscoverKind, Filter};
-use reel_domain::{compat, episode, typo};
+use reel_domain::numbering::{self, Holds, Numbering, Through};
+use reel_domain::{compat, episode, release, typo};
 
 mod details;
 mod filters;
@@ -634,6 +635,7 @@ fn ensure_search(key: &str, info: &Info) {
         "year": if film { info.year } else { None },
         "season": ep.map(|e| e.0).or(season),
         "episode": ep.map(|e| e.1),
+        "seasonSizes": if film { Vec::new() } else { numbering(info).0 },
     });
     SEARCHES.lock().unwrap().insert(key.to_owned(), Search::default());
     start_search(key.to_owned(), request);
@@ -738,7 +740,14 @@ fn peers(r: &Value) -> u64 {
 /// A pack is shared out over `episodes`.
 fn mbit(r: &Value, minutes: u32, episodes: u32) -> u64 {
     let bytes = r["size"].as_f64().unwrap_or(0.0);
-    let share = if r["seasonPack"] == true { episodes.max(1) as f64 } else { 1.0 };
+    // A pack that names its episodes holds that many ("S1E1-327 of 327" is not one season's);
+    // one that does not, the season's.
+    let named = r["info"]["episodes"].as_array().map_or(0, Vec::len) as u32;
+    let share = match (r["seasonPack"] == true, named) {
+        (false, _) => 1.0,
+        (true, n) if n > 1 => n as f64,
+        (true, _) => episodes.max(1) as f64,
+    };
     if bytes <= 0.0 || minutes == 0 {
         return 0;
     }
@@ -935,20 +944,40 @@ pub enum Has {
     Unknown,
 }
 
-fn has_episode(r: &Value, s: u32, e: u32) -> Has {
+fn has_episode(r: &Value, s: u32, e: u32, n: &Numbering) -> Has {
+    let (s, e) = (s as u16, e as u16);
     if let Some(files) = text(&r["source"]).and_then(|u| torrent_files(&u)) {
-        return if episode::pick(&files, Some((s as u16, e as u16))).is_some() { Has::Yes } else { Has::No };
+        return if episode::pick(&files, Some((s, e)), n.through_of(s)).is_some() { Has::Yes } else { Has::No };
     }
-    let info = &r["info"];
-    if info["season"].as_u64().is_some_and(|x| x != s as u64) {
-        return Has::No;
+    // Before its files are known, what its name says: the same decision the search ranked it by.
+    let info = release::parse(r["title"].as_str().unwrap_or_default());
+    match numbering::holds(&info, s, Some(e), n) {
+        Holds::Named => Has::Yes,
+        Holds::Pack => Has::Unknown,
+        Holds::No => Has::No,
     }
-    match info["episodes"].as_array() {
-        Some(eps) if !eps.is_empty() => {
-            if eps.iter().any(|x| x.as_u64() == Some(e as u64)) { Has::Yes } else { Has::No }
-        }
-        _ => Has::Unknown,
+}
+
+/// A show's numbering: its regular seasons' episode counts, from season 1 (a season TMDB does
+/// not list counts 0).
+fn numbering(info: &Info) -> Numbering {
+    let last = info.seasons.iter().map(|s| s.0).max().unwrap_or(0) as usize;
+    let mut sizes = vec![0u16; last];
+    for s in &info.seasons {
+        sizes[s.0 as usize - 1] = s.2.min(u16::MAX as u32) as u16;
     }
+    Numbering(sizes)
+}
+
+/// The numbering of `show` from what the catalog has (never asking the network); empty when
+/// its title is not in yet.
+fn numbering_of(show: &str) -> Numbering {
+    peek(&Call::Title(show.to_owned())).map(|t| numbering(&from_title(&t))).unwrap_or_default()
+}
+
+/// Season `season`'s place in `show`'s numbering, for picking its episodes' files.
+pub fn through_of(show: &str, season: u32) -> Option<Through> {
+    numbering_of(show).through_of(season as u16)
 }
 
 /// The files of a release's torrent once the engine has read them (it starts
@@ -971,7 +1000,7 @@ fn season_has(show: &str, info: &Info, s: u32, e: u32) -> Option<(String, Has)> 
     let releases = releases_of(&key);
     let (minutes, episodes) = length_of(&key, info);
     let r = &releases[chosen(&key, &releases, minutes, episodes)?];
-    Some((text(&r["source"])?, has_episode(r, s, e)))
+    Some((text(&r["source"])?, has_episode(r, s, e, &numbering(info))))
 }
 
 /// The season's search finished (found or not).
@@ -994,7 +1023,9 @@ pub fn play_source(key: &str) -> PlaySource {
         && !CHOSEN.lock().unwrap().contains_key(key)
     {
         match season_has(title, &info, s, e) {
-            Some((source, Has::Yes | Has::Unknown)) => return PlaySource::Ready(source, Some((s as u16, e as u16))),
+            Some((source, Has::Yes | Has::Unknown)) => {
+                return PlaySource::Ready(source, Some((s as u16, e as u16)), numbering(&info).through_of(s as u16));
+            }
             Some((_, Has::No)) => return PlaySource::NotInRelease,
             None if !season_done(title, s) => return PlaySource::Searching,
             // The season has no release at all: look for this episode alone.
@@ -1006,7 +1037,11 @@ pub fn play_source(key: &str) -> PlaySource {
         Some(Search { releases: Some(releases), .. }) => {
             let (minutes, episodes) = length_of(key, &info);
             match chosen(key, &releases, minutes, episodes).and_then(|i| text(&releases[i]["source"])) {
-                Some(source) => PlaySource::Ready(source, ep.map(|(s, e)| (s as u16, e as u16))),
+                Some(source) => PlaySource::Ready(
+                    source,
+                    ep.map(|(s, e)| (s as u16, e as u16)),
+                    ep.and_then(|(s, _)| numbering(&info).through_of(s as u16)),
+                ),
                 None => PlaySource::None,
             }
         }
@@ -1027,7 +1062,7 @@ pub enum SaveAsk {
 pub fn save_request(key: &str) -> SaveAsk {
     let (show, ep) = parse_key(key);
     let source = match play_source(key) {
-        PlaySource::Ready(source, episode) => (source, episode),
+        PlaySource::Ready(source, episode, through) => (source, episode, through),
         PlaySource::Searching => return SaveAsk::Searching,
         PlaySource::None => return SaveAsk::No("no_source"),
         PlaySource::NotInRelease => return SaveAsk::No("not_in_release"),
@@ -1047,6 +1082,7 @@ pub fn save_request(key: &str) -> SaveAsk {
         key: key.to_owned(),
         source: source.0,
         episode: source.1,
+        through: source.2,
         title: info.title.clone(),
         year: info.year.map(u32::from),
         label,
@@ -1084,7 +1120,7 @@ pub fn known_still(id: &str) -> Option<String> {
 pub fn season_files(show: &str, season: u32) -> Option<reel_domain::play::Files> {
     // The season's release is what its first episode plays from (unless one was picked for it).
     match play_source(&episode_key(show, season, 1)) {
-        PlaySource::Ready(source, Some(_)) => playback().torrent_files(&source),
+        PlaySource::Ready(source, Some(_), _) => playback().torrent_files(&source),
         _ => None,
     }
 }
@@ -1126,7 +1162,7 @@ fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
     });
     let in_release = match (&pick, own) {
         (_, true) => Some("own"),
-        (Some(r), false) => Some(match has_episode(r, season, number) {
+        (Some(r), false) => Some(match has_episode(r, season, number, &numbering_of(show)) {
             Has::Yes => "yes",
             Has::No => "no",
             Has::Unknown => "unknown",
@@ -1545,7 +1581,7 @@ pub fn title(id: &str) -> Value {
     let w = where_in(&info);
     ensure_search(&w.key, &info);
     // Play starts sooner when the release's link is already opened.
-    if let PlaySource::Ready(source, _) = play_source(&w.key) {
+    if let PlaySource::Ready(source, ..) = play_source(&w.key) {
         playback().prefetch(&source);
     }
     let mut v = summary(&info);
@@ -1571,10 +1607,17 @@ pub fn title(id: &str) -> Value {
         v["seasonList"] = info
             .seasons
             .iter()
-            .map(|(n, y, eps, name)| json!({ "number": n, "year": y.or(info.year).unwrap_or(0), "episodes": eps, "name": name }))
+            .map(|(n, y, eps, name)| json!({ "number": n, "year": y.or_else(|| first_aired(id, *n)), "episodes": eps, "name": name }))
             .collect();
     }
     v
+}
+
+/// The year a season's first episode aired, from its episodes when the catalog has them (never
+/// asking the network): TMDB leaves some seasons without a date of their own (Naruto's 2–4).
+fn first_aired(show: &str, season: u32) -> Option<u16> {
+    let s = peek(&Call::Season(show.to_owned(), season))?;
+    s["episodes"].as_array()?.iter().filter_map(|e| year(&e["airDate"])).min()
 }
 
 /// Whose releases `key` plays from: an episode its own when the viewer picked

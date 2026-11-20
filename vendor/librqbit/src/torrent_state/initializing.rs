@@ -16,6 +16,7 @@ use crate::{
     api::TorrentIdOrHash,
     bitv::BitV,
     bitv_factory::BitVFactory,
+    fastresume::FolderBitVFactory,
     chunk_tracker::{ChunkTracker, compute_selected_pieces},
     file_ops::FileOps,
     type_aliases::{BF, FileStorage},
@@ -154,7 +155,9 @@ impl TorrentStateInitializing {
                     })
                     .enumerate()
                 {
-                    if fo.check_piece(piece_id).is_err() {
+                    // reel: a hash mismatch is Ok(false), and it means broken too (upstream
+                    // took only read errors, so rewritten or zeroed data passed).
+                    if !matches!(fo.check_piece(piece_id), Ok(true)) {
                         return true;
                     }
 
@@ -188,13 +191,24 @@ impl TorrentStateInitializing {
 
     pub async fn check(&self) -> anyhow::Result<TorrentStatePaused> {
         let id: TorrentIdOrHash = self.shared.info_hash.into();
-        let bitv_factory = self
+        let session_bitv_factory = self
             .shared
             .session
             .upgrade()
             .context("session is dead")?
             .bitv_factory
             .clone();
+        // reel: a torrent with a fastresume folder keeps its bitfield there.
+        let bitv_factory: Arc<dyn BitVFactory> = match &self.shared.options.fastresume_folder {
+            Some(folder) => Arc::new(FolderBitVFactory::new(
+                folder,
+                &self.shared.info_hash,
+                &self.shared.options.output_folder,
+                &self.metadata.file_infos,
+                *self.metadata.lengths(),
+            )),
+            None => session_bitv_factory,
+        };
         let have_pieces = if self.previously_errored {
             if let Err(e) = bitv_factory.clear(id).await {
                 warn!(id=?self.shared.id, info_hash = ?self.shared.info_hash, error=?e, "error clearing bitfield");

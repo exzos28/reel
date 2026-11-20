@@ -169,3 +169,47 @@ not name the file asked for. On Windows each component of `FileInfo::relative_fi
 made one Windows takes (`file_info::windows_name`: `<>:"/\|?*` and control characters as `_`, no
 dot or space at the end, `_` after a device name's stem). Other platforms are unchanged. Test:
 `file_info::tests::test_windows_name`.
+
+## Fastresume for saved torrents only (src/fastresume.rs, src/torrent_state/initializing.rs)
+
+### Why
+
+reel saves films (filesystem storage, `app/engine/src/keep.rs`) and goes on with unfinished
+ones when the app starts again. Without fastresume librqbit hashed every file first (minutes for
+a 25 GB film on a phone). librqbit's fastresume comes only with its session persistence, which
+would also restore the streamed torrents (ring-buffer cache) and take the saved library from
+keep.rs.
+
+### What
+
+- `AddTorrentOptions::fastresume_folder: Option<PathBuf>`: the torrent keeps its verified pieces
+  in `<folder>/<info_hash hex>.bitv` (`FolderBitVFactory`, used by `check()` in place of the
+  session's factory). Torrents without it are unchanged.
+- The bitfield is written by a flusher task whenever librqbit flushes (every 16 MiB of pieces,
+  on finish, and now on pause): first `sync_data` of the torrent's data files, then the whole
+  bitfield to a temporary file, fsynced and renamed over the old one. A crash leaves the old
+  bitfield or the new one, never one ahead of the data. Nothing is written on drop.
+- Loading refuses (full check) a bitfield of the wrong length, or one that claims a piece of a
+  file that is missing or shorter than the piece's end. Then `validate_fastresume` hashes the
+  first claimed piece of each file and a random sample, as upstream.
+- Only the current bitfield of a file writes it: `clear` and each new load or store bump a
+  generation, and older writes are dropped (a bitfield that failed validation never comes back).
+- No fastresume error fails the torrent: it is logged, and the torrent does a full check or goes
+  on without writing.
+- Fix in `validate_fastresume`: `check_piece` returns `Ok(false)` on a hash mismatch, and
+  upstream counted only `Err` as broken, so zeroed or rewritten data passed the check. Anything
+  but `Ok(true)` is broken now. This also affects librqbit's own session fastresume.
+- `TorrentStateLive::pause` flushes the bitfield.
+
+Tests: `fastresume::tests::{test_store_load_clear, test_refuses_a_bitfield_the_files_do_not_hold,
+test_a_cleared_bitfield_is_never_written_back}` and `tests::e2e_fastresume::test_fastresume_folder`
+(the bitfield is used; truncated, zeroed, deleted files and a wrong length give a full check).
+Run from `vendor/librqbit`: `cargo test --lib fastresume`.
+
+### Known limits
+
+- On macOS and iOS `sync_data` is `fsync`, not `F_FULLFSYNC`: after a power loss the drive's cache
+  may still lose data the bitfield claims. The random hash sample may catch it; an app kill or
+  crash is safe (the page cache survives).
+- Rewritten data of the right length is caught only by the hashed sample (first claimed piece of
+  each file plus up to 64 random ones).

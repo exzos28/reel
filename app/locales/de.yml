@@ -241,6 +241,8 @@ languages:
   ja: "Japanisch"
   zh: "Chinesisch"
   ko: "Koreanisch"
+  kk: "Kasachisch"
+  uz: "Usbekisch"
 
 series:
   season: "Staffel %{number}"
@@ -380,6 +382,10 @@ settings:
   language:
     title: "Sprache"
     about: "Titel, Beschreibungen und Folgennamen; reel sucht damit auch nach Releases."
+  audio_language:
+    title: "Audiosprache"
+    about: "Die Sprache, in der Filme laufen, wenn sie sie haben. Eine Tonspur im Player zu wählen, ändert sie."
+    same: "Wie die App-Sprache"
   source:
     title: "Suchquelle"
     about: "Wo reel nach Releases eines Films oder einer Folge sucht. Eine Torznab-Adresse und ihr API-Schlüssel."

@@ -116,7 +116,8 @@
       };
     },
 
-    open: function (url, emit) {
+    // `hold`: prepared, AVPlay waits for the page's `play` (it picks the audio track first).
+    open: function (url, emit, hold) {
       if (typeof webapis === 'undefined' || !webapis.avplay) throw new Error('webapis.avplay is not available');
       var p = webapis.avplay;
       try { p.stop(); p.close(); } catch (e) { /* nothing was open */ }
@@ -129,6 +130,7 @@
       emit({ type: 'step', step: 'prepareAsync, state ' + p.getState() });
       p.prepareAsync(function () {
         emit({ type: 'loaded', duration: p.getDuration() / 1000, tracks: av.tracks() });
+        if (hold) return;
         p.play();
         emit({ type: 'step', step: 'play, state ' + p.getState() });
       }, function (e) { emit({ type: 'error', message: 'prepare: ' + (e && (e.name + ' ' + e.message)) }); });
@@ -192,7 +194,7 @@
     handle: function (msg, emit) {
       var p = webapis.avplay;
       switch (msg.op) {
-        case 'open': av.open(msg.url, emit); break;
+        case 'open': av.open(msg.url, emit, !!msg.hold); break;
         case 'play': p.play(); break;
         case 'pause': p.pause(); break;
         case 'seek': av.seek(Math.round(msg.position * 1000), emit); break;

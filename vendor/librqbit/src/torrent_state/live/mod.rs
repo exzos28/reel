@@ -780,6 +780,9 @@ impl TorrentStateLive {
         // It should be impossible to make a fatal error after pausing.
         g.fatal_errors_tx.take();
 
+        // reel: what was verified since the last flush is kept (fastresume).
+        g.try_flush_bitv(&self.shared, false);
+
         let piece_tracker = g
             .pieces
             .take()
