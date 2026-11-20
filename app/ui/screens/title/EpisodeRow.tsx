@@ -25,7 +25,9 @@ const numberStyle = (watched: boolean): TextStyle => ({
   ...fontText(44, watched ? colors.ash() : colors.faint(), 300),
 });
 const titleStyle = (watched: boolean): TextStyle => ({ ...oneLine, ...fontText(26, watched ? colors.ash() : colors.snow(), 600) });
-const aboutStyle = (): TextStyle => ({ ...oneLine, ...fontText(22, colors.quiet()), marginTop: u(2) });
+const aboutStyle = (lines: number): TextStyle => ({ numberOfLines: lines, ...fontText(22, colors.quiet()), marginTop: u(2) } as TextStyle);
+/** In a column: the number before the title, in the big number's grey. */
+const inlineNumber = (watched: boolean): TextStyle => ({ fontWeight: 400, color: watched ? colors.ash() : colors.faint() });
 
 /** "19 min · Apr 24, 1940", or once started "19 min · 7 min left". */
 const metaOf = (e: Episode) => [runtime(e.minutes), episodeNote(e)].filter((x) => x).join(" · ");
@@ -40,8 +42,10 @@ const statusOf = (e: Episode) => {
 };
 
 /** An episode: big grey number, still, title, meta and one line of about;
- * on the right only what differs from the season's release. */
-export function EpisodeRow(props: { episode: () => Episode; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
+ * on the right only what differs from the season's release. `column`: one of two columns (a
+ * tablet held wide): a larger still, the number before the title, two lines of about. */
+export function EpisodeRow(props: { episode: () => Episode; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void; column?: boolean }) {
+  const column = props.column ?? false;
   const e = props.episode;
   /** Saved or being saved on this device: its round mark at the right. */
   const saved = computed(() => itemState(e().id));
@@ -53,14 +57,19 @@ export function EpisodeRow(props: { episode: () => Episode; focused: () => boole
       accessibilityLabel={e().title}
       onPress={props.onPress}
       hoverStyle={{ backgroundColor: colors.raise() }}
-      style={episodeRowStyle(props.focused())}
+      style={{ ...episodeRowStyle(props.focused()), ...(column ? { flex: 1, minWidth: 0 } : null) }}
     >
-      <Text style={numberStyle(e().watched)}>{String(e().number)}</Text>
-      <EpisodeThumb episode={e} />
-      <View style={{ flex: 1, gap: u(4) }}>
-        <Text style={titleStyle(e().watched)}>{e().title}</Text>
+      <If when={!column}>
+        <Text style={numberStyle(e().watched)}>{String(e().number)}</Text>
+      </If>
+      <EpisodeThumb episode={e} large={column} />
+      <View style={{ flex: 1, minWidth: 0, gap: u(4) }}>
+        <Text style={titleStyle(e().watched)}>
+          <Text style={inlineNumber(e().watched)}>{column ? `${e().number}  ` : ""}</Text>
+          {e().title}
+        </Text>
         <Text style={fontText(21, colors.ash())}>{metaOf(e())}</Text>
-        <Text style={aboutStyle()}>{e().about}</Text>
+        <Text style={aboutStyle(column ? 2 : 1)}>{e().about}</Text>
       </View>
       <View style={row(u(8))}>
         <If when={e().watched}>

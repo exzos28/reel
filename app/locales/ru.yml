@@ -211,7 +211,6 @@ detail:
   original_title: Оригинальное название
   release_date: Дата выхода
   first_aired: Премьера
-  runtime: Длительность
   status: Статус
   countries: Страна
   studios: Студия
@@ -341,6 +340,8 @@ search:
     shows: Не удалось загрузить сериалы.
     anime: Не удалось загрузить аниме.
   clear_query: "Очистить поиск"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "Показать все %{count}"
 
 compat:
   audio_dts: В этой раздаче звук только в DTS, а это устройство его не воспроизводит. Выберите другую раздачу.
@@ -557,7 +558,6 @@ saved:
     saving_left: "%{percent}% · %{have} из %{size} · осталось около %{time}"
     paused: "На паузе · %{have} из %{size}"
     waiting: Начнётся, когда закончится текущий просмотр
-    saved: "Сохранено · %{size}"
     unavailable: Его диск не подключён
   failed:
     no_source: Не нашлось раздачи для сохранения

@@ -970,7 +970,8 @@ function TracksPanel(props: {
   const isSelected = props.isSelected;
   const column = (col: number, heading: string, options: () => TrackRow[]) => (
     <View style={{ flex: col === 2 ? 1.25 : 1, paddingHorizontal: u(18), borderLeftWidth: col > 0 ? 1 : 0, borderColor: colors.raise() }}>
-      <Text style={{ fontFamily: font, fontSize: ts(21), fontWeight: 500, color: colors.ash(), marginLeft: u(16), marginBottom: u(10) }}>
+      {/* On touch the rows start under the panel's ✕ (top right), clear of the release's check. */}
+      <Text style={{ fontFamily: font, fontSize: ts(21), fontWeight: 500, color: colors.ash(), marginLeft: u(16), marginBottom: caps.touch ? u(34) : u(10) }}>
         {heading}
       </Text>
       {/* A long list scrolls inside the panel. */}

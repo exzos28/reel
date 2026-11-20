@@ -211,7 +211,6 @@ detail:
   original_title: "原名"
   release_date: "上映日期"
   first_aired: "首播"
-  runtime: "片长"
   status: "状态"
   countries: "国家/地区"
   studios: "制作公司"
@@ -341,6 +340,8 @@ search:
     shows: "无法加载剧集。"
     anime: "无法加载动漫。"
   clear_query: "清除搜索"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "显示全部 %{count} 个"
 
 compat:
   audio_dts: "此资源只有 DTS 音频，本设备无法播放。请选择其他资源。"
@@ -568,7 +569,6 @@ saved:
     saving_left: "%{percent}% · %{have}/%{size} · 剩余约 %{time}"
     paused: "已暂停 · %{have}/%{size}"
     waiting: "当前观看的影片停止后开始"
-    saved: "已保存 · %{size}"
     unavailable: "存储磁盘未连接"
   failed:
     no_source: "找不到可保存的资源"

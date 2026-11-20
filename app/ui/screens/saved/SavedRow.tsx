@@ -10,7 +10,7 @@ import { cover, rounded, row } from "../../kit/shape";
 import { labelText, metaText, oneLine } from "../../kit/text";
 import { Fmt } from "../../native";
 import type { SavedItem } from "../../library";
-import { alpha, colors, cs, density, targetSlop, u } from "../../theme";
+import { alpha, colors, cs, density, MIN_TARGET, targetSlop, u } from "../../theme";
 import { episodeCode, runtime } from "../../catalog";
 import { SpeedLine } from "../../kit/SpeedLine";
 import pauseIcon from "../../icons/pause.svg";
@@ -35,12 +35,16 @@ const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgr
 /** What is on the device: the player's "ready" tone, not the watched one. */
 const progressFill = (p: number): ViewStyle => ({ height: "100%", width: `${Math.round(p * 100)}%`, backgroundColor: alpha(colors.snow(), 0.45) });
 
+/** A round button's size (`IconButton`'s, scaled by `cs`): on touch a finger's 44 / 48 points,
+ * 12 points apart, so Play and Remove are not two small discs side by side. */
+export const BUTTON = Math.max(44, MIN_TARGET / cs(1));
+const buttonGap = () => (MIN_TARGET ? 12 : u(12));
 /** The state and the buttons line up down the page, a show's row and its episodes' alike: the
- * state is a column this wide, the buttons a block this wide, at the row's right edge. */
+ * state is a column this wide, the buttons a block this wide (three and their gaps), at the row's
+ * right edge. */
 export const STATE_W = 340;
-export const ACTIONS_W = 44 * 3 + 12 * 2;
 export const stateColumn = (): ViewStyle => ({ width: cs(STATE_W) });
-export const actionsBlock = (): ViewStyle => ({ ...row(u(12)), ...(compact ? {} : { width: cs(ACTIONS_W) }), justifyContent: "flex-end" });
+export const actionsBlock = (): ViewStyle => ({ ...row(buttonGap()), ...(compact ? {} : { width: 3 * cs(BUTTON) + 2 * buttonGap() }), justifyContent: "flex-end" });
 
 /** "S3:E5 · The Palace of Terror", or nothing for a film. */
 function episodeLine(i: SavedItem) {
@@ -56,8 +60,8 @@ export function savingText(progress: number, have: number, size: number, left: n
   return left == null ? t("saved.state.saving", words) : t("saved.state.saving_left", { ...words, time: runtime(left) });
 }
 
-/** The state in words: "34% · 1.2 of 3.4 GB · about 25 min left", "Paused", "Saved · 2.1 GB",
- * why it failed. */
+/** The state in words: "34% · 1.2 of 3.4 GB · about 25 min left", "Paused", "2.1 GB" (saved: its
+ * section's heading says so), why it failed. */
 export function stateLine(i: SavedItem): string {
   const size = Fmt.size(i.size);
   if (i.checking && (i.state === "saving" || i.state === "paused")) return t("saved.state.checking");
@@ -69,7 +73,7 @@ export function stateLine(i: SavedItem): string {
       return t("saved.state.paused", { have, size: of });
     }
     case "saved":
-      return t("saved.state.saved", { size });
+      return size;
     case "failed":
       return t(`saved.failed.${i.message && ["no_source", "not_in_release", "unsupported", "no_video", "interrupted", "no_peers", "no_space", "write", "path_too_long"].includes(i.message) ? i.message : "other"}`);
     default:
@@ -133,11 +137,11 @@ export function SavedRow(props: {
       </If>
       <View style={actionsBlock()}>
         <If when={i().state === "saved"}>
-          <IconButton size={44} icon={() => playIcon} label={() => t("title.play")} focused={() => props.focusedPart() === 1} background={() => colors.raise()} onPress={props.onPlay} />
+          <IconButton size={BUTTON} icon={() => playIcon} label={() => t("title.play")} focused={() => props.focusedPart() === 1} background={() => colors.raise()} onPress={props.onPlay} />
         </If>
         <If when={i().state === "saving" || i().state === "paused"}>
           <IconButton
-            size={44}
+            size={BUTTON}
             icon={() => (i().state === "paused" ? playIcon : pauseIcon)}
             label={() => t(i().state === "paused" ? "saved.resume" : "saved.pause")}
             focused={() => props.focusedPart() === 1}
@@ -146,7 +150,7 @@ export function SavedRow(props: {
           />
         </If>
         <IconButton
-          size={44}
+          size={BUTTON}
           icon={() => trashIcon}
           label={() => t("saved.remove")}
           focused={() => props.focusedPart() === 2}

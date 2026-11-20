@@ -10,7 +10,7 @@
 // Down past the list walks the cast row, then More like this, where OK opens
 // the title; OK on a person of the cast opens their page. Back closes the release panel, then
 // goes one level up.
-import { computed, effect, keymap, openUrl, signal, View } from "nsh";
+import { computed, effect, keymap, openUrl, signal, View, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { chooseRelease, episodeCode, episodeReleases, episodes, releaseLine, releasesText, title as titleOf, titleText, toggleList, type Episode, type Title } from "../../catalog";
 import { clamp } from "../../focus/memory";
@@ -27,7 +27,8 @@ import { SaveDrawer } from "./SaveDrawer";
 import { openSourceDrawer } from "../source/SourceDrawer";
 import { playGate } from "../source/playGate";
 import { pickReleaseFor, play as startPlay, playing } from "../../playback";
-import { u } from "../../theme";
+import { safe, u } from "../../theme";
+import { aboutBesideDetails, TEXT_MAX } from "../../layout/wide";
 import { AboutBlock, hasAbout } from "./AboutBlock";
 import { LazyBlock } from "../../layout/LazyBlock";
 import { CastRow } from "./CastRow";
@@ -38,6 +39,10 @@ import { SeriesEpisodes } from "./SeriesEpisodes";
 import { shelfCardWidth, wideCardHeight } from "../home/WideCard";
 import { SimilarShelf } from "./SimilarShelf";
 import { heroActions, TitleHero } from "./TitleHero";
+
+/** About and Details side by side: at the inset, each a column no longer than `TEXT_MAX`. */
+const besideStyle = (): ViewStyle => ({ flexDirection: "row", alignItems: "flex-start", gap: u(72), paddingHorizontal: safe().x });
+const besideColumn = (): ViewStyle => ({ flex: 1, minWidth: 0, maxWidth: TEXT_MAX });
 
 
 export function TitleScreen(props: { id: string }) {
@@ -359,10 +364,29 @@ export function TitleScreen(props: { id: string }) {
           }}
         />
       </If>
-      {/* About and the cast come into view together as the remote reaches the cast. */}
+      {/* About and the cast come into view together as the remote reaches the cast. A tablet held
+          wide sets About and Details side by side (lines of text not 1100 points long). */}
       <View ref={page.follow(() => zone() === "cast")} style={{ gap: u(48), marginTop: u(56) }}>
-        <If when={hasAbout(data())}>
-          <AboutBlock data={data} />
+        <If
+          when={aboutBesideDetails() && (hasAbout(data()) || hasDetails(data()))}
+          else={
+            <If when={hasAbout(data())}>
+              <AboutBlock data={data} />
+            </If>
+          }
+        >
+          <View style={besideStyle()}>
+            <If when={hasAbout(data())}>
+              <View style={besideColumn()}>
+                <AboutBlock data={data} bare />
+              </View>
+            </If>
+            <If when={hasDetails(data())}>
+              <View style={besideColumn()}>
+                <DetailsBlock data={data} bare />
+              </View>
+            </If>
+          </View>
         </If>
         <If when={cast().length > 0}>
           <LazyBlock page={page} height={() => u(300)}>
@@ -376,7 +400,7 @@ export function TitleScreen(props: { id: string }) {
       </View>
       {/* So do the details and More like this. */}
       <View ref={page.follow(() => zone() === "similar")} style={{ gap: u(48), marginTop: u(48) }}>
-        <If when={hasDetails(data())}>
+        <If when={hasDetails(data()) && !aboutBesideDetails()}>
           <DetailsBlock data={data} />
         </If>
         <If when={similar().length > 0}>

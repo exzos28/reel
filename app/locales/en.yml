@@ -213,7 +213,6 @@ detail:
   original_title: Original title
   release_date: Release date
   first_aired: First aired
-  runtime: Runtime
   status: Status
   countries: Country
   studios: Studio
@@ -343,6 +342,8 @@ search:
     shows: Could not load series.
     anime: Could not load anime.
   clear_query: "Clear search"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "Show all %{count}"
 
 compat:
   audio_dts: This release has only DTS audio, which this device cannot play. Choose another release.
@@ -571,7 +572,6 @@ saved:
     saving_left: "%{percent}% · %{have} of %{size} · about %{time} left"
     paused: "Paused · %{have} of %{size}"
     waiting: Starts when the film you watch stops
-    saved: "Saved · %{size}"
     unavailable: Its disk is not connected
   failed:
     no_source: No release found to save

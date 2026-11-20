@@ -3,7 +3,8 @@
 // the language). Where it sits is the platform's (design/navigation.md, "Panels"):
 // - TV: at the right, the full height, no ✕ (the remote's Back closes it);
 // - desktop: an NSH Sheet at the right, over the window bar, the full height, with ✕;
-// - tablet: a floating sheet at the right, with ✕;
+// - tablet: a floating sheet at the right, under the status bar, with ✕ (a short list of choices
+//   is a popover instead: ChoicePanel);
 // - phone: a sheet from the bottom, with a grabber (swiped down to close) and ✕; held sideways,
 //   a drawer that asks for it (`sideways`: the player's) is a full-height sheet at the right.
 //   Its heading stays put and only the rows scroll under it. From the bottom it is as tall as
@@ -40,6 +41,11 @@ const tvPanel = (width: number): ViewStyle => ({
 
 /** A sideways phone's sheet at the right, points, besides the safe area beside it. */
 const SIDE_WIDTH = 360;
+/** A tablet's floating sheet: its width, the most of the screen's it takes (a portrait one's
+ * 834 points), and its room from the screen's edges and bars, points. */
+const FLOAT_WIDTH = 440;
+const FLOAT_SHARE = 0.48;
+const FLOAT_MARGIN = 12;
 
 /** Where this drawer sits: `side` for a sideways phone's (`sideways` asked for). */
 type Place = "tv" | "side-sheet" | "floating-sheet" | "bottom-sheet" | "side";
@@ -65,7 +71,16 @@ function sheetStyle(place: Place): ViewStyle {
     return { width: SIDE_WIDTH + safeArea().right, backgroundColor: colors.card(), borderTopLeftRadius: 22, borderBottomLeftRadius: 22, borderCurve: "continuous" };
   if (place === "bottom-sheet")
     return { backgroundColor: colors.card(), borderTopLeftRadius: 22, borderTopRightRadius: 22, borderCurve: "continuous" };
-  if (frame.panel === "floating-sheet") return { width: 440, margin: 12, backgroundColor: colors.card(), ...rounded(22) };
+  // A tablet's: clear of the status bar and the home indicator; in portrait under half the screen.
+  if (frame.panel === "floating-sheet")
+    return {
+      width: Math.min(FLOAT_WIDTH, windowSize().width * FLOAT_SHARE),
+      margin: FLOAT_MARGIN,
+      marginTop: safeArea().top + FLOAT_MARGIN,
+      marginBottom: safeArea().bottom + FLOAT_MARGIN,
+      backgroundColor: colors.card(),
+      ...rounded(22),
+    };
   // A desktop's: over everything, the window bar too, the full height.
   return { width: 460, backgroundColor: colors.card(), borderLeftWidth: 1, borderLeftColor: alpha(colors.snow(), 0.08) };
 }
@@ -94,6 +109,9 @@ const closeStyle = (place: Place): ViewStyle => ({
   backgroundColor: colors.raise(),
   zIndex: 2,
 });
+/** How far in from a drawer's sides its rows start, points: a row that scrolls sideways (the
+ * Save drawer's seasons) runs out to the edge by this much, so the cut shows it goes on. */
+export const drawerPad = () => (frame.panel === "tv" ? u(48) : phone() ? PHONE_PAD : 16);
 const contentStyle = (): ViewStyle =>
   frame.panel === "tv"
     ? { paddingHorizontal: u(48), paddingTop: safe().y, paddingBottom: safe().y, gap: u(20) }

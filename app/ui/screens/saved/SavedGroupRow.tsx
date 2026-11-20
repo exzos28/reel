@@ -12,7 +12,7 @@ import type { SavedGroup } from "../../library";
 import { alpha, colors, cs, targetSlop, u } from "../../theme";
 import chevronIcon from "../../icons/chevron.svg";
 import { SpeedLine } from "../../kit/SpeedLine";
-import { actionsBlock, compact, savingText, stateColumn } from "./SavedRow";
+import { actionsBlock, BUTTON, compact, savingText, stateColumn } from "./SavedRow";
 import pauseIcon from "../../icons/pause.svg";
 import playIcon from "../../icons/play.svg";
 import trashIcon from "../../icons/trash.svg";
@@ -90,7 +90,7 @@ export function SavedGroupRow(props: {
       <View style={actionsBlock()}>
         <If when={props.onPause}>
           <IconButton
-            size={44}
+            size={BUTTON}
             icon={() => (props.paused() ? playIcon : pauseIcon)}
             label={() => t(props.paused() ? "saved.resume_all" : "saved.pause_all")}
             focused={() => props.focusedPart() === 1}
@@ -101,7 +101,7 @@ export function SavedGroupRow(props: {
         <View style={{ transform: [{ rotate: props.open() ? "180deg" : "0deg" }] }}>
           <Icon src={() => chevronIcon} size={22} color={() => colors.snow()} />
         </View>
-        <IconButton size={44} icon={() => trashIcon} label={() => t("saved.remove_all")} focused={() => props.focusedPart() === 2} background={() => colors.raise()} onPress={props.onRemove} />
+        <IconButton size={BUTTON} icon={() => trashIcon} label={() => t("saved.remove_all")} focused={() => props.focusedPart() === 2} background={() => colors.raise()} onPress={props.onRemove} />
       </View>
     </Pressable>
   );

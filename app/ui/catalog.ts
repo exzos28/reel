@@ -51,6 +51,8 @@ export interface Summary {
   notice: string | null;
   anime: boolean;
   year: number | null;
+  /** On a person's page: the part they played there (null: not named). */
+  role?: string | null;
   yearEnd: number | null;
   minutes: number;
   rating: string;
@@ -142,6 +144,8 @@ export interface PersonPage {
   photo: string | null;
   initials: string;
   items: Summary[];
+  /** What its cards say under their names ("role"). */
+  facet: Facet;
   state: "done" | "loading" | "unavailable";
 }
 
@@ -215,7 +219,9 @@ export interface EpisodeReleases {
 
 /** What a list's cards show under their names (the core's): the year (a list of films only),
  * or the kind ("Movie", "3 seasons"). */
-export type Facet = "year" | "kind";
+/** What a card says under its name: its year, its kind, or (a person's page) its year and the
+ * part they played there ("1999 · Neo"). */
+export type Facet = "year" | "kind" | "role";
 
 export interface Shelf {
   /** Also the translation key `shelf.<id>`. */
@@ -401,6 +407,7 @@ export const lengthText = (s: Summary) => (s.kind === "show" ? kindText(s) : s.m
  * or "Movie" / "3 seasons"; a film without a year says its kind; a notice card nothing. */
 export function facetText(s: Summary, facet: Facet) {
   if (s.notice) return "";
+  if (facet === "role") return [s.year != null ? String(s.year) : "", s.role ?? ""].filter(Boolean).join(" · ") || kindText(s);
   return facet === "year" && s.year != null ? String(s.year) : kindText(s);
 }
 

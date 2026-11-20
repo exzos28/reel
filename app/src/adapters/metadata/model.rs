@@ -314,6 +314,9 @@ pub struct Person {
     /// Their films and series, each once (a part they played, or for someone not known for
     /// acting a job they did), in the source's order.
     pub credits: Vec<TitleCard>,
+    /// The part an actor played in each of `credits`, by its id ("Neo"), as the source names it;
+    /// none where it names none or for someone not known for acting (TMDB's jobs are English only).
+    pub parts: std::collections::BTreeMap<String, String>,
 }
 
 /// A title on a shelf or in search results.

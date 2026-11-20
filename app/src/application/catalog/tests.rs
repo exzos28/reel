@@ -408,6 +408,10 @@ fn a_person_page_lists_their_titles_best_known_first() {
     // Each title once, the most voted first; no talk show, no film he only directed.
     assert_eq!(ids, ["tmdb:movie:603", "tmdb:movie:604", "tmdb:tv:94954"]);
     assert_eq!(p["items"][2]["kind"], "show");
+    // The part he played in each (the first the source names: Neo, not Thomas A. Anderson).
+    let roles: Vec<_> = p["items"].as_array().unwrap().iter().map(|s| s["role"].clone()).collect();
+    assert_eq!(roles, [json!("Neo"), json!("Neo"), json!("Tex")]);
+    assert_eq!(p["facet"], "role");
 }
 
 #[test]

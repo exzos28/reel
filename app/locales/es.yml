@@ -211,7 +211,6 @@ detail:
   original_title: "Título original"
   release_date: "Fecha de estreno"
   first_aired: "Primera emisión"
-  runtime: "Duración"
   status: "Estado"
   countries: "País"
   studios: "Estudio"
@@ -341,6 +340,8 @@ search:
     shows: "No se han podido cargar las series."
     anime: "No se ha podido cargar el anime."
   clear_query: "Borrar búsqueda"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "Ver los %{count}"
 
 compat:
   audio_dts: "Esta versión solo tiene audio DTS, que este dispositivo no puede reproducir. Elige otra versión."
@@ -568,7 +569,6 @@ saved:
     saving_left: "%{percent} % · %{have} de %{size} · quedan unos %{time}"
     paused: "En pausa · %{have} de %{size}"
     waiting: "Empezará cuando termine lo que estás viendo"
-    saved: "Guardado · %{size}"
     unavailable: "Su disco no está conectado"
   failed:
     no_source: "No se ha encontrado ninguna versión para guardar"

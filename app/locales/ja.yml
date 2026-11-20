@@ -211,7 +211,6 @@ detail:
   original_title: "原題"
   release_date: "公開日"
   first_aired: "初回放送"
-  runtime: "上映時間"
   status: "ステータス"
   countries: "国"
   studios: "スタジオ"
@@ -341,6 +340,8 @@ search:
     shows: "ドラマを読み込めませんでした。"
     anime: "アニメを読み込めませんでした。"
   clear_query: "検索をクリア"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "すべて表示（%{count}）"
 
 compat:
   audio_dts: "このリリースの音声は DTS のみで、このデバイスでは再生できません。別のリリースを選んでください。"
@@ -568,7 +569,6 @@ saved:
     saving_left: "%{percent}% · %{have}/%{size} · 残り約%{time}"
     paused: "一時停止中 · %{have}/%{size}"
     waiting: "視聴中の映画を止めると開始します"
-    saved: "保存済み · %{size}"
     unavailable: "保存先のディスクが接続されていません"
   failed:
     no_source: "保存できるリリースが見つかりません"

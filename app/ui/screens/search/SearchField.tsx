@@ -22,10 +22,14 @@ const boxStyle = (focused: boolean): ViewStyle => ({
 // The placeholder in the theme's grey: Android drew it dark on the dark field.
 const inputStyle = (): InputStyle => ({ flex: 1, height: cs(72), color: colors.snow(), placeholderColor: colors.ash(), caretColor: colors.snow(), selectionColor: alpha(colors.snow(), 0.3), ...type.body() });
 
+/** The ✕'s box, points: with its slop a finger's 44 / 48. */
+const CLEAR = 32;
+const clearStyle = (): ViewStyle => ({ width: CLEAR, height: CLEAR, alignItems: "center", justifyContent: "center" });
+
 /** The ✕ at the field's end that empties it (a finger or a pointer; a TV's keyboard deletes). */
 function ClearButton(props: { onPress: () => void }) {
   return (
-    <Pressable testID="search-field-clear" role="button" accessibilityLabel={t("search.clear_query")} hitSlop={targetSlop(30)} onPress={props.onPress}>
+    <Pressable testID="search-field-clear" role="button" accessibilityLabel={t("search.clear_query")} hitSlop={targetSlop(CLEAR)} onPress={props.onPress} style={clearStyle()}>
       <Text style={metaText(colors.ash())}>✕</Text>
     </Pressable>
   );

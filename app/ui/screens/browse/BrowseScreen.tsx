@@ -7,7 +7,7 @@
 // title. Back closes the panel, then takes the focus to the nav, then Home. A new grid puts the grid's focus on its first card.
 // The grid has no end: within two rows of its last (or when the page scrolls near it) the
 // core is asked for its next page, which lands under the rows shown; the focus stays.
-import { computed, effect, Text, untracked, View } from "nsh";
+import { computed, effect, Text, untracked, View, type ViewRef } from "nsh";
 import { t } from "nsh/i18n";
 import { browse, browseMore, chooseFilter, clearFilters, type Summary } from "../../catalog";
 import { caps } from "../../platform";
@@ -35,6 +35,8 @@ const NEAR_ROWS = 2;
 
 export function BrowseScreen(props: { page: Page }) {
   const data = computed(() => browse(props.page));
+  /** The filter pills' views by index: a tablet's panel opens beside the pill. */
+  const pills = new Map<number, ViewRef>();
   const { zone, nav, trend, pill, row, cell, gridIds } = focusOf[props.page];
   /** Cards per grid row: as many as fit at about 330 TV pixels each. */
   const columns = computed(() => gridColumnsNow());
@@ -210,6 +212,7 @@ export function BrowseScreen(props: { page: Page }) {
           openAt={() => (panelOpen() ? pill() : null)}
           blockRef={page.follow(() => zone() === "filters" || zone() === "panel", "nearest")}
           onOpen={openPanel}
+          pillRef={(i, r) => pills.set(i, r)}
         />
         <If when={stateText()}>
           <Text style={{ ...metaText(), paddingHorizontal: safe().x, marginTop: u(24) }}>{stateText()}</Text>
@@ -244,7 +247,7 @@ export function BrowseScreen(props: { page: Page }) {
         />
       </PageFrame>
       <If when={panelOpen()}>
-        <FilterPanel group={() => panelGroup()!} focusedAt={row} onPress={pick} onClose={closePanel} />
+        <FilterPanel group={() => panelGroup()!} focusedAt={row} onPress={pick} onClose={closePanel} anchor={() => pills.get(pill())} />
       </If>
     </View>
   );

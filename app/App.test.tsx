@@ -182,7 +182,8 @@ test("in a Mac window the screens lay out with all their columns", async () => {
   expect(app.shows("label:1080p BluRay · 8 GB · 412 people sharing")).toBe(true);
   await app.keyboard.press("right"); // ⌄ in Play, the other releases
   await app.keyboard.press("enter"); // the releases panel, with all its columns
-  expect(app.texts()).toContain("60 GB · 38"); // its size and the people sharing
+  expect(app.texts().some((x) => x.endsWith("60 GB ·"))).toBe(true); // its size
+  expect(app.texts()).toContain("38"); // and the people sharing, kept with their icon
   await app.keyboard.press("escape");
   await app.keyboard.press("escape");
   await app.press("label:Series");

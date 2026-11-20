@@ -43,12 +43,14 @@ test("Settings: on a desktop the window bar's nav sits where the settings say", 
   expect(app.shows("window-nav-right")).toBe(false);
 });
 
-test("Settings: a phone's Interface has no Menu position (its tab bar stays), but has Loading animation", async () => {
+test("Settings: on a phone Loading animation is a row of Settings (no Interface page: its tab bar has no Menu position)", async () => {
   const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": NATIVE } });
   await app.press("label:Settings");
-  await app.press("label:Interface");
-  expect(app.texts()).toContain("Loading animation");
+  expect(app.shows("label:Interface")).toBe(false);
   expect(app.texts()).not.toContain("Menu position");
+  await app.press("label:Loading animation");
+  expect(app.shows("choice-panel")).toBe(true);
+  expect(app.texts()).toContain("Dinosaur");
 });
 
 test("Settings: Loading animation offers reel (the default) and the dinosaur; picking the dinosaur asks the core", async () => {

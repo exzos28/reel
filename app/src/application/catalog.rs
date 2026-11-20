@@ -1809,14 +1809,16 @@ pub fn title(id: &str) -> Value {
 /// How many titles a person's page shows.
 const PERSON_TITLES: usize = 60;
 
-/// A person's page: `{"id","name","photo","initials","items":[summary…],"state"}`, the titles
-/// they are in, the best known first (the most votes on TMDB). `state`: "done", "loading" (not
-/// known yet: `name` empty, no titles) or "unavailable" (the source did not answer).
+/// A person's page: `{"id","name","photo","initials","items":[summary…],"facet","state"}`, the
+/// titles they are in, the best known first (the most votes on TMDB), each with `role`: the part
+/// they played there (null when the source names none); `facet` "role": a card says its year and
+/// that part. `state`: "done", "loading" (not known yet: `name` empty, no titles) or
+/// "unavailable" (the source did not answer).
 pub fn person(id: &str) -> Value {
     let call = Call::Person(id.to_owned());
     let Some(p) = meta_all(std::slice::from_ref(&call)).remove(0) else {
         let state = if answered(&call) { "unavailable" } else { "loading" };
-        return json!({ "id": id, "name": "", "photo": null, "initials": "", "items": [], "state": state });
+        return json!({ "id": id, "name": "", "photo": null, "initials": "", "items": [], "facet": "role", "state": state });
     };
     let name = text(&p["name"]).unwrap_or_default();
     let mut cards: Vec<&Value> = list_of(&p["credits"]).iter().collect();
@@ -1827,7 +1829,16 @@ pub fn person(id: &str) -> Value {
         "photo": image_url(&p["profile"], details::PHOTO_W * 2),
         "initials": details::initials(&name),
         "name": name,
-        "items": cards.into_iter().take(PERSON_TITLES).map(|c| summary(&card_info(c))).collect::<Vec<_>>(),
+        "items": cards
+            .into_iter()
+            .take(PERSON_TITLES)
+            .map(|c| {
+                let mut s = summary(&card_info(c));
+                s["role"] = p["parts"].get(c["id"].as_str().unwrap_or_default()).cloned().unwrap_or(Value::Null);
+                s
+            })
+            .collect::<Vec<_>>(),
+        "facet": "role",
         "state": "done",
     })
 }

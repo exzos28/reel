@@ -42,7 +42,7 @@ away; Search and Settings are nav items but open as deep pages with a back butto
 | Nav on scroll | Scrolls away with the page | Stays; clear over a hero, solid ink 96% + 1 px hairline once content is under it | Stays; turns solid like desktop | Stays (bottom); the top head scrolls away, an inline nav bar appears |
 | Visible Back | **None.** The remote's Back key | In the window bar: macOS after the traffic lights, Windows at the left edge, GNOME at the header bar's start | Top-left of the top row: "‹ Movies" (iPad), ← (Android) | Over a hero: 40 pt disc at top-left; scrolled: nav bar "‹ Movies" (iOS) / ← (Android) |
 | Other ways back | — | ⌘[ / ⌘← (mac), Alt+← / Backspace (Win, Linux), mouse button 4, trackpad swipe (mac), Esc | Left-edge swipe (iPad), system back + predictive back (Android) | Edge swipe (iOS), system back + predictive back (Android) |
-| Panels | Side panel 1080 px, no close button | Side panel 460 pt under the bar, ✕ | Floating side sheet 440 pt, ✕ | Bottom sheet with grabber, ✕ |
+| Panels | Side panel 1080 px, no close button | Side panel 460 pt under the bar, ✕ | Floating side sheet 440 pt under the status bar, ✕; a short choice (a setting, a filter): a popover 320 pt by what opened it | Bottom sheet with grabber, ✕ |
 | Player exit | Back (twice if the controls are up) | Back in the bar's Back slot, Esc | ✕ top-left, swipe down | ✕ top-left, swipe down |
 | Settings | Nav destination (gear selected) | Nav destination (gear selected) | A sheet in the middle over the current page (gear button) | A tab of its own |
 | Search | Nav destination | Nav destination | Icon tab in the tab bar | Fifth tab |

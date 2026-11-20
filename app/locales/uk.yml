@@ -211,7 +211,6 @@ detail:
   original_title: "Оригінальна назва"
   release_date: "Дата виходу"
   first_aired: "Прем’єра"
-  runtime: "Тривалість"
   status: "Статус"
   countries: "Країна"
   studios: "Студія"
@@ -341,6 +340,8 @@ search:
     shows: "Не вдалося завантажити серіали."
     anime: "Не вдалося завантажити аніме."
   clear_query: "Очистити пошук"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "Показати всі %{count}"
 
 compat:
   audio_dts: "У цій роздачі звук лише в DTS, а цей пристрій його не відтворює. Виберіть іншу роздачу."
@@ -568,7 +569,6 @@ saved:
     saving_left: "%{percent}% · %{have} з %{size} · залишилося близько %{time}"
     paused: "На паузі · %{have} з %{size}"
     waiting: "Почнеться, коли закінчиться поточний перегляд"
-    saved: "Збережено · %{size}"
     unavailable: "Його диск не підключено"
   failed:
     no_source: "Не знайшлося роздачі для збереження"

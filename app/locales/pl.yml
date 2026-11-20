@@ -211,7 +211,6 @@ detail:
   original_title: "Tytuł oryginalny"
   release_date: "Data premiery"
   first_aired: "Premiera"
-  runtime: "Czas trwania"
   status: "Status"
   countries: "Kraj"
   studios: "Studio"
@@ -341,6 +340,8 @@ search:
     shows: "Nie udało się wczytać seriali."
     anime: "Nie udało się wczytać anime."
   clear_query: "Wyczyść wyszukiwanie"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "Pokaż wszystkie (%{count})"
 
 compat:
   audio_dts: "To wydanie ma dźwięk tylko w DTS, którego to urządzenie nie odtwarza. Wybierz inne wydanie."
@@ -568,7 +569,6 @@ saved:
     saving_left: "%{percent}% · %{have} z %{size} · zostało około %{time}"
     paused: "Wstrzymane · %{have} z %{size}"
     waiting: "Zacznie się, gdy skończy się bieżące oglądanie"
-    saved: "Zapisano · %{size}"
     unavailable: "Jego dysk nie jest podłączony"
   failed:
     no_source: "Nie znaleziono wydania do zapisania"

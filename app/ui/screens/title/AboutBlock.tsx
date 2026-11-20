@@ -25,10 +25,11 @@ const crewRow = (): ViewStyle => ({ flexDirection: "row", gap: u(24), alignItems
 const crewLabelStyle = (): TextStyle => ({ ...metaText(), width: u(220) });
 const crewNames = (): TextStyle => ({ ...labelText(), fontWeight: 400, flexShrink: 1 });
 
-export function AboutBlock(props: { data: () => Title }) {
+/** `bare`: in a column of its own (beside Details), which gives the inset and the width. */
+export function AboutBlock(props: { data: () => Title; bare?: boolean }) {
   const d = props.data;
   return (
-    <View style={blockStyle()}>
+    <View style={props.bare ? { gap: u(18) } : blockStyle()}>
       <SectionTitle text={() => t("about.title")} />
       <If when={overviewHere(d())}>
         <Text style={overviewStyle()}>{aboutText(d())}</Text>
