@@ -49,15 +49,19 @@ async fn wait_for_bitv(file: &Path, content: &[u8]) {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_fastresume_folder() {
-    // Two files, 8 pieces of 1 KiB; piece 2 spans both (file 0 ends at 3000).
+    // Two files of 4000 bytes, 8 pieces of 1 KiB; piece 3 spans both. The files are the same
+    // size so that the layout does not depend on the order `create_torrent` reads the folder in
+    // (readdir order, not sorted on Linux); `second` is whichever the torrent has second.
     let dir = tempfile::TempDir::with_prefix("rqbit_fastresume").unwrap();
     let files = dir.path().join("files");
     let fr = dir.path().join("fastresume");
     std::fs::create_dir_all(files.join("t")).unwrap();
     std::fs::create_dir_all(&fr).unwrap();
-    let content: Vec<u8> = (0..8000u32).map(|i| (i.wrapping_mul(2654435761) >> 13) as u8).collect();
-    std::fs::write(files.join("t/0.data"), &content[..3000]).unwrap();
-    std::fs::write(files.join("t/1.data"), &content[3000..]).unwrap();
+    let content = |seed: u32| -> Vec<u8> {
+        (0..4000u32).map(|i| ((i + seed).wrapping_mul(2654435761) >> 13) as u8).collect()
+    };
+    std::fs::write(files.join("t/0.data"), content(0)).unwrap();
+    std::fs::write(files.join("t/1.data"), content(7919)).unwrap();
     let torrent = create_torrent(
         &files.join("t"),
         CreateTorrentOptions {
@@ -68,6 +72,11 @@ async fn test_fastresume_folder() {
     )
     .await
     .unwrap();
+    let info = torrent.as_info().info.data.clone().validate().unwrap();
+    let names: Vec<_> = info.iter_file_details().map(|f| f.filename.to_pathbuf()).collect();
+    assert_eq!(names.len(), 2);
+    let second = files.join("t").join(&names[1]);
+    let second_content = std::fs::read(&second).unwrap();
     let bitv = fr.join(format!("{}.bitv", torrent.info_hash().as_string()));
     let torrent = torrent.as_bytes().unwrap().to_vec();
 
@@ -92,27 +101,27 @@ async fn test_fastresume_folder() {
     std::fs::write(&bitv, [0x7f]).unwrap();
     assert_eq!(have_after_add(&session, &torrent, &files, &fr).await, 8000 - 1024);
 
-    // File 1 truncated: refused before hashing, a full check finds pieces 0-2 (piece 3 runs
-    // past the 1000 bytes left).
+    // The second file truncated to 1000 bytes: refused before hashing (its first claimed
+    // piece, 3, still hashes fine), a full check finds pieces 0-3 (piece 4 runs past them).
     std::fs::write(&bitv, [0xff]).unwrap();
-    std::fs::write(files.join("t/1.data"), &content[3000..4000]).unwrap();
+    std::fs::write(&second, &second_content[..1000]).unwrap();
+    assert_eq!(have_after_add(&session, &torrent, &files, &fr).await, 4096);
+    wait_for_bitv(&bitv, &[0b1111_0000]).await;
+
+    // The second file rewritten with zeros at its full length: the lengths fit, the hash of its
+    // first claimed piece does not, so a full check finds pieces 0-2.
+    std::fs::write(&bitv, [0xff]).unwrap();
+    std::fs::write(&second, vec![0u8; 4000]).unwrap();
     assert_eq!(have_after_add(&session, &torrent, &files, &fr).await, 3072);
     wait_for_bitv(&bitv, &[0b1110_0000]).await;
 
-    // File 1 rewritten with zeros at its full length: the lengths fit, the hash of its first
-    // claimed piece does not, so a full check finds pieces 0-1.
+    // The second file gone: a full check.
     std::fs::write(&bitv, [0xff]).unwrap();
-    std::fs::write(files.join("t/1.data"), vec![0u8; 5000]).unwrap();
-    assert_eq!(have_after_add(&session, &torrent, &files, &fr).await, 2048);
-    wait_for_bitv(&bitv, &[0b1100_0000]).await;
-
-    // File 1 gone: a full check.
-    std::fs::write(&bitv, [0xff]).unwrap();
-    std::fs::remove_file(files.join("t/1.data")).unwrap();
-    assert_eq!(have_after_add(&session, &torrent, &files, &fr).await, 2048);
+    std::fs::remove_file(&second).unwrap();
+    assert_eq!(have_after_add(&session, &torrent, &files, &fr).await, 3072);
 
     // A bitfield of another length (another torrent's): a full check.
-    std::fs::write(files.join("t/1.data"), &content[3000..]).unwrap();
+    std::fs::write(&second, &second_content).unwrap();
     std::fs::write(&bitv, [0x00, 0x00]).unwrap();
     assert_eq!(have_after_add(&session, &torrent, &files, &fr).await, 8000);
     wait_for_bitv(&bitv, &[0xff]).await;
