@@ -293,6 +293,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/platform/window.ts`.
 - `kind() -> String`: `"mpv"` where reel's mpv view (`reel/mpv`) can play (macOS with libmpv found: MKV, every codec, track selection), else `"native"` (NSH's `<Video>`, the platform's player). Choosing mpv also sets the search profile to it, so releases only mpv plays are offered. On a Samsung TV (the `tizen` profile its host sets) `"avplay"`: the TV shell's AVPlay draws under the web UI.
   Called from: `ui/VideoSurface.tsx`.
+- `sideways(width: f64, height: f64) -> bool`: Whether a phone's player starts sideways for a film of this size (the video view's `width` and `height` once loaded): 16:9 and wider do (`reel_domain::play::starts_sideways`).
+  Called from: `ui/Player.tsx`.
 - `turn(landscape: bool)`: Turns the screen to landscape (`true`) or portrait, whatever the device's rotation lock says: the player's Rotate button (iOS; elsewhere nothing). The device turning it back (rotation unlocked) still turns it.
   Called from: `ui/Player.tsx`.
 - `views() -> bool`: Whether reel's own native views are registered on this device (Android: the Java ones `build/android-views.sh` adds to the APK; registered on the first call).
