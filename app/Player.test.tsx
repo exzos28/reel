@@ -266,3 +266,71 @@ test("Mac: the Back in the window bar's slot closes the player, while it starts 
     expect(app.shows("scrubber")).toBe(false);
   }
 });
+
+// A phone: the tracks and the episodes are sheets (from the bottom; at the right held sideways)
+// with their own ✕, not panels over the picture.
+const PORTRAIT = { width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 } };
+const SIDEWAYS = { width: 852, height: 393, safeArea: { top: 0, bottom: 21, left: 62, right: 62 } };
+
+async function phonePlaying(screen: typeof PORTRAIT, over: Record<string, unknown> = {}, start = "Play") {
+  const app = await openApp({
+    platform: "ios", ...screen, clock: {},
+    modules: { "app/native": { ...NATIVE, ...DUNE_FIRST, ...STILL, "Engine.status": status, "Engine.timeline": timeline, ...over } },
+  });
+  await app.press(start);
+  await app.wait(600);
+  return app;
+}
+
+test("phone: Audio and subtitles is a sheet, one list at a time under Audio, Subtitles and Release", async () => {
+  const app = await phonePlaying(PORTRAIT);
+  await app.press("label:Audio and subtitles");
+  expect(app.shows("tracks-panel")).toBe(true);
+  expect(app.shows("tracks-grabber")).toBe(true); // from the bottom
+  expect(app.shows("id:audio-original")).toBe(true);
+  expect(app.shows("id:subtitles-off")).toBe(false);
+  await app.press("id:tracks-tab-1"); // Subtitles
+  expect(app.shows("id:subtitles-off")).toBe(true);
+  expect(app.shows("id:audio-original")).toBe(false);
+  await app.press("id:tracks-tab-2"); // Release
+  expect(app.texts()).toContain("720p WEB");
+  await app.press("id:release-0");
+  expect(app.shows("tracks-panel")).toBe(true); // a pick keeps it open
+  await app.drag("id:release-0", { y: 400 }); // a swipe down on the sheet closes the sheet only
+  await app.wait(600);
+  expect(app.shows("scrubber")).toBe(true);
+  if (!app.shows("tracks-panel")) await app.press("label:Audio and subtitles");
+  await app.press("id:tracks-close"); // the sheet's ✕, not the player's
+  await app.wait(600);
+  expect(app.shows("tracks-panel")).toBe(false);
+  expect(app.shows("scrubber")).toBe(true);
+});
+
+test("phone held sideways: the tracks are a sheet at the right; Back closes it, not the player", async () => {
+  const app = await phonePlaying(SIDEWAYS);
+  await app.press("label:Audio and subtitles");
+  expect(app.shows("tracks-panel")).toBe(true);
+  expect(app.shows("tracks-grabber")).toBe(false); // at the right, the full height
+  await app.keyboard.press("escape");
+  await app.wait(600);
+  expect(app.shows("tracks-panel")).toBe(false);
+  expect(app.shows("scrubber")).toBe(true);
+});
+
+test("phone: Episodes is a sheet titled with the season and its count, the numbers in their own column", async () => {
+  const app = await phonePlaying(PORTRAIT, AOT_FIRST, "Resume S3:E2");
+  await app.press("label:Episodes");
+  expect(app.shows("episodes-panel")).toBe(true);
+  expect(app.texts()).toContain("Season 3 · 4 episodes");
+  expect(app.texts()).toContain("Old Story"); // not "3. Old Story"
+  expect(app.texts()).not.toContain("3. Old Story");
+  await app.keyboard.press("escape");
+  await app.wait(600);
+  expect(app.shows("episodes-panel")).toBe(false);
+  expect(app.shows("scrubber")).toBe(true);
+  await app.press("label:Episodes");
+  await app.press("id:episodes-close");
+  await app.wait(600);
+  expect(app.shows("episodes-panel")).toBe(false);
+  expect(app.shows("scrubber")).toBe(true);
+});

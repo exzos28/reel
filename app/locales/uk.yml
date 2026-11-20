@@ -320,6 +320,9 @@ player:
   close_tracks: "Закрити звук і субтитри"
   episodes: "Серії"
   close_episodes: "Закрити серії"
+  season_episodes:
+    one: "Сезон %{number} · %{count} серія"
+    other: "Сезон %{number} · серій: %{count}"
   now_playing: "Зараз іде"
   fullscreen: "На весь екран"
   mute: "Вимкнути звук"

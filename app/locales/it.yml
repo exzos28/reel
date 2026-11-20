@@ -320,6 +320,9 @@ player:
   close_tracks: "Chiudi audio e sottotitoli"
   episodes: "Episodi"
   close_episodes: "Chiudi gli episodi"
+  season_episodes:
+    one: "Stagione %{number} · %{count} episodio"
+    other: "Stagione %{number} · %{count} episodi"
   now_playing: "In riproduzione"
   fullscreen: "Schermo intero"
   mute: "Disattiva audio"

@@ -320,6 +320,9 @@ player:
   close_tracks: Закрыть звук и субтитры
   episodes: Серии
   close_episodes: Закрыть серии
+  season_episodes:
+    one: "Сезон %{number} · %{count} серия"
+    other: "Сезон %{number} · серий: %{count}"
   now_playing: Сейчас идёт
   fullscreen: Во весь экран
   mute: Выключить звук
