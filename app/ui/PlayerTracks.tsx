@@ -83,10 +83,10 @@ const noteText = (lit: boolean): TextStyle => ({
 });
 
 /** Audio · Subtitles · Release: which list the sheet shows. */
-function Switch(props: { col: () => number; onCol: (col: number) => void }) {
+function Switch(props: { lists: () => number; col: () => number; onCol: (col: number) => void }) {
   return (
     <View style={switchStyle()}>
-      <Each of={trackHeadings()} key="index">
+      <Each of={trackHeadings().slice(0, props.lists())} key="index">
         {(heading, i) => (
           <Pressable haptic={props.col() !== i()} testID={`tracks-tab-${i()}`} role="tab" accessibilityLabel={heading()}
             accessibilityState={{ selected: props.col() === i() }} onPress={() => props.onCol(i())} style={segmentStyle(props.col() === i())}>
@@ -100,6 +100,8 @@ function Switch(props: { col: () => number; onCol: (col: number) => void }) {
 
 /** A phone's tracks: one list at a time under the switch, in a sheet with its own ✕. */
 export function TracksSheet(props: {
+  /** How many lists it has: Audio and Subtitles, and Release when there are releases. */
+  lists: () => number;
   /** The list shown (0 Audio, 1 Subtitles, 2 Release). */
   col: () => number;
   onCol: (col: number) => void;
@@ -114,7 +116,7 @@ export function TracksSheet(props: {
   const lit = (i: number) => props.focused(i) && showFocus();
   return (
     <Drawer id="tracks" sideways open={() => true} onClose={props.onClose} label={() => t("player.tracks")}
-      head={() => <Switch col={props.col} onCol={props.onCol} />}>
+      head={() => <Switch lists={props.lists} col={props.col} onCol={props.onCol} />}>
       {(list) => (
         <View style={{ gap: 2 }}>
           <Each of={props.rows()} key={(r) => r.id}>

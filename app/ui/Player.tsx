@@ -258,6 +258,8 @@ export function Player() {
    * the one playing), so a quality shows once. */
   const shortReleases = computed(() => tracks().releases.filter((r) => r.top || r.selected));
   const columns = computed(() => [menu().audio.length, menu().subtitles.length, shortReleases().length]);
+  /** The lists the panel shows: Release only when there are releases (a saved film has none). */
+  const lists = () => (shortReleases().length > 0 ? 3 : 2);
   /** Row `i` of list `col` is the chosen one: the release picked here, else what the core says. */
   const isSelected = (col: number, i: number, fromCore: boolean) => {
     const p = col === 2 ? picked()[col] : undefined;
@@ -439,7 +441,7 @@ export function Player() {
     else scrubBy(id === "back" ? -1 : 1);
   };
   const movePanel = (dc: number, dr: number) => {
-    const col = Math.min(Math.max(panelCol() + dc, 0), 2);
+    const col = Math.min(Math.max(panelCol() + dc, 0), lists() - 1);
     panelCol.set(col);
     panelRow.set(Math.min(Math.max(dc ? 0 : panelRow() + dr, 0), Math.max(columns()[col] - 1, 0)));
   };
@@ -785,6 +787,7 @@ export function Player() {
         </If>
         <If when={panel() && SHEETS()}>
           <TracksSheet
+            lists={lists}
             col={panelCol}
             onCol={(col) => { poke(); panelCol.set(col); panelRow.set(0); }}
             rows={() => trackRows(panelCol(), menu().audio, menu().subtitles, shortReleases())}
@@ -798,6 +801,7 @@ export function Player() {
           {/* A tap beside the panel closes it, as a sheet's does. */}
           <Pressable feedback="none" role="button" accessibilityLabel={t("player.close_tracks")} onPress={() => panel.set(false)} style={panelBackdrop} />
           <TracksPanel
+            lists={lists}
             bottom={() => controlsHeight() + controlsBottom() + u(24)}
             rows={(col) => trackRows(col, menu().audio, menu().subtitles, shortReleases())}
             isSelected={isSelected}
@@ -1017,6 +1021,8 @@ const panelCloseStyle = (): ViewStyle => ({
 });
 
 function TracksPanel(props: {
+  /** How many lists show: Audio and Subtitles, and Release when there are releases. */
+  lists: () => number;
   rows: (col: number) => TrackRow[];
   isSelected: (col: number, i: number, fromCore: boolean) => boolean;
   focused: (col: number, i: number) => boolean;
@@ -1080,7 +1086,7 @@ function TracksPanel(props: {
     >
       {column(0, trackHeadings()[0], () => props.rows(0))}
       {column(1, trackHeadings()[1], () => props.rows(1))}
-      {column(2, trackHeadings()[2], () => props.rows(2))}
+      <If when={props.lists() > 2}>{column(2, trackHeadings()[2], () => props.rows(2))}</If>
       {/* Touch has no Back key on screen: ✕ closes the panel (a tap beside it does too). */}
       <If when={caps.touch}>
         <Pressable role="button" accessibilityLabel={t("player.close_tracks")} hitSlop={targetSlop(u(56))} onPress={props.onClose}

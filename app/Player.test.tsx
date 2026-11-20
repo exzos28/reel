@@ -462,3 +462,20 @@ test("phone: back from the background, the player keeps the orientation it had",
   await app.setLifecycle("active");
   expect(turns).toEqual([true]);
 });
+
+// A saved film has no releases to switch to: no empty Release list.
+const SAVED_TRACKS = { "Catalog.tracks": JSON.stringify({ audio: [{ key: "original", selected: true }], subtitles: [{ key: "off", selected: true }], releases: [] }) };
+
+test("phone: a film without releases has no Release list in its tracks", async () => {
+  const app = await phonePlaying(PORTRAIT, SAVED_TRACKS);
+  await app.press("label:Audio and subtitles");
+  expect(app.shows("id:tracks-tab-1")).toBe(true);
+  expect(app.shows("id:tracks-tab-2")).toBe(false);
+});
+
+test("iPad: a film without releases has no Release column in its tracks", async () => {
+  const app = await phonePlaying({ width: 1180, height: 820, safeArea: { top: 24, bottom: 20, left: 0, right: 0 } }, SAVED_TRACKS, "Play", { nsh: { "platform.idiom": "pad" } });
+  await app.press("label:Audio and subtitles");
+  expect(app.texts()).toContain("Subtitles");
+  expect(app.texts()).not.toContain("Release");
+});
