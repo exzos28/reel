@@ -24,13 +24,13 @@ import { alpha, colors, density, focusRing, font, iconPt, radius, safe, showFocu
 
 /** A phone: play and ±10 s in the middle of the picture, under the thumbs; the bottom row keeps
  * the timeline and the secondary buttons, lifted off the home indicator. */
-const PHONE = chrome === "phone";
+const PHONE = () => chrome() === "phone";
 /** On a phone the player is held at arm's length over a film: its controls are one and a half
  * times the layout's size (a 68 px button 46 pt, not 31) and its text a quarter larger (times 18 pt). */
-const PHONE_CONTROLS = density === "compact" ? 1.5 : 1;
-const PHONE_TEXT = density === "compact" ? 1.25 : 1;
-const u = (px: number) => layoutU(px) * PHONE_CONTROLS;
-const ts = (px: number) => layoutTs(px) * PHONE_TEXT;
+const PHONE_CONTROLS = () => (density() === "compact" ? 1.5 : 1);
+const PHONE_TEXT = () => (density() === "compact" ? 1.25 : 1);
+const u = (px: number) => layoutU(px) * PHONE_CONTROLS();
+const ts = (px: number) => layoutTs(px) * PHONE_TEXT();
 import { caps } from "./platform";
 import { playVolume, PlayerVolume, toggleMute, volumeDragEnd, volumeDragMove, volumeShown } from "./PlayerVolume";
 import { useFullscreen } from "./platform/window";
@@ -70,7 +70,7 @@ const STALL_MS = 300;
 type Row = "scrubber" | "buttons";
 /** A phone: the tracks and the episodes are sheets (bottom, or at the right held sideways), not
  * panels over the picture, which would be three narrow columns there and cover the ✕. */
-const SHEETS = frame.panel === "bottom-sheet";
+const SHEETS = () => frame().panel === "bottom-sheet";
 /** The desktop's Back over the picture: the bar's, on a dark fill. */
 const PLAYER_BACK_FILL = "#2A2A2AD9";
 /** Where it sits: the bar's Back slot, or (20, 12) in full screen. */
@@ -80,12 +80,12 @@ const barBackSlot = (full: boolean): ViewStyle => {
 };
 /** Touch's ✕, points: 44 on a tablet at (24, 24), 40 on a phone at the
  * landscape safe area's left (x 62 beside a Dynamic Island). */
-const CLOSE = chrome === "tablet" ? 44 : 40;
+const CLOSE = () => (chrome() === "tablet" ? 44 : 40);
 const touchCorner = () =>
-  chrome === "tablet" ? { top: 24, left: 24 } : { top: Math.max(18, safeArea().top), left: Math.max(20, safeArea().left) };
+  chrome() === "tablet" ? { top: 24, left: 24 } : { top: Math.max(18, safeArea().top), left: Math.max(20, safeArea().left) };
 const closeDisc = (): ViewStyle => ({
-  width: CLOSE,
-  height: CLOSE,
+  width: CLOSE(),
+  height: CLOSE(),
   ...rounded(999),
   alignItems: "center",
   justifyContent: "center",
@@ -95,7 +95,7 @@ const closeDisc = (): ViewStyle => ({
 /** ✕ (touch): leaves the player. */
 function CloseButton(props: { onPress: () => void }) {
   return (
-    <Pressable role="button" hitSlop={targetSlop(CLOSE)} accessibilityLabel={t("player.close")} onPress={props.onPress} style={closeDisc()}>
+    <Pressable role="button" hitSlop={targetSlop(CLOSE())} accessibilityLabel={t("player.close")} onPress={props.onPress} style={closeDisc()}>
       <View style={{ transform: "rotate(45deg)" }}>
         <Icon src={() => plusIcon} size={iconPt(17)} />
       </View>
@@ -124,7 +124,7 @@ const BUTTON = 68;
 const BIG_BUTTON = 96;
 /** The bottom controls' distance from the screen's bottom: a phone's clear of the home indicator
  * by 16 pt. */
-const controlsBottom = () => (PHONE ? Math.max(safe().y, safeArea().bottom + 16) : safe().y);
+const controlsBottom = () => (PHONE() ? Math.max(safe().y, safeArea().bottom + 16) : safe().y);
 
 interface Tracks {
   releases: Release[];
@@ -184,8 +184,8 @@ export function Player() {
     (b) => (b !== "fullscreen" || caps.fullscreen) && (b !== "rotate" || caps.rotate) && (b !== "episodes" || episodeOf() != null),
   );
   /** The bottom row's buttons: on a phone without those in the middle of the picture. */
-  const bottomButtons = PHONE ? buttons.filter((b) => !MIDDLE.includes(b)) : buttons;
-  const middleButtons = PHONE ? buttons.filter((b) => MIDDLE.includes(b)) : [];
+  const bottomButtons = PHONE() ? buttons.filter((b) => !MIDDLE.includes(b)) : buttons;
+  const middleButtons = PHONE() ? buttons.filter((b) => MIDDLE.includes(b)) : [];
   /** On touch, Episodes and Rotate keep to the right edge: the first of them pushes the rest there
    * (on a computer the volume has the right). */
   const rightFrom: ButtonId | undefined = caps.touch ? buttons.find((b) => b === "episodes" || b === "rotate") : undefined;
@@ -204,7 +204,7 @@ export function Player() {
   if (caps.rotate) cleanup(() => turned && VideoEngine.turn(false));
   /** A phone held upright turns sideways for a wide film (the core says which) once, on the
    * player's first load: not again for the next episode, which keeps what the viewer chose. */
-  let mayTurnSideways = PHONE && caps.rotate;
+  let mayTurnSideways = PHONE() && caps.rotate;
   const turnForPicture = (width?: number, height?: number) => {
     if (!mayTurnSideways) return;
     mayTurnSideways = false;
@@ -523,7 +523,7 @@ export function Player() {
   /** Where the waiting line sits from the picture's middle: under a phone's middle row held
    * upright, over it held sideways (under it, the bottom controls are too near). */
   const waitingBelow = () => {
-    if (!PHONE || !overlay() || card()) return 0;
+    if (!PHONE() || !overlay() || card()) return 0;
     const w = windowSize();
     const off = u(BIG_BUTTON) / 2 + u(28);
     return w.width > w.height ? -off : off;
@@ -696,7 +696,7 @@ export function Player() {
             <CloseButton onPress={leave} />
           </If>
           {/* The title's first line centred on the ✕ (a TV's at the safe area's corner); more lines go below. */}
-          <View style={{ gap: u(4), flexShrink: 1, marginTop: caps.touch ? (CLOSE - u(34) * 1.25) / 2 : 0 }}>
+          <View style={{ gap: u(4), flexShrink: 1, marginTop: caps.touch ? (CLOSE() - u(34) * 1.25) / 2 : 0 }}>
             <Text style={{ fontFamily: font, fontSize: ts(34), fontWeight: 600, color: colors.snow() }}>
               {what() ? titleText(what()!.title) : ""}
             </Text>
@@ -728,7 +728,7 @@ export function Player() {
             </>
           )}
         </If>
-        <If when={panel() && SHEETS}>
+        <If when={panel() && SHEETS()}>
           <TracksSheet
             col={panelCol}
             onCol={(col) => { poke(); panelCol.set(col); panelRow.set(0); }}
@@ -739,7 +739,7 @@ export function Player() {
             onClose={() => panel.set(false)}
           />
         </If>
-        <If when={panel() && !SHEETS}>
+        <If when={panel() && !SHEETS()}>
           {/* A tap beside the panel closes it, as a sheet's does. */}
           <Pressable feedback="none" role="button" accessibilityLabel={t("player.close_tracks")} onPress={() => panel.set(false)} style={panelBackdrop} />
           <TracksPanel

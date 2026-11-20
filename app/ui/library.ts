@@ -178,6 +178,13 @@ export function savingOverall(): SavingOverall {
   return overall;
 }
 
+/** Where the app opens: "saved" without a network when something is saved to watch, "home",
+ * or "wait" while Home's first answers are on their way (the core's `Library.opening`). */
+export function opening(): "saved" | "home" | "wait" {
+  if (!librarySupported) return "home";
+  return Library.opening() as "saved" | "home" | "wait";
+}
+
 export function titleSaveState(id: string, show: boolean): SaveState {
   tick();
   if (!librarySupported) return { state: "none", progress: 0 };

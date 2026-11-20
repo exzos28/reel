@@ -78,7 +78,7 @@ export function SavedScreen() {
     toggled.set(next);
   };
   const entriesOf = (section: Section): Entry[] =>
-    section === "ready" && savedCards
+    section === "ready" && savedCards()
       ? list().ready.map((g): Entry => ({ kind: "card", section, group: g, key: `c:${g.id}` }))
       : list()[section].flatMap((g): Entry[] =>
       g.show
@@ -279,7 +279,7 @@ export function SavedScreen() {
             <View style={sectionStyle()}>
               <Text style={sectionTitle()}>{t("saved.ready")}</Text>
             </View>
-            {savedCards ? readyCards() : sectionRows("ready")}
+            {savedCards() ? readyCards() : sectionRows("ready")}
           </If>
           <If when={list().failed.length > 0}>
             <View style={sectionStyle()}>

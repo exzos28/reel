@@ -204,6 +204,91 @@ test("tablet: a film whose search source did not answer opens Settings as the sh
   expect(app.shows("label:Back to Home")).toBe(true);
 });
 
+// A tablet at a given window size (the top row, Saved, the narrow window).
+const SAVING_ONE = { saving: true, progress: 0.4 };
+const IDLE = { saving: false, progress: 0 };
+const NOTHING_SAVED = { saving: [], ready: [], failed: [], space: { saved: 0, free: 1e10, folder: null } };
+const tabletAt = (width = 1180, height = 820, native: Record<string, unknown> = {}) =>
+  openApp({
+    platform: "ios", width, height, safeArea: { top: 24, bottom: 20, left: 0, right: 0 },
+    modules: {
+      nsh: { "platform.idiom": "pad" },
+      "app/native": {
+        ...NATIVE, "Library.supported": true, "Library.revision": 1,
+        "Library.list": JSON.stringify(NOTHING_SAVED), "Library.overall": JSON.stringify(IDLE), "Library.opening": "home",
+        ...native,
+      },
+    },
+  });
+
+test("tablet: the top row with the tabs' labels where they fit, Saved and Settings at the right", async () => {
+  const app = await tabletAt(1180, 820, { "Library.overall": JSON.stringify(SAVING_ONE) });
+  expect(app.shows("top-row")).toBe(true);
+  expect(app.shows("tab-bar")).toBe(false);
+  expect(app.shows("top-tabs-labelled")).toBe(true);
+  for (const tab of ["Home", "Movies", "Series", "Cartoons", "Anime", "Search", "Saved", "Settings"]) expect(app.shows(`label:${tab}`)).toBe(true);
+  // Saving: a ring of the overall progress around Saved.
+  expect(app.shows("saved-progress")).toBe(true);
+  // Upright, the labels no longer fit between the logo and the buttons: icons only.
+  await app.setViewport(744, 1133);
+  expect(app.shows("top-tabs-icons")).toBe(true);
+  expect(app.shows("top-row")).toBe(true);
+});
+
+test("tablet: Saved is a destination of its own, kept where it was left like a tab", async () => {
+  const app = await tabletAt();
+  await app.press("label:Movies");
+  await app.press("label:Saved");
+  expect(app.texts()).toContain("Save a film to watch it offline");
+  await app.press("label:Browse films"); // Home, its own stack
+  await app.press("label:Saved"); // back on Saved, where it was
+  expect(app.texts()).toContain("Save a film to watch it offline");
+  await app.press("label:Movies");
+  expect(app.texts()).toContain("All movies");
+});
+
+test("tablet: the top row turns solid once the page is under it", async () => {
+  const app = await tabletAt();
+  await app.press("label:Movies");
+  expect(app.shows("top-row")).toBe(true);
+  await app.scroll("label:Genres", 800);
+  await app.wait(300);
+  expect(app.shows("top-row-solid")).toBe(true);
+  await app.press("label:Dune >> nth=0");
+  await app.wait(300);
+  expect(app.shows("top-row")).toBe(true); // a title opens over its hero
+  expect(app.shows("label:Back to Movies")).toBe(true);
+  await app.press("label:Back to Movies");
+  await app.wait(300);
+  expect(app.shows("top-row-solid")).toBe(true); // where Movies was left
+});
+
+test("tablet in a narrow window: a phone's layout, and the top row again once it is wide", async () => {
+  const app = await tabletAt(390, 844);
+  expect(app.shows("tab-bar")).toBe(true);
+  expect(app.shows("top-row")).toBe(false);
+  for (const tab of ["Home", "Search", "Saved", "Settings"]) expect(app.shows(`label:${tab}`)).toBe(true);
+  await app.press("label:Movies");
+  expect(app.texts()).toContain("All movies");
+  // Settings as the tablet's sheet, over the current tab.
+  await app.press("label:Settings");
+  expect(app.texts()).toContain("Playback buffer");
+  await app.setViewport(1180, 820);
+  expect(app.shows("top-row")).toBe(true);
+  expect(app.shows("tab-bar")).toBe(false);
+  expect(app.texts()).toContain("Playback buffer");
+  await app.press("label:Close");
+  expect(app.texts()).toContain("All movies");
+  await app.setViewport(390, 844);
+  expect(app.shows("tab-bar")).toBe(true);
+});
+
+test("tablet: without a network at start, the app opens on Saved", async () => {
+  const app = await tabletAt(1180, 820, { "Library.opening": "saved" });
+  await app.wait(200);
+  expect(app.texts()).toContain("Save a film to watch it offline");
+});
+
 test("phone: ⌄ in Play opens the releases in a bottom sheet; ✕ closes it", async () => {
   const app = await phone();
   await app.press("label:Movies");

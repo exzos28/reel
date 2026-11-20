@@ -7,12 +7,12 @@ import volumeIcon from "./icons/volume.svg";
 import volumeOffIcon from "./icons/volume-off.svg";
 import { Icon } from "./kit/Icon";
 import { row } from "./kit/shape";
-import { chrome } from "./layout/chrome";
+import { family } from "./platform";
 import { alpha, colors, iconPt, targetSlop, u } from "./theme";
 import { Pressable } from "./kit/Pressable";
 
 /** Volume shows on the desktops only. */
-export const volumeShown = chrome === "mac" || chrome === "windows" || chrome === "linux";
+export const volumeShown = family === "mac" || family === "windows" || family === "linux";
 
 /** 0..1, and whether it is muted (the level is kept for unmuting). */
 export const volume = signal(1);

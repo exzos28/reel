@@ -36,7 +36,7 @@ const veilStyle = (): ViewStyle => ({
 const centreStyle = (): ViewStyle => ({
   ...cover(), alignItems: "center", justifyContent: "center", paddingHorizontal: safe().x,
 });
-const logotypeSize = () => (density === "compact" ? 64 : 88);
+const logotypeSize = () => (density() === "compact" ? 64 : 88);
 const logotypeStyle = (title: string): TextStyle => ({
   numberOfLines: 2, ...type.logotype(logotypeSize(), title.length), color: colors.snow(), textAlign: "center", maxWidth: u(1400),
 });

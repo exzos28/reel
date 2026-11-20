@@ -173,6 +173,8 @@ export const Settings: SettingsModule = {
   // The core serving the web build knows its device already (a TV's profile, a development
   // host's stand-in): the family the page lays itself out for adds nothing.
   setFamily: () => true,
+  // A browser's page is no iPad window.
+  windowed: () => false,
   setBufferMb: s("Settings", "setBufferMb"),
   setStreamDetails: s("Settings", "setStreamDetails"),
   setNavPosition: s("Settings", "setNavPosition"),
@@ -245,6 +247,7 @@ export const Library: LibraryModule = {
   openFolder: () => false,
   revision: () => 0,
   overall: () => '{"saving":false,"progress":0}',
+  opening: () => "home",
 };
 
 // Fmt is pure and also registered in the wasm32 build, which `ui/native.ts` uses. Over HTTP

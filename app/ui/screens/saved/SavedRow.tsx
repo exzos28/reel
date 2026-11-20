@@ -20,18 +20,18 @@ import { Pressable } from "../../kit/Pressable";
 
 /** A phone: the state under the title (no column of its own), a smaller picture, the buttons as
  * wide as they are: a row the screen's width. */
-export const compact = density === "compact";
+export const compact = () => density() === "compact";
 
 const itemStyle = (focused: boolean, nested: boolean): ViewStyle => ({
   ...rowStyle(false, focused, u(24)),
-  ...(compact ? { minHeight: cs(nested ? 92 : 108), paddingVertical: cs(12) } : { height: cs(nested ? 92 : 108) }),
+  ...(compact() ? { minHeight: cs(nested ? 92 : 108), paddingVertical: cs(12) } : { height: cs(nested ? 92 : 108) }),
   paddingLeft: cs(10),
   paddingRight: cs(22),
   marginLeft: nested ? cs(56) : 0,
 });
-const thumbStyle = (): ViewStyle => ({ width: cs(compact ? 96 : 128), height: cs(compact ? 54 : 72), ...rounded(u(8)), overflow: "hidden", backgroundColor: colors.raise() });
+const thumbStyle = (): ViewStyle => ({ width: cs(compact() ? 96 : 128), height: cs(compact() ? 54 : 72), ...rounded(u(8)), overflow: "hidden", backgroundColor: colors.raise() });
 const imageStyle = () => ({ ...cover(), objectFit: "cover" }) as ViewStyle;
-const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", marginTop: u(8), width: compact ? "100%" : cs(300) });
+const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", marginTop: u(8), width: compact() ? "100%" : cs(300) });
 /** What is on the device: the player's "ready" tone, not the watched one. */
 const progressFill = (p: number): ViewStyle => ({ height: "100%", width: `${Math.round(p * 100)}%`, backgroundColor: alpha(colors.snow(), 0.45) });
 
@@ -44,7 +44,7 @@ const buttonGap = () => (MIN_TARGET ? 12 : u(12));
  * right edge. */
 export const STATE_W = 340;
 export const stateColumn = (): ViewStyle => ({ width: cs(STATE_W) });
-export const actionsBlock = (): ViewStyle => ({ ...row(buttonGap()), ...(compact ? {} : { width: 3 * cs(BUTTON) + 2 * buttonGap() }), justifyContent: "flex-end" });
+export const actionsBlock = (): ViewStyle => ({ ...row(buttonGap()), ...(compact() ? {} : { width: 3 * cs(BUTTON) + 2 * buttonGap() }), justifyContent: "flex-end" });
 
 /** "S3:E5 · The Palace of Terror", or nothing for a film. */
 function episodeLine(i: SavedItem) {
@@ -130,9 +130,9 @@ export function SavedRow(props: {
         <If when={!props.nested && episodeLine(i())}>
           <Text style={{ ...metaText(), ...oneLine }}>{episodeLine(i())}</Text>
         </If>
-        <If when={compact}>{state()}</If>
+        <If when={compact()}>{state()}</If>
       </View>
-      <If when={!compact}>
+      <If when={!compact()}>
         <View style={stateColumn()}>{state()}</View>
       </If>
       <View style={actionsBlock()}>

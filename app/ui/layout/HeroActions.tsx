@@ -58,7 +58,7 @@ const splitStyle = (stretch: boolean): ViewStyle => ({
   flexDirection: "row",
   alignItems: "stretch",
   height: cs(SPLIT),
-  ...(stretch ? { alignSelf: "stretch" } : {}),
+  ...(stretch ? { flexGrow: 1 } : {}),
 });
 const playPartStyle = (focused: boolean, stretch: boolean): ViewStyle => ({
   ...row(u(16)),
@@ -83,7 +83,8 @@ const morePartStyle = (focused: boolean): ViewStyle => ({
 const seamStyle = (): ViewStyle => ({ width: 1, backgroundColor: colors.snow(), paddingVertical: cs(16) });
 const seamLine = (): ViewStyle => ({ flexGrow: 1, backgroundColor: alpha(colors.ink(), 0.18) });
 const playLabelStyle = (): TextStyle => ({ ...labelText(colors.ink()), fontSize: ts(26), fontWeight: 600 });
-const subStyle = (): TextStyle => ({ fontFamily: font, fontSize: ts(20), color: alpha(colors.ink(), 0.66) });
+/** At least 13 pt and dark enough on the white part (4.5:1 and more). */
+const subStyle = (): TextStyle => ({ fontFamily: font, fontSize: Math.max(13, ts(20)), color: alpha(colors.ink(), 0.72) });
 /** The watched part along the white part's bottom. */
 const trackStyle = (): ViewStyle => ({ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.max(2, cs(4)), backgroundColor: alpha(colors.ink(), 0.12), borderBottomLeftRadius: radius() });
 const watchedStyle = (part: number): ViewStyle => ({ width: `${Math.round(Math.min(1, part) * 100)}%`, height: "100%", borderBottomLeftRadius: radius(), backgroundColor: colors.ink() });

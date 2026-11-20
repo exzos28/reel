@@ -1,7 +1,7 @@
 // The top of home and title screens: the still filling the top of the
 // screen and fading into the background, the logotype, meta, genres,
 // about and the actions bottom-left.
-import { computed, Image, signal, Text, untracked, View, windowSize, type ImageStyle, type JSX, type TextStyle, type ViewStyle } from "nsh";
+import { computed, effect, Image, signal, Text, untracked, View, windowSize, type ImageStyle, type JSX, type TextLayoutLine, type TextStyle, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { aboutText, genresText, shortAboutText, titleText, type Summary } from "../catalog";
 import { cover } from "../kit/shape";
@@ -102,6 +102,37 @@ const logotypeStyle = (size: number, whole: boolean, title: string): TextStyle =
   marginBottom: u(10),
 });
 
+/** The least a title's logotype shrinks to, of its size, so its longest word fits the column. */
+const TITLE_MIN = 0.5;
+/** Whether the laid-out lines break inside a word (a word wider than the column), not at a space
+ * or after a hyphen. */
+export function breaksInWord(lines: readonly { text: string }[]): boolean {
+  for (let i = 0; i + 1 < lines.length; i++) {
+    if (/[\p{L}\p{N}]$/u.test(lines[i].text) && /^[\p{L}\p{N}]/u.test(lines[i + 1].text)) return true;
+  }
+  return false;
+}
+
+/** The title's logotype: it keeps its words whole, shrinking (down to `TITLE_MIN`) while a word
+ * does not fit the column's width; a new title or a resized window starts over at its size. */
+function Logotype(props: { title: () => string; size: number; whole: boolean }) {
+  const scale = signal(1);
+  effect(() => {
+    props.title();
+    windowSize().width;
+    scale.set(1);
+  });
+  const fit = (lines: TextLayoutLine[]) => {
+    const now = untracked(scale);
+    if (now > TITLE_MIN && breaksInWord(lines)) scale.set(Math.max(TITLE_MIN, now * 0.9));
+  };
+  return (
+    <Text style={logotypeStyle(props.size * scale(), props.whole, props.title())} onTextLayout={(e) => fit(e.lines)}>
+      {props.title()}
+    </Text>
+  );
+}
+
 /** The still (or the title's paper colour) fading into the background; where it starts
  * after the window's left edge, it also fades in from there. */
 function Backdrop(props: { item: () => Summary; box: () => HeroBox }) {
@@ -169,10 +200,10 @@ export function Hero(props: {
       </If>
       {/* Not fit to its text: room under the actions before what follows. */}
       <View style={props.steadyAbout ? steadyBlockStyle(props.top, props.height, box().height) : textBlockStyle(props.top, u(props.room ?? (props.fit ? 0 : 56)))}>
-        <If when={props.onOpen} else={<Text style={logotypeStyle(props.titleSize, !!props.wholeTitle, titleText(s()))}>{titleText(s())}</Text>}>
+        <If when={props.onOpen} else={<Logotype title={() => titleText(s())} size={props.titleSize} whole={!!props.wholeTitle} />}>
           {(open) => (
-            <Pressable role="link" accessibilityLabel={titleText(s())} onPress={open()} style={{ alignSelf: "flex-start" }}>
-              <Text style={logotypeStyle(props.titleSize, !!props.wholeTitle, titleText(s()))}>{titleText(s())}</Text>
+            <Pressable role="link" accessibilityLabel={titleText(s())} onPress={open()} style={{ alignSelf: "flex-start", maxWidth: "100%" }}>
+              <Logotype title={() => titleText(s())} size={props.titleSize} whole={!!props.wholeTitle} />
             </Pressable>
           )}
         </If>

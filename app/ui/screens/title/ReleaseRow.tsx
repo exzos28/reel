@@ -12,11 +12,11 @@ import personIcon from "../../icons/person.svg";
 import { Pressable } from "../../kit/Pressable";
 
 /** Columns on a TV and a Mac; a phone keeps what decides the choice. */
-const wide = density !== "compact";
-const column = (width: number): ViewStyle => ({ width: wide ? u(width) : undefined });
+const wide = () => density() !== "compact";
+const column = (width: number): ViewStyle => ({ width: wide() ? u(width) : undefined });
 
 const releaseRowStyle = (selected: boolean, focused: boolean): ViewStyle => ({
-  ...rowStyle(selected, focused, wide ? u(24) : u(14)),
+  ...rowStyle(selected, focused, wide() ? u(24) : u(14)),
   minHeight: cs(76),
   paddingHorizontal: cs(28),
   paddingVertical: u(12),
@@ -48,7 +48,7 @@ export function ReleaseRow(props: {
   narrow?: boolean;
 }) {
   const r = props.release;
-  if (props.narrow && density !== "ten-foot") return <NarrowRow {...props} />;
+  if (props.narrow && density() !== "ten-foot") return <NarrowRow {...props} />;
   return (
     <Pressable feedback="row"
       ref={props.viewRef}

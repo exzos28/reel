@@ -18,9 +18,10 @@ import { InterfaceScreen } from "./ui/screens/interface/InterfaceScreen";
 import { TitleScreen } from "./ui/screens/title/TitleScreen";
 import { PersonScreen } from "./ui/screens/person/PersonScreen";
 import { TopLevel } from "./ui/screens/TopLevel";
-import { back, canGoBack, closeFirst, go, handleBack, isRoot, route, section, settingsOpen, useHomeTab, useSettingsSheet, useTabStacks } from "./ui/nav";
+import { back, canGoBack, closeFirst, go, handleBack, isRoot, route, section, settingsOpen, stack, useHomeTab, useSettingsSheet, useTabStacks } from "./ui/nav";
 import { screenFor } from "./ui/screens/RouteScreen";
-import { frame } from "./ui/layout/chrome";
+import { chrome, frame } from "./ui/layout/chrome";
+import { opening } from "./ui/library";
 import { caps } from "./ui/platform";
 import { railWidth } from "./ui/layout/metrics";
 import { PhoneCategoryBar, PhoneTabBar, TabletTopRow } from "./ui/layout/TouchNav";
@@ -69,9 +70,27 @@ UrlScheme.on("open", async ({ url }) => {
   if (setupDone() !== false) openSourceDrawer("link");
 });
 // Then follows the core's settings (changed on a phone too) and the pairing code it shows.
-loadSettings()
-  .catch((e) => console.warn("could not load settings", e))
-  .then(watchSettings);
+const settingsLoaded = loadSettings().catch((e) => console.warn("could not load settings", e));
+settingsLoaded.then(watchSettings);
+
+/** How long after the settings are in the app may still turn to Saved for want of a network, ms:
+ * a late answer does not take the viewer off a page they are reading. */
+const OPENING_WAIT = 15_000;
+const OPENING_EVERY = 500;
+/** Without a network at start, the app opens on Saved where something is saved to watch
+ * (design/offline-downloads.md; the core decides: `Library.opening`). Asked until it knows, once
+ * the settings are in and the setup is done, and only while the viewer is still on Home's top. */
+settingsLoaded.then(() => {
+  const until = Date.now() + OPENING_WAIT;
+  const ask = () => {
+    const s = stack();
+    if (setupDone() === false || s.length !== 1 || s[0].name !== "home" || Date.now() > until) return;
+    const where = opening();
+    if (where === "saved") go("saved");
+    else if (where === "wait") setTimeout(ask, OPENING_EVERY);
+  };
+  ask();
+});
 
 /** Android's system back on touch: what is open closes first; a pushed page
  * pops natively (the stack's own back); another tab's root goes Home; Home
@@ -139,19 +158,30 @@ function App() {
       </If>
       <If when={setupDone() !== false && !playing()} else={<If when={setupDone() !== false}><PlayerHost><Player /></PlayerHost></If>}>
         <If when={caps.touch} else={<OneScreen />}>
-          {/* Right of the phone's rail when it is held sideways. */}
-          {/* Under a tablet's Settings sheet the page is out of a screen reader's reach. */}
-          <View style={{ flex: 1, marginLeft: railWidth() }} accessibilityElementsHidden={settingsOpen()} importantForAccessibility={settingsOpen() ? "no-hide-descendants" : "auto"}>
-            <TouchStack page={screenFor} />
-          </View>
-        </If>
-        <If when={frame.nav === "tab-bar"}>
-          <PhoneCategoryBar />
-          <PhoneTabBar />
-        </If>
-        <If when={frame.nav === "top-row"}>
-          <TabletTopRow />
-          <SettingsSheet page={screenFor} />
+          {/* A tablet's window resized across a phone's width lays the pages out again from
+              scratch (what they chose as they opened is the other family's). */}
+          <Each of={[chrome()]} key={(c) => c}>
+            {() => (
+              <View style={{ flex: 1 }}>
+                {/* Right of the phone's rail when it is held sideways. */}
+                {/* Under a tablet's Settings sheet the page is out of a screen reader's reach. */}
+                <View style={{ flex: 1, marginLeft: railWidth() }} accessibilityElementsHidden={settingsOpen()} importantForAccessibility={settingsOpen() ? "no-hide-descendants" : "auto"}>
+                  <TouchStack page={screenFor} />
+                </View>
+                <If when={frame().nav === "tab-bar"}>
+                  <PhoneCategoryBar />
+                  <PhoneTabBar />
+                </If>
+                <If when={frame().nav === "top-row"}>
+                  <TabletTopRow />
+                </If>
+                {/* A tablet's Settings, a sheet over the page: its narrow window's too. */}
+                <If when={caps.settingsSheet}>
+                  <SettingsSheet page={screenFor} />
+                </If>
+              </View>
+            )}
+          </Each>
         </If>
       </If>
       {/* A desktop's window bar (the player's drag strips while a film plays). */}

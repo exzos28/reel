@@ -46,7 +46,7 @@ const leadRowStyle = (gap: number): ViewStyle => ({
 /** A TV title's header action, at the title-safe corner (a phone's is in its title bar). */
 const actionStyle = (): ViewStyle => ({ position: "absolute", top: safe().y, right: safe().x, zIndex: 3 });
 /** A phone's title: the bar over it, not the content's (it stays as the page scrolls). */
-const phoneTitle = frame.nav === "tab-bar";
+const phoneTitle = () => frame().nav === "tab-bar";
 /** The status bar's scrim: a fade over a hero, solid once content is under it. */
 const scrimStyle = (solid: boolean): ViewStyle => ({
   position: "absolute",
@@ -63,11 +63,11 @@ const scrimStyle = (solid: boolean): ViewStyle => ({
 
 /** Whether the page shows its title (and a screen its lead under it): not on a phone's category
  * page (Home's tabs over it already say where you are, and the room goes to the content). */
-export const pageTitleShown = () => !(phoneTitle && isCategory(section()));
+export const pageTitleShown = () => !(phoneTitle() && isCategory(section()));
 
 /** Whether a page's `foot` is pinned under its content (a phone); elsewhere the frame does not
  * show it and the screen lays its actions out inline. */
-export const footPinned = () => frame.nav === "tab-bar";
+export const footPinned = () => frame().nav === "tab-bar";
 const footStyle = (): ViewStyle => ({
   paddingHorizontal: safe().x,
   paddingTop: u(20),
@@ -130,7 +130,7 @@ export function PageFrame(props: {
   return (
     <View style={{ flex: 1 }}>
       {/* First in the tree so a screen reader reaches Back first; it is drawn over the page. */}
-      <If when={props.kind === "title" && phoneTitle}>
+      <If when={props.kind === "title" && phoneTitle()}>
         <PhoneTitleBar
           testID={top() ? (solid() ? "title-bar" : "title-discs") : undefined}
           solid={solid}
@@ -156,15 +156,15 @@ export function PageFrame(props: {
             </If>
           </View>
           {props.children}
-          <If when={root && frame.nav === "tab-bar"}>
+          <If when={root && frame().nav === "tab-bar"}>
             <PhoneHead />
           </If>
-          <If when={root && frame.nav === "page"}>
+          <If when={root && frame().nav === "page"}>
             <View style={navStyle}>
               <NavBar current={section} focused={() => navFocus().at()} onPick={(i) => go(NAV[i].id)} />
             </View>
           </If>
-          <If when={props.action && frame.listInPage && !phoneTitle}>
+          <If when={props.action && frame().listInPage && !phoneTitle()}>
             <View style={actionStyle()}>{props.action!(() => false)}</View>
           </If>
         </View>
@@ -174,7 +174,7 @@ export function PageFrame(props: {
           {props.foot}
         </View>
       </If>
-      <If when={props.kind === "deep" && frame.nav === "tab-bar" && !inSheet}>
+      <If when={props.kind === "deep" && frame().nav === "tab-bar" && !inSheet}>
         <PhoneBackHead />
       </If>
       <If when={caps.touch && !inSheet}>

@@ -16,7 +16,8 @@ import { Icon } from "../kit/Icon";
 import { rounded, row } from "../kit/shape";
 import { canGoBack, go, handleBack, route, section, stack, type Destination, type Route } from "../nav";
 import { alpha, colors, font, iconPt, u } from "../theme";
-import { centering, chrome } from "./chrome";
+import { centering } from "./chrome";
+import { family } from "../platform";
 import { frameSolid as barSolid } from "./frameState";
 import { BAR_HEIGHT } from "./metrics";
 import { ListToggle } from "./ListToggle";
@@ -34,11 +35,11 @@ const BACK = {
   linux: { width: 34, height: 34, radius: 8, icon: 16, fill: "#FFFFFF14" },
 } as const;
 type DesktopChrome = keyof typeof BACK;
-const back = () => BACK[chrome as DesktopChrome];
+const back = () => BACK[family as DesktopChrome];
 
 /** Where Back's slot starts from the window's left edge, points: after the
  * traffic lights on a Mac, at the left edge elsewhere. */
-export const backLeft = () => (chrome === "mac" ? titleBar().left + 18 : chrome === "windows" ? 6 : 8);
+export const backLeft = () => (family === "mac" ? titleBar().left + 18 : family === "windows" ? 6 : 8);
 
 /** Back's box in the window, points: in the bar's slot, or at (20, 12) when
  * the window fills the screen (the player's). */
@@ -50,7 +51,7 @@ export function barBackBox(fullScreen = false) {
 }
 
 /** The keystroke Back shows in its tooltip. */
-const BACK_KEY = chrome === "mac" ? "⌘[" : "Alt+←";
+const BACK_KEY = family === "mac" ? "⌘[" : "Alt+←";
 
 /** Back's tooltip: "Back to" the page under this one, plain "Back" while a
  * title under it is not loaded. */
@@ -92,7 +93,7 @@ const backStyle = (enabled: boolean, background?: string): ViewStyle => ({
 const logoRoom = (afterBack: boolean, grow: boolean): ViewStyle => ({
   ...row(0),
   alignSelf: "stretch",
-  paddingLeft: afterBack ? (chrome === "mac" ? 12 : 14) : 8,
+  paddingLeft: afterBack ? (family === "mac" ? 12 : 14) : 8,
   ...(grow ? { flex: 1 } : { paddingRight: 20 }),
 });
 const tipStyle = (): ViewStyle => ({ ...row(6), paddingHorizontal: 9, paddingVertical: 5, ...rounded(6), backgroundColor: colors.raise() });
@@ -201,7 +202,7 @@ export function WindowBar() {
     return s.length > 1 ? backTip(s[s.length - 2]) : t("nav.back");
   };
   /** A Mac keeps Back's slot on a root, disabled; elsewhere it is only on deeper pages. */
-  const showBack = () => chrome === "mac" || canGoBack();
+  const showBack = () => family === "mac" || canGoBack();
   /** The first-run setup has the window to itself: no Back, logo, tabs or buttons to leave it by
    * (the setup shows its own logo). */
   const inSetup = () => setupDone() === false;
@@ -245,7 +246,7 @@ export function WindowBar() {
         </If>
         {/* The system's room; a window wider than its content column also keeps the nav at the
             column's right edge (as the page's content and the hero's still end there). */}
-        <View desktop={{ windowDrag: true }} style={{ width: titleBar().right + (chrome === "mac" ? 16 : 10) + centering(), alignSelf: "stretch" }} />
+        <View desktop={{ windowDrag: true }} style={{ width: titleBar().right + (family === "mac" ? 16 : 10) + centering(), alignSelf: "stretch" }} />
       </View>
     </View>
     </If>

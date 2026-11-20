@@ -153,7 +153,7 @@ export function PlayerEpisodes(props: {
   );
   return (
     <If
-      when={frame.panel === "bottom-sheet"}
+      when={frame().panel === "bottom-sheet"}
       else={
         <View testID="episodes-panel" style={{ ...panelStyle(), bottom: props.bottom() }}>
           <View style={headStyle()}>
