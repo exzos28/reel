@@ -32,6 +32,8 @@ pub const EVENT_SEEK: c_int = 20;
 /// Playback starts after a file loaded or a seek: the first frame there is on screen.
 pub const EVENT_PLAYBACK_RESTART: c_int = 21;
 pub const EVENT_PROPERTY_CHANGE: c_int = 22;
+/// mpv waits in a hook the client added (`mpv_hook_add`) until it is continued.
+pub const EVENT_HOOK: c_int = 25;
 
 pub const END_FILE_REASON_EOF: c_int = 0;
 pub const END_FILE_REASON_ERROR: c_int = 4;
@@ -66,6 +68,14 @@ pub struct EventLogMessage {
     pub level: *const c_char,
     pub text: *const c_char,
     pub log_level: c_int,
+}
+
+/// `mpv_event_hook`: `id` is the handler's (the same each time the hook runs), for
+/// `mpv_hook_continue`.
+#[repr(C)]
+pub struct EventHook {
+    pub name: *const c_char,
+    pub id: u64,
 }
 
 #[repr(C)]
@@ -121,6 +131,8 @@ pub struct Lib {
     pub request_log_messages: unsafe extern "C" fn(Handle, *const c_char) -> c_int,
     pub wait_event: unsafe extern "C" fn(Handle, c_double) -> *mut Event,
     pub wakeup: unsafe extern "C" fn(Handle),
+    pub hook_add: unsafe extern "C" fn(Handle, u64, *const c_char, c_int) -> c_int,
+    pub hook_continue: unsafe extern "C" fn(Handle, u64) -> c_int,
     pub free: unsafe extern "C" fn(*mut c_void),
     pub error_string: unsafe extern "C" fn(c_int) -> *const c_char,
     pub render_context_create: unsafe extern "C" fn(*mut RenderContext, Handle, *mut RenderParam) -> c_int,
@@ -255,6 +267,8 @@ unsafe fn load(path: &std::path::Path) -> Result<Lib, String> {
         request_log_messages: sym!("mpv_request_log_messages"),
         wait_event: sym!("mpv_wait_event"),
         wakeup: sym!("mpv_wakeup"),
+        hook_add: sym!("mpv_hook_add"),
+        hook_continue: sym!("mpv_hook_continue"),
         free: sym!("mpv_free"),
         error_string: sym!("mpv_error_string"),
         render_context_create: sym!("mpv_render_context_create"),

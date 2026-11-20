@@ -136,8 +136,9 @@ Removed, iOS only:
 To confirm on an iPhone (the simulator does not show the decoder failure):
 
 1. Open a film upright, Rotate several times, turn the phone by hand, pause and turn. The
-   picture stays, sound does not stutter, there is no jump back, and the log has one `layer …,
-   canvas` line per file with no `resized`.
+   picture stays, sound does not stutter, there is no jump back, and the log has `reel mpv:
+   canvas …` lines only as a file opens (two: the view's size, then the picture's), none on a
+   turn.
 2. Back to the home screen mid-film for 10 s and return. The log should say `decoding with
    videotoolbox`, with no `hardware accelerator failed`. If it fails, the next step is to pause
    in the background and keep the video track, holding back redraws while away. Not done now

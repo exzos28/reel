@@ -228,10 +228,9 @@ export function Player() {
       });
     });
   /** A phone held upright turns sideways as the player opens, before the picture's size is
-   * known: mpv's output then starts at the sideways size (turned once it had started upright,
-   * the film played on without a picture). Once the film loads, a picture taller than wide (the
-   * core says) turns it back upright. Only for the player's first load: not again for the next
-   * episode, which keeps what the viewer chose. */
+   * known: most films play sideways, and the player opens the way they play. Once the film
+   * loads, a picture taller than wide (the core says) turns it back upright. Only for the
+   * player's first load: not again for the next episode, which keeps what the viewer chose. */
   let turnedSideways = false;
   if (PHONE() && caps.rotate) {
     const w = untracked(windowSize);

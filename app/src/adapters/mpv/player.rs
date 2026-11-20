@@ -35,22 +35,97 @@ struct Shared {
     at_end: AtomicBool,
     /// A wait of the player's own is on (`Player::own_wait`), not the stream's.
     own_wait: std::sync::Mutex<OwnWait>,
-    /// mpv shows the picture of the last file or seek asked of it: its playback restarted since
-    /// (`EVENT_PLAYBACK_RESTART`, the first frame there on screen).
-    shown: AtomicBool,
-    /// A seek of the view's waits for its place (`seekWaiting`: the core fetches it and the view
-    /// holds still); mpv has not been asked for it yet.
-    seek_waiting: AtomicBool,
-    /// Called on the event thread when mpv's playback restarted (`Player::when_shown`).
-    on_shown: std::sync::OnceLock<Box<dyn Fn() + Send + Sync>>,
+    /// The hook the view holds mpv in (`Player::hold_in`).
+    hooks: Arc<Hooks>,
 }
 
-/// How long a wait of the player's own (its video back after the background, its output started
-/// again) is not reported as buffering: longer, it is reported after all.
+/// What the view does while mpv waits in its hook: called on the player's event thread with the
+/// hook held, which mpv waits for until it is dropped.
+pub type OnHook = Box<dyn Fn(HeldHook) + Send + Sync>;
+
+/// The hook mpv waits in for the view, and whether mpv is still there to be let go.
+struct Hooks {
+    lib: &'static Lib,
+    raw: Raw,
+    state: std::sync::Mutex<HookState>,
+    on_hook: std::sync::OnceLock<OnHook>,
+}
+
+#[derive(Default)]
+struct HookState {
+    /// mpv is gone or going (`Player`'s drop): no hook is continued any more.
+    closed: bool,
+    /// The hook mpv waits in: its turn (ours, one per time it runs) and mpv's id (the handler's,
+    /// the same every time).
+    held: Option<(u64, u64)>,
+    turns: u64,
+}
+
+/// mpv waits in a hook until this is dropped (on any thread): exactly once per time the hook
+/// runs, and never after the player is gone.
+pub struct HeldHook {
+    hooks: Arc<Hooks>,
+    turn: u64,
+}
+
+impl Hooks {
+    /// mpv runs the hook (`id`): held until the `HeldHook` goes. None once the player goes.
+    fn hold(self: &Arc<Self>, id: u64) -> Option<HeldHook> {
+        let mut s = self.state.lock().unwrap();
+        if s.closed {
+            return None;
+        }
+        // mpv waits in one hook at a time; one still held is let go first.
+        if let Some((_, old)) = s.held.take() {
+            self.go_on(old);
+        }
+        s.turns += 1;
+        s.held = Some((s.turns, id));
+        Some(HeldHook { hooks: self.clone(), turn: s.turns })
+    }
+
+    /// Lets mpv go on from the hook's `turn`, if mpv still waits in it.
+    fn release(&self, turn: u64) {
+        let mut s = self.state.lock().unwrap();
+        if let Some((t, id)) = s.held
+            && t == turn
+        {
+            s.held = None;
+            if !s.closed {
+                self.go_on(id);
+            }
+        }
+    }
+
+    /// The player goes: a hook held is let go now, and none is held from now on.
+    fn close(&self) {
+        let mut s = self.state.lock().unwrap();
+        if let Some((_, id)) = s.held.take() {
+            self.go_on(id);
+        }
+        s.closed = true;
+    }
+
+    fn go_on(&self, id: u64) {
+        let r = unsafe { (self.lib.hook_continue)(self.raw.0, id) };
+        if r < 0 {
+            tracing::warn!("reel mpv: hook_continue: {}", ffi::error_text(self.lib, r));
+        }
+    }
+}
+
+impl Drop for HeldHook {
+    fn drop(&mut self) {
+        self.hooks.release(self.turn);
+    }
+}
+
+/// How long a wait of the player's own (its video back after the background) is not reported as
+/// buffering: longer, it is reported after all.
 const OWN_WAIT: Duration = Duration::from_secs(8);
 
 /// A wait the player makes itself: mpv seeks to bring its video back (the video track after
-/// the background, a new output after a turn) and decodes from a keyframe, with what plays
+/// the background) and decodes from a keyframe, with what plays
 /// already in its cache or on the disk. That is no wait for the stream, which `buffer` says.
 #[derive(Default)]
 struct OwnWait {
@@ -247,9 +322,7 @@ impl Player {
             interval_ms: AtomicU64::new(250),
             at_end: AtomicBool::new(false),
             own_wait: Default::default(),
-            shown: AtomicBool::new(false),
-            seek_waiting: AtomicBool::new(false),
-            on_shown: std::sync::OnceLock::new(),
+            hooks: Arc::new(Hooks { lib, raw, state: Default::default(), on_hook: std::sync::OnceLock::new() }),
         });
         let thread = {
             let shared = shared.clone();
@@ -278,46 +351,26 @@ impl Player {
         }
     }
 
-    /// A property's value as text (None: unavailable).
-    #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
-    pub fn property(&self, name: &str) -> Option<String> {
-        let p = unsafe { (self.lib.get_property_string)(self.raw.0, cstr(name).as_ptr()) };
-        if p.is_null() {
-            return None;
-        }
-        let v = unsafe { CStr::from_ptr(p) }.to_string_lossy().into_owned();
-        unsafe { (self.lib.free)(p.cast()) };
-        Some(v)
-    }
-
-    /// What mpv waits for next (its video back after the background, a new output) is the
-    /// player's own, with the film at hand: not reported as buffering (`OWN_WAIT`).
+    /// What mpv waits for next (its video back after the background) is the player's own,
+    /// with the film at hand: not reported as buffering (`OWN_WAIT`).
     #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
     pub fn own_wait(&self) {
         self.shared.own_wait.lock().unwrap().start(Instant::now());
     }
 
-    /// Whether mpv shows the picture where it was asked to, with no seek on its way: its playback
-    /// restarted after the last file or seek, and no seek of the view's waits for its place. Only
-    /// then may the view start mpv's output again (iOS, at a new size): started again while the
-    /// film opened, or while the core fetched the place to resume at, it left the film without a
-    /// picture.
+    /// mpv waits in its hook `name` (e.g. `on_preloaded`) each time it runs, until the view lets
+    /// it go: `on_hook` is called on the player's event thread with the hook held, and mpv goes on
+    /// once that is dropped (on any thread). Once, before a file loads. The player going lets a
+    /// held hook go itself.
     #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
-    pub fn settled(&self) -> bool {
-        self.shared.shown.load(Ordering::Acquire) && !self.shared.seek_waiting.load(Ordering::Acquire)
-    }
-
-    /// `hook` runs on the player's event thread each time mpv's playback restarts (`settled` may
-    /// have become true). Once.
-    #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
-    pub fn when_shown(&self, hook: Box<dyn Fn() + Send + Sync>) {
-        let _ = self.shared.on_shown.set(hook);
-    }
-
-    /// Runs an mpv command (for the platform's view).
-    #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
-    pub fn command_args(&self, args: &[&str]) {
-        self.command(args);
+    pub fn hold_in(&self, name: &str, on_hook: OnHook) {
+        if self.shared.hooks.on_hook.set(on_hook).is_err() {
+            return;
+        }
+        let r = unsafe { (self.lib.hook_add)(self.raw.0, 0, cstr(name).as_ptr(), 0) };
+        if r < 0 {
+            tracing::warn!("reel mpv: hook {name}: {}", ffi::error_text(self.lib, r));
+        }
     }
 
     #[cfg_attr(not(target_os = "android"), allow(dead_code))]
@@ -356,7 +409,6 @@ impl Player {
                 }
                 self.src = src;
                 self.shared.at_end.store(false, Ordering::Relaxed);
-                self.shared.shown.store(false, Ordering::Release);
                 if self.src.is_empty() {
                     if let Some(g) = &self.gate {
                         g.forget();
@@ -412,8 +464,6 @@ impl Player {
             // runs on mpv's thread, which picks the tracks only once the stream has opened.
             "audioLanguages" => self.set("alang", value.and_then(Value::as_str).unwrap_or("")),
             "audioTrack" => self.set("aid", &track_value(value)),
-            // The view holds still while the core fetches the place of a seek (`settled`).
-            "seekWaiting" => self.shared.seek_waiting.store(value.and_then(Value::as_bool).unwrap_or(false), Ordering::Release),
             "subtitleTrack" => self.set("sid", &track_value(value)),
             _ => {}
         }
@@ -426,7 +476,6 @@ impl Player {
             self.shared.at_end.store(false, Ordering::Relaxed);
             // The viewer's seek waits for the stream: it shows.
             self.shared.own_wait.lock().unwrap().until = None;
-            self.shared.shown.store(false, Ordering::Release);
             self.command(&["seek", &format!("{s}"), "absolute"]);
         }
     }
@@ -467,6 +516,8 @@ impl Drop for Player {
         // Silence first: tearing mpv down takes a moment, and it would play what it has
         // buffered meanwhile (the viewer has already left the player).
         self.command(&["stop"]);
+        // mpv waits in a hook until it is let go, even to stop.
+        self.shared.hooks.close();
         self.shared.stop.store(true, Ordering::Relaxed);
         unsafe { (self.lib.wakeup)(self.raw.0) };
         if let Some(t) = self.thread.take() {
@@ -514,13 +565,13 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
                     emit("error", json!({ "message": line, "code": "view" }));
                 }
             }
-            // A file or a seek starts: its picture is not on screen until playback restarts. Told
-            // here too, in mpv's own order: a restart of the place before is not this one's.
-            ffi::EVENT_START_FILE | ffi::EVENT_SEEK => shared.shown.store(false, Ordering::Release),
-            ffi::EVENT_PLAYBACK_RESTART => {
-                shared.shown.store(true, Ordering::Release);
-                if let Some(hook) = shared.on_shown.get() {
-                    hook();
+            // A hook the view holds mpv in (`Player::hold_in`): mpv waits until it is let go.
+            ffi::EVENT_HOOK if !event.data.is_null() => {
+                let id = unsafe { &*(event.data as *const ffi::EventHook) }.id;
+                if let Some(on_hook) = shared.hooks.on_hook.get()
+                    && let Some(held) = shared.hooks.hold(id)
+                {
+                    on_hook(held);
                 }
             }
             ffi::EVENT_FILE_LOADED => {
@@ -608,13 +659,19 @@ fn picture_size(lib: &Lib, raw: Raw) -> (f64, f64) {
 }
 
 fn get_f64(lib: &Lib, raw: Raw, name: &str) -> Option<f64> {
+    property(lib, raw, name)?.parse().ok()
+}
+
+/// A property's value as text (None: unavailable; a list or map is JSON), from any thread: the
+/// view reads the tracks while mpv waits in its hook.
+pub fn property(lib: &Lib, raw: Raw, name: &str) -> Option<String> {
     let p = unsafe { (lib.get_property_string)(raw.0, cstr(name).as_ptr()) };
     if p.is_null() {
         return None;
     }
-    let v = unsafe { CStr::from_ptr(p) }.to_str().ok().and_then(|s| s.parse().ok());
+    let v = unsafe { CStr::from_ptr(p) }.to_string_lossy().into_owned();
     unsafe { (lib.free)(p.cast()) };
-    v
+    Some(v)
 }
 
 #[cfg(test)]
