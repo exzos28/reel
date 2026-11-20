@@ -119,13 +119,15 @@ test("pause, play and seeks reach AVPlay", async () => {
 
 test("prepared, AVPlay switches to the core's audio track before it plays", async () => {
   // The core picks the Russian track (the language looked for) once it has AVPlay's tracks.
-  const { ops, event } = await tv(DETAILS, {
+  const { app, ops, event } = await tv(DETAILS, {
     "Engine.tracks": (_job: number, _id: string, e: string) => (e ? menu(2) : JSON.stringify({
       pending: true, audio: [{ key: "original", kind: "original", selected: true }], subtitles: [{ key: "off", kind: "off", selected: true }],
       apply: { audio: null, subtitle: null, external: null, audioLanguages: "ru,rus" },
     })),
   });
   await event({ type: "loaded", duration: 600, tracks: TRACKS });
+  // The play follows the switch a moment later (a slow machine, CI, is not there yet at once).
+  await app.waitUntil(() => ops().length >= 3);
   expect(ops().slice(1)).toEqual([{ op: "track", trackType: "AUDIO", index: 2 }, { op: "play" }]);
 });
 
