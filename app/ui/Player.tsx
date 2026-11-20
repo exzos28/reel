@@ -834,6 +834,7 @@ function RoundButton(props: {
         accessibilityLabel={props.label()}
         onPress={props.onPress}
         hoverStyle={{ backgroundColor: colors.control() }}
+        activeStyle={{ backgroundColor: colors.control() }}
         style={{
           width: u(68), height: u(68), borderRadius: 999, borderCurve: "continuous",
           alignItems: "center", justifyContent: "center",

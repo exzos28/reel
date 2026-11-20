@@ -203,6 +203,7 @@ impl MpvComponent {
             return MpvComponent { view: UIView::new(mtm), inner: None, lifecycle: None };
         };
         let emit_cx = cx.clone();
+        let made = std::time::Instant::now();
         let inner = match Player::new(lib, "null", &PLATFORM, Arc::new(move |name, data| emit_cx.emit(name, data))) {
             Ok(mut player) => {
                 let gate = player.hold_until_drawn();
@@ -227,6 +228,7 @@ impl MpvComponent {
                 }
             }));
         }
+        tracing::warn!("reel mpv: the player made in {} ms", made.elapsed().as_millis());
         let lifecycle = inner.as_ref().map(|i| Lifecycle::new(mtm, std::rc::Rc::downgrade(i)));
         crate::adapters::ios_awake::playing(true);
         MpvComponent { view: Retained::into_super(view), inner, lifecycle }

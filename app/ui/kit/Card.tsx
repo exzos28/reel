@@ -46,7 +46,7 @@ function PlainCard(props: CardProps & { onLayout?: (size: { width: number; heigh
       onLayout={props.onLayout ? (e) => props.onLayout!({ width: e.bounds.size.width, height: e.bounds.size.height }) : undefined}
       style={props.style}
     >
-      <View hoverStyle={hoverRing()} style={frameStyle(props.focused())}>
+      <View hoverStyle={hoverRing()} activeStyle={{ opacity: 0.75 }} style={frameStyle(props.focused())}>
         {props.picture}
       </View>
       {props.children}

@@ -54,6 +54,8 @@ export function Button(props: {
       accessibilityState={{ disabled: off() }}
       onPress={() => !off() && props.onPress()}
       hoverStyle={{ opacity: off() ? 0.4 : 0.9 }}
+      // A press shows at once (a finger has no hover): dimmed while it lasts.
+      activeStyle={off() ? undefined : { opacity: 0.7 }}
       style={{ ...buttonStyle(props.kind, props.focused(), props.height ?? 60, !!props.grow), opacity: off() ? 0.4 : 1 }}
     >
       <If when={props.fill && props.fill() != null}>

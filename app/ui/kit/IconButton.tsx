@@ -34,6 +34,7 @@ export function IconButton(props: {
       accessibilityLabel={props.label()}
       onPress={props.onPress}
       hoverStyle={{ backgroundColor: colors.raise() }}
+      activeStyle={{ opacity: 0.7 }}
       style={iconButtonStyle(size, fill(), props.focused())}
     >
       <Icon src={props.icon} size={size * 0.42} color={props.iconColor} />
