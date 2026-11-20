@@ -607,6 +607,9 @@ export function Player() {
   return (
     <Pressable feedback="none"
       testID="player"
+      // A backdrop that wakes the controls, not one element for screen readers: as one (it hears
+      // presses) it hid every control inside it from VoiceOver.
+      accessible={false}
       style={{ flex: 1, backgroundColor: screenBackground() }}
       onMouseMove={() => {
         if (!card()) poke();
@@ -686,6 +689,7 @@ export function Player() {
       <If when={caps.fullscreen}>
         <Pressable feedback="none"
           testID="picture"
+          accessible={false}
           style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
           onPress={() => !card() && poke()}
           onPressDown={(e) => {
