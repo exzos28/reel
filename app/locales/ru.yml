@@ -500,7 +500,8 @@ menu:
 
 saved:
   title: Сохранённое
-  empty: Пока ничего не сохранено. Сохраните фильм или сезон на его странице, чтобы смотреть без интернета.
+  empty: "Сохраните фильм, чтобы смотреть без интернета"
+  browse: "Выбрать фильм"
   saving: Сохраняется
   while_open: пока reel открыт
   ready: Можно смотреть
@@ -525,6 +526,8 @@ saved:
     checking: Проверяется сохранённое…
     resolving: Ищем, кто раздаёт…
     saving: "%{percent}% · %{have} из %{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent}% · %{have} из %{size} · осталось около %{time}"
     paused: "На паузе · %{have} из %{size}"
     waiting: Начнётся, когда закончится текущий просмотр
     saved: "Сохранено · %{size}"

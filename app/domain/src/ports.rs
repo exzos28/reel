@@ -101,7 +101,9 @@ pub trait Keep: Send + Sync {
     /// with its id.
     fn add(&self, request: KeepRequest) -> Result<u32, String>;
     /// Every item with its state and progress: `[{"id","key","title","label","image","state",
-    /// "size","have","progress","speed","peers","message"}]`, newest first.
+    /// "size","have","progress","speed","peers","rate","message"}]`, newest first (`rate`: its
+    /// torrent's bytes a second over the last minute while saving, null when not known or
+    /// unstable; items of one torrent share it).
     fn list(&self) -> Value;
     /// Pauses (`on` false) or goes on saving the item's torrent.
     fn set_running(&self, id: u32, on: bool);

@@ -5,7 +5,7 @@
 // one row, a show one row whose episodes open under it. A saved film or episode plays when
 // pressed (its Play button too); one still saving has Pause / Resume. Remove asks first. Up
 // and Down move through the rows (Up from the first: the nav), Left and Right to a row's
-// buttons; OK acts.
+// buttons; OK acts. With nothing saved, no space: a line and Browse films, which goes Home.
 import { computed, keymap, signal, Text, View, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { byKeys } from "../../focus/keys";
@@ -17,12 +17,12 @@ import { NAV } from "../../layout/navItems";
 import { showNav } from "../../layout/navState";
 import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
-import { goFromNav, openTitle } from "../../nav";
+import { go, goFromNav, openTitle } from "../../nav";
 import { episodeCode, title as catalogTitle } from "../../catalog";
 import { play } from "../../playback";
-import { metaText, sectionTitle } from "../../kit/text";
+import { bodyText, metaText, sectionTitle } from "../../kit/text";
 import { Fmt } from "../../native";
-import { openSavedFolder, pauseSaved, removeSaved, savedList, titleOf, watchSaved, type SavedGroup, type SavedItem } from "../../library";
+import { openSavedFolder, pauseSaved, removeSaved, savedList, savingOverall, titleOf, watchSaved, type SavedGroup, type SavedItem } from "../../library";
 import { Button } from "../../kit/Button";
 import { rounded, row } from "../../kit/shape";
 import { alpha, colors, cs, safe, u } from "../../theme";
@@ -32,6 +32,7 @@ import { SavedRow } from "./SavedRow";
 const pageStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(24), gap: u(12) });
 const sectionStyle = (): ViewStyle => ({ marginTop: u(28), marginBottom: u(4) });
 const spaceTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", flexDirection: "row", marginTop: u(8), maxWidth: cs(520) });
+const emptyStyle = (): ViewStyle => ({ marginTop: u(16), gap: u(24), alignItems: "flex-start" });
 const SAVED_AT = NAV.findIndex((n) => n.id === "saved");
 
 type Section = "saving" | "ready" | "failed";
@@ -93,6 +94,11 @@ export function SavedScreen() {
     onNav.set(true);
   };
   const at = () => (onNav() ? -1 : clamp(focus(), rows().length - 1));
+  /** Nothing saved, saving or being found: the screen invites to find a film. */
+  const empty = () => rows().length === 0 && !savingOverall().saving;
+  /** Something is on the device or coming to it: the space it takes shows. */
+  const anySaved = () => list().saving.length > 0 || list().ready.length > 0;
+  const browse = () => go("home");
 
   /** The question before files go. */
   const ask = signal<Confirm | null>(null);
@@ -148,6 +154,7 @@ export function SavedScreen() {
   keymap.bind({
     enter: () => {
       if (onNav()) return goFromNav(NAV[navAt()].id);
+      if (empty()) return browse();
       const e = rows()[at()];
       if (e) act(e, part());
     },
@@ -201,18 +208,23 @@ export function SavedScreen() {
     <View style={{ flex: 1 }}>
       <PageFrame ctl={page} kind={caps.touch && !caps.settingsTab ? "deep" : "root"} title={() => t("saved.title")}>
         <View style={pageStyle()}>
-          <View style={row(u(20))}>
-            <Text style={{ ...metaText(), flexShrink: 1 }}>{spaceLine(used(), free(), caps.touch ? null : list().space.folder)}</Text>
-            {/* The folder in Finder / File Explorer: a desktop has a file manager. */}
-            <If when={!caps.touch && !caps.remote}>
-              <Button kind="secondary" height={44} label={() => t("saved.open_folder")} focused={() => false} onPress={openSavedFolder} />
-            </If>
-          </View>
-          <View style={spaceTrack()}>
-            <View style={{ width: `${Math.max(1, Math.round(share() * 100))}%`, height: "100%", backgroundColor: colors.snow() }} />
-          </View>
-          <If when={rows().length === 0}>
-            <Text style={{ ...metaText(colors.soft()), marginTop: u(32) }}>{t("saved.empty")}</Text>
+          <If when={anySaved()}>
+            <View style={row(u(20))}>
+              <Text style={{ ...metaText(), flexShrink: 1 }}>{spaceLine(used(), free(), caps.touch ? null : list().space.folder)}</Text>
+              {/* The folder in Finder / File Explorer: a desktop has a file manager. */}
+              <If when={!caps.touch && !caps.remote}>
+                <Button kind="secondary" height={44} label={() => t("saved.open_folder")} focused={() => false} onPress={openSavedFolder} />
+              </If>
+            </View>
+            <View style={spaceTrack()}>
+              <View style={{ width: `${Math.max(1, Math.round(share() * 100))}%`, height: "100%", backgroundColor: colors.snow() }} />
+            </View>
+          </If>
+          <If when={empty()}>
+            <View style={emptyStyle()}>
+              <Text style={bodyText(colors.soft())}>{t("saved.empty")}</Text>
+              <Button kind="primary" height={48} label={() => t("saved.browse")} focused={() => !onNav()} onPress={browse} />
+            </View>
           </If>
           <If when={list().saving.length > 0}>
             <View style={sectionStyle()}>

@@ -511,7 +511,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: "保存済み"
-  empty: "保存したものはまだありません。作品ページから映画やシーズンを保存すると、インターネットなしで観られます。"
+  empty: "映画を保存すると、オフラインで観られます"
+  browse: "映画を探す"
   saving: "保存中"
   while_open: "reel を開いている間"
   ready: "視聴できます"
@@ -536,6 +537,8 @@ saved:
     checking: "保存済みのデータを確認しています…"
     resolving: "共有している人を探しています…"
     saving: "%{percent}% · %{have}/%{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent}% · %{have}/%{size} · 残り約%{time}"
     paused: "一時停止中 · %{have}/%{size}"
     waiting: "視聴中の映画を止めると開始します"
     saved: "保存済み · %{size}"

@@ -511,7 +511,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: "已保存"
-  empty: "还没有保存任何内容。在影片页面保存电影或一整季，无需联网即可观看。"
+  empty: "保存影片，即可离线观看"
+  browse: "浏览影片"
   saving: "正在保存"
   while_open: "需保持 reel 打开"
   ready: "可以观看"
@@ -536,6 +537,8 @@ saved:
     checking: "正在检查已保存的内容…"
     resolving: "正在查找分享者…"
     saving: "%{percent}% · %{have}/%{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent}% · %{have}/%{size} · 剩余约 %{time}"
     paused: "已暂停 · %{have}/%{size}"
     waiting: "当前观看的影片停止后开始"
     saved: "已保存 · %{size}"

@@ -511,7 +511,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: "Gespeichert"
-  empty: "Noch nichts gespeichert. Speichere einen Film oder eine Staffel auf seiner Seite, um ohne Internet zu schauen."
+  empty: "Speichere einen Film, um ihn offline zu schauen"
+  browse: "Filme entdecken"
   saving: "Wird gespeichert"
   while_open: "solange reel geöffnet ist"
   ready: "Bereit zum Ansehen"
@@ -536,6 +537,8 @@ saved:
     checking: "Gespeichertes wird geprüft…"
     resolving: "Suche Leute, die es teilen…"
     saving: "%{percent} % · %{have} von %{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent} % · %{have} von %{size} · noch etwa %{time}"
     paused: "Pausiert · %{have} von %{size}"
     waiting: "Startet, wenn die aktuelle Wiedergabe endet"
     saved: "Gespeichert · %{size}"

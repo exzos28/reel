@@ -24,8 +24,9 @@ import { Rail, railLead } from "./Rail";
 import { scroller } from "./scrollCtl";
 import savedIcon from "../icons/saved.svg";
 import searchIcon from "../icons/search.svg";
-import { librarySupported } from "../library";
+import { librarySupported, savingOverall, watchSaved } from "../library";
 import { Pressable } from "../kit/Pressable";
+import { ProgressRing } from "../kit/SaveMark";
 
 /** The tabs: the nav's destinations but Settings. */
 const TABS = NAV.filter((n) => n.id !== "settings" && n.id !== "saved");
@@ -106,6 +107,10 @@ const indicatorStyle = (on: boolean): ViewStyle => ({
 });
 const tabText = (on: boolean): TextStyle => ({ fontFamily: font, fontSize: android ? 12 : 10.5, fontWeight: 500, color: on ? colors.snow() : colors.ash() });
 
+/** The Saved tab's mark while anything saves: a small ring of how much of it is saved, at the
+ * icon's top right (design/offline-downloads.md). */
+const markStyle = (): ViewStyle => ({ position: "absolute", top: 0, right: android ? 16 : 10 });
+
 /** The phone's tabs: Home (the categories, chosen at the top of its page), Search, Saved where
  * this device saves, Settings. */
 const PHONE_TABS: { id: Destination; label: string; icon: ImageAsset; on: () => boolean; go: () => void }[] = [
@@ -115,11 +120,16 @@ const PHONE_TABS: { id: Destination; label: string; icon: ImageAsset; on: () => 
   { id: "settings", label: "nav.settings", icon: settingsIcon, on: () => section() === "settings", go: () => go("settings") },
 ];
 
-function Tab(props: { label: string; icon: ImageAsset; on: () => boolean; inRail: boolean; onPress: () => void }) {
+function Tab(props: { label: string; icon: ImageAsset; on: () => boolean; inRail: boolean; saving?: boolean; onPress: () => void }) {
   return (
     <Pressable haptic={!props.on()} role="tab" accessibilityLabel={props.label} accessibilityState={{ selected: props.on() }} onPress={props.onPress} style={tabStyle(props.inRail)}>
       <View style={indicatorStyle(props.on())}>
         <Icon src={() => props.icon} size={pt(21)} color={() => (props.on() ? colors.snow() : colors.ash())} />
+        <If when={props.saving && savingOverall().saving}>
+          <View testID="saved-progress" style={markStyle()}>
+            <ProgressRing progress={() => savingOverall().progress} size={12} stroke={2.5} background={() => (props.on() ? colors.raise() : colors.ink())} />
+          </View>
+        </If>
       </View>
       <Text style={tabText(props.on())}>{props.label}</Text>
     </Pressable>
@@ -129,6 +139,7 @@ function Tab(props: { label: string; icon: ImageAsset; on: () => boolean; inRail
 /** The phone's tabs: a bar under the content, or (held sideways) a rail at its left. Tapping
  * the selected tab pops it to its root. */
 export function PhoneTabBar() {
+  watchSaved();
   return (
     <View
       testID={phoneRail() ? "nav-rail" : "tab-bar"}
@@ -137,7 +148,7 @@ export function PhoneTabBar() {
       style={phoneRail() ? railStyle() : tabBarStyle()}
     >
       <Each of={PHONE_TABS} key={(n) => n.id}>
-        {(n) => <Tab label={t(n().label)} icon={n().icon} on={n().on} inRail={phoneRail()} onPress={n().go} />}
+        {(n) => <Tab label={t(n().label)} icon={n().icon} on={n().on} inRail={phoneRail()} saving={n().id === "saved"} onPress={n().go} />}
       </Each>
     </View>
   );

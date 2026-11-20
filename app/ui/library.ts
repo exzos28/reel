@@ -32,6 +32,8 @@ export interface SavedItem {
   /** MiB/s while saving. */
   speed: number | null;
   peers: number | null;
+  /** Minutes it still takes, rounded; null when not known (or its show's row says it). */
+  left: number | null;
   message: string | null;
 }
 
@@ -57,6 +59,8 @@ export interface SavedGroup {
   /** MiB/s of its torrents while saving, null when none saves; people sharing them. */
   speed: number | null;
   peers: number;
+  /** Minutes until all of it that is unfinished is saved, rounded; null when not known. */
+  left: number | null;
   items: SavedItem[];
 }
 
@@ -110,6 +114,13 @@ export interface SaveOffer {
   smaller: { id: string; quality: string; source: string; size: number } | null;
 }
 
+/** The Saved tab's mark: something is being found or saved, and the share saved of all that
+ * is unfinished. */
+export interface SavingOverall {
+  saving: boolean;
+  progress: number;
+}
+
 /** Ticks every second while some screen watches (`watchSaved`): readers ask the core again. */
 const tick = signal(0);
 let watchers = 0;
@@ -149,6 +160,22 @@ export function savedList(): SavedList {
   tick();
   if (!librarySupported) return EMPTY_LIST;
   return parsed<SavedList>("list", Library.list());
+}
+
+const IDLE: SavingOverall = { saving: false, progress: 0 };
+let overallAt = -1;
+let overall: SavingOverall = IDLE;
+/** The Saved tab's mark, read every second while watched: the core is asked again only while
+ * something saves or after a change (its revision is cheap to ask). */
+export function savingOverall(): SavingOverall {
+  tick();
+  if (!librarySupported) return IDLE;
+  const revision = Library.revision();
+  if (revision !== overallAt || overall.saving) {
+    overallAt = revision;
+    overall = parsed<SavingOverall>("overall", Library.overall());
+  }
+  return overall;
 }
 
 export function titleSaveState(id: string, show: boolean): SaveState {

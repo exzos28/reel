@@ -240,6 +240,7 @@ export const Library: LibraryModule = {
   setFolder: () => "",
   openFolder: () => false,
   revision: () => 0,
+  overall: () => '{"saving":false,"progress":0}',
 };
 
 // Fmt is pure and also registered in the wasm32 build, which `ui/native.ts` uses. Over HTTP
@@ -247,6 +248,7 @@ export const Library: LibraryModule = {
 export const Fmt: FmtModule = {
   position: s("Fmt", "position"),
   size: s("Fmt", "size"),
+  sizeOf: s("Fmt", "sizeOf"),
   speed: s("Fmt", "speed"),
   hoursMinutes: s("Fmt", "hoursMinutes"),
 };

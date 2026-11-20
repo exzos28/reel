@@ -236,6 +236,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Library", "revision", |a| {
         no_args(&a)?;
         ret(Library::revision())
+    })
+    .sync("Library", "overall", |a| {
+        no_args(&a)?;
+        ret(Library::overall())
     });
 
     r.sync("Sources", "search", |a| {
@@ -377,6 +381,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Fmt", "size", |a| {
         let (bytes,): (f64,) = args(a)?;
         ret(Fmt::size(bytes))
+    })
+    .sync("Fmt", "sizeOf", |a| {
+        let (have, size): (f64, f64) = args(a)?;
+        ret(Fmt::size_of(have, size))
     })
     .sync("Fmt", "speed", |a| {
         let (mib_per_s,): (f64,) = args(a)?;
