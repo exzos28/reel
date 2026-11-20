@@ -70,6 +70,18 @@ export function windowControlsRoom(): number {
   return Settings.windowed(w.width, w.height) ? WINDOW_CONTROLS : 0;
 }
 
+/** The system's insets at the window's left and right, points: a phone's notch and rounded
+ * corners held sideways. An iPad has none of its own (its home indicator is at the bottom in
+ * every orientation), but in a window that does not fill the screen iPadOS reports 66 at its left
+ * (the window controls' corner), the full height: only the top left needs room,
+ * `windowControlsRoom`, so an iPad's sides are 0. */
+export function sideSafeArea(): { left: number; right: number } {
+  return sideSafeAreaFor(family === "tablet" && runtime.os === "ios", safeArea());
+}
+/** `sideSafeArea` for a device that is an iPad or not, with the system's insets `area`. */
+export const sideSafeAreaFor = (ipad: boolean, area: { left: number; right: number }) =>
+  ipad ? { left: 0, right: 0 } : { left: area.left, right: area.right };
+
 /** Content margin left and right of the safe area, points (desktop 64,
  * tablet 32, phone 20). A TV's comes from its title-safe 5% (`theme.safe`). */
 const MARGIN = { mac: 64, windows: 64, linux: 64, tablet: 32, phone: 20 } as const;
@@ -114,7 +126,7 @@ export function sideInsetFor(width: number, height: number, base: number): numbe
 
 /** The family's inset: the system's safe area (a landscape phone's notch side) plus its margin. */
 function baseInset(): number {
-  const a = safeArea();
+  const a = sideSafeArea();
   return Math.max(a.left, a.right) + MARGIN[chrome() as keyof typeof MARGIN];
 }
 

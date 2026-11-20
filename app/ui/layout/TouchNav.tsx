@@ -18,7 +18,7 @@ import { alpha, colors, font, iconPt, targetSlop, u } from "../theme";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
 import { frameSolid } from "./frameState";
-import { windowControlsRoom } from "./chrome";
+import { sideSafeArea, windowControlsRoom } from "./chrome";
 import { PHONE_BACK_HEAD, PHONE_HEAD, PHONE_TITLE_BAR, phoneRail, railWidth, TAB_ROW, TOP_ROW } from "./metrics";
 import { CategoryTabs } from "./CategoryTabs";
 import savedIcon from "../icons/saved.svg";
@@ -85,7 +85,7 @@ const tabBarStyle = (): ViewStyle => ({
   bottom: 0,
   height: tabBarHeight(),
   paddingTop: android ? 12 : 6,
-  paddingHorizontal: 8 + Math.max(safeArea().left, safeArea().right),
+  paddingHorizontal: 8 + Math.max(sideSafeArea().left, sideSafeArea().right),
   backgroundColor: colors.ink(),
   borderTopWidth: 1,
   borderTopColor: colors.card(),
@@ -98,7 +98,7 @@ const railStyle = (): ViewStyle => ({
   bottom: 0,
   left: 0,
   width: railWidth(),
-  paddingLeft: safeArea().left,
+  paddingLeft: sideSafeArea().left,
   justifyContent: "center",
   gap: 6,
   backgroundColor: colors.ink(),
@@ -180,8 +180,8 @@ const headStyle = (): ViewStyle => ({
   ...row(0),
   justifyContent: "space-between",
   height: PHONE_HEAD,
-  paddingLeft: 20 + safeArea().left,
-  paddingRight: 20 + safeArea().right,
+  paddingLeft: 20 + sideSafeArea().left,
+  paddingRight: 20 + sideSafeArea().right,
 });
 
 /** The top of a phone's root page: nothing of reel's (no logo: the room is the content's); a
@@ -232,7 +232,7 @@ const titleBarStyle = (solid: boolean): ViewStyle => ({
   height: safeArea().top + PHONE_TITLE_BAR,
   paddingTop: safeArea().top,
   paddingLeft: Math.max(16, windowControlsRoom()),
-  paddingRight: 16 + safeArea().right,
+  paddingRight: 16 + sideSafeArea().right,
   zIndex: 10,
   pointerEvents: "box-none",
   backgroundColor: solid ? alpha(colors.ink(), 0.96) : "transparent",
@@ -249,7 +249,7 @@ const barTitleStyle = (solid: boolean): TextStyle => ({
   height: PHONE_TITLE_BAR,
   lineHeight: PHONE_TITLE_BAR,
   left: android ? 72 : barTitleSide,
-  right: barTitleSide + safeArea().right,
+  right: barTitleSide + sideSafeArea().right,
   numberOfLines: 1,
   textAlign: android ? "left" : "center",
   fontFamily: font,
@@ -287,7 +287,7 @@ const backHeadStyle = (): ViewStyle => ({
   right: 0,
   height: safeArea().top + PHONE_BACK_HEAD,
   paddingTop: safeArea().top,
-  paddingLeft: Math.max(16 + safeArea().left, windowControlsRoom()),
+  paddingLeft: Math.max(16 + sideSafeArea().left, windowControlsRoom()),
   backgroundColor: colors.ink(),
   zIndex: 10,
 });
@@ -321,8 +321,8 @@ const topRowStyle = (solid: boolean): ViewStyle => ({
   right: 0,
   height: topRowBottom(),
   paddingTop: safeArea().top,
-  paddingLeft: Math.max(ROW_EDGE + safeArea().left, windowControlsRoom()),
-  paddingRight: ROW_EDGE + safeArea().right,
+  paddingLeft: Math.max(ROW_EDGE + sideSafeArea().left, windowControlsRoom()),
+  paddingRight: ROW_EDGE + sideSafeArea().right,
   zIndex: 10,
   // Solid once content is under it, the status bar's area with it, a hairline under it.
   backgroundColor: solid ? alpha(colors.ink(), 0.96) : "transparent",
@@ -452,10 +452,10 @@ export function TabletTopRow() {
   const logo = signal(0);
   const right = signal(0);
   const leftNeed = () => (canGoBack() ? BACK_ROOM : logo());
-  const edge = () => Math.max(ROW_EDGE + safeArea().left, windowControlsRoom());
+  const edge = () => Math.max(ROW_EDGE + sideSafeArea().left, windowControlsRoom());
   const labels = () =>
     labelled() > 0 &&
-    labelled() + 2 * (Math.max(leftNeed() + edge(), right() + ROW_EDGE + safeArea().right) + TABS_GAP) <= windowSize().width;
+    labelled() + 2 * (Math.max(leftNeed() + edge(), right() + ROW_EDGE + sideSafeArea().right) + TABS_GAP) <= windowSize().width;
   const tabs = (iconsOnly: boolean, live: boolean) => (
     <Each of={TABS} key={(n) => n.id}>
       {(n) => {

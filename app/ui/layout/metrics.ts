@@ -5,7 +5,7 @@
 import { safeArea, windowSize } from "nsh";
 import { look } from "../platform/look";
 import { u } from "../theme";
-import { centering, frame, sideInset } from "./chrome";
+import { centering, frame, sideInset, sideSafeArea } from "./chrome";
 import { canGoBack, isCategory, section } from "../nav";
 
 /** A root page (a destination: the nav over it), a title (its hero runs under what is
@@ -96,7 +96,7 @@ export const TAB_ROW = look.system === "material" ? 80 : 49;
 export const phoneRail = () => frame().nav === "tab-bar" && windowSize().height < 500;
 /** The rail's width, points (with the system's area at the left: a notch). */
 export const RAIL = 76;
-export const railWidth = () => (phoneRail() ? RAIL + safeArea().left : 0);
+export const railWidth = () => (phoneRail() ? RAIL + sideSafeArea().left : 0);
 
 /** Where a hero's still starts, points from the page's top: under a phone's Home tabs (a fixed bar
  * over a category's root page), else at the top (it runs under what is over the page). */

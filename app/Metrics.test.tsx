@@ -2,7 +2,7 @@
 // its title or a hero's text, and the room under it clears the system's bars.
 import { expect, test } from "nsh/test";
 import { computeMetrics, heroBox, heroTopFor, type MetricsInput, type NavPlace, type PageKind } from "./ui/layout/metrics";
-import { contentWidthFor, sideInsetFor } from "./ui/layout/chrome";
+import { contentWidthFor, sideInsetFor, sideSafeAreaFor } from "./ui/layout/chrome";
 import { NATIVE, openApp } from "./testEngine";
 
 const families: { name: string; nav: NavPlace; unit: number; safeTop: number; safeBottom: number }[] = [
@@ -113,4 +113,10 @@ test("a wide Mac window keeps the hero's text: its column moves to the content c
     expect(app.texts()).toContain("Resume 41:12");
     app.dispose();
   }
+});
+
+test("an iPad's sides have no system insets (a window's are the controls', at the top left only); a phone's notch side has", () => {
+  // iPadOS reports 66 pt at the left of a window that does not fill the screen.
+  expect(sideSafeAreaFor(true, { left: 66, right: 0 })).toEqual({ left: 0, right: 0 });
+  expect(sideSafeAreaFor(false, { left: 62, right: 62 })).toEqual({ left: 62, right: 62 });
 });

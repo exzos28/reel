@@ -19,7 +19,7 @@ import { rounded } from "./kit/shape";
 import plusIcon from "./icons/plus.svg";
 import { streamDetails } from "./preferences";
 import { cachedAhead, currentJob, duration, firstFrame, readAt, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
-import { chrome, frame } from "./layout/chrome";
+import { chrome, frame, sideSafeArea, windowControlsRoom } from "./layout/chrome";
 import { alpha, colors, density, focusRing, font, iconPt, radius, safe, showFocus, targetSlop, ts as layoutTs, type, u as layoutU } from "./theme";
 
 /** A phone: play and ±10 s in the middle of the picture, under the thumbs; the bottom row keeps
@@ -83,7 +83,7 @@ const barBackSlot = (full: boolean): ViewStyle => {
  * landscape safe area's left (x 62 beside a Dynamic Island). */
 const CLOSE = () => (chrome() === "tablet" ? 44 : 40);
 const touchCorner = () =>
-  chrome() === "tablet" ? { top: 24, left: 24 } : { top: Math.max(18, safeArea().top), left: Math.max(20, safeArea().left) };
+  chrome() === "tablet" ? { top: 24, left: Math.max(24, windowControlsRoom()) } : { top: Math.max(18, safeArea().top), left: Math.max(20, sideSafeArea().left, windowControlsRoom()) };
 const closeDisc = (): ViewStyle => ({
   width: CLOSE(),
   height: CLOSE(),

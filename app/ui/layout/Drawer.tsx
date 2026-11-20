@@ -29,7 +29,7 @@ import { rounded } from "../kit/shape";
 import { metaText, sectionTitle } from "../kit/text";
 import { alpha, colors, iconPt, safe, targetSlop, u } from "../theme";
 import closeIcon from "../icons/plus.svg";
-import { frame, phoneSideways, type PanelPlace } from "./chrome";
+import { frame, phoneSideways, sideSafeArea, type PanelPlace } from "./chrome";
 import { scroller, Scroller, type ScrollCtl } from "./Scroller";
 import { Pressable } from "../kit/Pressable";
 
@@ -83,7 +83,7 @@ const openOn = new Map<string, PanelPlace>();
 
 function sheetStyle(place: Place): ViewStyle {
   if (place === "side")
-    return { width: SIDE_WIDTH + safeArea().right, backgroundColor: colors.card(), borderTopLeftRadius: 22, borderBottomLeftRadius: 22, borderCurve: "continuous" };
+    return { width: SIDE_WIDTH + sideSafeArea().right, backgroundColor: colors.card(), borderTopLeftRadius: 22, borderBottomLeftRadius: 22, borderCurve: "continuous" };
   if (place === "bottom-sheet")
     return { backgroundColor: colors.card(), borderTopLeftRadius: 22, borderTopRightRadius: 22, borderCurve: "continuous" };
   // A tablet's: clear of the status bar and the home indicator; in portrait under half the screen.
@@ -109,7 +109,7 @@ const grabberArea = (): ViewStyle => ({ height: GRABBER_ROOM, justifyContent: "f
 /** The system's insets inside a sheet that has them on its sides: a sideways phone's (the notch
  * side, the home indicator), and the home indicator under a bottom sheet. */
 const insets = (place: Place) =>
-  place === "side" ? { top: safeArea().top, right: safeArea().right, bottom: safeArea().bottom }
+  place === "side" ? { top: safeArea().top, right: sideSafeArea().right, bottom: safeArea().bottom }
   : place === "bottom-sheet" ? { top: 0, right: 0, bottom: safeArea().bottom }
   : { top: 0, right: 0, bottom: 0 };
 const closeStyle = (place: Place): ViewStyle => ({
