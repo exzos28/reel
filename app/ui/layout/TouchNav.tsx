@@ -25,7 +25,7 @@ import { scroller } from "./scrollCtl";
 import savedIcon from "../icons/saved.svg";
 import searchIcon from "../icons/search.svg";
 import { librarySupported } from "../library";
-import { pressFeedback } from "../kit/pressFeedback";
+import { Pressable } from "../kit/Pressable";
 
 /** The tabs: the nav's destinations but Settings. */
 const TABS = NAV.filter((n) => n.id !== "settings" && n.id !== "saved");
@@ -56,11 +56,10 @@ function Logo() {
 
 /** Settings, a round button: it pushes Settings on the current tab (a 44 pt touch area). */
 function SettingsButton(props: { size: number }) {
-  const press = pressFeedback();
   return (
-    <View role="button" accessibilityLabel={t("nav.settings")} onPress={openSettings} onPressDown={press.onPressDown} onPressUp={press.onPressUp} hitSlop={targetSlop(props.size)} style={{ ...disc(props.size, isSettings()), opacity: press.on() ? 0.7 : 1 }}>
+    <Pressable role="button" accessibilityLabel={t("nav.settings")} onPress={openSettings} hitSlop={targetSlop(props.size)} style={disc(props.size, isSettings())}>
       <Icon src={() => settingsIcon} size={pt(props.size * 0.47)} color={() => (isSettings() ? colors.snow() : colors.dim())} />
-    </View>
+    </Pressable>
   );
 }
 
@@ -118,12 +117,12 @@ const PHONE_TABS: { id: Destination; label: string; icon: ImageAsset; on: () => 
 
 function Tab(props: { label: string; icon: ImageAsset; on: () => boolean; inRail: boolean; onPress: () => void }) {
   return (
-    <View role="tab" accessibilityLabel={props.label} accessibilityState={{ selected: props.on() }} onPress={props.onPress} style={tabStyle(props.inRail)}>
+    <Pressable haptic={!props.on()} role="tab" accessibilityLabel={props.label} accessibilityState={{ selected: props.on() }} onPress={props.onPress} style={tabStyle(props.inRail)}>
       <View style={indicatorStyle(props.on())}>
         <Icon src={() => props.icon} size={pt(21)} color={() => (props.on() ? colors.snow() : colors.ash())} />
       </View>
       <Text style={tabText(props.on())}>{props.label}</Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -167,10 +166,10 @@ function CategoryTabs() {
           {(c) => {
             const on = () => section() === c();
             return (
-              <View ref={tabs.follow(on)} role="tab" accessibilityLabel={t(c() === "home" ? "nav.all" : `nav.${c()}`)} accessibilityState={{ selected: on() }} onPress={() => openCategory(c())} style={categoryTabStyle(on())}>
+              <Pressable haptic={!on()} ref={tabs.follow(on)} role="tab" accessibilityLabel={t(c() === "home" ? "nav.all" : `nav.${c()}`)} accessibilityState={{ selected: on() }} onPress={() => openCategory(c())} style={categoryTabStyle(on())}>
                 <Icon src={() => categoryIcon(c())} size={pt(18)} color={() => (on() ? colors.snow() : colors.ash())} />
                 <Text style={categoryText(on())}>{t(c() === "home" ? "nav.all" : `nav.${c()}`)}</Text>
-              </View>
+              </Pressable>
             );
           }}
         </Each>
@@ -222,11 +221,10 @@ export const phoneDisc = (side: "left" | "right"): ViewStyle => ({ position: "ab
 
 /** Back, a disc (40 across, a 44 pt touch area). */
 function BackDisc() {
-  const press = pressFeedback();
   return (
-    <View role="button" accessibilityLabel={t("nav.back")} onPress={handleBack} onPressDown={press.onPressDown} onPressUp={press.onPressUp} hitSlop={targetSlop(40)} style={{ ...disc(40), opacity: press.on() ? 0.7 : 1 }}>
+    <Pressable role="button" accessibilityLabel={t("nav.back")} onPress={handleBack} hitSlop={targetSlop(40)} style={disc(40)}>
       <Icon src={() => backIcon} size={pt(20)} />
-    </View>
+    </Pressable>
   );
 }
 
@@ -316,21 +314,20 @@ function underName(): string {
 
 /** Back in the logo's place: iPad's "‹ Movies" capsule; Android's ← disc, then the logo. */
 function TabletBack() {
-  const press = pressFeedback();
   return (
     <If
       when={android}
       else={
-        <View role="button" accessibilityLabel={t("nav.back_to", { page: underName() })} onPress={handleBack} onPressDown={press.onPressDown} onPressUp={press.onPressUp} style={{ ...capsuleStyle(), opacity: press.on() ? 0.7 : 1 }}>
+        <Pressable role="button" accessibilityLabel={t("nav.back_to", { page: underName() })} onPress={handleBack} style={capsuleStyle()}>
           <Icon src={() => backIcon} size={pt(20)} />
           <Text style={capsuleText()}>{underName()}</Text>
-        </View>
+        </Pressable>
       }
     >
       <View style={row(12)}>
-        <View role="button" accessibilityLabel={t("nav.back_to", { page: underName() })} onPress={handleBack} onPressDown={press.onPressDown} onPressUp={press.onPressUp} style={{ ...disc(44), opacity: press.on() ? 0.7 : 1 }}>
+        <Pressable role="button" accessibilityLabel={t("nav.back_to", { page: underName() })} onPress={handleBack} style={disc(44)}>
           <Icon src={() => backIcon} size={pt(20)} />
-        </View>
+        </Pressable>
         <Logo />
       </View>
     </If>
@@ -368,12 +365,12 @@ export function TabletTopRow() {
               const on = () => section() === n().id && !isSettings();
               const iconOnly = () => n().id === "search" || iconsOnly();
               return (
-                <View role="tab" accessibilityLabel={t(`nav.${n().id}`)} accessibilityState={{ selected: on() }} onPress={() => go(n().id)} style={topTab(on(), iconOnly())}>
+                <Pressable haptic={!on()} role="tab" accessibilityLabel={t(`nav.${n().id}`)} accessibilityState={{ selected: on() }} onPress={() => go(n().id)} style={topTab(on(), iconOnly())}>
                   <Icon src={() => n().icon} size={pt(17)} color={() => (on() ? colors.snow() : colors.dim())} />
                   <If when={!iconOnly()}>
                     <Text style={topTabText(on())}>{t(`nav.${n().id}`)}</Text>
                   </If>
-                </View>
+                </Pressable>
               );
             }}
           </Each>

@@ -6,6 +6,7 @@ import { rounded, row } from "../../kit/shape";
 import { rowStyle } from "../../kit/Row";
 import { labelText, metaText } from "../../kit/text";
 import { colors, cs, targetSlop, u } from "../../theme";
+import { Pressable } from "../../kit/Pressable";
 
 const settingRow = (focused: boolean): ViewStyle => ({
   ...rowStyle(false, focused),
@@ -36,7 +37,7 @@ export function SettingRow(props: {
 }) {
   const isSwitch = props.on !== undefined;
   return (
-    <View
+    <Pressable feedback="row" haptic={isSwitch}
       ref={props.viewRef}
       role={isSwitch ? "switch" : "button"}
       accessibilityLabel={props.label}
@@ -57,6 +58,6 @@ export function SettingRow(props: {
           </View>
         </If>
       </View>
-    </View>
+    </Pressable>
   );
 }

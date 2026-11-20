@@ -9,6 +9,7 @@ import { SectionTitle } from "../../layout/Section";
 import { scroller, type Follow } from "../../layout/Scroller";
 import { Rail, railLead } from "../../layout/Rail";
 import { colors, focusRing, ts, u } from "../../theme";
+import { Pressable } from "../../kit/Pressable";
 
 const PHOTO = 150;
 
@@ -31,7 +32,7 @@ const partStyle = (): TextStyle => ({ ...metaText(), fontSize: ts(20), numberOfL
 function Person(props: { person: () => CastMember; focused: () => boolean; follow: Follow; onPress: () => void }) {
   const p = props.person;
   return (
-    <View
+    <Pressable
       ref={props.follow(props.focused) as (r: ViewRef) => void}
       role="button"
       accessibilityLabel={p().name}
@@ -47,7 +48,7 @@ function Person(props: { person: () => CastMember; focused: () => boolean; follo
       <If when={p().character}>
         <Text style={partStyle()}>{p().character!}</Text>
       </If>
-    </View>
+    </Pressable>
   );
 }
 

@@ -13,3 +13,6 @@ Paths are from the repo root.
   44 / 48 pt through `theme.targetSlop`. A screen never reads `safeArea`, `ringRoom`, the family
   or positions overlays: `dev/ui-rules.sh` checks it (a hook in `.claude/settings.json` runs it
   after each edit here).
+- Everything pressable is a `kit/Pressable` (`feedback`: `dim` for buttons, icons, chips and tabs,
+  `row` for list and settings rows, `none` for backdrops and sliders; `haptic` when a press changes a
+  selection); `dev/ui-rules.sh` fails on `onPress` on a bare `View` or `Text`.

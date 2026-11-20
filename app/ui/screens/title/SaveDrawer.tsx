@@ -18,6 +18,7 @@ import type { PlanEpisode, SeasonPlan } from "../../library";
 import { alpha, colors, cs, targetSlop, u } from "../../theme";
 import checkIcon from "../../icons/check.svg";
 import { SaveMark } from "../../kit/SaveMark";
+import { Pressable } from "../../kit/Pressable";
 
 const tabStyle = (selected: boolean): ViewStyle => ({ paddingHorizontal: cs(14), paddingVertical: cs(8), ...rounded(u(8)), backgroundColor: selected ? colors.raise() : "transparent" });
 const rowBox = (focused: boolean): ViewStyle => ({ ...rowStyle(false, focused, u(14)), height: cs(56), paddingHorizontal: cs(14) });
@@ -60,7 +61,7 @@ const skeletonRow = (): ViewStyle => ({
 function EpisodeLine(props: { e: () => PlanEpisode; picked: () => boolean; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
   const e = props.e;
   return (
-    <View ref={props.viewRef} role="checkbox" accessibilityLabel={e().title} accessibilityState={{ checked: e().locked || props.picked() }} hitSlop={targetSlop(cs(56))} onPress={props.onPress} hoverStyle={{ backgroundColor: colors.raise() }} style={rowBox(props.focused())}>
+    <Pressable feedback="row" haptic={!e().locked} ref={props.viewRef} role="checkbox" accessibilityLabel={e().title} accessibilityState={{ checked: e().locked || props.picked() }} hitSlop={targetSlop(cs(56))} onPress={props.onPress} hoverStyle={{ backgroundColor: colors.raise() }} style={rowBox(props.focused())}>
       <Box on={() => e().locked || props.picked()} locked={() => e().locked} />
       <Text style={{ ...metaText(colors.faint()), width: cs(30), textAlign: "right" }}>{String(e().number)}</Text>
       <Text style={{ ...labelText(), ...oneLine, flex: 1 }}>{e().title}</Text>
@@ -71,7 +72,7 @@ function EpisodeLine(props: { e: () => PlanEpisode; picked: () => boolean; focus
           <SaveMark state={() => e().state} progress={() => e().progress} background={() => (props.focused() ? colors.raise() : colors.card())} />
         </If>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -124,10 +125,10 @@ export function SaveDrawer(props: {
           <View style={row(u(6))}>
             <Each of={props.seasons()} key={(s) => String(s.number)}>
               {(s) => (
-                <View ref={tabs.follow(() => s().number === props.season(), "nearest")} role="tab" accessibilityState={{ selected: s().number === props.season() }} onPress={() => props.onSeason(s().number)} style={tabStyle(s().number === props.season())}>
+                <Pressable haptic={s().number !== props.season()} ref={tabs.follow(() => s().number === props.season(), "nearest")} role="tab" accessibilityState={{ selected: s().number === props.season() }} onPress={() => props.onSeason(s().number)} style={tabStyle(s().number === props.season())}>
                   <Text style={labelText(s().number === props.season() ? colors.snow() : colors.ash())}>{t("series.season", { number: s().number })}</Text>
                   <Text style={metaText()}>{s().number === props.season() && props.plan().saved > 0 ? t("saved.drawer.season_state", { saved: props.plan().saved, total: props.plan().total }) : t("saved.drawer.episodes", { count: s().episodes })}</Text>
-                </View>
+                </Pressable>
               )}
             </Each>
           </View>
@@ -135,11 +136,11 @@ export function SaveDrawer(props: {
           <If when={props.plan().saved > 0}>
             <Text style={metaText()}>{t("saved.drawer.release_locked")}</Text>
           </If>
-          <View ref={list.follow(() => props.focusedAt() === 0)} role="checkbox" accessibilityLabel={t("saved.drawer.whole_season")} onPress={props.onWhole} hoverStyle={{ backgroundColor: colors.raise() }} style={rowBox(props.focusedAt() === 0)}>
+          <Pressable feedback="row" haptic ref={list.follow(() => props.focusedAt() === 0)} role="checkbox" accessibilityLabel={t("saved.drawer.whole_season")} onPress={props.onWhole} hoverStyle={{ backgroundColor: colors.raise() }} style={rowBox(props.focusedAt() === 0)}>
             <Box on={allOn} some={someOn} locked={() => false} />
             <Text style={{ ...labelText(), flex: 1, fontWeight: 600 }}>{t("saved.drawer.whole_season")}</Text>
             <Text style={metaText()}>{props.plan().size != null ? `${t("saved.drawer.episodes", { count: eps().length })} · ${Fmt.size(props.plan().size!)}` : t("saved.drawer.episodes", { count: eps().length })}</Text>
-          </View>
+          </Pressable>
           {/* The season's episodes are coming: rows in their place, as many as it has. */}
           <If when={eps().length === 0}>
             <Each of={Array.from({ length: Math.min(12, props.seasons().find((s) => s.number === props.season())?.episodes ?? 6) }, (_, i) => i)} key={(i) => String(i)}>

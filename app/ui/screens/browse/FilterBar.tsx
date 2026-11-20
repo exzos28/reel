@@ -12,6 +12,7 @@ import { colors, density, safe, u } from "../../theme";
 import { Rail, railLead } from "../../layout/Rail";
 import { scroller } from "../../layout/Scroller";
 import chevronIcon from "../../icons/chevron.svg";
+import { Pressable } from "../../kit/Pressable";
 
 const barStyle = (): ViewStyle => ({ ...row(u(12)), paddingHorizontal: safe().x, marginTop: u(26) });
 const pillText = (lit: boolean): TextStyle => ({ ...oneLine, ...metaText(lit ? colors.snow() : colors.soft()), maxWidth: u(520) });
@@ -24,7 +25,7 @@ function Pill(props: {
   children: JSX.Element;
 }) {
   return (
-    <View
+    <Pressable
       testID={`filter-${props.group().id}`}
       role="button"
       hitSlop={pillSlop()}
@@ -35,7 +36,7 @@ function Pill(props: {
     >
       {props.children}
       <Icon src={() => chevronIcon} size={18} color={colors.ash} />
-    </View>
+    </Pressable>
   );
 }
 

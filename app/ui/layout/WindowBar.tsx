@@ -22,6 +22,7 @@ import { BAR_HEIGHT } from "./metrics";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
 import { navPosition, setupDone } from "../preferences";
+import { Pressable } from "../kit/Pressable";
 
 /** The bar's height, points (`metrics`); the system's window controls are centred in it. */
 export { BAR_HEIGHT };
@@ -132,7 +133,7 @@ export function BarBack(props: { onPress: () => void; enabled: () => boolean; ti
     </View>
   );
   return (
-    <View
+    <Pressable
       role="button"
       accessibilityLabel={props.tip()}
       disabled={!props.enabled()}
@@ -142,7 +143,7 @@ export function BarBack(props: { onPress: () => void; enabled: () => boolean; ti
       style={backStyle(props.enabled(), props.background)}
     >
       <Icon src={() => backIcon} size={pt(back().icon)} />
-    </View>
+    </Pressable>
   );
 }
 
@@ -155,7 +156,7 @@ function Pills(props: { solid: () => boolean }) {
     <View style={groupStyle(props.solid())}>
       <Each of={pills} key={(n) => n.id}>
         {(n) => (
-          <View
+          <Pressable
             role="button"
             accessibilityLabel={t(`nav.${n().id}`)}
             onPress={() => go(n().id)}
@@ -164,7 +165,7 @@ function Pills(props: { solid: () => boolean }) {
           >
             <Icon src={() => n().icon} size={pt(15)} color={() => (selected(n().id) ? colors.snow() : colors.dim())} />
             <Text style={pillText(selected(n().id))}>{t(`nav.${n().id}`)}</Text>
-          </View>
+          </Pressable>
         )}
       </Each>
     </View>
@@ -219,7 +220,7 @@ export function WindowBar() {
         <Pills solid={barSolid} />
         <Each of={buttons} key={(n) => n.id}>
           {(n) => (
-            <View
+            <Pressable
               role="button"
               accessibilityLabel={t(`nav.${n().id}`)}
               onPress={() => go(n().id)}
@@ -227,7 +228,7 @@ export function WindowBar() {
               style={roundStyle(section() === n().id, barSolid())}
             >
               <Icon src={() => n().icon} size={pt(15)} color={() => (section() === n().id ? colors.snow() : colors.dim())} />
-            </View>
+            </Pressable>
           )}
         </Each>
       </View>

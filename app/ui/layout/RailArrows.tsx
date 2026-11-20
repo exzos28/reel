@@ -9,6 +9,7 @@ import { row } from "../kit/shape";
 import { colors, iconPt, targetSlop, u } from "../theme";
 import { chrome } from "./chrome";
 import type { ScrollCtl } from "./Scroller";
+import { Pressable } from "../kit/Pressable";
 
 /** Rows get arrows on the desktops only. */
 export const railArrows = chrome === "mac" || chrome === "windows" || chrome === "linux";
@@ -26,7 +27,7 @@ const arrowStyle = (off: boolean): ViewStyle => ({
 function Arrow(props: { dir: 1 | -1; ctl: ScrollCtl }) {
   const off = () => !!(props.dir < 0 ? props.ctl.atStart() : props.ctl.atEnd());
   return (
-    <View
+    <Pressable
       role="button"
       accessibilityLabel={t(props.dir < 0 ? "nav.row_back" : "nav.row_on")}
       accessibilityState={{ disabled: off() }}
@@ -38,7 +39,7 @@ function Arrow(props: { dir: 1 | -1; ctl: ScrollCtl }) {
       <View style={{ transform: props.dir < 0 ? "rotate(90deg)" : "rotate(-90deg)" }}>
         <Icon src={() => chevronIcon} size={iconPt(16)} />
       </View>
-    </View>
+    </Pressable>
   );
 }
 

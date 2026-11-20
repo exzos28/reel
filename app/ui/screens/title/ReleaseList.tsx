@@ -10,6 +10,7 @@ import type { Follow } from "../../layout/Scroller";
 import { SectionHeader } from "../../layout/Section";
 import { alpha, colors, cs, safe, u } from "../../theme";
 import { ReleaseRow } from "./ReleaseRow";
+import { Pressable } from "../../kit/Pressable";
 
 /** Grey rows while searching. */
 const SKELETON_ROWS = 3;
@@ -76,7 +77,7 @@ export function ReleaseList(props: {
             )}
           </Each>
           <If when={more() > 0}>
-            <View
+            <Pressable feedback="row"
               ref={props.follow(() => props.focused(moreAt()))}
               role="button"
               onPress={() => props.onMore?.()}
@@ -84,7 +85,7 @@ export function ReleaseList(props: {
               style={moreStyle(props.focused(moreAt()))}
             >
               <Text style={labelText(colors.soft())}>{t("releases.more", { count: more() })}</Text>
-            </View>
+            </Pressable>
           </If>
         </If>
       </View>

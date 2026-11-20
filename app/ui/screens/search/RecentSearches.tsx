@@ -5,6 +5,7 @@ import { row } from "../../kit/shape";
 import { labelText, metaText } from "../../kit/text";
 import { SectionTitle } from "../../layout/Section";
 import { colors, u } from "../../theme";
+import { Pressable } from "../../kit/Pressable";
 
 /** The last searches as pills: OK (or a click) searches one again; "Clear history" beside the title
  * forgets them all (the focus reaches it after the last pill).
@@ -20,7 +21,7 @@ export function RecentSearches(props: {
     <View style={{ gap: u(18) }}>
       <View style={row(u(28))}>
         <SectionTitle text={() => t("search.recent")} />
-        <View
+        <Pressable
           testID="search-clear"
           role="button"
           hitSlop={pillSlop()}
@@ -30,12 +31,12 @@ export function RecentSearches(props: {
           style={pillStyle("transparent", clearFocused(), 22)}
         >
           <Text style={metaText(colors.soft())}>{t("search.clear")}</Text>
-        </View>
+        </Pressable>
       </View>
       <View style={pillWrap(16)}>
         <Each of={props.queries()} key={(q) => q}>
           {(q, i) => (
-            <View
+            <Pressable
               role="button"
               hitSlop={pillSlop()}
               accessibilityLabel={q()}
@@ -44,7 +45,7 @@ export function RecentSearches(props: {
               style={pillStyle(colors.card(), props.focusedAt() === i(), 28)}
             >
               <Text style={labelText()}>{q()}</Text>
-            </View>
+            </Pressable>
           )}
         </Each>
       </View>

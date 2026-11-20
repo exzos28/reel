@@ -8,6 +8,7 @@ import { bodyText, metaText } from "../kit/text";
 import { alpha, colors, heroFade, insetMaxWidth, safe, ts, type, u } from "../theme";
 import { MetaLine } from "./HeroMeta";
 import { heroBoxNow, heroFollowsWindow, stillTop, type HeroBox } from "./metrics";
+import { Pressable } from "../kit/Pressable";
 
 /** The backdrop: from the window's right edge (a wide desktop window's: its content column's), as
  * wide and tall as the hero's box says. */
@@ -152,9 +153,9 @@ export function Hero(props: {
       <View style={props.steadyAbout ? steadyBlockStyle(props.top, props.height, box().height) : textBlockStyle(props.top, u(props.room ?? (props.fit ? 0 : 56)))}>
         <If when={props.onOpen} else={<Text style={logotypeStyle(props.titleSize, !!props.wholeTitle, titleText(s()))}>{titleText(s())}</Text>}>
           {(open) => (
-            <View role="link" accessibilityLabel={titleText(s())} onPress={open()} style={{ alignSelf: "flex-start" }}>
+            <Pressable role="link" accessibilityLabel={titleText(s())} onPress={open()} style={{ alignSelf: "flex-start" }}>
               <Text style={logotypeStyle(props.titleSize, !!props.wholeTitle, titleText(s()))}>{titleText(s())}</Text>
-            </View>
+            </Pressable>
           )}
         </If>
         <MetaLine item={s} />
