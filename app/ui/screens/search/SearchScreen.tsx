@@ -2,7 +2,8 @@
 // then the results as rows of 16:9 cards (Movies, Shows, Anime), or the
 // recent searches while nothing is typed (before any, what is trending now, the core's row). The core searches once the query
 // rests and answers through the catalog's revision. Remote: the screen opens
-// on the field (with its keyboard up where one types at once); OK on the
+// on the field (with its keyboard up where one types at once; on touch only once the field is
+// tapped); OK on the
 // field brings the keyboard (a TV's on-screen one), Up goes to the nav, Down
 // into the recent searches or the results; OK on a card opens its title.
 // Back closes the keyboard, then takes the focus to the nav, then Home.
@@ -182,7 +183,9 @@ export function SearchScreen() {
             onBlur={() => typing.set(false)}
             onRef={(r) => {
               input = r;
-              if (zone() === "field") r.focus();
+              // A keyboard types at once; on touch the on-screen one waits for a tap on the field,
+              // so it does not cover what is trending.
+              if (zone() === "field" && !caps.touch) r.focus();
             }}
           />
         </View>
