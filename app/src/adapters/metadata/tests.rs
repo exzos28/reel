@@ -96,6 +96,15 @@ fn tmdb_search_leaves_out_people() {
     assert_eq!(cards[0].year, Some(1999));
 }
 
+/// C5: TMDB's `search/multi` ranks by popularity, so for a common word its
+/// first page is all talk shows and not one film (recorded for "night").
+#[test]
+fn tmdb_multi_search_of_a_common_word_has_no_films() {
+    let cards = tmdb().map_cards(&fixture("tmdb_search_multi_night.json"), &cx("en")).unwrap();
+    assert_eq!(cards.len(), 20);
+    assert!(cards.iter().all(|c| c.kind == TitleKind::Series), "page 1 of search/multi for night");
+}
+
 #[test]
 fn tmdb_movie() {
     let t = tmdb().map_title(&fixture("tmdb_movie_603.json"), &cx("pl-PL")).unwrap();
