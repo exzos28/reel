@@ -142,3 +142,18 @@ test("TV setup, source step: the remote starts on the address, walks to the key 
   await app.keyboard.press("enter");
   expect(saved).toEqual([["ht", ""]]);
 });
+
+test("TV: Tab moves nothing on a page; in the setup it goes on as Down does", async () => {
+  const home = await app_();
+  await home.keyboard.press("tab");
+  await home.keyboard.press("shift+tab");
+  await home.keyboard.press("enter"); // the first card, as before Tab
+  expect(home.texts()).toContain("Director");
+
+  const { native, chosen } = firstRun();
+  const setup = await openApp({ modules: { "app/native": native } });
+  await setup.waitFor("label:Next");
+  await setup.keyboard.press("tab"); // English → Deutsch
+  await setup.keyboard.press("enter");
+  expect(chosen).toEqual(["de-DE"]);
+});
