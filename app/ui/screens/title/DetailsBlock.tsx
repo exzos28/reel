@@ -29,9 +29,10 @@ function facts(d: Title): [string, string][] {
 
 export const hasDetails = (d: Title) => facts(d).length > 0;
 
-export function DetailsBlock(props: { data: () => Title }) {
+/** `bare`: in a column of its own (beside About), which gives the inset and the width. */
+export function DetailsBlock(props: { data: () => Title; bare?: boolean }) {
   return (
-    <View style={blockStyle()}>
+    <View style={props.bare ? { gap: u(18) } : blockStyle()}>
       <SectionTitle text={() => t("about.details")} />
       <View style={gridStyle()}>
         <Each of={facts(props.data())} key={(r) => r[0]}>
