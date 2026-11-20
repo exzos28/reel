@@ -15,11 +15,11 @@ test("phone: Home, Search and Settings at the bottom; the categories at the top 
   await app.press("label:Movies");
   expect(app.texts()).toContain("All movies");
   await app.press("label:Dune >> nth=0");
-  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
+  expect(app.shows("label:1080p BluRay · 8 GB · 412 people sharing")).toBe(true);
   expect(app.shows("tab-bar")).toBe(true); // on a pushed page too
   await app.press("label:Search");
   await app.press("label:Home"); // the Home tab: the category open last, where it was left
-  expect(app.texts()).toContain("1080p BluRay · 8 GB · 412 people sharing");
+  expect(app.shows("label:1080p BluRay · 8 GB · 412 people sharing")).toBe(true);
   await app.press("label:Home"); // chosen again: its root
   expect(app.texts()).toContain("All movies");
   await app.press("label:Dune >> nth=0");
@@ -72,11 +72,11 @@ test("phone: the player's ✕ closes it", async () => {
 // The tablet's top row (layout/TouchNav.tsx) is not covered here: a headless
 // run reports the phone idiom at any size, and `open` cannot set the idiom.
 
-test("phone: the release button opens the releases in a bottom sheet; ✕ closes it", async () => {
+test("phone: ⌄ in Play opens the releases in a bottom sheet; ✕ closes it", async () => {
   const app = await phone();
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
-  await app.press("1080p BluRay · 8 GB · 412 people sharing"); // the release button
+  await app.press("label:Other releases"); // ⌄ in Play
   expect(app.texts()).toContain("3 found, the best of each quality first");
   await app.press("label:Close");
   await app.wait(600); // the sheet slides away

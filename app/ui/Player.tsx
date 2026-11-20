@@ -36,6 +36,7 @@ import { onBack } from "./nav";
 import { SubtitleOverlay } from "./SubtitleOverlay";
 import { playerTracks, type TrackOption } from "./tracks";
 import { VideoSurface, videoUnderUi, type SurfaceRef } from "./VideoSurface";
+import { pressFeedback } from "./kit/pressFeedback";
 import playIcon from "./icons/play.svg";
 import pauseIcon from "./icons/pause.svg";
 import rewindIcon from "./icons/rewind.svg";
@@ -126,6 +127,13 @@ export function Player() {
   const lowSpace = computed(() => { const s = core(); return s.phase === "ready" && s.low_space; });
 
   let surface: SurfaceRef | undefined;
+  /** Leaving: the view goes quiet at once (it is torn down a moment later, after the screen
+   * changed: on iOS the player's dialog fades out first, and its sound went on meanwhile). */
+  const leaving = signal(false);
+  const leave = () => {
+    leaving.set(true);
+    setTimeout(stop, 0);
+  };
   const paused = signal(false);
   const loaded = signal(false);
   /** What `onBuffer` last said. */
@@ -394,7 +402,7 @@ export function Player() {
     else if (caps.remote && started() && overlay() && !failed()) hide();
     // A window that fills the screen is left first (as Escape does in macOS apps).
     else if (fullscreen()) setFullscreen(false);
-    else stop();
+    else leave();
     return true;
   });
 
@@ -508,15 +516,15 @@ export function Player() {
       }}
 
       // Touch: a swipe down closes the player, as a full-screen cover does.
-      onPanEnd={(e) => caps.touch && !e.cancelled && (e.translation.y > 120 || e.velocity.y > 800) && stop()}
+      onPanEnd={(e) => caps.touch && !e.cancelled && (e.translation.y > 120 || e.velocity.y > 800) && leave()}
       focusable={false}
     >
       <If when={ready()}>
         <VideoSurface
           surfaceRef={(r) => (surface = r)}
           src={url()}
-          paused={paused()}
-          volume={playVolume()}
+          paused={paused() || leaving()}
+          volume={leaving() ? 0 : playVolume()}
           // The film's own subtitles (mpv draws them) rise above the controls while they show.
           subtitleLift={overlay() && !card() ? controlsHeight() / Math.max(1, windowSize().height) : 0}
           audioTrack={menu().apply.audio}
@@ -596,7 +604,7 @@ export function Player() {
       <If when={caps.windowBar && (staged() || (overlay() && !card()))}>
         <View style={barBackSlot(fullscreen())}>
           <BarBack
-            onPress={stop}
+            onPress={leave}
             enabled={() => true}
             tip={() => (what() ? t("nav.back_to", { page: titleText(what()!.title) }) : t("player.back"))}
             background={PLAYER_BACK_FILL}
@@ -606,7 +614,7 @@ export function Player() {
       {/* A TV has no Back on screen: the remote's Back key is it. */}
       <If when={staged() && caps.touch}>
         <View style={{ position: "absolute", ...touchCorner() }}>
-          <CloseButton onPress={stop} />
+          <CloseButton onPress={leave} />
         </View>
       </If>
 
@@ -623,7 +631,7 @@ export function Player() {
         {/* Top: back, title, the episode or release, what the engine is doing. */}
         <View style={topRowStyle(fullscreen())}>
           <If when={caps.touch}>
-            <CloseButton onPress={stop} />
+            <CloseButton onPress={leave} />
           </If>
           {/* The title's first line centred on the ✕ (a TV's at the safe area's corner); more lines go below. */}
           <View style={{ gap: u(4), flexShrink: 1, marginTop: caps.touch ? (CLOSE - u(34) * 1.25) / 2 : 0 }}>
@@ -820,17 +828,20 @@ function RoundButton(props: {
   selected: () => boolean;
   onPress: () => void;
 }) {
+  const press = pressFeedback();
   return (
     <View style={{ alignItems: "center" }}>
       <View
         role="button"
         accessibilityLabel={props.label()}
         onPress={props.onPress}
+        onPressDown={press.onPressDown}
+        onPressUp={press.onPressUp}
         hoverStyle={{ backgroundColor: colors.control() }}
         style={{
           width: u(68), height: u(68), borderRadius: 999, borderCurve: "continuous",
           alignItems: "center", justifyContent: "center",
-          backgroundColor: props.selected() ? colors.control() : alpha(colors.raise(), 0.85),
+          backgroundColor: props.selected() || press.on() ? colors.control() : alpha(colors.raise(), 0.85),
           ...focusRing(props.focused()),
         }}
       >

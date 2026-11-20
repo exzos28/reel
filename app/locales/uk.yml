@@ -72,6 +72,7 @@ title:
   add_to_list_spoken: "Додати до «Буду дивитися»"
   remove_from_list_spoken: "Прибрати з «Буду дивитися»"
   trailer: "Трейлер"
+  other_releases: "Інші роздачі"
   save: "Зберегти"
   saving: "Зберігається %{percent}%"
   saving_some: "Зберігається %{count} з %{total}"

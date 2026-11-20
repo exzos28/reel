@@ -72,6 +72,7 @@ title:
   add_to_list_spoken: "ウォッチリストに追加"
   remove_from_list_spoken: "ウォッチリストから削除"
   trailer: "予告編"
+  other_releases: "ほかのリリース"
   save: "保存"
   saving: "保存中 %{percent}%"
   saving_some: "保存中 %{count}/%{total}"

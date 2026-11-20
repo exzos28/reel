@@ -72,6 +72,7 @@ title:
   add_to_list_spoken: "Dodaj do listy do obejrzenia"
   remove_from_list_spoken: "Usuń z listy do obejrzenia"
   trailer: "Zwiastun"
+  other_releases: "Inne wydania"
   save: "Zapisz"
   saving: "Zapisywanie %{percent}%"
   saving_some: "Zapisywanie %{count} z %{total}"
