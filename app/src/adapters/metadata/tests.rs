@@ -96,13 +96,72 @@ fn tmdb_search_leaves_out_people() {
     assert_eq!(cards[0].year, Some(1999));
 }
 
-/// C5: TMDB's `search/multi` ranks by popularity, so for a common word its
-/// first page is all talk shows and not one film (recorded for "night").
+/// TMDB's `search/multi` ranks by popularity, so for a common word its first
+/// page is all talk shows and not one film (recorded for "night"): search
+/// asks for films and series apart.
 #[test]
-fn tmdb_multi_search_of_a_common_word_has_no_films() {
-    let cards = tmdb().map_cards(&fixture("tmdb_search_multi_night.json"), &cx("en")).unwrap();
-    assert_eq!(cards.len(), 20);
-    assert!(cards.iter().all(|c| c.kind == TitleKind::Series), "page 1 of search/multi for night");
+fn tmdb_search_asks_films_and_series_apart() {
+    let multi = tmdb().map_cards(&fixture("tmdb_search_multi_night.json"), &cx("en")).unwrap();
+    assert_eq!(multi.len(), 20);
+    assert!(multi.iter().all(|c| c.kind == TitleKind::Series), "page 1 of search/multi for night");
+
+    let (films, series) = tmdb().search_requests("  night ", "en").unwrap();
+    assert!(films.key.starts_with("tmdb:/search/movie?"), "{}", films.key);
+    assert!(films.key.contains("query=night"), "{}", films.key);
+    assert!(series.key.starts_with("tmdb:/search/tv?"), "{}", series.key);
+    assert!(matches!(tmdb().search_request("night", "en"), Err(ProviderError::Unsupported)), "no search/multi");
+    let films = tmdb().map_cards(&fixture("tmdb_search_movie_night.json"), &cx("en")).unwrap();
+    assert_eq!(films[0].title, "Violent Night");
+    assert!(films.iter().all(|c| c.kind == TitleKind::Movie && c.id.starts_with("tmdb:movie:")));
+    let series = tmdb().map_cards(&fixture("tmdb_search_tv_night.json"), &cx("en")).unwrap();
+    assert_eq!(series[0].title, "Saturday Night Live");
+    assert!(series.iter().all(|c| c.kind == TitleKind::Series && c.id.starts_with("tmdb:tv:")));
+    // Without a key TMDB is not asked.
+    assert!(matches!(Tmdb::new(None).search_requests("night", "en"), Err(ProviderError::NotConfigured)));
+}
+
+fn search_cards(file: &str) -> Vec<TitleCard> {
+    tmdb().map_cards(&fixture(file), &cx("en")).unwrap()
+}
+
+#[test]
+fn search_answer_names_the_sources_that_did_not_answer() {
+    let net = || ProviderError::Network("timed out".into());
+    let films = || Some(Ok(search_cards("tmdb_search_movie_night.json")));
+    let series = || Some(Ok(search_cards("tmdb_search_tv_night.json")));
+    let ids = |data: &Value, i: usize| -> Vec<String> {
+        data["sections"][i]["items"].as_array().unwrap().iter().map(|c| c["id"].as_str().unwrap().to_owned()).collect()
+    };
+
+    // All answered: films, series, AniList's (one TMDB already has is left out).
+    let mut anime = search_cards("tmdb_search_tv_night.json")[..1].to_vec();
+    anime.extend(Anilist.map_cards(&fixture("anilist_trending.json"), &cx("en")).unwrap());
+    let (data, failures) = super::search_answer(films(), series(), Some(Ok(anime))).unwrap();
+    assert_eq!(data["failed"], json!([]));
+    assert!(failures.is_empty());
+    assert_eq!(data["sections"][0]["source"], "tmdb");
+    assert_eq!(ids(&data, 0)[0], "tmdb:movie:899112");
+    assert_eq!(ids(&data, 1)[0], "tmdb:tv:1667");
+    assert!(ids(&data, 2).iter().all(|i| i.starts_with("anilist:")), "Saturday Night Live once");
+
+    // The films timed out: the rest shows, and the answer says what is missing.
+    let (data, failures) = super::search_answer(Some(Err(net())), series(), Some(Ok(vec![]))).unwrap();
+    assert_eq!(data["failed"], json!(["tmdbMovies"]));
+    assert_eq!(failures, vec![(net(), ProviderId::Tmdb)]);
+    assert_eq!(ids(&data, 0)[0], "tmdb:tv:1667");
+
+    // Only AniList failed.
+    let (data, _) = super::search_answer(films(), series(), Some(Err(net()))).unwrap();
+    assert_eq!(data["failed"], json!(["anilist"]));
+
+    // Nothing found and a source failed: the search failed.
+    let err = super::search_answer(Some(Err(net())), Some(Ok(vec![])), Some(Ok(vec![]))).unwrap_err();
+    assert_eq!(err, (net(), Some(ProviderId::Tmdb)));
+
+    // Without a TMDB key it is not asked, which is not a failure.
+    let (data, failures) = super::search_answer(None, None, Some(Ok(vec![]))).unwrap();
+    assert_eq!(data, json!({ "sections": [{ "source": "anilist", "items": [] }], "failed": [] }));
+    assert!(failures.is_empty());
 }
 
 #[test]
@@ -435,6 +494,10 @@ fn service_answers_from_the_cache() {
         put(&c, Anilist.title_request(MetaId::Anilist(16498), "pl-PL").unwrap(), "anilist_media_16498.json");
         put(&c, Jikan.anime_request(16498), "jikan_anime_16498.json");
         put(&c, Anilist.shelf_request(Shelf::TrendingAnime, "pl-PL").unwrap(), "anilist_trending.json");
+        let (films, series) = t.search_requests("night", "en").unwrap();
+        put(&c, films, "tmdb_search_movie_night.json");
+        put(&c, series, "tmdb_search_tv_night.json");
+        put(&c, Anilist.search_request("night", "en").unwrap(), "anilist_trending.json");
     }
 
     let call = |f: std::pin::Pin<Box<dyn std::future::Future<Output = String>>>| -> Value {
@@ -462,6 +525,15 @@ fn service_answers_from_the_cache() {
 
     let shelf = call(Box::pin(super::trending("anime".into(), "pl-PL".into())));
     assert_eq!(shelf["data"]["items"].as_array().unwrap().len(), 3);
+
+    // Search asks films and series apart: a common word finds both.
+    let found = call(Box::pin(super::search("night".into(), "en".into())));
+    assert_eq!(found["error"], Value::Null, "{found}");
+    assert_eq!(found["data"]["failed"], json!([]));
+    let sections = found["data"]["sections"].as_array().unwrap();
+    assert_eq!(sections.len(), 3);
+    assert_eq!(sections[0]["items"][0]["title"], "Violent Night");
+    assert_eq!(sections[1]["items"][0]["title"], "Saturday Night Live");
 
     let bad = call(Box::pin(super::title("imdb:tt0133093".into(), "en".into())));
     assert_eq!(bad["error"]["kind"], "badId");
@@ -550,6 +622,10 @@ fn live_service() {
             .collect::<Vec<_>>()
             .join(" ")
     );
+    // A common word finds films too (search/multi's first page had none).
+    let night: Value = serde_json::from_str(&svc.rt.block_on(super::search("night".into(), "en".into()))).unwrap();
+    assert_eq!(night["data"]["failed"], json!([]), "{night}");
+    assert!(night["data"]["sections"][0]["items"].as_array().unwrap().iter().any(|c| c["kind"] == "movie"), "{night}");
     // A second call comes from the cache.
     let again: Value =
         serde_json::from_str(&svc.rt.block_on(super::title("tmdb:tv:1429".into(), "pl-PL".into()))).unwrap();
