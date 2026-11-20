@@ -14,6 +14,7 @@ import { caps } from "../../platform";
 import { NAV } from "../../layout/navItems";
 import { showNav } from "../../layout/navState";
 import { PageFrame } from "../../layout/PageFrame";
+import { InSheet } from "../../layout/frameState";
 import { scroller } from "../../layout/Scroller";
 import { go, goFromNav, onBack, openAbout, openInterface } from "../../nav";
 import {
@@ -50,6 +51,8 @@ function readFreeSpace() {
 
 export function SettingsScreen() {
   const freeBytes = readFreeSpace();
+  /** In a tablet's Settings sheet: no nav to go up to (the keys stay in the sheet). */
+  const inSheet = InSheet();
   /** The focus goes through the rows: language, audio language, buffer, source, stream details,
    * Interface, About. */
   const LANGUAGE_AT = 0;
@@ -116,7 +119,7 @@ export function SettingsScreen() {
   keymap.bind(
     byKeys({
       up: () =>
-        picker() ? pickAt.set(Math.max(pickAt() - 1, 0)) : onNav() ? undefined : focus() === 0 ? toNav() : move(-1),
+        picker() ? pickAt.set(Math.max(pickAt() - 1, 0)) : onNav() ? undefined : focus() === 0 ? (inSheet ? undefined : toNav()) : move(-1),
       down: () =>
         picker() ? pickAt.set(Math.min(pickAt() + 1, choices().length - 1)) : onNav() ? onNav.set(false) : move(1),
       left: () => onNav() && navAt.set(clamp(navAt() - 1, NAV.length - 1)),
@@ -141,10 +144,12 @@ export function SettingsScreen() {
 
   /** The page shows the focused row whole. */
   const page = scroller({ anchor: (viewport) => viewport / 3, memory: "settings" });
-  showNav(() => (onNav() ? navAt() : null));
-  useRootBack({ ctl: page, onNav, toNav });
+  if (!inSheet) {
+    showNav(() => (onNav() ? navAt() : null));
+    useRootBack({ ctl: page, onNav, toNav });
+  }
   return (
-    // A destination with the nav over it; on touch a page pushed on the current tab.
+    // A destination with the nav over it; a phone's tab; on a tablet the Settings sheet's first page.
     <View style={{ flex: 1 }}>
     <PageFrame ctl={page} kind={caps.touch && !caps.settingsTab ? "deep" : "root"} title={() => t("settings.title")}>
       <View style={pageStyle()}>

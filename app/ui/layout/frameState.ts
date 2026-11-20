@@ -8,6 +8,10 @@ import { route, type Route } from "../nav";
 /** The route of the page being rendered (touch's stack), or null where one page shows. */
 export const PageRoute = context<Route | null>(null);
 
+/** The page is one of a tablet's Settings sheet (`SettingsSheet`): its head has the title and
+ * nothing of the app's frame is over it. */
+export const InSheet = context(false);
+
 /** Content is under the bars (the window bar, the tablet's top row, a phone's status bar):
  * they turn solid. Written by the page on top. */
 export const frameSolid = signal(false);

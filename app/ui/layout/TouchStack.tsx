@@ -5,7 +5,7 @@
 // stack state; switching tabs shows the other tab's.
 import { effect, type JSX } from "nsh";
 import { createNavStack, NavPage, NavStack, type NavStackState } from "nsh/base";
-import { section, stack, type Destination, type Route } from "../nav";
+import { keepTab, section, stack, type Destination, type Route } from "../nav";
 import { PageRoute } from "./frameState";
 
 const stacks = new Map<Destination, NavStackState<Route>>();
@@ -40,8 +40,10 @@ function TabStack(props: { tab: Destination; page: (r: Route) => JSX.Element }) 
       testID="touch-stack"
       state={s}
       style={{ flex: 1 }}
-      // The user went back natively (a swipe, the header's or the system's back).
-      onChange={(e) => !same(e.routes, stack()) && stack.set([...e.routes])}
+      // The user went back natively (a swipe, the header's or the system's back). A pop a tab's
+      // stack reports once another tab is shown (iOS reports one when its transition ends) goes
+      // to that tab's kept stack, never into the history shown.
+      onChange={(e) => !(section() === props.tab && same(e.routes, stack())) && keepTab(props.tab, [...e.routes])}
     >
       {(r) => <Page route={r}>{props.page(r)}</Page>}
     </NavStack>
