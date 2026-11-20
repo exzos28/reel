@@ -23,10 +23,12 @@ function Pill(props: {
   lit: () => boolean;
   focused: () => boolean;
   onPress: () => void;
+  viewRef: (r: ViewRef) => void;
   children: JSX.Element;
 }) {
   return (
     <Pressable
+      ref={props.viewRef}
       testID={`filter-${props.group().id}`}
       role="button"
       hitSlop={pillSlop()}
@@ -70,6 +72,8 @@ export function FilterBar(props: {
   openAt: () => number | null;
   blockRef: (r: ViewRef) => void;
   onOpen: (i: number) => void;
+  /** Pill `i`'s view (what its panel opens beside on a tablet). */
+  pillRef?: (i: number, r: ViewRef) => void;
 }) {
   const line = scroller({ horizontal: true, anchor: railLead });
   const sortAt = () => props.groups().findIndex((g) => g.id === "sort");
@@ -78,6 +82,7 @@ export function FilterBar(props: {
     group: () => props.groups()[i()],
     focused: () => props.focusedAt() === i(),
     onPress: () => props.onOpen(i()),
+    viewRef: (r: ViewRef) => props.pillRef?.(i(), r),
   });
   const clearPill = () => (
     <If when={props.filtered()}>
