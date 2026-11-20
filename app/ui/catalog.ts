@@ -82,6 +82,9 @@ export interface Summary {
   inList: boolean;
   release: ReleaseLine | null;
   play: PlayTarget;
+  /** What Play says, as the core decides it: "resume" at `at` seconds, or "play" from the start
+   * (`at` null); a show's names the episode (`season`, `episode`), a film's does not. */
+  playAs: { verb: "play" | "resume"; season: number | null; episode: number | null; at: number | null };
 }
 
 export interface Release {
@@ -127,6 +130,19 @@ export interface CastMember {
   /** A w185 photo, null when there is none (the initials show). */
   photo: string | null;
   initials: string;
+  /** Their page's id (`person`), null when reel has none for them (not pressable). */
+  person: string | null;
+}
+
+/** A person's page: the titles they are in, best known first. `state` "loading": not known yet
+ * (no name, no titles); "unavailable": the source did not answer. */
+export interface PersonPage {
+  id: string;
+  name: string;
+  photo: string | null;
+  initials: string;
+  items: Summary[];
+  state: "done" | "loading" | "unavailable";
 }
 
 /** A crew group: `job` a key under `crew.*` ("director", "writer", "novel",
@@ -172,8 +188,10 @@ export interface Episode {
   date: [number, number, number] | null;
   rating: string;
   thumb: string | null;
+  /** The thumbnail's watched bar, 0..1 (the core shows a little of what is started). */
   progress: number;
-  left: number | null;
+  /** What follows the runtime in its row: the minutes left once started, else its air date. */
+  note: { left: number } | { date: [number, number, number] } | null;
   watched: boolean;
   /** Where the viewer stopped, seconds (0: from the start). */
   start: number;
@@ -280,6 +298,8 @@ export const title = (id: string) => read<Title | null>(`title:${id}`, () => Cat
 export const episodes = (show: string, season: number) =>
   read<Episode[]>(`episodes:${show}:${season}`, () => Catalog.episodes(show, season));
 
+export const person = (id: string) => read<PersonPage>(`person:${id}`, () => Catalog.person(id));
+
 export const episodeReleases = (key: string) =>
   read<EpisodeReleases>(`episodeReleases:${key}`, () => Catalog.episodeReleases(key));
 
@@ -375,12 +395,18 @@ export function leftText(s: Summary) {
 export const airsText = (s: Summary) =>
   s.airs ? `${episodeCode(s.airs.season, s.airs.episode)} · ${t("fmt.day", { month: t(`month.${s.airs.month}`), day: s.airs.day })}` : cardMeta(s);
 
-/** What Play says: "Play", "Resume 41:12", "Resume S3:E4". */
+/** What Play says (the core's `playAs`): "Play", "Resume 41:12", "Play S1:E1", "Resume S2:E3 · 14:30". */
 export function playLabel(s: Summary) {
-  if (s.resume) return t("title.resume", { at: episodeCode(s.resume.season, s.resume.episode) });
-  if (s.stoppedAt != null) return t("title.resume", { at: Fmt.position(s.stoppedAt) });
-  return t("title.play");
+  const p = s.playAs;
+  const episode = p.season != null && p.episode != null ? episodeCode(p.season, p.episode) : null;
+  const at = p.at != null ? Fmt.position(p.at) : null;
+  if (at != null) return episode ? t("title.resume_episode", { episode, at }) : t("title.resume", { at });
+  return episode ? t("title.play_episode", { episode }) : t("title.play");
 }
+
+/** What an episode's row says after its runtime: "23 min left", else its air date. */
+export const episodeNote = (e: Episode) =>
+  !e.note ? "" : "left" in e.note ? t("card.left", { time: runtime(e.note.left) }) : dateText(e.note.date);
 
 export const dateText = (date: [number, number, number] | null) =>
   date ? t("fmt.date", { month: t(`month.${date[1]}`), day: date[2], year: date[0] }) : "";

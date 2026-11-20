@@ -66,6 +66,10 @@ empty:
 title:
   play: Смотреть
   resume: "Продолжить с %{at}"
+  play_episode: "Смотреть %{episode}"
+  resume_episode: "Продолжить %{episode} с %{at}"
+  about_more: "Показать всё описание"
+  about_less: "Свернуть"
   my_list: Буду смотреть
   add_to_list: Буду смотреть
   in_list: В списке
@@ -177,6 +181,13 @@ about:
   cast: В ролях
   details: Подробности
   similar: Похожее
+
+person:
+  titles: "Фильмы и сериалы"
+  state:
+    loading: "Загрузка…"
+    unavailable: "Не удалось загрузить фильмографию. Попробуйте позже."
+    none: "Нет фильмов и сериалов."
 
 crew:
   director:

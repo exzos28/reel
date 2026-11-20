@@ -5,7 +5,7 @@ import { StateLine } from "../../kit/StateLine";
 import { openSettings } from "../../nav";
 import { openSourceDrawer } from "../source/SourceDrawer";
 import { Hero } from "../../layout/Hero";
-import { wholeAboutInHero } from "./AboutBlock";
+import { aboutExpandsInHero, wholeAboutInHero } from "./AboutBlock";
 import { heroTop } from "../../layout/metrics";
 import { actionsRow, PlayButton, SaveButton, SPLIT_HEIGHT, SplitPlay, TrailerButton } from "../../layout/HeroActions";
 import { librarySupported, saveOffer, titleSaveState } from "../../library";
@@ -119,6 +119,7 @@ export function TitleHero(props: {
       top={heroTop("title", show() ? 150 : 176)}
       fit
       wholeAbout={wholeAboutInHero}
+      expandAbout={aboutExpandsInHero}
       wholeTitle={wholeAboutInHero}
     >
       <If

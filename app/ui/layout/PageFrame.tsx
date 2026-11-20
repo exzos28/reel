@@ -34,6 +34,10 @@ const TV_ROW = 340;
  * away with it. */
 const navStyle: ViewStyle = { position: "absolute", top: 0, left: 0, right: 0, zIndex: 3 };
 const titleStyle = (gap: number): TextStyle => ({ ...pageTitle(), paddingHorizontal: safe().x, marginTop: gap });
+/** The title with something before it, on one line at the title's place. */
+const leadRowStyle = (gap: number): ViewStyle => ({
+  flexDirection: "row", alignItems: "center", gap: u(32), paddingHorizontal: safe().x, marginTop: gap,
+});
 /** A TV title's header action, at the title-safe corner (a phone's is in its title bar). */
 const actionStyle = (): ViewStyle => ({ position: "absolute", top: safe().y, right: safe().x, zIndex: 3 });
 /** A phone's title: the bar over it, not the content's (it stays as the page scrolls). */
@@ -57,6 +61,8 @@ export function PageFrame(props: {
   kind: PageKind;
   /** The page's title, where the frame puts titles. */
   title?: () => string;
+  /** What stands before the title on its line (a person's photo). */
+  titleLead?: () => JSX.Element;
   /** The ref of the page's top (the room for what is over it, and the title): a block the
    * page brings back to the top. */
   topRef?: (r: ViewRef) => void;
@@ -110,8 +116,14 @@ export function PageFrame(props: {
             <If when={props.hero == null}>
               <View style={{ height: m().headBottom }} />
             </If>
-            <If when={props.title}>
+            <If when={props.title && !props.titleLead}>
               <Text style={titleStyle(m().titleTop - m().headBottom)}>{props.title!()}</Text>
+            </If>
+            <If when={props.title && props.titleLead}>
+              <View style={leadRowStyle(m().titleTop - m().headBottom)}>
+                {props.titleLead!()}
+                <Text style={{ ...pageTitle(), flexShrink: 1 }}>{props.title!()}</Text>
+              </View>
             </If>
           </View>
           {props.children}

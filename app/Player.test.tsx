@@ -216,7 +216,7 @@ async function nearTheEnd() {
     // The core offers the next episode (as it does in the last 40 s).
     modules: { "app/native": { ...NATIVE, ...AOT_FIRST, ...STILL, "Engine.status": status, "Engine.timeline": timeline, "Catalog.upNext": nextEpisode } },
   });
-  await app.press("Resume S3:E2"); // the hero: Attack on Titan, watched last
+  await app.press("Resume S3:E2 · 10:00"); // the hero: Attack on Titan, watched last
   await app.wait(600);
   return app;
 }
@@ -318,7 +318,7 @@ test("phone held sideways: the tracks are a sheet at the right; Back closes it, 
 });
 
 test("phone: Episodes is a sheet titled with the season and its count, the numbers in their own column", async () => {
-  const app = await phonePlaying(PORTRAIT, AOT_FIRST, "Resume S3:E2");
+  const app = await phonePlaying(PORTRAIT, AOT_FIRST, "Resume S3:E2 · 10:00");
   await app.press("label:Episodes");
   expect(app.shows("episodes-panel")).toBe(true);
   expect(app.texts()).toContain("Season 3 · 4 episodes");

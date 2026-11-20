@@ -64,6 +64,10 @@ empty:
 title:
   play: "再生"
   resume: "%{at}から再生"
+  play_episode: "%{episode}を再生"
+  resume_episode: "%{episode}を%{at}から再生"
+  about_more: "説明をすべて表示"
+  about_less: "表示を減らす"
   # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
   # a screen reader says the whole action.
   my_list: "ウォッチリスト"
@@ -177,6 +181,13 @@ about:
   cast: "キャスト"
   details: "詳細"
   similar: "似ている作品"
+
+person:
+  titles: "映画とシリーズ"
+  state:
+    loading: "読み込み中…"
+    unavailable: "作品を読み込めませんでした。後でもう一度お試しください。"
+    none: "表示できる映画やシリーズはありません。"
 
 crew:
   director:

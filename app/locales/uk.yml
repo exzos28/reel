@@ -64,6 +64,10 @@ empty:
 title:
   play: "Дивитися"
   resume: "Продовжити з %{at}"
+  play_episode: "Дивитися %{episode}"
+  resume_episode: "Продовжити %{episode} з %{at}"
+  about_more: "Показати весь опис"
+  about_less: "Згорнути"
   # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
   # a screen reader says the whole action.
   my_list: "Буду дивитися"
@@ -177,6 +181,13 @@ about:
   cast: "У ролях"
   details: "Подробиці"
   similar: "Схоже"
+
+person:
+  titles: "Фільми й серіали"
+  state:
+    loading: "Завантаження…"
+    unavailable: "Не вдалося завантажити фільмографію. Спробуйте пізніше."
+    none: "Немає фільмів і серіалів."
 
 crew:
   director:

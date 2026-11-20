@@ -64,6 +64,10 @@ empty:
 title:
   play: Play
   resume: "Resume %{at}"
+  play_episode: "Play %{episode}"
+  resume_episode: "Resume %{episode} · %{at}"
+  about_more: "Show the whole description"
+  about_less: "Show less"
   # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
   # a screen reader says the whole action.
   my_list: Watchlist
@@ -179,6 +183,13 @@ about:
   cast: Cast
   details: Details
   similar: More like this
+
+person:
+  titles: "Films and series"
+  state:
+    loading: "Loading…"
+    unavailable: "Their titles could not be loaded. Try again later."
+    none: "No films or series to show."
 
 crew:
   director:
