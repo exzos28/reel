@@ -118,6 +118,8 @@ pub(crate) struct ManagedTorrentOptions {
     pub ratelimits: LimitsConfig,
     pub initial_peers: Vec<SocketAddr>,
     pub peer_limit: Option<usize>,
+    /// reel: `AddTorrentOptions::fastresume_folder`.
+    pub fastresume_folder: Option<PathBuf>,
     #[cfg(feature = "disable-upload")]
     pub _disable_upload: bool,
 }
