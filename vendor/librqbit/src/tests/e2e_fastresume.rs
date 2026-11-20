@@ -37,9 +37,7 @@ async fn have_after_add(session: &std::sync::Arc<Session>, torrent: &[u8], files
     have
 }
 
-/// Replaces `file` with `content` through a new file renamed over it: a torrent that just left
-/// the session may still hold the old file open (Linux keeps its writes going to that inode),
-/// so writing in place could be undone by it.
+/// Replaces `file` with `content` through a new file renamed over it.
 fn replace(file: &Path, content: &[u8]) {
     let tmp = file.with_extension("tmp");
     std::fs::write(&tmp, content).unwrap();
@@ -128,6 +126,9 @@ async fn test_fastresume_folder() {
     std::fs::write(&bitv, [0xff]).unwrap();
     std::fs::remove_file(&second).unwrap();
     assert_eq!(have_after_add(&session, &torrent, &files, &fr).await, 3072);
+    // Its result lands before the next case writes the bitfield: written later, it would
+    // replace the one the next case means to test.
+    wait_for_bitv(&bitv, &[0b1110_0000]).await;
 
     // A bitfield of another length (another torrent's): a full check.
     replace(&second, &second_content);
