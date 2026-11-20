@@ -134,7 +134,7 @@ export function SetupScreen() {
   const count = () => options().length + actions();
   /** The source step's stop the focus is on (null: another step, the languages' drawer, the bot). */
   const sourceAt = (): SourceStop | null => (step() === SOURCE_STEP && !allLanguages() && !onPartner() ? (sourceStops()[at()] ?? null) : null);
-  const fields = sourceFields(sourceAt);
+  const fields = sourceFields(() => (FIELD_STOPS ? sourceAt() : null));
   // Fewer actions (connected: Skip went away) take the focus with them.
   effect(() => {
     const last = count() - 1;
@@ -214,21 +214,22 @@ export function SetupScreen() {
     at.set(Math.min(at() + 1, count() - 1));
   };
   keymap.bind(
-    // The drawer, while it is open, takes the arrows and OK. Up and Down leave a field that has the
-    // keyboard's focus too (Left and Right move its caret).
+    // The drawer, while it is open, takes the arrows and OK. On a TV Up and Down leave a field that
+    // has the keyboard's focus too (Left and Right move its caret); elsewhere a field keeps them.
     byKeys({ up, down }),
-    { repeat: true, when: "always" },
+    { repeat: true, ...(FIELD_STOPS ? { when: "always" as const } : null) },
   );
-  keymap.bind(
-    byKeys({
-      left: () => partnerHere() && sourceAt() !== "skip" && onPartner.set(true),
-      right: () => onPartner() && onPartner.set(false),
-    }),
-    { repeat: true },
-  );
-  // Tab goes on as Down does (every step is a column); Back reaches a field too (a TV's web view
-  // hands it the remote's Back).
-  keymap.bind({ tab: down, "shift+tab": up, escape: handleBack }, { when: "always" });
+  if (FIELD_STOPS)
+    keymap.bind(
+      byKeys({
+        left: () => partnerHere() && sourceAt() !== "skip" && onPartner.set(true),
+        right: () => onPartner() && onPartner.set(false),
+      }),
+      { repeat: true },
+    );
+  // A TV's: Tab goes on as Down does (every step is a column; elsewhere Tab is the system's, from
+  // field to field); Back reaches a field too (a TV's web view hands it the remote's Back).
+  if (caps.remote) keymap.bind({ tab: down, "shift+tab": up, escape: handleBack }, { when: "always" });
   keymap.bind({ enter: () => (allLanguages() ? pickLanguage(pickAt()) : onPartner() ? openPartnerApp() : act(at())) });
   // Back: the languages' drawer first, then the previous step. On the first step a TV stays (setup
   // is not skippable as a whole); a phone's system back leaves the app, as on any first page.
