@@ -20,7 +20,9 @@ use serde_json::Value;
 
 use super::{ffi, player::Player};
 
-/// Where mpv draws and how it decodes and plays sound on Android (mpv-android's choices).
+/// Where mpv draws and how it decodes and plays sound on Android (mpv-android's choices). `vo=gpu`
+/// shows Dolby Vision alone (profile 5) in the wrong colours: the core does not offer such
+/// releases here (`reel_domain::compat`).
 const PLATFORM: [(&str, &str); 5] = [
     ("gpu-context", "android"),
     ("opengl-es", "yes"),
