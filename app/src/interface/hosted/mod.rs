@@ -1,11 +1,13 @@
 //! Settings from a phone (docs/hosted-settings.md): a page this device serves on the local
 //! network, where a browser paired with a code from the screen sets the search source, the
 //! content language and the playback buffer. Everything but the listener is here, so every
-//! host that serves the LAN (the Samsung TV's core, later Android TV) shares it: the host
-//! routes `GET /settings` to [`PAGE`] and `/settings/api/*` to [`handle`], and says the port
-//! with [`serving_on`]. `GET /s` is the same page, opened from a partner's link with a source to
-//! offer (`offer.rs`).
+//! host that serves the LAN shares it: the host routes `GET /settings` to [`PAGE`] and
+//! `/settings/api/*` to [`handle`], and says the port with [`serving_on`]. The Samsung TV's core
+//! has a listener of its own; on Android TV the app serves it itself (`lan.rs`). `GET /s` is the
+//! same page, opened from a partner's link with a source to offer (`offer.rs`).
 
+#[cfg(any(target_os = "android", test))]
+pub mod lan;
 mod offer;
 mod pairing;
 
@@ -47,6 +49,13 @@ static CHECKS: LazyLock<Mutex<HashSet<u32>>> = LazyLock::new(Default::default);
 pub fn serving_on(port: u16) {
     SERVING.store(port, Ordering::Relaxed);
     settings::bump();
+}
+
+/// Serves the page on the local network where the app itself is the host: Android TV, once per
+/// process (`lan::start`). Nothing elsewhere.
+pub fn serve_on_lan() {
+    #[cfg(target_os = "android")]
+    lan::start();
 }
 
 fn random(buf: &mut [u8]) {
