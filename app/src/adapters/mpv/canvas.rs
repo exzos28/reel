@@ -7,10 +7,12 @@ use serde_json::Value;
 /// A size in pixels or points: width, height.
 pub type Size = (f64, f64);
 
-/// The canvas for a picture shown at `picture` (any unit: only its aspect counts) on a screen of
+/// The canvas for a picture shown at `picture` (any unit: only its aspect counts) in a window of
 /// `screen` pixels, in either orientation: the largest box of the picture's aspect that fits the
-/// screen held one way or the other, in whole pixels. The picture is then 1:1 in its best
-/// orientation and scaled down in the other. None when the picture's size is not known.
+/// window held one way or the other, in whole pixels. The picture is then 1:1 in its best
+/// orientation and scaled down in the other. Each side leaves an even number of pixels to the
+/// window's, so centred it starts on a whole pixel (not resampled). None when the picture's size
+/// is not known.
 pub fn for_picture(picture: Size, screen: Size) -> Option<Size> {
     let (w, h) = picture;
     if !(w > 0.0 && h > 0.0 && w.is_finite() && h.is_finite()) {
@@ -23,8 +25,18 @@ pub fn for_picture(picture: Size, screen: Size) -> Option<Size> {
     let aspect = w / h;
     let fit = |(bw, bh): Size| if bw / bh > aspect { (bh * aspect, bh) } else { (bw, bw / aspect) };
     let (sideways, upright) = (fit((long, short)), fit((short, long)));
-    let (cw, ch) = if sideways.0 * sideways.1 >= upright.0 * upright.1 { sideways } else { upright };
-    Some((cw.round().max(2.0), ch.round().max(2.0)))
+    let ((cw, ch), (bw, bh)) = if sideways.0 * sideways.1 >= upright.0 * upright.1 { (sideways, (long, short)) } else { (upright, (short, long)) };
+    Some((whole(cw, bw.round()), whole(ch, bh.round())))
+}
+
+/// `exact` in whole pixels, no more than `room` and leaving an even number of them to it.
+fn whole(exact: f64, room: f64) -> f64 {
+    let n = exact.round().clamp(2.0, room.max(2.0));
+    if (room - n).rem_euclid(2.0) < 0.5 {
+        return n;
+    }
+    // One pixel off: the nearer of the two that leave an even number, inside the room.
+    if n + 1.0 <= room && (n + 1.0 - exact).abs() <= (n - 1.0 - exact).abs() { n + 1.0 } else { (n - 1.0).max(1.0) }
 }
 
 /// Where the canvas shows in the view: its size in points scaled by `scale` (uniform), centred,
@@ -66,7 +78,9 @@ pub fn margin_in_canvas(share: f64, bar: f64, picture: f64, sub_scale: f64) -> f
 /// The size the picture of the video track mpv will play shows at, from what its container says
 /// (`track-list` as JSON, read in mpv's `on_preloaded` hook, before mpv picks the track): track
 /// `vid` when the player chose one, else as mpv picks (the default one, then one that is not
-/// cover art or a still image, then the first). None: no video track, or its size is not known.
+/// cover art or a still image, then the first). Its crop, when the container has one, then its
+/// pixel aspect and rotation. None: no video track, or its size is not known. A wrong guess only
+/// letterboxes the picture inside the canvas: mpv fits it there whatever its aspect.
 pub fn picture_of_tracks(track_list: &str, vid: Option<i64>) -> Option<Size> {
     let list: Value = serde_json::from_str(track_list).ok()?;
     let flag = |t: &Value, name: &str| t.get(name).and_then(Value::as_bool).unwrap_or(false);
@@ -76,7 +90,9 @@ pub fn picture_of_tracks(track_list: &str, vid: Option<i64>) -> Option<Size> {
         Some(id) => videos.iter().copied().find(|t| t.get("id").and_then(Value::as_i64) == Some(id)),
         None => videos.iter().copied().min_by_key(|t| (!flag(t, "default"), flag(t, "albumart"), flag(t, "image"), t.get("id").and_then(Value::as_i64).unwrap_or(i64::MAX))),
     }?;
-    let (w, h) = reel_domain::play::shown_size(num(track, "demux-w"), num(track, "demux-h"), num(track, "demux-par"), num(track, "demux-rotation"));
+    let cropped = (num(track, "demux-crop-w"), num(track, "demux-crop-h"));
+    let (w, h) = if cropped.0 > 0.0 && cropped.1 > 0.0 { cropped } else { (num(track, "demux-w"), num(track, "demux-h")) };
+    let (w, h) = reel_domain::play::shown_size(w, h, num(track, "demux-par"), num(track, "demux-rotation"));
     (w > 0.0 && h > 0.0).then_some((w, h))
 }
 
@@ -89,19 +105,22 @@ mod tests {
 
     #[test]
     fn a_wide_picture_gets_the_screen_held_sideways() {
-        // 16:9 on a 2.17:1 screen: as high as the screen sideways, 1:1 there.
-        assert_eq!(for_picture((1920.0, 1080.0), PHONE), Some((2347.0, 1320.0)));
-        // Wider than the screen: as wide as it.
-        assert_eq!(for_picture((1920.0, 800.0), PHONE), Some((2868.0, 1195.0)));
+        // 16:9 on a 2.17:1 screen: as high as the screen sideways, 1:1 there (2346.7 wide, made
+        // 2346 so it starts on a whole pixel: 261 on each side).
+        assert_eq!(for_picture((1920.0, 1080.0), PHONE), Some((2346.0, 1320.0)));
+        // Wider than the screen: as wide as it (1195 high would leave 125 and a half above).
+        assert_eq!(for_picture((1920.0, 800.0), PHONE), Some((2868.0, 1196.0)));
         // 4:3 too.
         assert_eq!(for_picture((1440.0, 1080.0), PHONE), Some((1760.0, 1320.0)));
         // Either way the screen is given.
-        assert_eq!(for_picture((1920.0, 1080.0), (2868.0, 1320.0)), Some((2347.0, 1320.0)));
+        assert_eq!(for_picture((1920.0, 1080.0), (2868.0, 1320.0)), Some((2346.0, 1320.0)));
+        // An odd screen keeps odd sides.
+        assert_eq!(for_picture((1920.0, 1080.0), (2621.0, 1205.0)), Some((2143.0, 1205.0)));
     }
 
     #[test]
     fn a_tall_picture_gets_the_screen_held_upright() {
-        assert_eq!(for_picture((1080.0, 1920.0), PHONE), Some((1320.0, 2347.0)));
+        assert_eq!(for_picture((1080.0, 1920.0), PHONE), Some((1320.0, 2346.0)));
         assert_eq!(for_picture((1080.0, 1080.0), PHONE), Some((1320.0, 1320.0)));
     }
 
@@ -109,10 +128,10 @@ mod tests {
     fn pixel_aspect_and_rotation_come_from_the_shown_size() {
         // Anamorphic PAL 16:9 (720×576, pixels 64:45 wide) is a 16:9 canvas.
         let pal = reel_domain::play::shown_size(720.0, 576.0, 64.0 / 45.0, 0.0);
-        assert_eq!(for_picture(pal, PHONE), Some((2347.0, 1320.0)));
+        assert_eq!(for_picture(pal, PHONE), Some((2346.0, 1320.0)));
         // A phone's clip stored sideways and turned a quarter is upright.
         let clip = reel_domain::play::shown_size(1920.0, 1080.0, 1.0, 90.0);
-        assert_eq!(for_picture(clip, PHONE), Some((1320.0, 2347.0)));
+        assert_eq!(for_picture(clip, PHONE), Some((1320.0, 2346.0)));
     }
 
     #[test]
@@ -125,15 +144,15 @@ mod tests {
 
     #[test]
     fn the_canvas_fits_the_view_either_way() {
-        // 2347×1320 pixels at 3: 782.3×440 points.
-        let canvas = (2347.0 / 3.0, 1320.0 / 3.0);
+        // 2346×1320 pixels at 3: 782×440 points.
+        let canvas = (2346.0 / 3.0, 1320.0 / 3.0);
         let sideways = fit(canvas, (956.0, 440.0)).unwrap();
         assert!((sideways.scale - 1.0).abs() < 1e-9, "1:1 sideways");
-        assert!((sideways.bars.0 - (956.0 - 2347.0 / 3.0) / 2.0).abs() < 1e-9);
+        assert!((sideways.bars.0 - 87.0).abs() < 1e-9, "on whole points: 261 pixels");
         assert_eq!(sideways.bars.1, 0.0);
         let upright = fit(canvas, (440.0, 956.0)).unwrap();
         assert!((upright.shown.0 - 440.0).abs() < 1e-9, "as wide as the view upright");
-        assert!((upright.shown.1 - 440.0 * 1320.0 / 2347.0).abs() < 1e-9);
+        assert!((upright.shown.1 - 440.0 * 1320.0 / 2346.0).abs() < 1e-9);
         assert!((upright.bars.1 - (956.0 - upright.shown.1) / 2.0).abs() < 1e-9);
         assert_eq!(fit(canvas, (0.0, 0.0)), None);
     }
@@ -167,6 +186,8 @@ mod tests {
         assert_eq!(picture_of_tracks(list, Some(2)), Some((1920.0, 800.0)), "the one chosen");
         let no_default = r#"[{"id":1,"type":"video","albumart":true,"demux-w":600,"demux-h":600},{"id":2,"type":"video","demux-w":1920,"demux-h":1080,"demux-par":1.0,"demux-rotation":90}]"#;
         assert_eq!(picture_of_tracks(no_default, None), Some((1080.0, 1920.0)), "not the cover, turned");
+        let cropped = r#"[{"id":1,"type":"video","demux-w":1920,"demux-h":1080,"demux-crop-w":1920,"demux-crop-h":800}]"#;
+        assert_eq!(picture_of_tracks(cropped, None), Some((1920.0, 800.0)), "the container's crop");
         assert_eq!(picture_of_tracks(r#"[{"id":1,"type":"audio"}]"#, None), None);
         assert_eq!(picture_of_tracks(r#"[{"id":1,"type":"video"}]"#, None), None, "no size known");
         assert_eq!(picture_of_tracks("not json", None), None);

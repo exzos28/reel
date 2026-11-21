@@ -9,8 +9,8 @@
 //! per file, in mpv's `on_preloaded` hook before its output starts, from the picture's aspect
 //! (`canvas::for_picture`). A turn, a split view or a resize only moves and scales the layer into
 //! the view (`position`, `transform`): mpv's output is never started again for a size (that lost
-//! the picture on a device). Files load once the view has a size (`LoadGate`): the canvas falls
-//! back to it.
+//! the picture on a device). Files load once the view is in its window (`LoadGate`): until a
+//! file's picture is known, the canvas is a 16:9 box of the window.
 
 use std::{
     cell::{Cell, RefCell},
@@ -125,6 +125,8 @@ define_class!(
         #[unsafe(method(foreground:))]
         fn foreground(&self, _n: &NSNotification) {
             if let Some(inner) = self.ivars().upgrade() {
+                // A new output starts at the layer's drawable: the canvas, again (`set_canvas`).
+                inner.canvas_again("back from the background");
                 let player = inner.player.borrow();
                 // Its video comes back from what plays (a seek in its cache), not the stream:
                 // no "waiting for the stream" for it.
@@ -168,6 +170,8 @@ pub struct Inner {
     canvas: Cell<Option<Size>>,
     /// The screen's scale the canvas is laid at: its size in points is its pixels over it.
     scale: Cell<f64>,
+    /// The window's size in pixels at the last layout: what a canvas is chosen for.
+    window: Cell<Option<Size>>,
     /// Files wait for the first size.
     gate: RefCell<Option<Arc<LoadGate>>>,
     subtitles: Cell<Subtitles>,
@@ -177,8 +181,8 @@ pub struct Inner {
 }
 
 impl Inner {
-    /// The view is laid out: the canvas fits it again. The first time, it is the canvas until the
-    /// file's picture is known, and mpv may start: files load from now on.
+    /// The view is laid out: the canvas fits it again. The first time, a canvas until the file's
+    /// picture is known, and mpv may start: files load from now on.
     fn laid_out(&self) {
         let Some(window) = self.view.window() else { return };
         let bounds = self.view.bounds();
@@ -186,14 +190,19 @@ impl Inner {
         if bounds.size.width < 2.0 || bounds.size.height < 2.0 {
             return;
         }
+        // The screen's scale (3 on most iPhones): a view's own is 1 until it is in a window.
+        let scale = window.screen().scale();
+        let w = window.bounds().size;
+        self.window.set(Some(((w.width * scale).round(), (w.height * scale).round())));
         if self.canvas.get().is_some() {
             self.fit();
             return;
         }
-        // The screen's scale (3 on most iPhones): a view's own is 1 until it is in a window.
-        let scale = window.screen().scale();
         self.scale.set(scale);
-        self.set_canvas(((bounds.size.width * scale).round(), (bounds.size.height * scale).round()), "the view's size until the picture's is known");
+        // A 16:9 box of the window, as mpv takes a picture it knows nothing of: the phone may
+        // still be turning sideways.
+        let first = self.window.get().and_then(|w| canvas::for_picture((16.0, 9.0), w));
+        self.set_canvas(first.unwrap_or(((bounds.size.width * scale).round(), (bounds.size.height * scale).round())), "16:9 until the picture is known");
         let player = self.player.borrow();
         player.set_window(Retained::as_ptr(&self.layer) as *const c_void as i64);
         player.set_property("vo", VO);
@@ -202,27 +211,42 @@ impl Inner {
         }
     }
 
-    /// mpv's hook found the file's picture (None: not known), before mpv starts its output for
-    /// it: the canvas for its aspect. mpv reads the layer's size only when it sets its output up
-    /// for new frames, which a picture of another aspect always has (its size, pixel aspect or
-    /// rotation differ); one of the same aspect gets the same canvas. An unknown one keeps the
-    /// canvas there is: mpv may keep its output as it is, and draws the picture inside the canvas.
+    /// mpv's hook found the file's picture (None: not known), before mpv starts its decoder and
+    /// output for it: the canvas for its aspect (an unknown one keeps the canvas there is; mpv
+    /// fits the picture inside it). Set again even when it is the same (`set_canvas`).
     fn file_picture(&self, picture: Option<Size>) {
         let Some(now) = self.canvas.get() else { return };
-        let Some(window) = self.view.window() else { return };
-        let screen = window.screen();
-        let size = screen.bounds().size;
-        let s = screen.scale();
-        let screen = (size.width * s, size.height * s);
-        match picture.and_then(|p| canvas::for_picture(p, screen).map(|c| (p, c))) {
-            Some((_, c)) if c == now => tracing::warn!("reel mpv: canvas {}x{} kept: the picture's", now.0, now.1),
-            Some((p, c)) => self.set_canvas(c, &format!("for a {}x{} picture", p.0, p.1)),
-            None => tracing::warn!("reel mpv: canvas {}x{} kept: the picture's size is not known", now.0, now.1),
+        let fresh = picture.zip(self.window.get()).and_then(|(p, w)| canvas::for_picture(p, w).map(|c| (p, c)));
+        let (c, why) = match fresh {
+            Some((p, c)) => (c, format!("for a {}x{} picture", p.0, p.1)),
+            None => (now, "kept: the picture's size is not known".into()),
+        };
+        if c != now {
+            let player = self.player.borrow();
+            // An output kept from the file before (the same view, another file) would draw on at
+            // the old canvas: mpv reads the size only when the frames' kind changes. A new one,
+            // now, between the files: no decoder runs, so none loses its frames.
+            if player::property(self.lib, player.raw(), "current-vo").is_some() {
+                tracing::warn!("reel mpv: a new output for the new canvas, between files");
+                player.set_property("vo", "null");
+                player.set_property("vo", VO);
+            }
+        }
+        self.set_canvas(c, &why);
+    }
+
+    /// The canvas as it is, set on the layer again before mpv may start a new output.
+    fn canvas_again(&self, why: &str) {
+        if let Some(c) = self.canvas.get() {
+            self.set_canvas(c, why);
         }
     }
 
     /// The canvas at `c` pixels: what mpv's output starts at, and the size MoltenVK sees
-    /// (`bounds` × `contentsScale` = `drawableSize`), whatever the view does after.
+    /// (`bounds` × `contentsScale` = `drawableSize`), whatever the view does after. Set before
+    /// every new output, even when the same: MoltenVK leaves the drawable at 1×1 when an output
+    /// goes with frames still on their way to the screen (`forceUnpresentedImageCompletion`),
+    /// and a new output would start there, drawing nothing.
     fn set_canvas(&self, c: Size, why: &str) {
         let s = self.scale.get();
         self.canvas.set(Some(c));
@@ -246,12 +270,17 @@ impl Inner {
     }
 
     /// Moves and scales the canvas into the view: only its position and transform change, never
-    /// its size, so mpv and MoltenVK see nothing of a turn.
+    /// its size, so mpv and MoltenVK see nothing of a turn. Inside UIKit's turn, along with it.
     fn fit(&self) {
         let Some(f) = self.fitted() else { return };
         let b = self.view.bounds();
+        let turning: f64 = unsafe { msg_send![objc2::class!(UIView), inheritedAnimationDuration] };
         CATransaction::begin();
-        CATransaction::setDisableActions(true);
+        if turning > 0.0 {
+            CATransaction::setAnimationDuration(turning);
+        } else {
+            CATransaction::setDisableActions(true);
+        }
         self.layer.setPosition(CGPoint::new(b.origin.x + b.size.width / 2.0, b.origin.y + b.size.height / 2.0));
         self.layer.setAffineTransform(CGAffineTransform { a: f.scale, b: 0.0, c: 0.0, d: f.scale, tx: 0.0, ty: 0.0 });
         CATransaction::commit();
@@ -347,6 +376,7 @@ impl MpvComponent {
                     layer: view.ivars().layer.clone(),
                     canvas: Cell::new(None),
                     scale: Cell::new(1.0),
+                    window: Cell::new(None),
                     gate: RefCell::new(Some(gate)),
                     subtitles: Cell::new(Subtitles { lift: 0.0, sides: 0.0, scale: 1.0 }),
                     sent: Cell::new(None),
