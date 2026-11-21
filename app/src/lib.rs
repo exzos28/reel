@@ -307,6 +307,8 @@ impl Settings {
         // Watch progress and the metadata cache live there too, and the saved films' library.
         catalog::init(dir.as_deref());
         library::init(dir.as_deref());
+        // Android TV serves the settings page for a phone from now on (the UI told the family first).
+        hosted::serve_on_lan();
         loaded.to_string()
     }
 

@@ -19,8 +19,10 @@ source, the content language and the playback buffer there.
   `hosted::handle(request) -> response` (method, path, Host header, session header, body in;
   status and JSON out), with no HTTP framework. The page is `app/src/interface/hosted/page.html`, compiled
   in (`hosted::PAGE`). The Tizen core only adapts axum to it (two routes) and tells the crate
-  the port it serves on (`hosted::serving_on(port)`), which is what turns the feature on. Android
-  TV can do the same with whatever server it runs.
+  the port it serves on (`hosted::serving_on(port)`), which is what turns the feature on.
+- **On Android TV the app serves it itself** (`app/src/interface/hosted/lan.rs`): the same
+  routes and headers on 0.0.0.0:47392, started once per process when the settings load and the
+  UI has said it is a TV (`Settings.setFamily("tv")`). Not on an Android phone or tablet.
 
 ## 2. Security
 
@@ -123,9 +125,9 @@ The TV shows it:
 ## 6. Other platforms
 
 All of it but the listener is in `app/src` (`hosted` module, `Hosted` and `Settings` methods,
-the page). An Android TV host that serves the LAN calls `hosted::serving_on(port)` and routes
+the page). A host that serves the LAN calls `hosted::serving_on(port)` and routes
 `GET /settings` and `/settings/api/*` to `hosted::PAGE` and `hosted::handle`; the UI then shows
-the address and the code with no change.
+the address and the code with no change. Android TV's listener is `hosted::lan`, in the app.
 
 ## API
 
