@@ -86,6 +86,14 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("VideoEngine", "views", |a| {
         no_args(&a)?;
         ret(VideoEngine::views())
+    })
+    .sync("VideoEngine", "turn", |a| {
+        let (landscape,): (bool,) = args(a)?;
+        ret(VideoEngine::turn(landscape))
+    })
+    .sync("VideoEngine", "sideways", |a| {
+        let (width, height): (f64, f64) = args(a)?;
+        ret(VideoEngine::sideways(width, height))
     });
 
     let host = data_dir.clone();
@@ -108,6 +116,14 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Settings", "device", |a| {
         no_args(&a)?;
         ret(Settings::device())
+    })
+    .sync("Settings", "windowed", |a| {
+        let (width, height): (f64, f64) = args(a)?;
+        ret(Settings::windowed(width, height))
+    })
+    .sync("Settings", "setFamily", |a| {
+        let (name,): (String,) = args(a)?;
+        ret(Settings::set_family(name))
     })
     .sync("Settings", "setContentLanguage", |a| {
         let (tag,): (String,) = args(a)?;
@@ -240,6 +256,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Library", "overall", |a| {
         no_args(&a)?;
         ret(Library::overall())
+    })
+    .sync("Library", "opening", |a| {
+        no_args(&a)?;
+        ret(Library::opening())
     });
 
     r.sync("Sources", "search", |a| {
@@ -318,6 +338,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Catalog", "forgetSearches", |a| {
         no_args(&a)?;
         ret(Catalog::forget_searches())
+    })
+    .sync("Catalog", "retrySearch", |a| {
+        let (query,): (String,) = args(a)?;
+        ret(Catalog::retry_search(query))
     })
     .sync("Catalog", "toggleList", |a| {
         let (id,): (String,) = args(a)?;
