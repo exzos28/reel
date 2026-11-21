@@ -6,7 +6,7 @@ import { keymap, signal, View, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { byKeys } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
-import { ChoicePanel } from "../../layout/ChoicePanel";
+import { ChoicePanel, selectedAt } from "../../layout/ChoicePanel";
 import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { onBack } from "../../nav";
@@ -29,7 +29,7 @@ export function InterfaceScreen() {
   const open = (which: Picker) => {
     focus.set(rows.indexOf(which));
     picker.set(which);
-    pickAt.set(Math.max(0, choices().findIndex((c) => c.selected)));
+    pickAt.set(selectedAt(choices()));
   };
   const pick = (i: number) => {
     if (picker() === "nav") {

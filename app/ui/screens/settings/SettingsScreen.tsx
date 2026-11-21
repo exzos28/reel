@@ -31,7 +31,7 @@ import { audioLanguageChoices, audioLanguageName, bufferChoiceList, languageChoi
 import { SettingRow } from "./SettingRow";
 import { PhoneCard } from "../source/PhoneCard";
 import { openSourceDrawer, sourceDrawerOpen } from "../source/SourceDrawer";
-import { ChoicePanel } from "../../layout/ChoicePanel";
+import { ChoicePanel, selectedAt } from "../../layout/ChoicePanel";
 
 /** The rows under the page's title (the frame's), the phone card beside them; on a tablet held
  * wide a column in the middle (not 650 points at the left of 1100). */
@@ -92,7 +92,7 @@ export function SettingsScreen() {
     focus.set(rowOf[which]);
     onNav.set(false);
     picker.set(which);
-    pickAt.set(Math.max(0, choices().findIndex((c) => c.selected)));
+    pickAt.set(selectedAt(choices()));
   };
   const pick = (i: number) => {
     const which = picker();

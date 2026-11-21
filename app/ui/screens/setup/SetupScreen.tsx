@@ -16,7 +16,7 @@ import { Icon } from "../../kit/Icon";
 import { rowStyle } from "../../kit/Row";
 import { row } from "../../kit/shape";
 import { bodyText, labelText, metaText, pageTitle, sectionTitle } from "../../kit/text";
-import { ChoicePanel, type Choice } from "../../layout/ChoicePanel";
+import { ChoicePanel, selectedAt, type Choice } from "../../layout/ChoicePanel";
 import { Logo } from "../../layout/NavBar";
 import { footPinned, PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
@@ -141,8 +141,13 @@ export function SetupScreen() {
     if (at() > last) at.set(last);
   });
 
-  /** The source step starts on its address while there is none to check, else on Check. */
-  const firstAt = (n: number) => (n === SOURCE_STEP && FIELD_STOPS && untracked(form.url).trim() ? sourceStops().indexOf("check") : 0);
+  /** Where a step's focus starts: a choice on the one in effect; the source on its address while
+   * there is none to check, else on Check. */
+  const firstAt = (n: number) =>
+    untracked(() =>
+      n < SOURCE_STEP ? selectedAt(optionsOf(n)) : FIELD_STOPS && form.url().trim() ? sourceStops().indexOf("check") : 0,
+    );
+  at.set(firstAt(0));
   const go = (next: number) => {
     fields.blur();
     onPartner.set(false);
