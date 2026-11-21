@@ -55,6 +55,9 @@ export interface Choice {
   selected: boolean;
 }
 
+/** Where the focus starts in a list of choices: on the one in effect (the first when none is). */
+export const selectedAt = (choices: Choice[]) => Math.max(0, choices.findIndex((c) => c.selected));
+
 function ChoiceRow(props: { choice: () => Choice; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
   const c = props.choice;
   return (

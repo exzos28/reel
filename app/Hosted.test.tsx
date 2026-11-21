@@ -70,8 +70,21 @@ test("OK on Cancel dismisses the code", async () => {
 test("Settings shows a QR code and the address to set the source from a phone", async () => {
   const app = await openApp({ modules: { "app/native": core().native } });
   await app.press("label:Settings");
-  expect(app.texts()).toContain(`Scan the code, or open ${URL}.`);
+  expect(app.texts()).toContain("Scan the code, or open the address below.");
+  expect(app.texts()).toContain(URL); // a line of its own
   expect(app.shows("hosted-qr")).toBe(true);
+});
+
+test("the card's address is never broken inside: on one line, smaller where the card is too narrow for it", async () => {
+  const long = "http://192.168.100.200:47392/settings";
+  const app = await openApp({ modules: { "app/native": core(long).native } }); // a TV
+  await app.press("label:Settings");
+  await app.waitFor("phone-address");
+  expect(app.texts()).toContain(long);
+  const body = app.spanStyle("text:Scan the code, or open the address below.").fontSize;
+  const address = app.spanStyle(`text:${long}`).fontSize;
+  expect(address).toBeLessThan(body);
+  expect(address).toBeGreaterThanOrEqual(body / 2);
 });
 
 test("no address where the page is not served", async () => {
@@ -205,12 +218,13 @@ test("Android TV: the UI tells the core it is a TV, and the page's QR code shows
   expect(first.families).toEqual(["tv"]);
   await setup.waitFor("phone-card");
   expect(setup.shows("hosted-qr")).toBe(true);
-  expect(setup.texts()).toContain(`Scan the code with the phone's camera, or open ${URL} in its browser. This screen follows along.`);
+  expect(setup.texts()).toContain("Scan the code with the phone's camera, or open the address below in its browser. This screen follows along.");
+  expect(setup.texts()).toContain(URL);
 
   const app = await androidTv(true).app;
   await app.press("label:Settings");
   await app.waitFor("hosted-qr");
-  expect(app.texts()).toContain(`Scan the code, or open ${URL}.`);
+  expect(app.texts()).toContain("Scan the code, or open the address below.");
   await app.press("label:Search source");
   await app.waitFor("hosted-address");
   expect(app.texts()).toContain(`Scan the code with your phone, or open ${URL}`);

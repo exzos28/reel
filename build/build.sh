@@ -12,6 +12,8 @@
 #   test-app       nsh test (cargo test of app/, then the *.test.tsx files, headless)
 #   test-rust      cargo test of app/ only (test-app's first half)
 #   test-ui <n>    the *.test.tsx files of part n of 3 (test-app's second half, split for CI)
+#   test-tizen-core  cargo test of platforms/tizen's core: its RPC table against app/'s
+#                  #[module]s (after typecheck, which writes the declarations it reads)
 #   ui-rules       dev/ui-rules.sh (what screens must not do)
 #   macos          .app, zipped                       (macOS)
 #   linux          directory + .tar.gz                (Linux, GTK 4.14+)
@@ -148,6 +150,12 @@ case "$target" in
 
   test-rust)
     cargo test --locked -p reel-app
+    ;;
+
+  test-tizen-core)
+    # matches_the_declarations reads app/.nsh/types/app/native.d.ts (nsh check writes it): it is
+    # skipped without it on a developer's machine and fails without it on CI.
+    (cd "$repo/platforms/tizen" && cargo test --locked -p reel-tizen-core)
     ;;
 
   test-ui)

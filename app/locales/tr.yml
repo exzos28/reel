@@ -479,7 +479,7 @@ settings:
   # The card beside Settings on a device that serves its settings page (a TV).
   phone:
     title: "Bunları telefonundan değiştir"
-    text: "Kodu tara veya %{url} adresini aç."
+    text: "Kodu tara veya aşağıdaki adresi aç."
   interface:
     title: "Arayüz"
   about:
@@ -525,7 +525,7 @@ setup:
     skip: "Atla"
   phone:
     title: "Veya telefonundan kur"
-    text: "Kodu telefonunun kamerasıyla tara veya telefonun tarayıcısında %{url} adresini aç. Bu ekran kendiliğinden güncellenir."
+    text: "Kodu telefonunun kamerasıyla tara veya telefonun tarayıcısında aşağıdaki adresi aç. Bu ekran kendiliğinden güncellenir."
     source_title: "Telefondan daha kolay"
     source_text: "Kumandayla adres yazmak yavaştır. Kodu tara veya %{url} adresini aç ve adresi oraya yapıştır. Bu ekran kurulumu kendisi tamamlar."
 

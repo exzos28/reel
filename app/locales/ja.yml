@@ -479,7 +479,7 @@ settings:
   # The card beside Settings on a device that serves its settings page (a TV).
   phone:
     title: "スマートフォンからも変更できます"
-    text: "コードをスキャンするか、%{url} を開いてください。"
+    text: "コードをスキャンするか、下のアドレスを開いてください。"
   interface:
     title: "インターフェース"
   about:
@@ -525,7 +525,7 @@ setup:
     skip: "スキップ"
   phone:
     title: "スマートフォンでも設定できます"
-    text: "スマートフォンのカメラでコードをスキャンするか、ブラウザで %{url} を開いてください。この画面も自動で切り替わります。"
+    text: "スマートフォンのカメラでコードをスキャンするか、ブラウザで下のアドレスを開いてください。この画面も自動で切り替わります。"
     source_title: "スマートフォンなら簡単"
     source_text: "リモコンでのアドレス入力は時間がかかります。コードをスキャンするか %{url} を開いて、そこに貼り付けてください。この画面は自動で完了します。"
 

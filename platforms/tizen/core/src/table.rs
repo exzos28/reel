@@ -1,6 +1,7 @@
 //! app/'s modules by the names NSH gives the TSX side (`.nsh/types/app/native.d.ts`). Kept
 //! by hand in step with app/src/lib.rs; the `matches_the_declarations` test compares the two
-//! whenever the declarations exist (after any `nsh run`/`nsh check` in app/).
+//! whenever the declarations exist (after any `nsh run`/`nsh check` in app/), and CI runs it
+//! after its `nsh check` (`build/build.sh test-tizen-core`).
 
 use std::path::PathBuf;
 
@@ -447,6 +448,11 @@ mod tests {
         registry(std::env::temp_dir().join("reel-tizen-core-test"))
     }
 
+    /// A CI run (`CI=true` on GitHub Actions; `1` elsewhere), where nothing may be skipped.
+    fn on_ci() -> bool {
+        matches!(std::env::var("CI").as_deref(), Ok("true" | "1"))
+    }
+
     #[tokio::test]
     async fn calls_app_modules() {
         let r = table();
@@ -463,13 +469,19 @@ mod tests {
         assert!(matches!(wrong, Err(Error::BadArgs(m)) if m.contains("GET /health")));
     }
 
-    /// The table has exactly the methods of app/'s generated declarations, when they exist.
+    /// The table has exactly the methods of app/'s generated declarations. Without them (no
+    /// `nsh check` in app/ yet) it is skipped on a developer's machine; on CI (`CI` set, as
+    /// GitHub Actions sets it) it fails: there it must run (`build/build.sh test-tizen-core`).
     #[test]
     fn matches_the_declarations() {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../app/.nsh/types/app/native.d.ts");
-        let Ok(dts) = std::fs::read_to_string(path) else {
-            eprintln!("skipped: no {path} (run `nsh check` in app/)");
-            return;
+        let dts = match std::fs::read_to_string(path) {
+            Ok(dts) => dts,
+            Err(e) if on_ci() => panic!("no {path} ({e}): run `nsh check` in app/ before this test"),
+            Err(_) => {
+                eprintln!("skipped: no {path} (run `nsh check` in app/)");
+                return;
+            }
         };
         let mut declared = Vec::new();
         let mut module = None;

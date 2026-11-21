@@ -231,6 +231,35 @@ test("setup, source step: one button, Check (Checking… and disabled while it c
   expect(finished).toBe(1);
 });
 
+test("setup: each step's focus starts on the choice in effect (the recommended buffer, not the first size)", async () => {
+  const languages: string[] = [];
+  const buffers: number[] = [];
+  const app = await openApp({
+    modules: {
+      "app/native": {
+        ...firstRun({ state: "done" }),
+        "Settings.load": JSON.stringify({
+          language: "en", contentLanguage: "en-GB", setupDone: false, bufferMB: 2048, streamDetails: false,
+          contentLanguages: [{ tag: "en-US", name: "English (US)" }, { tag: "en-GB", name: "English (UK)" }], source: { url: "", hasKey: false },
+          bufferChoices: [128, 256, 512, 1024, 2048].map((mb) => ({ mb, default: mb === 2048 })),
+        }),
+        "Settings.setContentLanguage": (tag: string) => (languages.push(tag), tag),
+        "Settings.setBufferMb": (mb: number) => (buffers.push(mb), mb),
+      },
+    },
+  });
+  await app.waitFor("label:Next");
+  await app.keyboard.press("enter"); // OK where the focus starts: the language in effect, the second
+  expect(languages).toEqual(["en-GB"]);
+  await app.press("label:Next");
+  expect(app.texts()).toContain("Playback buffer");
+  await app.keyboard.press("enter"); // 2 GB, the last, not 128 MB
+  expect(buffers).toEqual([2048]);
+  await app.keyboard.press("down"); // under it: Next
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("Where should reel find films?");
+});
+
 test("setup, language step: More languages opens the ones the step does not show, and the remote moves in the drawer and picks", async () => {
   const chosen: string[] = [];
   const tags = ["en-US", "ru-RU", "de-DE", "fr-FR", "es-ES", "it-IT", "ja-JP", "pt-BR"];

@@ -479,7 +479,7 @@ settings:
   # The card beside Settings on a device that serves its settings page (a TV).
   phone:
     title: "Cámbialos desde tu móvil"
-    text: "Escanea el código o abre %{url}."
+    text: "Escanea el código o abre la dirección de abajo."
   interface:
     title: "Interfaz"
   about:
@@ -525,7 +525,7 @@ setup:
     skip: "Omitir"
   phone:
     title: "O configúralo desde tu móvil"
-    text: "Escanea el código con la cámara del móvil o abre %{url} en su navegador. Esta pantalla se actualizará sola."
+    text: "Escanea el código con la cámara del móvil o abre la dirección de abajo en su navegador. Esta pantalla se actualizará sola."
     source_title: "Más fácil desde tu móvil"
     source_text: "Escribir una dirección con el mando es lento. Escanea el código o abre %{url} y pégala allí. Esta pantalla terminará la configuración sola."
 
