@@ -4,12 +4,16 @@
 //! call it, so this calls `app.reel.views.Install.install()` once, through JNI: the JVM the
 //! app runs in, the app's class loader (where reel's classes are), the call. From then on
 //! `Install` registers them on every activity's NshView, a new one included (an activity the
-//! system makes again while the process lives on).
+//! system makes again while the process lives on). On a phone `Install` keeps the window upright,
+//! and `Held` tells how the device is held, for the player that draws itself sideways (`held`).
 
 use std::{
     ffi::{CStr, c_char, c_void},
     ptr,
-    sync::OnceLock,
+    sync::{
+        OnceLock,
+        atomic::{AtomicI32, AtomicU64, Ordering},
+    },
 };
 
 use jni_sys::{JNI_OK, JNI_VERSION_1_6, JNIEnv, JavaVM, jboolean, jint, jobject, jsize, jvalue};
@@ -68,20 +72,59 @@ unsafe fn check(env: *mut JNIEnv, what: &str) -> Result<(), String> {
 /// The player's full screen on or off (`Install.fullscreen`); nothing when the views are not
 /// installed.
 pub fn fullscreen(on: bool) {
+    call_with_bool(c"fullscreen", on);
+}
+
+/// A phone's player is drawn sideways (`Install.immersive`): the system bars stay hidden while it
+/// is; nothing when the views are not installed.
+pub fn immersive(on: bool) {
+    call_with_bool(c"immersive", on);
+}
+
+/// `Install.<name>(boolean)`, when the views are installed.
+fn call_with_bool(name: &CStr, on: bool) {
     if !installed() {
         return;
     }
     let r = unsafe {
         with_install(|env, class| {
             let f = &**env;
-            let id = method(env, class, c"fullscreen", c"(Z)V", true)?;
+            let id = method(env, class, name, c"(Z)V", true)?;
             let args = [jvalue { z: on }];
             (f.v1_6.CallStaticVoidMethodA)(env, class, id, args.as_ptr());
-            check(env, "Install.fullscreen")
+            check(env, &format!("Install.{name:?}"))
         })
     };
     if let Err(e) = r {
         tracing::warn!("reel views: {e}");
+    }
+}
+
+/// How a phone is held, as `Held` last said: its codes (`Held.CLOCKWISE` 90, `OTHER_WAY` -90,
+/// `UPRIGHT` 0, `UPSIDE_DOWN` 180), or `NOT_KNOWN` before it has said (not a phone, auto-rotate
+/// off since the app started).
+static HELD: AtomicI32 = AtomicI32::new(NOT_KNOWN);
+const NOT_KNOWN: i32 = i32::MIN;
+/// How many times it has turned (`HELD` changed) since the app started.
+static TURNS: AtomicU64 = AtomicU64::new(0);
+
+/// How a phone is held, as the quarter turn its player gives its picture: `Some(90)` turned
+/// counter-clockwise (its top at the left), `Some(-90)` the other way, `Some(0)` upright, `None`
+/// upside down or not known; and how many times it has turned since the app started. Followed
+/// while the app is in front with the system's auto-rotate on (`Held`): with it off, no turn.
+pub fn held() -> (Option<i32>, u64) {
+    let turn = match HELD.load(Ordering::Relaxed) {
+        t @ (90 | -90 | 0) => Some(t),
+        _ => None,
+    };
+    (turn, TURNS.load(Ordering::Relaxed))
+}
+
+/// `Held.nativeHeld(int)`: the phone is held another way (`Held`'s codes), on the main thread.
+#[unsafe(no_mangle)]
+extern "system" fn Java_app_reel_views_Held_nativeHeld(_: *mut JNIEnv, _: jobject, turn: jint) {
+    if HELD.swap(turn, Ordering::Relaxed) != turn {
+        TURNS.fetch_add(1, Ordering::Relaxed);
     }
 }
 

@@ -248,12 +248,14 @@ impl VideoEngine {
     /// picture for it: 90 (clockwise: the device turned counter-clockwise, its top at the left,
     /// the common way), -90 (the other way), 0 (upright), null (flat, upside down, not known).
     /// `turns`: how many times the device has turned since the app started; the player follows a
-    /// new one. With the rotation lock on, iOS reports no turn (only Rotate turns the player); off
-    /// iOS always `{"turn":null,"turns":0}`.
+    /// new one. With the rotation lock on (iOS) or auto-rotate off (Android), no turn is reported
+    /// (only Rotate turns the player); elsewhere always `{"turn":null,"turns":0}`.
     pub fn held() -> String {
         #[cfg(target_os = "ios")]
         let (turn, turns) = crate::adapters::ios_awake::held();
-        #[cfg(not(target_os = "ios"))]
+        #[cfg(target_os = "android")]
+        let (turn, turns) = crate::adapters::android_views::held();
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
         let (turn, turns): (Option<i32>, u64) = (None, 0);
         serde_json::json!({ "turn": turn, "turns": turns }).to_string()
     }
@@ -267,11 +269,14 @@ impl VideoEngine {
     }
 
     /// The phone's player is drawn sideways (`true`): the home indicator, along the picture's side
-    /// then, fades after a moment of no touches (iOS; elsewhere nothing).
+    /// then, fades after a moment of no touches (iOS); the system bars stay hidden (Android);
+    /// elsewhere nothing.
     pub fn immersive(on: bool) {
         #[cfg(target_os = "ios")]
         crate::adapters::ios_awake::immersive(on);
-        #[cfg(not(target_os = "ios"))]
+        #[cfg(target_os = "android")]
+        crate::adapters::android_views::immersive(on);
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
         let _ = on;
     }
 
@@ -284,7 +289,8 @@ impl VideoEngine {
 
     /// Whether reel's own native views are registered on this device (Android: the Java ones
     /// `build/android-views.sh` adds to the APK; registered on the first call, and on every
-    /// activity made after it).
+    /// activity made after it). With them a phone's window stays upright, and its player draws
+    /// itself sideways (`held`).
     pub fn views() -> bool {
         #[cfg(target_os = "android")]
         return crate::adapters::android_views::installed();

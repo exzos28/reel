@@ -120,8 +120,22 @@ close is gone with it.
   `layoutSubviews` fits the canvas again, and split view, Stage Manager and slide over take the
   same path. The canvas chosen at the hook stays when the window changes size later, so it is
   scaled.
-- Android phones keep the system's rotation (their window turns when auto-rotate is on) and have
-  no Rotate; drawing the player sideways there needs the activity kept upright first.
+- **Android phones** take the same path. The activity stays upright: reel's Java (`Install`)
+  asks for portrait before its first layout, only where NSH's idiom is a phone (not a TV by its
+  UI mode, under 600 dp at the shorter side), and the UI turns the player there when reel's views
+  are in the APK (`caps.rotate`, `VideoEngine.views`). `VideoEngine.held` comes from the
+  accelerometer (`Held`, an `OrientationEventListener`, with a 15° margin past each half-way
+  angle) while the app is in front and only while the system's auto-rotate is on. Sideways, the
+  system bars stay hidden (`immersive`; the player's full screen hides them too). The video view
+  is a TextureView: a turn resizes its Surface and `android-surface-size` resizes mpv's
+  swapchain in place, as any resize does (§1).
+- Touch on Android: NSH's runtime turns a touch's position into the pressed view's own
+  coordinates (Android's views undo their parents' transforms), but measures a pan's translation
+  and speed on the screen (the touches' raw positions), and decides on those which axis starts a
+  pan. In the turned box the box's x is the screen's y and its y the screen's x, one of them the
+  other way round, so a pan of the player's (the scrubber, the swipe down to close) binds the
+  screen's axis that runs along the box's and reads its events turned back
+  (`layout/surface.ts`, `boxPan`, `caps.panOnScreen`).
 
 ## 3. Lifecycle
 
@@ -153,11 +167,15 @@ close is gone with it.
      episode heard over the next one's stage). `stop` is sent without waiting (`Player::close`),
      and the view's events stop. On iOS the view lets go on the main thread at once: no view for
      the hook, no lifecycle observer, mpv's layer out of the view, and steps 3–4 follow on their
-     own thread. Elsewhere mpv's own word ends the playback (step 3, on the event thread) and mpv
-     is destroyed when the view is dropped.
+     own thread. On Android the view lets go of its player at once too (`android.rs`: steps 3–4
+     on their own thread; mpv draws through its own reference to the Surface meanwhile, and a
+     Surface detached after that is released at once). Elsewhere mpv's own word ends the playback
+     (step 3, on the event thread) and mpv is destroyed when the view is dropped.
   3. On a thread of its own (`Player`'s drop): a held hook is continued (mpv cannot stop while it
      waits in one), the event thread is joined, and mpv's own word is waited for: the file's end
-     after the stop, or idle. The sound stops because mpv has stopped. After 2 s mpv is destroyed
+     after the stop, or idle. The event thread never waits for mpv's own thread (what `load`
+     reports is read with `mpv_get_property_async`), so the join returns at once even when mpv's
+     thread does not answer. The sound stops because mpv has stopped. After 2 s mpv is destroyed
      anyway (logged). The log times both from the moment the view let go: `the playback ended …
      ms`, `destroyed … ms`.
   4. mpv is destroyed. On iOS mpv holds the layer without retaining it, so the layer is kept
@@ -165,6 +183,15 @@ close is gone with it.
      may ask of the main thread meanwhile gets done.
   5. The next film's job, stream and player start only once the last player has ended
      (`VideoEngine.ended`; at most 3 s, logged). Its stage shows meanwhile.
+- **A decoder that never answers** (seen on the Android emulator): its C2 decoder
+  (`c2.goldfish.h264.decoder`) drops the codec data in the flush right after it starts, then
+  takes no input and gives no frame, and FFmpeg 9.0's `mediacodec_receive_frame` retries for ever
+  ("Try again if both input port and output port return EAGAIN"), a busy loop on mpv's own
+  thread. The player stays on Starting; leaving, mpv never ends its playback, and
+  `mpv_terminate_destroy` waits for that thread for ever, so that mpv stays with its decoder on
+  the closing thread. Nothing of the client API reaches it; ending it needs a bounded retry in
+  reel-libmpv's FFmpeg. A stream that stops coming is not the cause: mpv's read is cancelled at
+  once (`mpv::tests::closing_while_waiting_for_the_stream_does_not_wait`).
 
 ## 4. What lies over the picture
 

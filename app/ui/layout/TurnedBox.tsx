@@ -79,6 +79,7 @@ export function TurnedBox(props: { turn: Turn; children: JSX.Element }) {
     size,
     insets: () => turnedInsets(safeArea(), props.turn.angle()),
     turned,
+    angle: props.turn.angle,
   };
   return (
     <View style={{ flex: 1, backgroundColor: colors.ink() }}>

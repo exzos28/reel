@@ -2,7 +2,7 @@
 // platform family reel lays its frame out for, and answers what the UI asks of the
 // platform as capabilities. Screens never check the platform: they ask `caps`, or one of
 // the modules next to this file (scroll, remote, window, look, diagnostics).
-import { Settings } from "../native";
+import { Settings, VideoEngine } from "../native";
 import { runtime } from "./runtime";
 
 export { runtime } from "./runtime";
@@ -57,6 +57,12 @@ export const caps = {
   /** The window can fill the screen (a full-screen button and F in the player). */
   fullscreen: runtime.desktop && !tv,
   /** The player draws itself sideways inside the upright window (a Rotate button, `TurnedBox`):
-   * an iPhone, whose interface stays upright. Not an iPad: its window turns with the device. */
-  rotate: runtime.os === "ios" && family === "phone",
+   * an iPhone, whose interface stays upright, and an Android phone, whose window reel's views keep
+   * upright (`VideoEngine.views`: in the APK `build/android-views.sh` makes). Not a tablet: its
+   * window turns with the device. */
+  rotate: family === "phone" && (runtime.os === "ios" || (runtime.os === "android" && VideoEngine.views() === true)),
+  /** A pan's translation and speed are measured on the screen, not in the view's box (NSH's
+   * Android runtime reads the touches' raw positions; iOS measures in the view's superview): in
+   * the turned player they are turned back into its box (`surface`'s `boxPan`). */
+  panOnScreen: runtime.os === "android",
 };

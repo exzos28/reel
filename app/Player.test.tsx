@@ -3,7 +3,7 @@
 // stays where seeks put it); and the stage before the first frame.
 import { expect, test } from "nsh/test";
 import { episode, HOME, homeOf, NATIVE, STILL, openApp, DUNE_FIRST } from "./testEngine";
-import { turnedInsets } from "./ui/layout/surface";
+import { turnedInsets, turnedPoint } from "./ui/layout/surface";
 
 /** Home with Attack on Titan watched last: the hero. */
 const AOT_FIRST = { "Catalog.home": homeOf(HOME.map((s) => (s.id === "continue" ? { ...s, items: [...s.items].reverse() } : s))) };
@@ -148,7 +148,7 @@ test("left and right seek 10 seconds on the scrubber", async () => {
   expect(app.texts()).toContain("0:00");
 });
 
-// A remote's media keys (Android TV's come as F7 to F11).
+// A remote's media keys (Android TV's come as F7 to F10 and F12).
 test("the remote's media keys: rewind and fast forward step 10 seconds, play/pause, play and pause", async () => {
   const app = await playing();
   await app.keyboard.press("f9");
@@ -164,9 +164,10 @@ test("the remote's media keys: rewind and fast forward step 10 seconds, play/pau
   expect(app.shows("label:Pause")).toBe(true);
 });
 
-test("F11 pauses where the system leaves it to the app (not Android, Linux, Windows: their full screen)", async () => {
-  const app = await phonePlaying(PORTRAIT);
-  await app.keyboard.press("f11");
+// Android binds F12, not F11 (its full screen): the remote's Pause comes as F12 (RemoteKeys.java).
+test("on Android TV the remote's Pause (F12) pauses, and Play (F10) plays again", async () => {
+  const app = await playing();
+  await app.keyboard.press("f12");
   expect(app.shows("label:Play")).toBe(true);
   await app.keyboard.press("f10");
   expect(app.shows("label:Pause")).toBe(true);
@@ -523,6 +524,47 @@ test("phone with a screen reader: the player opens upright and does not follow t
   await app.press("label:Rotate screen");
   await app.wait(600);
   expect(app.shows("player-turned")).toBe(true);
+});
+
+test("turned pans: a pan measured on the screen (Android's), in the turned box's axes", () => {
+  // Turned clockwise, the box's down is the screen's left, and its right the screen's down.
+  expect(turnedPoint({ x: -120, y: 30 }, 90)).toEqual({ x: 30, y: 120 });
+  expect(turnedPoint({ x: -120, y: 30 }, -90)).toEqual({ x: -30, y: -120 });
+  expect(turnedPoint({ x: -120, y: 30 }, 0)).toEqual({ x: -120, y: 30 });
+});
+
+/** An Android phone: its window stays upright where reel's views are in the APK (Install.java). */
+const ANDROID_PORTRAIT = { ...PORTRAIT, platform: "android" };
+
+test("Android phone with reel's views: the player opens drawn sideways, as an iPhone's, and follows the device", async () => {
+  const immersive: boolean[] = [];
+  let held = heldAs(0, 1);
+  const app = await phonePlaying(ANDROID_PORTRAIT, {
+    "VideoEngine.views": true,
+    "VideoEngine.sideways": sidewaysUnlessTall,
+    "VideoEngine.held": () => held,
+    "VideoEngine.immersive": (on: boolean) => { immersive.push(on); },
+  });
+  expect(angleOf(app)).toBe(90);
+  expect(immersive).toEqual([true]); // the bars stay hidden
+  held = heldAs(-90, 2); // its top at the right
+  await app.wait(600);
+  expect(angleOf(app)).toBe(-90);
+  // A picture taller than wide stands it upright, where Rotate shows (headless tests lay the turned
+  // box out unturned: its buttons are off their screen).
+  const tall = await phonePlaying(ANDROID_PORTRAIT, { "VideoEngine.views": true, ...UPRIGHT });
+  expect(angleOf(tall)).toBe(0);
+  expect(tall.shows("label:Rotate screen")).toBe(true);
+});
+
+test("Android without reel's views, and an Android tablet: the player is the window's, never turned", async () => {
+  const bare = await phonePlaying(ANDROID_PORTRAIT, { "VideoEngine.sideways": sidewaysUnlessTall });
+  expect(bare.shows("scrubber")).toBe(true);
+  expect(angleOf(bare)).toBe(null);
+  expect(bare.shows("label:Rotate screen")).toBe(false);
+  const tablet = await phonePlaying({ ...ANDROID_PORTRAIT, width: 1180, height: 820 }, { "VideoEngine.views": true }, "Play", { nsh: { "platform.idiom": "pad" } });
+  expect(tablet.shows("scrubber")).toBe(true);
+  expect(angleOf(tablet)).toBe(null);
 });
 
 test("iPad: the player is the window's, never turned", async () => {

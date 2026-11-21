@@ -5,11 +5,12 @@
 //
 // The drag is the view's pan, bound to `x` only: it starts on mostly sideways moves, so a
 // vertical swipe stays the views' around it (the player's swipe down to close). The platform
-// moves `drag` by the pointer's translation since it went down; `base` is where it went down
-// (or the value at rest). No `panActivation`: it gates JS touch responders, and once its gate
+// moves `drag` by the pointer's translation since it went down (along the track: `boxPan`, in
+// the turned player too); `base` is where it went down (or the value at rest). No `panActivation`: it gates JS touch responders, and once its gate
 // opens the platform starts no pan. JS hears no move, so while a drag goes on it reads the
 // value at `SCRUB_HZ` for what follows it in words (the time beside the scrubber).
 import { cleanup, computed, createAnimatedValue, effect, signal, untracked, View, type JSX, type PressEvent, type ViewStyle, type WheelEvent } from "nsh";
+import { boxPan } from "../layout/surface";
 import { runtime } from "../platform";
 import { alpha, colors, focusRing, targetSlop } from "../theme";
 import { Pressable } from "./Pressable";
@@ -61,8 +62,10 @@ export function TrackSlider(props: {
   const width = signal(0);
   /** Points from the track's start: where the press landed, or the value at rest. */
   const base = createAnimatedValue(0);
-  /** The drag's translation since the press (the pan drives it; 0 at rest). */
+  /** The drag's translation since the press (the pan drives it; 0 at rest), along the platform's
+   * axis that runs along the track (`pan.sign()`: -1 where it runs the other way). */
   const drag = createAnimatedValue(0);
+  const pan = boxPan("x", drag);
   const grow = createAnimatedValue(1);
   /** A press is down on it: the thumb is the pointer's, not the value's. */
   let down = false;
@@ -138,7 +141,7 @@ export function TrackSlider(props: {
   // The thumb's centre and the filled part's end, kept on the track.
   const at = computed(() => {
     const w = Math.max(width(), 1);
-    return base.add(drag).interpolate({ inputRange: [0, w], outputRange: [0, w], extrapolate: "clamp" });
+    return base.add(pan.sign() < 0 ? drag.mul(-1) : drag).interpolate({ inputRange: [0, w], outputRange: [0, w], extrapolate: "clamp" });
   });
   const slop = targetSlop(props.height);
   return (
@@ -154,7 +157,7 @@ export function TrackSlider(props: {
       focusable={false}
       // A finger needs 44 pt: the area reaches past what it draws, up and down.
       hitSlop={{ top: slop, bottom: slop }}
-      pan={{ x: drag }}
+      pan={pan.bind()}
       onLayout={(e) => width.set(e.bounds.size.width)}
       onPressDown={(e: PressEvent) => press(e.position.x)}
       onPress={(e: PressEvent) => commit(e.position.x)}
@@ -167,7 +170,8 @@ export function TrackSlider(props: {
         upAt = performance.now();
         settle = setTimeout(cancel, SETTLE_MS);
       }}
-      onPanStart={(e) => {
+      onPanStart={(raw) => {
+        const e = pan.event(raw);
         clearTimeout(settle);
         began = fromRecognition ? e.translation.x : null;
         const up = upX;
@@ -185,13 +189,14 @@ export function TrackSlider(props: {
           drag.getValue().then((v) => {
             if (!dragging || v === last) return;
             last = v;
-            props.onScrub?.(fraction(pressX + v));
+            props.onScrub?.(fraction(pressX + untracked(pan.sign) * v));
           });
         }, 1000 / SCRUB_HZ);
       }}
       // Let go where the thumb is drawn: the value the pan moved, whichever way the platform
       // counts its translation.
-      onPanEnd={(e) => {
+      onPanEnd={(raw) => {
+        const e = pan.event(raw);
         if (e.cancelled) cancel();
         else commit(pressX + (e.value?.x ?? e.translation.x));
       }}
