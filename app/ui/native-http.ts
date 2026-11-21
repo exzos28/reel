@@ -219,6 +219,8 @@ export const VideoEngine: VideoEngineModule = {
   immersive: () => {},
   turnScale: () => 1,
   sideways: () => false,
+  // A TV's player is the shell's AVPlay: the core has none to wait for.
+  ended: async () => true,
 };
 
 export const Hosted: HostedModule = {
