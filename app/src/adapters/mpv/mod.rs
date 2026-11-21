@@ -9,6 +9,9 @@
 
 #[cfg(target_os = "android")]
 mod android;
+// The iOS view's canvas: plain arithmetic, tested on any host.
+#[cfg_attr(not(target_os = "ios"), allow(dead_code))]
+mod canvas;
 #[cfg(target_os = "ios")]
 mod ios;
 #[cfg(all(target_os = "linux", not(target_arch = "arm")))]

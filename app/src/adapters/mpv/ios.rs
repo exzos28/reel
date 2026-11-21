@@ -3,12 +3,14 @@
 //! VideoToolbox), as MPVKit's own iOS demo does. iOS has no desktop OpenGL, so the macOS view's
 //! render API path (`view.rs`) does not apply.
 //!
-//! mpv reads the layer's size only when its video output is set up for a video (MPVKit's
-//! MoltenVK context reports no resize), so a new size while a picture shows starts the output
-//! again: a rotation or a split-view change blinks once. Only once mpv shows the picture where it
-//! was asked to (`Player::settled`): a new size while the film opens or a seek waits for its place
-//! waits for that. Files load once the layer has a size (`LoadGate`), else mpv would start its
-//! output at 0×0.
+//! The layer is a fixed canvas (design/player-rendering.md). mpv reads the layer's size only when
+//! its output is set up for a file, and MoltenVK makes a new swapchain as soon as the layer's
+//! size in pixels changes, which mpv does not follow. So the layer's size in pixels is set once
+//! per file, in mpv's `on_preloaded` hook before its output starts, from the picture's aspect
+//! (`canvas::for_picture`). A turn, a split view or a resize only moves and scales the layer into
+//! the view (`position`, `transform`): mpv's output is never started again for a size (that lost
+//! the picture on a device). Files load once the view is in its window (`LoadGate`): until a
+//! file's picture is known, the canvas is a 16:9 box of the window.
 
 use std::{
     cell::{Cell, RefCell},
@@ -24,17 +26,18 @@ use nsh_platform_ios::{ComponentContext, NativeComponent};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send,
     rc::{Allocated, Retained},
-    runtime::AnyClass,
+    runtime::{AnyClass, AnyObject},
 };
-use objc2_core_foundation::CGSize;
+use objc2_core_foundation::{CGAffineTransform, CGPoint, CGRect, CGSize};
 use objc2_foundation::{NSNotification, NSNotificationCenter, NSObject, NSObjectProtocol};
 use objc2_quartz_core::{CALayer, CATransaction};
 use objc2_ui_kit::{UIApplicationDidEnterBackgroundNotification, UIApplicationWillEnterForegroundNotification, UIResponder, UIView};
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use super::{
+    canvas::{self, Fit, Size},
     ffi::Lib,
-    player::{LoadGate, Player},
+    player::{self, HeldHook, LoadGate, Player},
 };
 
 /// mpv's options on iOS (over the common ones): MoltenVK's Vulkan into the layer, VideoToolbox.
@@ -43,8 +46,8 @@ const PLATFORM: [(&str, &str); 3] = [("gpu-api", "vulkan"), ("gpu-context", "mol
 /// The video output once the layer has a size (`vo=null` until then).
 const VO: &str = "gpu-next";
 
-/// What the view tells its component: laid out at a size (pixels).
-type OnLayout = Box<dyn Fn(f64, f64)>;
+/// What the view tells its component: laid out (its bounds may have changed).
+type OnLayout = Box<dyn Fn()>;
 
 pub struct ViewIvars {
     layer: Retained<CALayer>,
@@ -65,19 +68,8 @@ define_class!(
         #[unsafe(method(layoutSubviews))]
         fn layout_subviews(&self) {
             let _: () = unsafe { msg_send![super(self), layoutSubviews] };
-            let bounds = self.bounds();
-            // The screen's scale (3 on most iPhones): a view's own is 1 until it is in a window.
-            let Some(window) = self.window() else { return };
-            let scale = window.screen().scale();
-            // No implicit animation of the layer's frame.
-            CATransaction::begin();
-            CATransaction::setDisableActions(true);
-            self.ivars().layer.setFrame(bounds);
-            self.ivars().layer.setContentsScale(scale);
-            CATransaction::commit();
-            let (w, h) = ((bounds.size.width * scale).round(), (bounds.size.height * scale).round());
             if let Some(f) = self.ivars().on_layout.borrow().as_ref() {
-                f(w, h);
+                f();
             }
         }
 
@@ -89,7 +81,7 @@ define_class!(
         }
 
         #[unsafe(method_id(hitTest:withEvent:))]
-        fn hit_test(&self, _point: objc2_core_foundation::CGPoint, _event: *mut NSObject) -> Option<Retained<UIView>> {
+        fn hit_test(&self, _point: CGPoint, _event: *mut NSObject) -> Option<Retained<UIView>> {
             None
         }
     }
@@ -102,6 +94,10 @@ impl MpvView {
         let this: Allocated<MpvView> = MpvView::alloc(mtm);
         let this = this.set_ivars(ViewIvars { layer: layer.clone(), on_layout: RefCell::new(None) });
         let this: Retained<MpvView> = unsafe { msg_send![super(this), init] };
+        // Black around the canvas, as mpv's own bars in it, and nothing of it outside the view.
+        let black: Retained<AnyObject> = unsafe { msg_send![objc2::class!(UIColor), blackColor] };
+        let _: () = unsafe { msg_send![&*this, setBackgroundColor: &*black] };
+        let _: () = unsafe { msg_send![&*this, setClipsToBounds: true] };
         this.layer().addSublayer(&layer);
         Some(this)
     }
@@ -129,6 +125,8 @@ define_class!(
         #[unsafe(method(foreground:))]
         fn foreground(&self, _n: &NSNotification) {
             if let Some(inner) = self.ivars().upgrade() {
+                // A new output starts at the layer's drawable: the canvas, again (`set_canvas`).
+                inner.canvas_again("back from the background");
                 let player = inner.player.borrow();
                 // Its video comes back from what plays (a seek in its cache), not the stream:
                 // no "waiting for the stream" for it.
@@ -152,108 +150,203 @@ impl Lifecycle {
     }
 }
 
-/// The player and what its output knows of the layer.
+/// The film's own subtitles as the UI places them (`subtitleLift`, `subtitleSides`: shares of the
+/// picture's height from the view's edges; `subtitleScale`), mapped into the canvas for mpv.
+#[derive(Clone, Copy, PartialEq)]
+struct Subtitles {
+    lift: f64,
+    sides: f64,
+    scale: f64,
+}
+
+/// The player, its layer and the canvas mpv draws at.
 pub struct Inner {
+    // First: mpv holds the layer without retaining it, so the player goes before the layer.
     player: RefCell<Player>,
+    view: Retained<MpvView>,
     layer: Retained<CALayer>,
-    /// The size the output was started at (pixels); 0×0 before.
-    size: Cell<(f64, f64)>,
-    /// A new size the output starts again at once mpv's picture is settled (`restart_when_settled`).
-    pending: Cell<Option<(f64, f64)>>,
+    /// The canvas mpv draws at (pixels): set at the first layout, then by each file's hook before
+    /// its output starts. Never changed otherwise.
+    canvas: Cell<Option<Size>>,
+    /// The screen's scale the canvas is laid at: its size in points is its pixels over it.
+    scale: Cell<f64>,
+    /// The window's size in pixels at the last layout: what a canvas is chosen for.
+    window: Cell<Option<Size>>,
     /// Files wait for the first size.
     gate: RefCell<Option<Arc<LoadGate>>>,
+    subtitles: Cell<Subtitles>,
+    /// The margins mpv was given last (in the canvas): only a change goes to it.
+    sent: Cell<Option<(f64, f64)>>,
     lib: &'static Lib,
 }
 
 impl Inner {
-    /// The layer is laid out at `w`×`h` pixels: start the output there, or restart it at a new size.
-    fn laid_out(&self, w: f64, h: f64) {
-        // A 1×1 layer is UIKit's placeholder before the real layout (MPVKit's demo skips it too).
-        if w < 2.0 || h < 2.0 {
+    /// The view is laid out: the canvas fits it again. The first time, a canvas until the file's
+    /// picture is known, and mpv may start: files load from now on.
+    fn laid_out(&self) {
+        let Some(window) = self.view.window() else { return };
+        let bounds = self.view.bounds();
+        // A 1×1 view is UIKit's placeholder before the real layout (MPVKit's demo skips it too).
+        if bounds.size.width < 2.0 || bounds.size.height < 2.0 {
             return;
         }
-        if self.size.get() == (0.0, 0.0) {
-            self.resize(w, h, "output starts");
-            let player = self.player.borrow();
-            player.set_window(Retained::as_ptr(&self.layer) as *const c_void as i64);
-            player.set_property("vo", VO);
-            if let Some(gate) = self.gate.borrow_mut().take() {
-                gate.open(self.lib, player.raw());
-            }
+        // The screen's scale (3 on most iPhones): a view's own is 1 until it is in a window.
+        let scale = window.screen().scale();
+        let w = window.bounds().size;
+        self.window.set(Some(((w.width * scale).round(), (w.height * scale).round())));
+        if self.canvas.get().is_some() {
+            self.fit();
             return;
         }
-        if self.size.get() == (w, h) {
-            // Back at the output's size before it started again (turned there and back).
-            self.pending.set(None);
-            return;
-        }
-        if self.player.borrow().property("vo-configured").as_deref() == Some("yes") {
-            // A picture shows, or is on its way: the output starts again at the new size, but not
-            // while the film opens or a seek waits for its place (the core fetching where the
-            // film resumes): started again then, the film played on without a picture. It waits
-            // for mpv's first frame there, as a turn while the film plays does.
-            self.pending.set(Some((w, h)));
-            if !self.player.borrow().settled() {
-                tracing::warn!("reel mpv: layer {w}x{h}, waits for the picture");
-            }
-            self.restart_when_settled();
-        } else {
-            // No picture yet: the output starts at the layer's size when the video starts.
-            // Starting it again now, while the file opens, left the film without a picture.
-            self.pending.set(None);
-            self.resize(w, h, "resized");
-        }
-    }
-
-    /// The layer's drawable at `w`×`h` pixels: what the output starts at.
-    fn resize(&self, w: f64, h: f64, what: &str) {
-        self.size.set((w, h));
-        let _: () = unsafe { msg_send![&*self.layer, setDrawableSize: CGSize { width: w, height: h }] };
-        tracing::warn!("reel mpv: layer {w}x{h}, {what}");
-    }
-
-    /// A new size waits (`pending`) and mpv shows the picture where it was asked to, with no
-    /// seek on its way (`Player::settled`): the output starts again at that size. Asked again
-    /// when that may have changed: mpv's playback restarted, the view's seek stopped waiting.
-    fn restart_when_settled(&self) {
-        let Some((w, h)) = self.pending.get() else { return };
+        self.scale.set(scale);
+        // A 16:9 box of the window, as mpv takes a picture it knows nothing of: the phone may
+        // still be turning sideways.
+        let first = self.window.get().and_then(|w| canvas::for_picture((16.0, 9.0), w));
+        self.set_canvas(first.unwrap_or(((bounds.size.width * scale).round(), (bounds.size.height * scale).round())), "16:9 until the picture is known");
         let player = self.player.borrow();
-        if !player.settled() {
-            return;
-        }
-        self.pending.set(None);
-        self.resize(w, h, "resized");
-        if player.property("vo-configured").as_deref() != Some("yes") {
-            return;
-        }
-        // mpv sized its swapchain when its output started, and only a new output makes another
-        // (a video reload keeps it), so the output starts again here.
-        player.set_property("vo", "null");
+        player.set_window(Retained::as_ptr(&self.layer) as *const c_void as i64);
         player.set_property("vo", VO);
-        // VideoToolbox decodes on from where it was without its reference frames then ("output
-        // image buffer is null", no picture on a device): start decoding again from the keyframe
-        // at or before here (what plays is in mpv's cache already).
-        if let Some(at) = player.property("time-pos").and_then(|t| t.parse::<f64>().ok()) {
-            player.own_wait();
-            player.command_args(&["seek", &format!("{at}"), "absolute+keyframes"]);
+        if let Some(gate) = self.gate.borrow_mut().take() {
+            gate.open(self.lib, player.raw());
         }
+    }
+
+    /// mpv's hook found the file's picture (None: not known), before mpv starts its decoder and
+    /// output for it: the canvas for its aspect (an unknown one keeps the canvas there is; mpv
+    /// fits the picture inside it). Set again even when it is the same (`set_canvas`).
+    fn file_picture(&self, picture: Option<Size>) {
+        let Some(now) = self.canvas.get() else { return };
+        let fresh = picture.zip(self.window.get()).and_then(|(p, w)| canvas::for_picture(p, w).map(|c| (p, c)));
+        let (c, why) = match fresh {
+            Some((p, c)) => (c, format!("for a {}x{} picture", p.0, p.1)),
+            None => (now, "kept: the picture's size is not known".into()),
+        };
+        if c != now {
+            let player = self.player.borrow();
+            // An output kept from the file before (the same view, another file) would draw on at
+            // the old canvas: mpv reads the size only when the frames' kind changes. A new one,
+            // now, between the files: no decoder runs, so none loses its frames.
+            if player::property(self.lib, player.raw(), "current-vo").is_some() {
+                tracing::warn!("reel mpv: a new output for the new canvas, between files");
+                player.set_property("vo", "null");
+                player.set_property("vo", VO);
+            }
+        }
+        self.set_canvas(c, &why);
+    }
+
+    /// The canvas as it is, set on the layer again before mpv may start a new output.
+    fn canvas_again(&self, why: &str) {
+        if let Some(c) = self.canvas.get() {
+            self.set_canvas(c, why);
+        }
+    }
+
+    /// The canvas at `c` pixels: what mpv's output starts at, and the size MoltenVK sees
+    /// (`bounds` × `contentsScale` = `drawableSize`), whatever the view does after. Set before
+    /// every new output, even when the same: MoltenVK leaves the drawable at 1×1 when an output
+    /// goes with frames still on their way to the screen (`forceUnpresentedImageCompletion`),
+    /// and a new output would start there, drawing nothing.
+    fn set_canvas(&self, c: Size, why: &str) {
+        let s = self.scale.get();
+        self.canvas.set(Some(c));
+        // No implicit animation of the layer.
+        CATransaction::begin();
+        CATransaction::setDisableActions(true);
+        self.layer.setBounds(CGRect::new(CGPoint::new(0.0, 0.0), CGSize::new(c.0 / s, c.1 / s)));
+        self.layer.setContentsScale(s);
+        let _: () = unsafe { msg_send![&*self.layer, setDrawableSize: CGSize { width: c.0, height: c.1 }] };
+        CATransaction::commit();
+        tracing::warn!("reel mpv: canvas {}x{}, {why}", c.0, c.1);
+        self.fit();
+    }
+
+    /// Where the canvas shows in the view now: as large as fits, centred.
+    fn fitted(&self) -> Option<Fit> {
+        let c = self.canvas.get()?;
+        let s = self.scale.get();
+        let b = self.view.bounds();
+        canvas::fit((c.0 / s, c.1 / s), (b.size.width, b.size.height))
+    }
+
+    /// Moves and scales the canvas into the view: only its position and transform change, never
+    /// its size, so mpv and MoltenVK see nothing of a turn. Inside UIKit's turn, along with it.
+    fn fit(&self) {
+        let Some(f) = self.fitted() else { return };
+        let b = self.view.bounds();
+        let turning: f64 = unsafe { msg_send![objc2::class!(UIView), inheritedAnimationDuration] };
+        CATransaction::begin();
+        if turning > 0.0 {
+            CATransaction::setAnimationDuration(turning);
+        } else {
+            CATransaction::setDisableActions(true);
+        }
+        self.layer.setPosition(CGPoint::new(b.origin.x + b.size.width / 2.0, b.origin.y + b.size.height / 2.0));
+        self.layer.setAffineTransform(CGAffineTransform { a: f.scale, b: 0.0, c: 0.0, d: f.scale, tx: 0.0, ty: 0.0 });
+        CATransaction::commit();
+        self.place_subtitles();
+    }
+
+    /// A subtitle prop of the UI's: kept, and the film's subtitles placed again.
+    fn subtitle_prop(&self, name: &str, value: Option<&Value>) {
+        let v = value.and_then(Value::as_f64);
+        let mut s = self.subtitles.get();
+        match name {
+            "subtitleLift" => s.lift = v.unwrap_or(0.0),
+            "subtitleSides" => s.sides = v.unwrap_or(0.0),
+            _ => {
+                s.scale = v.unwrap_or(1.0).clamp(1.0, 3.0);
+                self.player.borrow_mut().set_prop(name, value);
+            }
+        }
+        self.subtitles.set(s);
+        self.place_subtitles();
+    }
+
+    /// The film's own subtitles where the UI puts them: it measures from the view's edges, mpv
+    /// from the canvas's, which sits inside them (upright: the picture's bottom is far above the
+    /// view's).
+    fn place_subtitles(&self) {
+        let s = self.subtitles.get();
+        let margins = match self.fitted() {
+            Some(f) => (canvas::margin_in_canvas(s.lift, f.bars.1, f.shown.1, s.scale), canvas::margin_in_canvas(s.sides, f.bars.0, f.shown.1, s.scale)),
+            None => (s.lift, s.sides),
+        };
+        if self.sent.get() == Some(margins) {
+            return;
+        }
+        self.sent.set(Some(margins));
+        let mut player = self.player.borrow_mut();
+        player.set_prop("subtitleLift", Some(&json!(margins.0)));
+        player.set_prop("subtitleSides", Some(&json!(margins.1)));
     }
 }
 
-/// The views on screen by number, on the main thread: mpv's events reach a view through it
-/// (`shown_on_main`), and a view gone by then is not found.
+/// The views on screen by number, on the main thread: mpv's hook reaches a view through it
+/// (`file_picture_on_main`), and a view gone by then is not found.
 static NEXT_VIEW: AtomicUsize = AtomicUsize::new(1);
 thread_local! {
     static VIEWS: RefCell<Vec<(usize, Weak<Inner>)>> = const { RefCell::new(Vec::new()) };
 }
 
-/// mpv's playback restarted for view number `context`: a size waiting for it applies now.
-extern "C" fn shown_on_main(context: *mut c_void) {
-    let id = context as usize;
-    let inner = VIEWS.with(|v| v.borrow().iter().find(|(n, _)| *n == id).and_then(|(_, w)| w.upgrade()));
+/// What mpv's `on_preloaded` hook found of a file, for the view it plays in; mpv waits in the
+/// hook until this goes.
+struct FilePicture {
+    view: usize,
+    picture: Option<Size>,
+    hook: HeldHook,
+}
+
+/// On the main thread: the file's canvas is set, then mpv goes on (the hook drops) and starts
+/// the file's output at it. A view gone by then only lets mpv go on.
+extern "C" fn file_picture_on_main(context: *mut c_void) {
+    // SAFETY: made by `Box::into_raw` in the hook, and run once.
+    let file = unsafe { Box::from_raw(context as *mut FilePicture) };
+    let inner = VIEWS.with(|v| v.borrow().iter().find(|(n, _)| *n == file.view).and_then(|(_, w)| w.upgrade()));
     if let Some(inner) = inner {
-        inner.restart_when_settled();
+        inner.file_picture(file.picture);
     }
+    drop(file.hook);
 }
 
 /// The `reel/mpv` native component.
@@ -279,10 +372,14 @@ impl MpvComponent {
                 let gate = player.hold_until_drawn();
                 Some(Rc::new(Inner {
                     player: RefCell::new(player),
+                    view: view.clone(),
                     layer: view.ivars().layer.clone(),
-                    size: Cell::new((0.0, 0.0)),
-                    pending: Cell::new(None),
+                    canvas: Cell::new(None),
+                    scale: Cell::new(1.0),
+                    window: Cell::new(None),
                     gate: RefCell::new(Some(gate)),
+                    subtitles: Cell::new(Subtitles { lift: 0.0, sides: 0.0, scale: 1.0 }),
+                    sent: Cell::new(None),
                     lib,
                 }))
             }
@@ -294,20 +391,31 @@ impl MpvComponent {
         let id = NEXT_VIEW.fetch_add(1, Ordering::Relaxed);
         if let Some(inner) = &inner {
             let weak = Rc::downgrade(inner);
-            *view.ivars().on_layout.borrow_mut() = Some(Box::new(move |w, h| {
+            *view.ivars().on_layout.borrow_mut() = Some(Box::new(move || {
                 if let Some(inner) = weak.upgrade() {
-                    inner.laid_out(w, h);
+                    inner.laid_out();
                 }
             }));
             VIEWS.with(|v| v.borrow_mut().push((id, Rc::downgrade(inner))));
-            inner.player.borrow().when_shown(Box::new(move || crate::adapters::ios_awake::on_main(id, shown_on_main)));
+            // Each file: mpv waits after reading its tracks, before its video output starts,
+            // while the main thread sets the canvas for its picture. Read here, on the player's
+            // event thread (mpv answers while it waits); the main thread is only posted to.
+            let raw = inner.player.borrow().raw();
+            inner.player.borrow().hold_in(
+                "on_preloaded",
+                Box::new(move |hook| {
+                    let vid = player::property(lib, raw, "vid").and_then(|v| v.parse::<i64>().ok());
+                    let picture = player::property(lib, raw, "track-list").and_then(|l| canvas::picture_of_tracks(&l, vid));
+                    let file = Box::into_raw(Box::new(FilePicture { view: id, picture, hook }));
+                    crate::adapters::ios_awake::on_main(file as usize, file_picture_on_main);
+                }),
+            );
         }
         tracing::warn!("reel mpv: the player made in {} ms", made.elapsed().as_millis());
         let lifecycle = inner.as_ref().map(|i| Lifecycle::new(mtm, Rc::downgrade(i)));
         crate::adapters::ios_awake::playing(true);
         MpvComponent { view: Retained::into_super(view), inner, id, lifecycle }
     }
-
 }
 
 impl NativeComponent for MpvComponent {
@@ -317,10 +425,9 @@ impl NativeComponent for MpvComponent {
 
     fn set_prop(&mut self, name: &str, value: Option<&Value>) {
         if let Some(inner) = &self.inner {
-            inner.player.borrow_mut().set_prop(name, value);
-            // The core has the place (or the seek was dropped): a size may have waited for it.
-            if name == "seekWaiting" {
-                inner.restart_when_settled();
+            match name {
+                "subtitleLift" | "subtitleSides" | "subtitleScale" => inner.subtitle_prop(name, value),
+                _ => inner.player.borrow_mut().set_prop(name, value),
             }
         }
     }

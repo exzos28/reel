@@ -91,9 +91,6 @@ interface MpvProps {
   subtitleLift: number;
   subtitleSides: number;
   subtitleScale: number;
-  /** A seek waits for its place (the core fetches it; the view holds still): mpv's output does
-   * not start again meanwhile (a turn on iOS waits for the picture). */
-  seekWaiting: boolean;
 }
 
 interface MpvEvents {
@@ -108,7 +105,7 @@ interface MpvEvents {
 
 const MpvView = nativeComponent<MpvProps, MpvEvents>("reel/mpv", {
   // The languages before `src`: mpv starts in them.
-  props: ["audioLanguages", "src", "paused", "volume", "audioTrack", "subtitleTrack", "progressUpdateInterval", "subtitleLift", "subtitleSides", "subtitleScale", "seekWaiting"],
+  props: ["audioLanguages", "src", "paused", "volume", "audioTrack", "subtitleTrack", "progressUpdateInterval", "subtitleLift", "subtitleSides", "subtitleScale"],
   events: ["load", "progress", "buffer", "end", "error", "tracks"],
 });
 
@@ -168,7 +165,6 @@ export function VideoSurface(props: VideoSurfaceProps) {
     <PlayerView
       {...props}
       paused={props.paused || holding()}
-      seekWaiting={holding()}
       surfaceRef={(r) => (view = r)}
       onLoad={(e) => props.onLoad?.(e)}
       onProgress={(e) => {
@@ -187,8 +183,8 @@ export function VideoSurface(props: VideoSurfaceProps) {
   );
 }
 
-/** The view that plays here, as `videoKind` says; `seekWaiting`: a seek waits for its place. */
-function PlayerView(props: VideoSurfaceProps & { seekWaiting: boolean }) {
+/** The view that plays here, as `videoKind` says. */
+function PlayerView(props: VideoSurfaceProps) {
   return (
     <If when={videoKind() === "mpv"} else={<OtherSurface {...props} />}>
       <MpvView
@@ -203,7 +199,6 @@ function PlayerView(props: VideoSurfaceProps & { seekWaiting: boolean }) {
         audioTrack={props.audioTrack ?? null}
         subtitleTrack={props.subtitleTrack ?? null}
         progressUpdateInterval={props.progressUpdateInterval ?? 250}
-        seekWaiting={props.seekWaiting}
         onLoad={(e) => props.onLoad?.(e)}
         onProgress={(e) => props.onProgress?.(e)}
         onBuffer={(e) => props.onBuffer?.(e)}
