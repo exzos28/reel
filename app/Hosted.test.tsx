@@ -176,3 +176,42 @@ test("with a partner, the TV shows its bot's QR beside the source's fields", asy
   await app.waitFor("partner-qr");
   expect(app.texts().some((x) => x.includes("@reel_partner_bot"))).toBe(true);
 });
+
+/** Android TV as it is: NSH says the idiom is TV, the core says nothing of the device (no
+ * Samsung TV, no stand-in), and the core serves the page once the UI has told it the family. */
+function androidTv(setupDone: boolean) {
+  const c = core();
+  const families: string[] = [];
+  const served = () => families.includes("tv");
+  const native = {
+    ...c.native,
+    "Settings.device": "",
+    "Settings.setFamily": (name: string) => (families.push(name), true),
+    "Hosted.address": () => JSON.stringify({ url: served() ? URL : null }),
+    "Hosted.link": () => JSON.stringify(served() ? JSON.parse(c.native["Hosted.link"]) : { url: null, qr: null }),
+    "Settings.load": JSON.stringify({
+      language: "en", contentLanguage: "en-US", setupDone, bufferMB: 256, streamDetails: false,
+      contentLanguages: [{ tag: "en-US", name: "English" }], source: { url: "", hasKey: false },
+      bufferChoices: [{ mb: 256, default: true }],
+    }),
+  };
+  const app = openApp({ platform: "android", width: 1920, height: 1080, modules: { nsh: { "platform.idiom": "tv" }, "app/native": native } });
+  return { app, families };
+}
+
+test("Android TV: the UI tells the core it is a TV, and the page's QR code shows in the setup and in Settings", async () => {
+  const first = androidTv(false);
+  const setup = await first.app;
+  expect(first.families).toEqual(["tv"]);
+  await setup.waitFor("phone-card");
+  expect(setup.shows("hosted-qr")).toBe(true);
+  expect(setup.texts()).toContain(`Scan the code with the phone's camera, or open ${URL} in its browser. This screen follows along.`);
+
+  const app = await androidTv(true).app;
+  await app.press("label:Settings");
+  await app.waitFor("hosted-qr");
+  expect(app.texts()).toContain(`Scan the code, or open ${URL}.`);
+  await app.press("label:Search source");
+  await app.waitFor("hosted-address");
+  expect(app.texts()).toContain(`Scan the code with your phone, or open ${URL}`);
+});
