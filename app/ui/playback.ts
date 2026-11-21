@@ -4,7 +4,7 @@
 // only asks it twice a second, reports the position every 10 s and on stop,
 // and keeps the answers in signals for the screens.
 import { signal } from "nsh";
-import { Catalog, Engine } from "./native";
+import { Catalog, Engine, VideoEngine } from "./native";
 import type { PlayTarget, Summary } from "./catalog";
 
 /** What plays: a film, or an episode of a show (`title` is the show). */
@@ -95,6 +95,10 @@ export async function play(what: Playing) {
   status.set({ phase: "resolving" });
   savedAt = Date.now();
   startAt.set(Number(await Catalog.startAt(what.id)) || 0);
+  if (gen !== generation) return;
+  // The last film ends first: its job is closed (`end`) and its view goes with the status above,
+  // and the core says when its player has ended. Only then this job, its stream and its player.
+  await VideoEngine.ended();
   if (gen !== generation) return;
   const opened = await Engine.open(what.id);
   if (gen !== generation) return;

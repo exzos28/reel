@@ -88,6 +88,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         no_args(&a)?;
         ret(VideoEngine::views())
     })
+    .r#async("VideoEngine", "ended", |a| async move {
+        no_args(&a)?;
+        ret(VideoEngine::ended().await)
+    })
     .sync("VideoEngine", "held", |a| {
         no_args(&a)?;
         ret(VideoEngine::held())

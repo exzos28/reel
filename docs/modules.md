@@ -296,6 +296,8 @@ Which video view plays on this device.
 
 Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 
+- `async ended() -> bool`: Waits until the last film's player has ended (its view went: mpv stopped, its playback ended, then it is destroyed on its own thread), so the next job, its stream and its player start after it, never beside it. True then; false when one still played after a few seconds (logged), and the next film starts anyway. At once where no player plays.
+  Called from: `ui/playback.ts`.
 - `fullscreen(on: bool)`: The player's full screen (Android: the system bars hide while it plays; elsewhere nothing: the desktops have their own full screen, a TV is always full).
   Called from: `ui/platform/window.ts`.
 - `held() -> String`: How the device is held, for a phone's player, which draws itself sideways inside the upright window: JSON `{"turn","turns"}`. `turn`: the quarter turn the player gives its picture for it: 90 (clockwise: the device turned counter-clockwise, its top at the left, the common way), -90 (the other way), 0 (upright), null (flat, upside down, not known). `turns`: how many times the device has turned since the app started; the player follows a new one. With the rotation lock on, iOS reports no turn (only Rotate turns the player); off iOS always `{"turn":null,"turns":0}`.

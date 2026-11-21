@@ -258,6 +258,31 @@ test("near the end of an episode, Up next counts down and plays the next one", a
   expect(app.texts()).toContain("S3:E3 · Pain");
 });
 
+test("the next episode's job opens only once the last one's player has ended; its stage shows meanwhile", async () => {
+  const calls: string[] = [];
+  const app = await openApp({
+    clock: {},
+    modules: {
+      "app/native": {
+        ...NATIVE, ...AOT_FIRST, ...STILL, "Engine.status": status, "Engine.timeline": timeline, "Catalog.upNext": nextEpisode,
+        "Engine.open": () => (calls.push("open"), 1),
+        // The last film's player ends a moment after it was let go.
+        "VideoEngine.ended": () => {
+          calls.push("ended?");
+          return new Promise<boolean>((r) => setTimeout(() => (calls.push("ended"), r(true)), 300));
+        },
+      },
+    },
+  });
+  await app.press("Resume S3:E2 · 10:00");
+  await app.wait(600);
+  expect(calls).toEqual(["ended?", "ended", "open"]);
+  await app.wait(6100); // Up next plays the next episode
+  expect(app.shows("stage")).toBe(true);
+  await app.wait(600);
+  expect(calls).toEqual(["ended?", "ended", "open", "ended?", "ended", "open"]);
+});
+
 test("Watch credits dismisses Up next and brings the controls back", async () => {
   const app = await nearTheEnd();
   await app.keyboard.press("right");

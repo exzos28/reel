@@ -20,6 +20,7 @@ use std::{
         Arc,
         atomic::{AtomicUsize, Ordering},
     },
+    time::Instant,
 };
 
 use nsh_platform_ios::{ComponentContext, NativeComponent};
@@ -356,6 +357,8 @@ pub struct MpvComponent {
     /// Its number in `VIEWS`.
     id: usize,
     lifecycle: Option<Retained<Lifecycle>>,
+    /// The screen stays on for it (`ios_awake::playing`) until it lets go.
+    awake: bool,
 }
 
 impl MpvComponent {
@@ -363,7 +366,7 @@ impl MpvComponent {
         let mtm = MainThreadMarker::new().expect("components are made on the main thread");
         let Some(view) = MpvView::new(mtm) else {
             cx.emit("error", serde_json::json!({ "message": "no Metal layer", "code": "view" }));
-            return MpvComponent { view: UIView::new(mtm), inner: None, id: 0, lifecycle: None };
+            return MpvComponent { view: UIView::new(mtm), inner: None, id: 0, lifecycle: None, awake: false };
         };
         let emit_cx = cx.clone();
         let made = std::time::Instant::now();
@@ -414,7 +417,7 @@ impl MpvComponent {
         tracing::warn!("reel mpv: the player made in {} ms", made.elapsed().as_millis());
         let lifecycle = inner.as_ref().map(|i| Lifecycle::new(mtm, Rc::downgrade(i)));
         crate::adapters::ios_awake::playing(true);
-        MpvComponent { view: Retained::into_super(view), inner, id, lifecycle }
+        MpvComponent { view: Retained::into_super(view), inner, id, lifecycle, awake: true }
     }
 }
 
@@ -433,21 +436,87 @@ impl NativeComponent for MpvComponent {
     }
 
     fn command(&mut self, name: &str, args: &Value) {
+        // The view is unmounted: it lets go now, not when NSH releases its node (`let_go`).
+        if name == "close" {
+            return self.let_go();
+        }
         if let Some(inner) = &self.inner {
             inner.player.borrow_mut().run(name, args);
         }
     }
 }
 
-impl Drop for MpvComponent {
-    fn drop(&mut self) {
+impl MpvComponent {
+    /// The view goes: unmounted (`close` from `VideoSurface`: NSH drops a native view only once
+    /// its node is released, seconds later, and mpv played on until then), or dropped. Leaving
+    /// never waits for mpv (it may be waiting for the stream, and tearing its output down takes
+    /// a moment): the view lets go of it, and it ends and is destroyed on a thread of its own
+    /// (`close`). Once.
+    fn let_go(&mut self) {
+        let began = Instant::now();
         if let Some(l) = self.lifecycle.take() {
             unsafe { NSNotificationCenter::defaultCenter().removeObserver(&l) };
         }
+        // mpv's hook finds no view from now on and only lets mpv go on.
         VIEWS.with(|v| v.borrow_mut().retain(|(n, _)| *n != self.id));
-        // mpv holds the layer without retaining it: the player goes first, while the view (and
-        // its layer) still exist.
-        self.inner = None;
+        if !std::mem::take(&mut self.awake) {
+            return;
+        }
+        if let Some(inner) = self.inner.take() {
+            close(inner, began);
+        }
         crate::adapters::ios_awake::playing(false);
+        tracing::warn!("reel mpv: the view let go of the player in {} ms", began.elapsed().as_millis());
+    }
+}
+
+impl Drop for MpvComponent {
+    fn drop(&mut self) {
+        self.let_go();
+    }
+}
+
+/// The player stops at once (its sound and events: `stop`, never waited for) and mpv is
+/// destroyed on a thread of its own. The layer it draws into leaves the view and is kept until
+/// mpv is gone (its output and MoltenVK draw into it until they stop), then let go on the main
+/// thread. Nothing of mpv's waits for the main thread meanwhile, which is not waiting for it.
+fn close(inner: Rc<Inner>, began: Instant) {
+    // The view's own callbacks hold `Inner` only while they run, on this thread.
+    let Some(Inner { player, layer, .. }) = Rc::into_inner(inner) else {
+        tracing::warn!("reel mpv: the player is still held; it closes when let go");
+        return;
+    };
+    CATransaction::begin();
+    CATransaction::setDisableActions(true);
+    layer.removeFromSuperlayer();
+    CATransaction::commit();
+    let kept = KeptLayer::new(layer);
+    player.into_inner().close_in_background_then(move || {
+        tracing::warn!("reel mpv: the player closed in {} ms, off the main thread", began.elapsed().as_millis());
+        drop(kept);
+    });
+}
+
+/// The layer mpv drew into, while mpv is destroyed on its own thread: mpv holds it without
+/// retaining it. It is let go on the main thread, where the view had it, once mpv is gone (or
+/// at once if mpv's thread could not start).
+struct KeptLayer(*mut CALayer);
+
+// SAFETY: only carried by the closing thread: retained and released on the main thread.
+unsafe impl Send for KeptLayer {}
+
+impl KeptLayer {
+    fn new(layer: Retained<CALayer>) -> KeptLayer {
+        KeptLayer(Retained::into_raw(layer))
+    }
+}
+
+impl Drop for KeptLayer {
+    fn drop(&mut self) {
+        extern "C" fn release(layer: *mut c_void) {
+            // SAFETY: from `Retained::into_raw` in `KeptLayer::new`, released once.
+            drop(unsafe { Retained::from_raw(layer as *mut CALayer) });
+        }
+        crate::adapters::ios_awake::on_main(self.0 as usize, release);
     }
 }

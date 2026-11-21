@@ -38,6 +38,8 @@ pub const EVENT_PROPERTY_CHANGE: c_int = 22;
 pub const EVENT_HOOK: c_int = 25;
 
 pub const END_FILE_REASON_EOF: c_int = 0;
+pub const END_FILE_REASON_STOP: c_int = 2;
+pub const END_FILE_REASON_QUIT: c_int = 3;
 pub const END_FILE_REASON_ERROR: c_int = 4;
 
 pub const RENDER_PARAM_INVALID: c_int = 0;

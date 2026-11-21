@@ -12,6 +12,7 @@ mod android;
 // The iOS view's canvas: plain arithmetic, tested on any host.
 #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
 mod canvas;
+pub mod ending;
 #[cfg(target_os = "ios")]
 mod ios;
 #[cfg(all(target_os = "linux", not(target_arch = "arm")))]
@@ -135,7 +136,7 @@ mod tests {
         let mut p = Player::new(lib, "null", &[], Arc::new(move |name, data| sink.lock().unwrap().push((name.into(), data)))).unwrap();
         let gate = p.hold_until_drawn();
         p.set_prop("src", Some(&json!("file:///nowhere/held.mkv")));
-        assert!(events.lock().unwrap().is_empty(), "held until the view draws");
+        assert!(events.lock().unwrap().is_empty(), "held until the view draws: {:?}", events.lock().unwrap());
         gate.fail();
         let errors = |e: &[(String, Value)]| e.iter().filter(|(n, d)| n == "error" && d["code"] == "view").count();
         assert_eq!(errors(&events.lock().unwrap()), 1, "{:?}", events.lock().unwrap());
@@ -144,5 +145,83 @@ mod tests {
         std::thread::sleep(Duration::from_millis(500));
         assert!(!events.lock().unwrap().iter().any(|(n, _)| n == "load"), "nothing loads");
         drop(p);
+    }
+
+    /// The view unmounted (`close`, before NSH drops it seconds later): mpv stops at once, says
+    /// its playback ended, and no event reaches the view after. Needs libmpv and the sample:
+    /// `REEL_LIBMPV=… REEL_MPV_SAMPLE=… cargo test -- --ignored --nocapture --test-threads=1 close_ends`.
+    #[test]
+    #[ignore]
+    fn close_ends_the_playback_before_the_player_goes() {
+        let lib = super::ffi::lib().expect("libmpv (REEL_LIBMPV)");
+        let sample = std::env::var("REEL_MPV_SAMPLE").expect("REEL_MPV_SAMPLE");
+        let events: Arc<Mutex<Vec<(String, Value)>>> = Default::default();
+        let sink = events.clone();
+        let mut p = Player::new(lib, "null", &[], Arc::new(move |name, data| sink.lock().unwrap().push((name.into(), data)))).unwrap();
+        p.set_prop("volume", Some(&json!(0.0)));
+        p.set_prop("progressUpdateInterval", Some(&json!(50)));
+        p.set_prop("src", Some(&json!(sample)));
+        let started = Instant::now();
+        while !events.lock().unwrap().iter().any(|(n, d)| n == "progress" && d["currentTime"].as_f64().unwrap_or(0.0) > 0.3) {
+            assert!(started.elapsed() < Duration::from_secs(20), "plays");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        let block_on = |f| tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f);
+        assert!(!block_on(super::ending::none_playing(Duration::from_millis(10))), "it plays");
+        let began = Instant::now();
+        p.run("close", &Value::Null);
+        assert!(began.elapsed() < Duration::from_millis(50), "close waited {:?}", began.elapsed());
+        let heard = events.lock().unwrap().len();
+        assert!(block_on(super::ending::none_playing(Duration::from_secs(2))), "ended while the player is still there");
+        println!("the playback ended {:?} after close", began.elapsed());
+        std::thread::sleep(Duration::from_millis(300));
+        assert_eq!(events.lock().unwrap().len(), heard, "nothing reaches the view after close");
+        let dropping = Instant::now();
+        drop(p);
+        println!("then the player went in {:?}", dropping.elapsed());
+    }
+
+    /// Leaving while mpv waits for a stream that does not come: a server that takes the
+    /// connection and says nothing, and one that answers and sends the film's first bytes
+    /// (`REEL_MPV_SAMPLE`, when set) and no more, as the engine does while it waits for pieces.
+    /// Closing returns at once, and mpv is gone a moment later, off the caller's thread (`gone`
+    /// runs). Needs libmpv: `REEL_LIBMPV=… cargo test -- --ignored --nocapture closing_while`.
+    #[test]
+    #[ignore]
+    fn closing_while_waiting_for_the_stream_does_not_wait() {
+        use std::io::Write;
+        let lib = super::ffi::lib().expect("libmpv (REEL_LIBMPV)");
+        let start = std::env::var("REEL_MPV_SAMPLE").ok().map(|s| std::fs::read(s).expect("REEL_MPV_SAMPLE"));
+        for first in [None, start.map(|b| b[..b.len().min(64 * 1024)].to_vec())] {
+            let server = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            let port = server.local_addr().unwrap().port();
+            let (connected, asked) = std::sync::mpsc::channel();
+            let answer = first.clone();
+            // Keeps every connection open; answers with the first bytes only.
+            std::thread::spawn(move || {
+                let mut held = Vec::new();
+                for mut c in server.incoming().flatten() {
+                    if let Some(bytes) = &answer {
+                        let head = "HTTP/1.1 200 OK\r\nContent-Type: video/x-matroska\r\nContent-Length: 4000000000\r\nAccept-Ranges: bytes\r\n\r\n";
+                        let _ = c.write_all(head.as_bytes()).and_then(|_| c.write_all(bytes));
+                    }
+                    held.push(c);
+                    let _ = connected.send(());
+                }
+            });
+            let mut p = Player::new(lib, "null", &[], Arc::new(|_, _| {})).unwrap();
+            p.set_prop("src", Some(&json!(format!("http://127.0.0.1:{port}/film.mkv"))));
+            asked.recv_timeout(Duration::from_secs(10)).expect("mpv asks for the stream");
+            std::thread::sleep(Duration::from_millis(500));
+
+            let (gone, closed) = std::sync::mpsc::channel();
+            let began = Instant::now();
+            p.close_in_background_then(move || gone.send(()).unwrap());
+            let returned = began.elapsed();
+            assert!(returned < Duration::from_millis(100), "closing waited {returned:?}");
+            closed.recv_timeout(Duration::from_secs(30)).expect("mpv is gone");
+            let case = if first.is_some() { "the first bytes, then nothing" } else { "no answer" };
+            println!("{case}: closing returned in {returned:?}, mpv gone after {:?}", began.elapsed());
+        }
     }
 }

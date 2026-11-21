@@ -135,16 +135,36 @@ close is gone with it.
   the size only when the frames' kind changes, so `C` never changes under a kept output.
 - **Background / foreground:** stays `vid=no` / `vid=auto`. With no video track and no
   `force-window`, mpv drops its output and decoder, so nothing is drawn with the GPU in the
-  background, which iOS forbids. The main thread waits for that teardown, which is needed before
-  `didEnterBackground` returns. Back in front, `C` is set on the layer again (MoltenVK may have
-  left 1×1), then `vid=auto`. A new decoder starts at a keyframe with mpv's own exact refresh
-  seek, as a resume at open does, and `own_wait` keeps that wait from showing as buffering. This
-  is the same kind of decoder re-creation the turn used to make, so it needs a device check
-  (§5).
-- **Leaving:**
-  1. Silence first: `paused` and volume 0 in the UI, then `stop` in `Player::drop`.
-  2. A held hook is continued.
-  3. The event thread is joined, and mpv is destroyed.
+  background, which iOS forbids. Both are mpv's asynchronous calls: the main thread never waits
+  for mpv (it may be waiting for the stream), so the output goes a moment after
+  `didEnterBackground` returns. A frame mpv draws meanwhile may be refused by Metal; the output
+  goes anyway, and a new one starts in front (a device check: §5). Back in front, `C` is set on
+  the layer again (MoltenVK may have left 1×1), then `vid=auto`. A new decoder starts at a
+  keyframe with mpv's own exact refresh seek, as a resume at open does, and `own_wait` keeps that
+  wait from showing as buffering. This is the same kind of decoder re-creation the turn used to
+  make, so it needs a device check (§5).
+- **Leaving** (closing the player, another episode, Up next, another film), in this order on
+  every platform, and the main thread never waits for mpv:
+  1. The old job ends in the core (`Engine.close`, in `playback.ts`'s `end`) and the view is
+     unmounted with the status that follows (closing: `paused` and volume 0 first, while the
+     dialog fades).
+  2. Unmounted, the view is told to `close` (`VideoSurface`): NSH drops a native view only when
+     its node is released, seconds later, and mpv played on from its cache until then (the old
+     episode heard over the next one's stage). `stop` is sent without waiting (`Player::close`),
+     and the view's events stop. On iOS the view lets go on the main thread at once: no view for
+     the hook, no lifecycle observer, mpv's layer out of the view, and steps 3–4 follow on their
+     own thread. Elsewhere mpv's own word ends the playback (step 3, on the event thread) and mpv
+     is destroyed when the view is dropped.
+  3. On a thread of its own (`Player`'s drop): a held hook is continued (mpv cannot stop while it
+     waits in one), the event thread is joined, and mpv's own word is waited for: the file's end
+     after the stop, or idle. The sound stops because mpv has stopped. After 2 s mpv is destroyed
+     anyway (logged). The log times both from the moment the view let go: `the playback ended …
+     ms`, `destroyed … ms`.
+  4. mpv is destroyed. On iOS mpv holds the layer without retaining it, so the layer is kept
+     until mpv is gone and released on the main thread after. Whatever mpv's output or MoltenVK
+     may ask of the main thread meanwhile gets done.
+  5. The next film's job, stream and player start only once the last player has ended
+     (`VideoEngine.ended`; at most 3 s, logged). Its stage shows meanwhile.
 
 ## 4. What lies over the picture
 
@@ -193,9 +213,9 @@ To confirm on an iPhone (the simulator has no VideoToolbox, so it decodes on the
    opens (two: 16:9, then the picture's) and after the background, none on a turn. Close: Home
    is upright, with no tilt.
 2. Back to the home screen mid-film for 10 s and return. The picture comes back, and the log
-   should say `decoding with videotoolbox`, with no `hardware accelerator failed`. If decoding
-   fails there, the fallback to try is `hwdec=videotoolbox-copy`. After that comes pausing in
-   the background while keeping the video track and holding back redraws, though a frame drawn
-   in the background could lose the GPU device for good.
+   should say `decoding with videotoolbox`, with no `hardware accelerator failed` and no lost
+   Vulkan device. If decoding fails there, the fallback to try is `hwdec=videotoolbox-copy`.
+   After that comes pausing in the background while keeping the video track and holding back
+   redraws, though a frame drawn in the background could lose the GPU device for good.
 3. A 2.39:1 film and a 4:3 one, sideways and upright: the picture is centred and sharp, and
    embedded subtitles sit inside the picture and above the controls.

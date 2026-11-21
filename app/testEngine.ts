@@ -12,6 +12,8 @@ export const ENGINE = {
   "Engine.seek": async () => JSON.stringify({ state: "ready" }),
   "Engine.checkSpace": JSON.stringify({ ok: true, free: 10 * 1024 ** 3, needed: 306 * 1024 ** 2, buffer: 256 }),
   "Engine.timeline": JSON.stringify({ ranges: [], ahead: 0 }),
+  // The last film's player has ended: the next one opens.
+  "VideoEngine.ended": true,
   "Settings.project": JSON.stringify({ license: "PolyForm Noncommercial 1.0.0", repository: "https://github.com/exzos28/reel" }),
   /** The sources About names, as the core lists them. */
   "Meta.attribution": JSON.stringify([

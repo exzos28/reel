@@ -185,6 +185,11 @@ fn parse_embedded(json: &str) -> Option<reel_domain::subtitles::tracks::Embedded
 #[module]
 pub struct VideoEngine;
 
+/// How long the next film waits for the last one's player to end (`VideoEngine::ended`): longer
+/// than a player waits for mpv's own end (2 s) before it destroys mpv anyway.
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "linux", windows))]
+const PLAYER_ENDING: std::time::Duration = std::time::Duration::from_secs(3);
+
 #[cfg(not(target_arch = "wasm32"))]
 #[module]
 impl VideoEngine {
@@ -210,6 +215,23 @@ impl VideoEngine {
             return "mpv".into();
         }
         "native".into()
+    }
+
+    /// Waits until the last film's player has ended (its view went: mpv stopped, its playback
+    /// ended, then it is destroyed on its own thread), so the next job, its stream and its player
+    /// start after it, never beside it. True then; false when one still played after a few
+    /// seconds (logged), and the next film starts anyway. At once where no player plays.
+    pub async fn ended() -> bool {
+        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "linux", windows))]
+        {
+            let ended = mpv::ending::none_playing(PLAYER_ENDING).await;
+            if !ended {
+                tracing::warn!("reel mpv: the last player had not ended {} s after the next film was asked for; it starts anyway", PLAYER_ENDING.as_secs());
+            }
+            ended
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "linux", windows)))]
+        true
     }
 
     /// The player's full screen (Android: the system bars hide while it plays; elsewhere
