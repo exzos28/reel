@@ -61,7 +61,7 @@ GET /health  X-Reel-Token: <token>   → {"ok":true,"info":{"core","dataDir","ca
 GET /ui/…    the web build (no token), precompressed .br/.gz served as is
 ```
 
-- **Names and arguments.** Method names are the camelCase ones NSH generates in `.nsh/types/app/native.d.ts`, and arguments are positional. `platforms/tizen/core/src/table.rs` maps them to `reel_app::Engine::open` and so on. Its test `matches_the_declarations` fails when the table and the declarations drift apart; any app/ change to a `#[module]` needs a line there.
+- **Names and arguments.** Method names are the camelCase ones NSH generates in `.nsh/types/app/native.d.ts`, and arguments are positional. `platforms/tizen/core/src/table.rs` maps them to `reel_app::Engine::open` and so on. Its test `matches_the_declarations` fails when the table and the declarations drift apart (CI runs it after `nsh check`: `build/build.sh test-tizen-core`); any app/ change to a `#[module]` needs a line there.
 - **Threads.** Sync methods run on blocking threads, because the engine calls `block_on` on its own runtime. `async` methods (`Meta.*`) run on the server's runtime.
 - **Token.** The shell generates a token on every launch and passes it to the service in the AppControl. A service that is already running gets the new token. Other apps and web pages on the TV can reach 127.0.0.1 as well, but without the token they get 401. The UI receives the token in its URL (`/ui/index.html?reelToken=…`).
 - **Data dir.** `Settings.load(dataDir)` and `Meta.init(dataDir)` accept only the core's own data dir (`info.dataDir`) or `""`. Any other path is a path on a different machine, so the call fails with 400 instead of the core silently swapping in its own dir.

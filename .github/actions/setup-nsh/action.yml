@@ -6,6 +6,10 @@ inputs:
   rust-cache-key:
     description: Extra key for the Cargo cache (one per target/job).
     required: true
+  rust-workspaces:
+    description: The Cargo workspaces and their target dirs the cache keeps (rust-cache's `workspaces`).
+    required: false
+    default: app -> target
 runs:
   using: composite
   steps:
@@ -40,7 +44,7 @@ runs:
     - name: Cache Cargo
       uses: Swatinem/rust-cache@v2.9.3
       with:
-        workspaces: app -> target
+        workspaces: ${{ inputs.rust-workspaces }}
         key: ${{ inputs.rust-cache-key }}
         # The path dependencies too (the vendored librqbit, the workspace's crates), not only
         # the registry's: they are most of a cold build.
