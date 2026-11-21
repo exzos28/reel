@@ -59,6 +59,10 @@ export interface ScrollCtl {
   /** Moves the view by most of its length, `dir` 1 forward, -1 back (a row's arrows); by
    * whole cards where the row says how far apart they are (`step`). */
   page(dir: 1 | -1): void;
+  /** Glides back to the start (Back on a page, its destination chosen again): through the
+   * platform's driver, as every move; a TV's web build moves the content, not the view's own
+   * offset, so the view's `scrollTo` would leave it where it is. */
+  toStart(): void;
   /** Whether it can move back (`atStart` false) or on (`atEnd` false), from the last measure. */
   atStart: ReturnType<typeof signal<boolean>>;
   atEnd: ReturnType<typeof signal<boolean>>;
@@ -180,6 +184,10 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     nudge,
     page(dir) {
       extent().then((e) => e && nudge(pageDelta(dir, e.viewport)));
+    },
+    toStart() {
+      heading = null;
+      go(0, true);
     },
     atStart: signal(true),
     atEnd: signal(false),

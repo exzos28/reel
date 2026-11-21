@@ -86,6 +86,22 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("VideoEngine", "views", |a| {
         no_args(&a)?;
         ret(VideoEngine::views())
+    })
+    .sync("VideoEngine", "held", |a| {
+        no_args(&a)?;
+        ret(VideoEngine::held())
+    })
+    .sync("VideoEngine", "immersive", |a| {
+        let (on,): (bool,) = args(a)?;
+        ret(VideoEngine::immersive(on))
+    })
+    .sync("VideoEngine", "turnScale", |a| {
+        let (from, to, width, height, aspect): (i32, i32, f64, f64, f64) = args(a)?;
+        ret(VideoEngine::turn_scale(from, to, width, height, aspect))
+    })
+    .sync("VideoEngine", "sideways", |a| {
+        let (width, height): (f64, f64) = args(a)?;
+        ret(VideoEngine::sideways(width, height))
     });
 
     let host = data_dir.clone();
@@ -108,6 +124,14 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Settings", "device", |a| {
         no_args(&a)?;
         ret(Settings::device())
+    })
+    .sync("Settings", "windowed", |a| {
+        let (width, height): (f64, f64) = args(a)?;
+        ret(Settings::windowed(width, height))
+    })
+    .sync("Settings", "setFamily", |a| {
+        let (name,): (String,) = args(a)?;
+        ret(Settings::set_family(name))
     })
     .sync("Settings", "setContentLanguage", |a| {
         let (tag,): (String,) = args(a)?;
@@ -240,6 +264,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Library", "overall", |a| {
         no_args(&a)?;
         ret(Library::overall())
+    })
+    .sync("Library", "opening", |a| {
+        no_args(&a)?;
+        ret(Library::opening())
     });
 
     r.sync("Sources", "search", |a| {
@@ -318,6 +346,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Catalog", "forgetSearches", |a| {
         no_args(&a)?;
         ret(Catalog::forget_searches())
+    })
+    .sync("Catalog", "retrySearch", |a| {
+        let (query,): (String,) = args(a)?;
+        ret(Catalog::retry_search(query))
     })
     .sync("Catalog", "toggleList", |a| {
         let (id,): (String,) = args(a)?;
