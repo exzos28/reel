@@ -145,4 +145,48 @@ mod tests {
         assert!(!events.lock().unwrap().iter().any(|(n, _)| n == "load"), "nothing loads");
         drop(p);
     }
+
+    /// Leaving while mpv waits for a stream that does not come: a server that takes the
+    /// connection and says nothing, and one that answers and sends the film's first bytes
+    /// (`REEL_MPV_SAMPLE`, when set) and no more, as the engine does while it waits for pieces.
+    /// Closing returns at once, and mpv is gone a moment later, off the caller's thread (`gone`
+    /// runs). Needs libmpv: `REEL_LIBMPV=… cargo test -- --ignored --nocapture closing_while`.
+    #[test]
+    #[ignore]
+    fn closing_while_waiting_for_the_stream_does_not_wait() {
+        use std::io::Write;
+        let lib = super::ffi::lib().expect("libmpv (REEL_LIBMPV)");
+        let start = std::env::var("REEL_MPV_SAMPLE").ok().map(|s| std::fs::read(s).expect("REEL_MPV_SAMPLE"));
+        for first in [None, start.map(|b| b[..b.len().min(64 * 1024)].to_vec())] {
+            let server = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            let port = server.local_addr().unwrap().port();
+            let (connected, asked) = std::sync::mpsc::channel();
+            let answer = first.clone();
+            // Keeps every connection open; answers with the first bytes only.
+            std::thread::spawn(move || {
+                let mut held = Vec::new();
+                for mut c in server.incoming().flatten() {
+                    if let Some(bytes) = &answer {
+                        let head = "HTTP/1.1 200 OK\r\nContent-Type: video/x-matroska\r\nContent-Length: 4000000000\r\nAccept-Ranges: bytes\r\n\r\n";
+                        let _ = c.write_all(head.as_bytes()).and_then(|_| c.write_all(bytes));
+                    }
+                    held.push(c);
+                    let _ = connected.send(());
+                }
+            });
+            let mut p = Player::new(lib, "null", &[], Arc::new(|_, _| {})).unwrap();
+            p.set_prop("src", Some(&json!(format!("http://127.0.0.1:{port}/film.mkv"))));
+            asked.recv_timeout(Duration::from_secs(10)).expect("mpv asks for the stream");
+            std::thread::sleep(Duration::from_millis(500));
+
+            let (gone, closed) = std::sync::mpsc::channel();
+            let began = Instant::now();
+            p.close_in_background_then(move || gone.send(()).unwrap());
+            let returned = began.elapsed();
+            assert!(returned < Duration::from_millis(100), "closing waited {returned:?}");
+            closed.recv_timeout(Duration::from_secs(30)).expect("mpv is gone");
+            let case = if first.is_some() { "the first bytes, then nothing" } else { "no answer" };
+            println!("{case}: closing returned in {returned:?}, mpv gone after {:?}", began.elapsed());
+        }
+    }
 }
