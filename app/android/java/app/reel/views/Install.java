@@ -5,6 +5,9 @@
 // Components are registered per NshView, and an activity the system makes again (the process
 // lives on) has a new one. The core's `install()` says whether they are there (and adopts the
 // running activity where nothing followed it).
+//
+// A phone's window stays upright, as an iPhone's does: its player draws itself sideways in it,
+// the way the device is held (`Held`; design/player-rendering.md, "Turns").
 package app.reel.views;
 
 import android.app.Activity;
@@ -28,15 +31,41 @@ public final class Install {
   private static final Set<NshView> registered = Collections.newSetFromMap(new WeakHashMap<>());
   /** The app's activities are followed (`follow`). */
   private static boolean following;
-  /** While the player is full screen: hides the bars again when something shows them. */
+  /** The phones' activities, kept upright (main thread). */
+  private static final Set<Activity> upright = Collections.newSetFromMap(new WeakHashMap<>());
+  /** While the bars are hidden: hides them again when something shows them. */
   private static android.view.ViewTreeObserver.OnGlobalLayoutListener keeper;
+  /** The player is up (`fullscreen`), and a phone's player is drawn sideways (`immersive`): the
+   * system bars are hidden while either is (main thread). */
+  private static boolean full, sideways;
 
   /** The player's full screen: the status and navigation bars hide (a swipe from the edge shows
    * them for a moment), or come back. */
   public static void fullscreen(final boolean on) {
+    bars(() -> full = on);
+  }
+
+  /** A phone's player is drawn sideways (true): the bars are hidden while it is, as an iPhone's
+   * home indicator fades then (the player's full screen hides them too, for the whole player). */
+  public static void immersive(final boolean on) {
+    bars(() -> sideways = on);
+  }
+
+  /** NSH's idiom of the activity's configuration (NshView's environment): a TV by its UI mode, a
+   * tablet from 600 dp at its shorter side, else a phone, which the UI lays out as one. */
+  private static boolean phone(Activity a) {
+    android.content.res.Configuration c = a.getResources().getConfiguration();
+    boolean tv = (c.uiMode & android.content.res.Configuration.UI_MODE_TYPE_MASK) == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION;
+    return !tv && c.smallestScreenWidthDp < 600;
+  }
+
+  /** Sets what `change` sets, then hides or shows the bars, on the main thread. */
+  private static void bars(final Runnable change) {
     final Activity a = activity;
     if (a == null) return;
     a.runOnUiThread(() -> {
+      change.run();
+      final boolean on = full || sideways;
       android.view.Window window = a.getWindow();
       if (android.os.Build.VERSION.SDK_INT >= 30) {
         android.view.WindowInsetsController c = window.getInsetsController();
@@ -103,8 +132,13 @@ public final class Install {
       // Before: started, still before its first layout (the app starts on its first size).
       @Override public void onActivityStarted(Activity a) { adopt(a); }
       @Override public void onActivityCreated(Activity a, Bundle state) {}
-      @Override public void onActivityResumed(Activity a) {}
-      @Override public void onActivityPaused(Activity a) {}
+      // A phone's turns are followed while it is in front.
+      @Override public void onActivityResumed(Activity a) {
+        if (upright.contains(a)) Held.follow(a);
+      }
+      @Override public void onActivityPaused(Activity a) {
+        if (upright.contains(a)) Held.stop();
+      }
       @Override public void onActivityStopped(Activity a) {}
       @Override public void onActivitySaveInstanceState(Activity a, Bundle state) {}
       @Override public void onActivityDestroyed(Activity a) {
@@ -128,6 +162,13 @@ public final class Install {
     if (registered.add(view)) {
       register(view);
       RemoteKeys.wrap(a.getWindow());
+      // Before its first layout: the app starts upright even with the phone held sideways.
+      if (phone(a)) {
+        upright.add(a);
+        a.setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        // Adopted in front already (`install`, nothing followed it from its start).
+        if (a.getWindow().getDecorView().hasWindowFocus()) Held.follow(a);
+      }
     }
   }
 

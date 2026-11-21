@@ -120,8 +120,22 @@ close is gone with it.
   `layoutSubviews` fits the canvas again, and split view, Stage Manager and slide over take the
   same path. The canvas chosen at the hook stays when the window changes size later, so it is
   scaled.
-- Android phones keep the system's rotation (their window turns when auto-rotate is on) and have
-  no Rotate; drawing the player sideways there needs the activity kept upright first.
+- **Android phones** take the same path. The activity stays upright: reel's Java (`Install`)
+  asks for portrait before its first layout, only where NSH's idiom is a phone (not a TV by its
+  UI mode, under 600 dp at the shorter side), and the UI turns the player there when reel's views
+  are in the APK (`caps.rotate`, `VideoEngine.views`). `VideoEngine.held` comes from the
+  accelerometer (`Held`, an `OrientationEventListener`, with a 15° margin past each half-way
+  angle) while the app is in front and only while the system's auto-rotate is on. Sideways, the
+  system bars stay hidden (`immersive`; the player's full screen hides them too). The video view
+  is a TextureView: a turn resizes its Surface and `android-surface-size` resizes mpv's
+  swapchain in place, as any resize does (§1).
+- Touch on Android: NSH's runtime turns a touch's position into the pressed view's own
+  coordinates (Android's views undo their parents' transforms), but measures a pan's translation
+  and speed on the screen (the touches' raw positions), and decides on those which axis starts a
+  pan. In the turned box the box's x is the screen's y and its y the screen's x, one of them the
+  other way round, so a pan of the player's (the scrubber, the swipe down to close) binds the
+  screen's axis that runs along the box's and reads its events turned back
+  (`layout/surface.ts`, `boxPan`, `caps.panOnScreen`).
 
 ## 3. Lifecycle
 

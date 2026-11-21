@@ -20,7 +20,7 @@ import plusIcon from "./icons/plus.svg";
 import { streamDetails } from "./preferences";
 import { cachedAhead, currentJob, duration, firstFrame, readAt, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
 import { chrome, frame, sideSafeArea, windowControlsRoom } from "./layout/chrome";
-import { surfaceInsets, surfaceSize, surfaceTurned } from "./layout/surface";
+import { boxPan, surfaceInsets, surfaceSize, surfaceTurned } from "./layout/surface";
 import { createTurn, TurnedBox, type Angle, type Turn } from "./layout/TurnedBox";
 import { alpha, colors, density, focusRing, font, iconPt, radius, safe, showFocus, targetSlop, ts as layoutTs, type, u as layoutU } from "./theme";
 
@@ -419,6 +419,7 @@ function PlayerScreen(props: { turn: Turn | null }) {
   /** What the swipe down to close moves (nothing is drawn by it): it makes the player's pan
    * vertical, so it never takes a sideways drag from the scrubber. */
   const closeDrag = createAnimatedValue(0);
+  const closePan = boxPan("y", closeDrag);
   /** A finger or the mouse holds the scrubber or the volume. */
   const held = signal(false);
   const holding = (on: boolean) => {
@@ -707,10 +708,11 @@ function PlayerScreen(props: { turn: Turn | null }) {
 
       // Touch: a swipe down closes the player, as a full-screen cover does.
       // Not while a sheet is open: its own swipe (or its list's scroll) closes only the sheet.
-      // Up and down only: sideways drags are the scrubber's. In the turned box, the box's down (its
-      // pan is measured in it), and none under a drawer drawn there (its list scrolls).
-      pan={panel() || episodesOpen() ? undefined : { y: closeDrag }}
-      onPanEnd={(e) => {
+      // Up and down only: sideways drags are the scrubber's. In the turned box, the box's down
+      // (`boxPan`), and none under a drawer drawn there (its list scrolls).
+      pan={panel() || episodesOpen() ? undefined : closePan.bind()}
+      onPanEnd={(raw) => {
+        const e = closePan.event(raw);
         closeDrag.set(0);
         if (caps.touch && !panel() && !episodesOpen() && !e.cancelled && (e.translation.y > 120 || e.velocity.y > 800)) leave();
       }}
