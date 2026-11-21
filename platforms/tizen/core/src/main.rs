@@ -1,9 +1,12 @@
 //! The core on a desktop, for running the web build in a browser against it:
 //!
-//!   cargo run -p reel-tizen-core --bin reel-core -- [--port N] [--token T] [--data-dir D] [--cache-dir C] [--ui-dir W] [--profile P] [--device D]
+//!   cargo run -p reel-tizen-core --bin reel-core -- [--port N] [--token T] [--data-dir D] [--cache-dir C] [--ui-dir W] [--profile P] [--device D] [--lan IP]
 //!
 //! Without `--token` a random one is made and printed. With `--ui-dir` (an NSH web build, e.g.
-//! out/web) the UI is at http://127.0.0.1:N/ui/index.html?reelToken=T. Serves until Ctrl-C.
+//! out/web) the UI is at http://127.0.0.1:N/ui/index.html?reelToken=T. With `--lan` it also serves
+//! what a TV serves on the local network (`/logs`, the settings page for a phone) on IP:47392, and
+//! the UI shows that page's QR code as on a TV: 127.0.0.1 to try the page on this computer,
+//! 0.0.0.0 for a phone on the network. Serves until Ctrl-C.
 
 use std::path::PathBuf;
 
@@ -18,6 +21,7 @@ fn main() {
         ui_dir: None,
         profile: None,
     };
+    let mut lan: Option<std::net::IpAddr> = None;
     while let Some(flag) = args.next() {
         let mut value = || args.next().unwrap_or_else(|| usage(&format!("{flag} needs a value")));
         match flag.as_str() {
@@ -36,11 +40,16 @@ fn main() {
                     usage(&format!("--device is one of {}", reel_domain::compat::DEVICES.join(", ")));
                 }
             }
+            "--lan" => lan = Some(value().parse().unwrap_or_else(|_| usage("--lan is an IP address (127.0.0.1, 0.0.0.0)"))),
             _ => usage(&format!("unknown argument {flag}")),
         }
     }
     if config.token.is_empty() {
         config.token = random_token();
+    }
+    // Up before the core, as on the TV.
+    if let Some(ip) = lan {
+        reel_tizen_core::serve_lan(config.data_dir.clone(), ip);
     }
     match reel_tizen_core::start(config.clone()) {
         Ok(running) => println!("reel core on http://127.0.0.1:{} token {}", running.port, config.token),
@@ -55,7 +64,7 @@ fn main() {
 }
 
 fn usage(problem: &str) -> ! {
-    eprintln!("{problem}\nusage: reel-core [--port N] [--token T] [--data-dir D] [--cache-dir C] [--ui-dir W] [--profile P] [--device D]");
+    eprintln!("{problem}\nusage: reel-core [--port N] [--token T] [--data-dir D] [--cache-dir C] [--ui-dir W] [--profile P] [--device D] [--lan IP]");
     std::process::exit(2)
 }
 
