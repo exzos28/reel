@@ -108,8 +108,8 @@ close is gone with it.
 - A turn (Rotate, the device, the tall picture) lays the box out for the new angle at once and
   draws it at the old angle, scaled so that the picture is as large as it showed
   (`reel_domain::play::turn_start_scale`: ×0.56 to sideways for 16:9 on a 393 × 852 phone), then
-  turns and scales it into place in 300 ms; the controls fade out meanwhile. Less motion asked
-  for: at once. A drawer open as it turns closes.
+  turns and scales it into place in 300 ms; the controls are taken away meanwhile and come back
+  after it. Less motion asked for: at once. A drawer open as it turns closes.
 - Sideways, the home indicator fades after a moment (`VideoEngine.immersive`:
   `prefersHomeIndicatorAutoHidden`); the status bar is hidden for the whole player (its dialog).
 - **mpv is not called for a turn.** The video view's bounds change from 393 × 852 to 852 × 393;

@@ -24,30 +24,33 @@ export interface Turn {
   /** Turns to `to`: animated from what showed (the picture of `aspect`, its width over its
    * height, as large as it was), or at once (`animated` false, or less motion asked for). */
   to(to: Angle, animated: boolean, aspect?: number): void;
-  /** The drawing's angle and scale, and the controls' opacity (they fade out while it turns: laid
-   * out for the new angle at once, they would show at the start's scale). */
+  /** The drawing's angle and scale. */
   rotate: AnimatedValue;
   zoom: AnimatedValue;
-  controls: AnimatedValue;
+  /** A turn is on its way: the controls are out of sight (laid out for the new angle at once,
+   * they would show at the start's scale). */
+  turning: () => boolean;
 }
 
 export function createTurn(): Turn {
   const angle = signal<Angle>(0);
   const rotate = createAnimatedValue(0);
   const zoom = createAnimatedValue(1);
-  const controls = createAnimatedValue(1);
+  const turning = signal(false);
+  let settle: ReturnType<typeof setTimeout> | undefined;
   return {
     angle,
     rotate,
     zoom,
-    controls,
+    turning,
     to(to, animated, aspect) {
       const from = untracked(angle);
       if (to === from) return;
+      clearTimeout(settle);
       if (!animated || untracked(reduceMotion)) {
         rotate.set(to);
         zoom.set(1);
-        controls.set(1);
+        turning.set(false);
         angle.set(to);
         return;
       }
@@ -59,7 +62,8 @@ export function createTurn(): Turn {
       angle.set(to);
       void rotate.timing(to, { duration: TURN_MS, easing: "easeInOut" });
       void zoom.timing(1, { duration: TURN_MS, easing: "easeInOut" });
-      void controls.keyframes([0, 0, 1], { duration: TURN_MS + TURN_MS / 2, easing: "easeOut" });
+      turning.set(true);
+      settle = setTimeout(() => turning.set(false), TURN_MS);
     },
   };
 }

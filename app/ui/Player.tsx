@@ -819,9 +819,9 @@ function PlayerScreen(props: { turn: Turn | null }) {
         </View>
       </If>
 
-      <If when={overlay() && !card() && !staged()}>
-        {/* The controls fade out while the player turns (`TurnedBox`). */}
-        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "box-none", opacity: turn?.controls ?? 1 }}>
+      {/* Not while the player turns (`TurnedBox`): laid out for the new angle at once, they would
+          show at the turn's start scale. */}
+      <If when={overlay() && !card() && !staged() && !turn?.turning()}>
         {/* Shade: dark at the top and the bottom, the picture clear between. */}
         <View
           style={{
@@ -995,7 +995,6 @@ function PlayerScreen(props: { turn: Turn | null }) {
             </If>
           </View>
         </If>
-        </View>
       </If>
 
       <If when={card() ? next() : null}>
