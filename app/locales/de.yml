@@ -397,6 +397,7 @@ player:
   watch_credits: "Abspann ansehen"
   no_source: "Kein Release zum Abspielen."
   no_source_hint: "Füge in den Einstellungen eine Suchquelle hinzu oder wähle ein anderes Release."
+  not_found_hint: "Deine Suchquelle hat kein Release gefunden, das auf diesem Gerät läuft."
   not_in_release: "Diese Folge ist nicht im Release."
   not_in_release_hint: "Geh zurück und wähle ein Release dafür."
   failed: "Abspielen fehlgeschlagen: %{message}"

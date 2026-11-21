@@ -397,6 +397,7 @@ player:
   watch_credits: "クレジットを観る"
   no_source: "再生できるリリースがありません。"
   no_source_hint: "設定で検索ソースを追加するか、別のリリースを選んでください。"
+  not_found_hint: "検索ソースに、この端末で再生できるリリースが見つかりませんでした。"
   not_in_release: "このエピソードはリリースに含まれていません。"
   not_in_release_hint: "戻って、このエピソードのリリースを選んでください。"
   failed: "再生できませんでした: %{message}"

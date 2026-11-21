@@ -49,6 +49,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `home() -> String`: Home: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`, the hero not repeated on the shelves (see `catalog::home`, `catalog::summary`).
   JSON: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`
   Called from: `ui/catalog.ts`.
+- `onPlay(key: String) -> String` (`on_play`): What Play pressed on `key` (what plays) does at once: "play" (the player opens; a release not known yet is found inside it), "no_source" (the drawer that adds a search source) or "failed" (the source did not answer: the drawer to fix it). See `catalog::on_play`.
+  Called from: `ui/catalog.ts`.
 - `person(id: String) -> String`: A person's page ("tmdb:person:6384"): `{"id","name","photo","initials","items":[summary…], "state"}` (see `catalog::person`).
   JSON: `{"id","name","photo","initials","items":[summary…], "state"}`
   Called from: `ui/catalog.ts`.

@@ -244,7 +244,7 @@ test("with no release at all, Play is plain and a line under it says why", async
 });
 
 test("touch, with no search source: Play opens the drawer that adds one, not the player", async () => {
-  const native = titleWith({ release: null, playable: false, releases: [], releasesState: "no_source" });
+  const native = { ...titleWith({ release: null, playable: false, releases: [], releasesState: "no_source" }), "Catalog.onPlay": "no_source" };
   const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
@@ -254,18 +254,52 @@ test("touch, with no search source: Play opens the drawer that adds one, not the
   expect(app.shows("label:Check")).toBe(true);
 });
 
-test("with a source, Play waits for the source's answer: while it searches, a press opens neither the player nor the drawer", async () => {
-  const native = titleWith({ release: null, playable: true, releases: [], releasesState: "searching" });
+test("with a source, Play answers at once: while it searches, the player opens and looks for the release, even when the core answers late", async () => {
+  // A core that answers 3 s late: the player is on screen before it answers.
+  let app: Awaited<ReturnType<typeof openApp>>;
+  let upBeforeTheAnswer: boolean | null = null;
+  const native = {
+    ...titleWith({ release: null, playable: true, releases: [], releasesState: "searching" }),
+    "Engine.open": () => new Promise((done) => setTimeout(() => ((upBeforeTheAnswer = app.shows("player-host")), done(1)), 3000)),
+    "Engine.status": '{"phase":"resolving","stage":"searching"}',
+  };
+  app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  await app.press("label:Resume 41:12");
+  expect(upBeforeTheAnswer).toBe(true);
+  expect(app.shows("source-panel")).toBe(false);
+  await app.waitFor("text:Looking for a release");
+});
+
+test("the source does not answer while the player waits for it: the drawer to fix it opens over the player, and the player goes with it", async () => {
+  const native = { ...titleWith({ release: null, playable: true, releases: [], releasesState: "searching" }), "Engine.status": '{"phase":"source_failed"}' };
+  const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  await app.press("label:Resume 41:12");
+  expect(app.shows("source-panel")).toBe(true);
+  expect(app.texts()).toContain("Your search source did not answer");
+  await app.keyboard.press("escape");
+  await app.wait(600); // the drawer slides away
+  expect(app.shows("source-panel")).toBe(false);
+  expect(app.shows("player-host")).toBe(false);
+  expect(app.texts()).toContain("Dune");
+});
+
+test("the source found nothing this device plays: the player says so", async () => {
+  const native = { ...titleWith({ release: null, playable: true, releases: [], releasesState: "searching" }), "Engine.status": '{"phase":"not_found"}' };
   const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
   await app.press("label:Resume 41:12");
   expect(app.shows("source-panel")).toBe(false);
-  expect(app.texts()).toContain("Searching your source…");
+  expect(app.texts()).toContain("No release to play.");
+  expect(app.texts()).toContain("Your search source found none that plays on this device.");
 });
 
 test("with a source that did not answer, Play opens the drawer to fix it", async () => {
-  const native = titleWith({ release: null, playable: true, releases: [], releasesState: "failed" });
+  const native = { ...titleWith({ release: null, playable: true, releases: [], releasesState: "failed" }), "Catalog.onPlay": "failed" };
   const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");

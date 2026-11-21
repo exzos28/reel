@@ -15,7 +15,12 @@ export interface Playing extends PlayTarget {
 /** What the core says about the film being played (see `engine::status`). */
 export type Status =
   | { phase: "idle" }
+  /** No search source is set. */
   | { phase: "no_source" }
+  /** The search source did not answer while the player waited for it. */
+  | { phase: "source_failed" }
+  /** The search found no release this device plays. */
+  | { phase: "not_found" }
   /** The episode is not in its season's release: the viewer picks one for it. */
   | { phase: "not_in_release" }
   /** The chosen file will not play on this device (`compat.<reason>`). */

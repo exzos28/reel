@@ -397,6 +397,7 @@ player:
   watch_credits: "Ver créditos"
   no_source: "No hay versión que reproducir."
   no_source_hint: "Añade una fuente de búsqueda en Ajustes o elige otra versión."
+  not_found_hint: "Tu fuente de búsqueda no encontró ninguna versión que se reproduzca en este dispositivo."
   not_in_release: "Este episodio no está en la versión."
   not_in_release_hint: "Vuelve atrás y elige una versión para él."
   failed: "No se ha podido reproducir: %{message}"

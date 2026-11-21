@@ -397,6 +397,7 @@ player:
   watch_credits: "Guarda i titoli di coda"
   no_source: "Nessuna versione da riprodurre."
   no_source_hint: "Aggiungi una fonte di ricerca nelle Impostazioni o scegli un'altra versione."
+  not_found_hint: "La tua fonte di ricerca non ha trovato versioni riproducibili su questo dispositivo."
   not_in_release: "Questo episodio non è nella versione."
   not_in_release_hint: "Torna indietro e scegli una versione per questo episodio."
   failed: "Impossibile riprodurre: %{message}"

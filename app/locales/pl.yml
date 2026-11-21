@@ -397,6 +397,7 @@ player:
   watch_credits: "Oglądaj napisy końcowe"
   no_source: "Brak wydania do odtworzenia."
   no_source_hint: "Dodaj źródło wyszukiwania w Ustawieniach lub wybierz inne wydanie."
+  not_found_hint: "Twoje źródło wyszukiwania nie znalazło wydania, które działa na tym urządzeniu."
   not_in_release: "Tego odcinka nie ma w wydaniu."
   not_in_release_hint: "Wróć i wybierz dla niego wydanie."
   failed: "Nie udało się odtworzyć: %{message}"

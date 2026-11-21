@@ -397,6 +397,7 @@ player:
   watch_credits: "观看片尾字幕"
   no_source: "没有可播放的资源。"
   no_source_hint: "请在设置中添加搜索源，或选择其他资源。"
+  not_found_hint: "搜索源没有找到可在此设备上播放的资源。"
   not_in_release: "此资源中没有这一集。"
   not_in_release_hint: "请返回为这一集选择资源。"
   failed: "无法播放：%{message}"

@@ -227,6 +227,8 @@ export const CATALOG = {
   "Catalog.toggleList": true,
   "Catalog.chooseRelease": true,
   "Catalog.startAt": 0,
+  /** Play opens the player (the core's answer with a search source that answered). */
+  "Catalog.onPlay": "play",
   "Catalog.saveProgress": false,
 };
 

@@ -513,19 +513,44 @@ test("tablet: the releases' sheet open in a narrow window closes once the window
   expect(app.texts()).toContain("All movies");
 });
 
-test("phone, with a source: Home's Play waits for the source's answer, then opens the drawer when it did not answer", async () => {
+/** Home with its hero's release not known yet: its search is `state`. */
+const homeSearching = (state: string) => {
   const home = JSON.parse(NATIVE["Catalog.home"] as string);
   home.hero.release = null;
+  home.hero.releasesState = state;
   for (const shelf of home.shelves) for (const card of shelf.items ?? []) card.release = null;
-  const film = { ...JSON.parse(NATIVE["Catalog.title"] as string), release: null, releases: [], releasesState: "failed" };
+  return JSON.stringify(home);
+};
+
+test("phone, with a source: Home's Play opens the player at once while the hero's release is searched", async () => {
+  // A core that answers 3 s late does not hold the player back: it is on screen before the answer.
+  let app: Awaited<ReturnType<typeof openApp>>;
+  let upBeforeTheAnswer: boolean | null = null;
+  app = await openApp({
+    platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 },
+    modules: { "app/native": {
+      ...NATIVE,
+      "Catalog.home": homeSearching("searching"),
+      "Engine.open": () => new Promise((done) => setTimeout(() => ((upBeforeTheAnswer = app.shows("player-host")), done(1)), 3000)),
+      "Engine.status": '{"phase":"resolving","stage":"searching"}',
+    } },
+  });
+  await app.press("label:Resume 41:12");
+  expect(upBeforeTheAnswer).toBe(true);
+  await app.waitFor("text:Looking for a release");
+});
+
+test("phone, with a source that did not answer: Home's Play opens the drawer to fix it", async () => {
   const app = await openApp({
     platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 },
-    modules: { "app/native": { ...NATIVE, "Catalog.home": JSON.stringify(home), "Catalog.title": JSON.stringify(film) } },
+    modules: { "app/native": { ...NATIVE, "Catalog.home": homeSearching("failed"), "Catalog.onPlay": "failed" } },
   });
-  // Home says nothing under Play: the press finds out.
+  // Home says nothing under Play: the press says it.
   expect(app.texts()).not.toContain("Your search source did not answer. Check it in Settings.");
   await app.press("label:Resume 41:12");
+  expect(app.shows("player-host")).toBe(false);
   expect(app.shows("source-panel")).toBe(true);
+  expect(app.texts()).toContain("Your search source did not answer");
 });
 
 test("first run: the setup takes the screen, Next walks the steps, Skip ends it and asks the core", async () => {
