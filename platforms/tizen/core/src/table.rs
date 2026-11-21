@@ -364,6 +364,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         let (id, index): (String, u32) = args(a)?;
         ret(Catalog::choose_release(id, index))
     })
+    .sync("Catalog", "onPlay", |a| {
+        let (key,): (String,) = args(a)?;
+        ret(Catalog::on_play(key))
+    })
     .sync("Catalog", "startAt", |a| {
         let (id,): (String,) = args(a)?;
         ret(Catalog::start_at(id))

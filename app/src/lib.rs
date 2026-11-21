@@ -608,6 +608,13 @@ impl Catalog {
         catalog::episode_releases(&key).to_string()
     }
 
+    /// What Play pressed on `key` (what plays) does at once: "play" (the player opens; a release
+    /// not known yet is found inside it), "no_source" (the drawer that adds a search source) or
+    /// "failed" (the source did not answer: the drawer to fix it). See `catalog::on_play`.
+    pub fn on_play(key: String) -> String {
+        catalog::on_play(&key).to_owned()
+    }
+
     /// Where the player should start `id` (what plays), seconds: where the
     /// viewer stopped, 0 when new or watched.
     pub fn start_at(id: String) -> f64 {

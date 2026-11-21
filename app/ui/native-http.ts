@@ -158,6 +158,7 @@ export const Catalog: CatalogModule = {
   toggleList: s("Catalog", "toggleList"),
   chooseRelease: s("Catalog", "chooseRelease"),
   episodeReleases: s("Catalog", "episodeReleases"),
+  onPlay: s("Catalog", "onPlay"),
   startAt: s("Catalog", "startAt"),
   saveProgress: s("Catalog", "saveProgress"),
   search: s("Catalog", "search"),

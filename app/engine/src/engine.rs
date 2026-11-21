@@ -7,7 +7,7 @@ use std::{
     net::SocketAddr,
     path::PathBuf,
     sync::{
-        Arc, Mutex, OnceLock,
+        Arc, LazyLock, Mutex, MutexGuard, OnceLock,
         atomic::{AtomicU32, AtomicU64, Ordering},
     },
 };
@@ -37,14 +37,37 @@ pub(crate) struct Core {
     pub(crate) session: Arc<Session>,
     api: Api,
     port: u16,
-    next_job: AtomicU32,
-    jobs: Arc<Mutex<HashMap<u32, Job>>>,
+}
+
+/// The jobs by id, apart from the core: a job is made, and says how it goes, before the torrent
+/// session is up (it starts on a thread of its own, `with_core`), so `open` answers at once.
+static JOBS: LazyLock<Mutex<HashMap<u32, Job>>> = LazyLock::new(Default::default);
+static NEXT_JOB: AtomicU32 = AtomicU32::new(1);
+
+fn jobs() -> MutexGuard<'static, HashMap<u32, Job>> {
+    JOBS.lock().unwrap()
+}
+
+/// Moves a job that waited (for the catalog's search, or for the engine to start) to `state`;
+/// false when it was closed meanwhile, which leaves it closed.
+fn settle(job: u32, state: Job) -> bool {
+    match jobs().get_mut(&job) {
+        Some(s @ (Job::Searching | Job::Resolving)) => {
+            *s = state;
+            true
+        }
+        _ => false,
+    }
 }
 
 #[derive(Clone)]
 enum Job {
-    /// The film has no source to play.
+    /// No search source is set.
     NoSource,
+    /// The search source did not answer.
+    SourceFailed,
+    /// The search found no release to play.
+    NotFound,
     /// The episode is not in the release chosen for its season.
     NotInRelease,
     /// Not enough free space to start: the buffer plus the reserve (bytes).
@@ -167,7 +190,17 @@ fn low_space() -> bool {
     disk::free_bytes(&cache_dir()).is_ok_and(|free| free < RESERVE_MB * MIB)
 }
 
+/// Held while the engine starts: two callers at once (a background start and a press) make one
+/// session, not two (each would wipe the other's cache).
+static STARTING: Mutex<()> = Mutex::new(());
+
+/// The engine, started on the first call (the torrent session: up to a tenth of a second, more on
+/// a phone).
 pub(crate) fn core() -> anyhow::Result<&'static Core> {
+    if let Some(core) = CORE.get() {
+        return Ok(core);
+    }
+    let _starting = STARTING.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(core) = CORE.get() {
         return Ok(core);
     }
@@ -195,8 +228,6 @@ pub(crate) fn core() -> anyhow::Result<&'static Core> {
         session,
         api,
         port,
-        next_job: AtomicU32::new(1),
-        jobs: Default::default(),
     });
     Ok(CORE.get().expect("just set"))
 }
@@ -213,9 +244,9 @@ pub fn close(job: u32) {
     crate::subtitles::forget(job);
     drop_seek(job);
     drop_index(job);
-    let Some(core) = CORE.get() else { return };
-    let Some(state) = core.jobs.lock().unwrap().remove(&job) else { return };
+    let Some(state) = jobs().remove(&job) else { return };
     if let Job::Ready(handle, _) = state {
+        let Some(core) = CORE.get() else { return };
         let release = leases::with(|l| l.release_stream(handle.id()));
         // Paused by the user before it played: paused again.
         if REPAUSE.lock().unwrap().remove(&job) && release == leases::Release::Held && crate::keep::paused_by_user(handle.id()) {
@@ -244,6 +275,22 @@ pub(crate) fn apply_release(core: &Core, id: usize, release: leases::Release) {
 }
 
 
+/// Runs `then` with the engine, started on a thread of its own when it is not up yet: what only
+/// warms (a prefetch, a release's file list) is asked while a screen renders, on the thread that
+/// runs the UI's code, which must not wait for the session to start.
+fn with_core(then: impl FnOnce(&'static Core) + Send + 'static, failed: impl FnOnce(String) + Send + 'static) {
+    if let Some(core) = CORE.get() {
+        return then(core);
+    }
+    std::thread::spawn(move || match core() {
+        Ok(core) => then(core),
+        Err(e) => {
+            eprintln!("reel engine: {e:#}");
+            failed(format!("{e:#}"));
+        }
+    });
+}
+
 /// Starts the engine if needed; the port of its stream server.
 #[cfg(test)]
 pub fn start() -> anyhow::Result<u16> {
@@ -253,7 +300,8 @@ pub fn start() -> anyhow::Result<u16> {
 /// Starts playing what `key` names in the catalog (a title or an episode,
 /// see `PlaybackHost::play_source`): the release the user chose or the catalog
 /// picked. While the catalog still searches, the job stays `resolving` and
-/// starts when a release is found (`no_source` when none is). A job id to
+/// starts when a release is found (`not_found` when none is, `source_failed` when the source
+/// does not answer). A job id to
 /// poll with `status` (which says when there is no source or no room).
 pub fn open(key: &str) -> anyhow::Result<u32> {
     // A saved film plays from its file, before anything else: no search, no torrent, and
@@ -270,6 +318,8 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
     }
     match play_source(key) {
         PlaySource::None => Ok(new_job(Job::NoSource)),
+        PlaySource::Failed => Ok(new_job(Job::SourceFailed)),
+        PlaySource::NotFound => Ok(new_job(Job::NotFound)),
         PlaySource::NotInRelease => Ok(new_job(Job::NotInRelease)),
         PlaySource::Ready(source, episode, through) => {
             let job = open_release(&source, episode, through)?;
@@ -280,35 +330,37 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
             let job = new_job(Job::Searching);
             remember_key(job, key);
             time_start(job, "searching the source");
-            if job == 0 {
-                return Ok(0);
-            }
             let key = key.to_owned();
             std::thread::spawn(move || {
                 let started = std::time::Instant::now();
                 loop {
                     std::thread::sleep(std::time::Duration::from_millis(300));
-                    let Some(core) = CORE.get() else { return };
                     // Closed meanwhile (the viewer went back).
-                    if !core.jobs.lock().unwrap().contains_key(&job) {
+                    if !jobs().contains_key(&job) {
                         return;
                     }
                     match play_source(&key) {
                         PlaySource::Searching if started.elapsed() < std::time::Duration::from_secs(150) => {}
                         PlaySource::Ready(source, episode, through) => {
+                            if !settle(job, Job::Resolving) {
+                                return;
+                            }
                             time_step(job, "release chosen");
                             if let Some(ep) = episode {
                                 EPISODES.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, (ep, through));
                             }
-                            add_to(core, job, &source);
+                            start_adding(job, source);
                             return;
                         }
-                        PlaySource::NotInRelease => {
-                            core.jobs.lock().unwrap().insert(job, Job::NotInRelease);
-                            return;
-                        }
-                        _ => {
-                            core.jobs.lock().unwrap().insert(job, Job::NoSource);
+                        settled => {
+                            settle(job, match settled {
+                                PlaySource::NotInRelease => Job::NotInRelease,
+                                PlaySource::None => Job::NoSource,
+                                PlaySource::NotFound => Job::NotFound,
+                                // Failed, or still searching after the wait's limit: the source
+                                // did not answer.
+                                _ => Job::SourceFailed,
+                            });
                             return;
                         }
                     }
@@ -319,21 +371,11 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
     }
 }
 
-/// A job that is already settled (no engine needed).
+/// A new job in `state` (no engine needed for it).
 fn new_job(state: Job) -> u32 {
-    // Settled jobs live in the same table, so the engine is started for them
-    // too: it is cheap and the next film needs it anyway.
-    match core() {
-        Ok(core) => {
-            let job = core.next_job.fetch_add(1, Ordering::Relaxed);
-            core.jobs.lock().unwrap().insert(job, state);
-            job
-        }
-        Err(e) => {
-            eprintln!("reel engine: {e:#}");
-            0
-        }
-    }
+    let job = NEXT_JOB.fetch_add(1, Ordering::Relaxed);
+    jobs().insert(job, state);
+    job
 }
 
 /// Starts playing a release found by a search: `source` is its magnet or
@@ -346,19 +388,28 @@ pub fn open_release(source: &str, episode: Option<(u16, u16)>, through: Option<T
         let needed = space["needed"].as_u64().unwrap_or_default();
         return Ok(new_job(Job::NoSpace { needed, free: space["free"].as_u64() }));
     }
-    let job = add(source)?;
+    let job = new_job(Job::Resolving);
     if let Some(ep) = episode {
         EPISODES.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, (ep, through));
     }
+    start_adding(job, source.to_owned());
     Ok(job)
 }
 
 /// Adds a magnet link or torrent URL; returns a job id to poll with `status`.
+#[cfg(test)]
 pub fn add(url: &str) -> anyhow::Result<u32> {
-    let core = core()?;
-    let job = core.next_job.fetch_add(1, Ordering::Relaxed);
-    add_to(core, job, url);
+    let job = new_job(Job::Resolving);
+    start_adding(job, url.to_owned());
     Ok(job)
+}
+
+/// Adds `url` as job `job` (`Resolving`), with the engine started off the caller's thread when it
+/// is not up yet: Play's call answers at once, the session starts meanwhile.
+fn start_adding(job: u32, url: String) {
+    with_core(move |core| add_to(core, job, &url), move |e| {
+        settle(job, Job::Failed(e));
+    });
 }
 
 /// Adds a magnet link or torrent URL as job `job` (resolving until it is in).
@@ -724,14 +775,14 @@ impl Drop for Pinned {
 /// decides (another seek, Back).
 pub async fn seek(job: u32, seconds: f64) -> SeekReady {
     let seq = NEXT_SEEK.fetch_add(1, Ordering::Relaxed);
-    let Some(core) = CORE.get() else { return SeekReady::Unknown };
-    let state = core.jobs.lock().unwrap().get(&job).cloned();
+    let state = jobs().get(&job).cloned();
     let (handle, link) = match state {
         // All of a saved film is on disk.
         Some(Job::Local(_)) => return SeekReady::Ready,
         Some(Job::Ready(handle, link)) => (handle, link),
         _ => return SeekReady::Unknown,
     };
+    let Some(core) = CORE.get() else { return SeekReady::Unknown };
     let Some(mut index) = index_of(job) else { return SeekReady::Unknown };
     let Some(file) = video_file(&handle, job) else { return SeekReady::Unknown };
     let Some(layout) = file_layout(&handle, file) else { return SeekReady::Unknown };
@@ -856,8 +907,14 @@ pub fn torrent_files(url: &str) -> Option<Files> {
         }
         all.insert(url.to_owned(), None);
     }
-    let Ok(core) = core() else { return None };
-    let (session, url) = (core.session.clone(), url.to_owned());
+    let url = url.to_owned();
+    with_core(move |core| list_files(core, url), |_| {});
+    None
+}
+
+/// Reads the files of the torrent `url` without downloading any of it (`torrent_files`).
+fn list_files(core: &'static Core, url: String) {
+    let session = core.session.clone();
     core.rt.spawn(async move {
         let add = if url.starts_with("http://") || url.starts_with("https://") {
             match fetch_once(&url).await {
@@ -883,7 +940,6 @@ pub fn torrent_files(url: &str) -> Option<Files> {
             }
         }
     });
-    None
 }
 
 // ---- Prefetch: the source's link is opened while the title screen shows -----
@@ -923,11 +979,15 @@ pub fn prefetch(url: &str) {
     if !(url.starts_with("http://") || url.starts_with("https://")) || !prefetched(url).1 {
         return;
     }
-    let Ok(core) = core() else { return };
     let url = url.to_owned();
-    core.rt.spawn(async move {
-        let _ = fetch_once(&url).await;
-    });
+    with_core(
+        move |core| {
+            core.rt.spawn(async move {
+                let _ = fetch_once(&url).await;
+            });
+        },
+        |_| {},
+    );
 }
 
 /// What a source's http(s) link turned out to be.
@@ -980,8 +1040,7 @@ fn add_to(core: &Core, job: u32, url: &str) {
     if !TIMES.lock().unwrap().as_ref().is_some_and(|t| t.contains_key(&job)) {
         time_start(job, "release known");
     }
-    core.jobs.lock().unwrap().insert(job, Job::Resolving);
-    let (session, jobs, url) = (core.session.clone(), core.jobs.clone(), with_open_trackers(url));
+    let (session, url) = (core.session.clone(), with_open_trackers(url));
     // The film's cache: at most the buffer, around where the player reads.
     let link = buffer::Link::default();
     let storage = buffer::RingFactory::new(cache_dir().join("ring"), film_buffer_mb() * MIB, link.clone());
@@ -1056,7 +1115,7 @@ fn add_to(core: &Core, job: u32, url: &str) {
         };
         // Closed while it was being added: let it go.
         let orphan = {
-            let mut jobs = jobs.lock().unwrap();
+            let mut jobs = jobs();
             if jobs.contains_key(&job) {
                 jobs.insert(job, state);
                 None
@@ -1077,7 +1136,8 @@ fn add_to(core: &Core, job: u32, url: &str) {
 const START_BYTES: u64 = 8 * MIB;
 
 /// What the player shows for the job, as JSON with a `phase`:
-/// - `"no_source"`, `"not_in_release"` (the episode is not in its season's
+/// - `"no_source"` (no search source set), `"source_failed"` (it did not answer), `"not_found"`
+///   (it found nothing to play), `"not_in_release"` (the episode is not in its season's
 ///   release: the viewer picks another), `"no_space"` (`needed`, `free` bytes, `free` may be null),
 ///   `"failed"` (`message`);
 /// - `"resolving"`: `stage` is `"searching"` (the catalog still looks for a
@@ -1091,14 +1151,13 @@ const START_BYTES: u64 = 8 * MIB;
 ///   `stage`: `"connecting"` (no one connected yet), `"fetching"` (the start
 ///   is coming in) or `"starting"` (the start is in; the player opens it).
 pub fn status(job: u32) -> Value {
-    let Some(core) = CORE.get() else {
-        return json!({ "phase": "failed", "message": "the engine is not started" });
-    };
-    let Some(state) = core.jobs.lock().unwrap().get(&job).cloned() else {
+    let Some(state) = jobs().get(&job).cloned() else {
         return json!({ "phase": "failed", "message": format!("no job {job}") });
     };
     match state {
         Job::NoSource => json!({ "phase": "no_source" }),
+        Job::SourceFailed => json!({ "phase": "source_failed" }),
+        Job::NotFound => json!({ "phase": "not_found" }),
         Job::NotInRelease => json!({ "phase": "not_in_release" }),
         Job::NoSpace { needed, free } => json!({ "phase": "no_space", "needed": needed, "free": free }),
         Job::Searching => json!({ "phase": "resolving", "stage": "searching" }),
@@ -1119,6 +1178,10 @@ pub fn status(job: u32) -> Value {
             "local": true,
         }),
         Job::Ready(handle, link) => {
+            // A ready job's torrent is in the session: the engine is up.
+            let Some(core) = CORE.get() else {
+                return json!({ "phase": "failed", "message": "the engine is not started" });
+            };
             let Some(file) = video_file(&handle, job) else {
                 // A pack whose name promised the episode, but its files lack it.
                 if episode_of(job).is_some() {
@@ -1212,8 +1275,7 @@ fn video_file(handle: &librqbit::ManagedTorrent, job: u32) -> Option<usize> {
 /// file index, and the torrent's files (index, path, length). None until the
 /// torrent's metadata is in (or for a job that does not play).
 pub(crate) fn playing_files(job: u32) -> Option<(Arc<librqbit::ManagedTorrent>, usize, Vec<(usize, String, u64)>)> {
-    let core = CORE.get()?;
-    let Some(Job::Ready(handle, _)) = core.jobs.lock().unwrap().get(&job).cloned() else { return None };
+    let Some(Job::Ready(handle, _)) = jobs().get(&job).cloned() else { return None };
     let files: Vec<(usize, String, u64)> = handle
         .with_metadata(|m| {
             m.file_infos
@@ -1230,8 +1292,7 @@ pub(crate) fn playing_files(job: u32) -> Option<(Arc<librqbit::ManagedTorrent>, 
 /// What a saved film's job plays, for its subtitles: the item's folder, the video's index and
 /// its files (index, path in that folder, length).
 pub(crate) fn local_files(job: u32) -> Option<(PathBuf, usize, Vec<(usize, String, u64)>)> {
-    let core = CORE.get()?;
-    let Some(Job::Local(_)) = core.jobs.lock().unwrap().get(&job).cloned() else { return None };
+    let Some(Job::Local(_)) = jobs().get(&job).cloned() else { return None };
     let key = JOB_KEYS.lock().unwrap().as_ref()?.get(&job)?.clone();
     crate::keep::local_files(&key)
 }
@@ -1285,13 +1346,13 @@ pub(crate) fn spawn(task: impl std::future::Future<Output = ()> + Send + 'static
 /// seconds ready without a gap from the position}`; empty until known.
 pub fn timeline(job: u32, position: f64, duration: f64, cached: f64, read_byte: f64, read_time: f64) -> Value {
     let empty = json!({ "ranges": [], "ahead": 0 });
-    let Some(core) = CORE.get() else { return empty };
-    let state = core.jobs.lock().unwrap().get(&job).cloned();
+    let state = jobs().get(&job).cloned();
     if let Some(Job::Local(_)) = state {
         // All of a saved film is on disk.
         return json!({ "ranges": [[0.0, 1.0]], "ahead": (duration - position).max(0.0) });
     }
     let Some(Job::Ready(handle, _)) = state else { return empty };
+    let Some(core) = CORE.get() else { return empty };
     let Some(file) = video_file(&handle, job) else { return empty };
     let Some(layout) = file_layout(&handle, file) else { return empty };
     // Exactly the pieces on disk now (evicted ones are not "have" any more): the scrubber never
@@ -1603,8 +1664,7 @@ pub(crate) mod tests {
         let url = status["stream_url"].as_str().unwrap().to_owned();
         let path = url[url.find("/torrents").unwrap()..].to_owned();
         let piece_len = {
-            let core = super::CORE.get().unwrap();
-            let Some(super::Job::Ready(h, _)) = core.jobs.lock().unwrap().get(&job).cloned() else { panic!() };
+            let Some(super::Job::Ready(h, _)) = super::jobs().get(&job).cloned() else { panic!() };
             h.with_metadata(|m| m.lengths().default_piece_length() as u64).unwrap()
         };
 

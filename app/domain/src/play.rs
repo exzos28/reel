@@ -2,8 +2,12 @@
 
 /// What the engine opens for a catalog key: the catalog decides (`PlaybackHost::play_source`).
 pub enum PlaySource {
-    /// No source set, no release found, or no such title.
+    /// No search source set.
     None,
+    /// The search source did not answer (the viewer fixes it in Settings).
+    Failed,
+    /// The search found no release this device plays, or the title is not known.
+    NotFound,
     /// Still finding out (the title or the search): ask again.
     Searching,
     /// A magnet or .torrent URL, the episode to pick in a pack, and its season's place in the
