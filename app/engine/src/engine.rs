@@ -110,19 +110,47 @@ pub fn buffer_mb() -> u64 {
     BUFFER_MB.load(Ordering::Relaxed)
 }
 
-/// Whether there is room to start playing: `{"ok","free","needed","buffer"}`
-/// (bytes; `buffer` in MiB). `free` is null when it cannot be measured, and
-/// then `ok` is true: better to try than to block on a failed measurement.
-pub fn check_space() -> Value {
-    let needed = (buffer_mb() + RESERVE_MB) * MIB;
+/// The smallest cache a film plays with when the chosen buffer does not fit, MiB.
+const SMALLEST_BUFFER_MB: u64 = 64;
+
+/// The cache a film plays with: the chosen buffer, or, when the free space has shrunk since it
+/// was chosen, the largest half of it that fits next to the reserve (down to
+/// `SMALLEST_BUFFER_MB`); `None` when not even that fits. Unknown free space: the chosen one.
+fn fit_buffer(chosen_mb: u64, free: Option<u64>) -> Option<u64> {
+    let Some(free) = free else { return Some(chosen_mb) };
+    let mut mb = chosen_mb;
+    loop {
+        if (mb + RESERVE_MB) * MIB <= free {
+            return Some(mb);
+        }
+        if mb <= SMALLEST_BUFFER_MB {
+            return None;
+        }
+        mb = (mb / 2).max(SMALLEST_BUFFER_MB);
+    }
+}
+
+/// The free space where the cache lives (None when it cannot be measured).
+fn cache_free() -> Option<u64> {
     let dir = cache_dir();
     let _ = std::fs::create_dir_all(&dir);
-    match disk::free_bytes(&dir) {
-        Ok(free) => json!({ "ok": free >= needed, "free": free, "needed": needed, "buffer": buffer_mb() }),
-        Err(e) => {
-            tracing::warn!("reel engine: free space of {}: {e}", dir.display());
-            json!({ "ok": true, "free": null, "needed": needed, "buffer": buffer_mb() })
-        }
+    disk::free_bytes(&dir).map_err(|e| tracing::warn!("reel engine: free space of {}: {e}", dir.display())).ok()
+}
+
+/// The cache the next film plays with, MiB (`fit_buffer` on this device's free space now).
+fn film_buffer_mb() -> u64 {
+    fit_buffer(buffer_mb(), cache_free()).unwrap_or(buffer_mb())
+}
+
+/// Whether there is room to start playing: `{"ok","free","needed","buffer"}`
+/// (bytes; `buffer` in MiB: what the film will use, which may be less than the chosen one when
+/// the free space shrank). `free` is null when it cannot be measured, and then `ok` is true:
+/// better to try than to block on a failed measurement.
+pub fn check_space() -> Value {
+    let free = cache_free();
+    match fit_buffer(buffer_mb(), free) {
+        Some(mb) => json!({ "ok": true, "free": free, "needed": (mb + RESERVE_MB) * MIB, "buffer": mb }),
+        None => json!({ "ok": false, "free": free, "needed": (SMALLEST_BUFFER_MB + RESERVE_MB) * MIB, "buffer": SMALLEST_BUFFER_MB }),
     }
 }
 
@@ -956,7 +984,7 @@ fn add_to(core: &Core, job: u32, url: &str) {
     let (session, jobs, url) = (core.session.clone(), core.jobs.clone(), with_open_trackers(url));
     // The film's cache: at most the buffer, around where the player reads.
     let link = buffer::Link::default();
-    let storage = buffer::RingFactory::new(cache_dir().join("ring"), buffer_mb() * MIB, link.clone());
+    let storage = buffer::RingFactory::new(cache_dir().join("ring"), film_buffer_mb() * MIB, link.clone());
     core.rt.spawn(async move {
         let options = AddTorrentOptions {
             overwrite: true,
@@ -1420,6 +1448,17 @@ pub(crate) mod tests {
         assert_eq!(out.matches("tracker.opentrackr.org").count(), 1, "not twice");
         assert!(out.contains("tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce"));
         assert_eq!(with_open_trackers("https://indexer.example/a.torrent"), "https://indexer.example/a.torrent");
+    }
+
+    #[test]
+    fn a_buffer_that_no_longer_fits_shrinks_to_what_does() {
+        use super::{fit_buffer, MIB, RESERVE_MB};
+        let gb = 1024 * MIB;
+        assert_eq!(fit_buffer(2048, Some(10 * gb)), Some(2048), "fits: kept");
+        assert_eq!(fit_buffer(2048, None), Some(2048), "unknown free space: kept");
+        assert_eq!(fit_buffer(2048, Some(gb)), Some(512), "1 GB free: the largest half that fits");
+        assert_eq!(fit_buffer(256, Some((64 + RESERVE_MB) * MIB)), Some(64), "down to the smallest");
+        assert_eq!(fit_buffer(256, Some(100 * MIB)), None, "not even the smallest: no room");
     }
 
     #[test]
