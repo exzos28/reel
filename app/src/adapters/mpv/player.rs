@@ -425,12 +425,24 @@ impl Player {
     /// Stops the player and lets it go without waiting for mpv: its sound and its events stop
     /// now, and mpv is torn down on a thread of its own (that waits for mpv's thread, which may
     /// be waiting for a stream). For a view whose window mpv no longer uses (Android: it holds
-    /// its own reference to the Surface; the desktops: the render context is freed first).
+    /// its own reference to the Surface; the desktops: the render context is freed first), or
+    /// keeps until mpv is gone (iOS: `close_in_background_then`).
     #[cfg_attr(not(any(target_os = "macos", windows, all(target_os = "linux", not(target_arch = "arm")))), allow(dead_code))]
     pub fn close_in_background(self) {
+        self.close_in_background_then(|| {});
+    }
+
+    /// As `close_in_background`, and `gone` runs on that thread once mpv is destroyed: iOS keeps
+    /// the layer mpv draws into until then. If no thread can be made, the player goes here and
+    /// `gone` with it, without running.
+    #[cfg_attr(not(any(target_os = "macos", target_os = "ios", windows, all(target_os = "linux", not(target_arch = "arm")))), allow(dead_code))]
+    pub fn close_in_background_then(self, gone: impl FnOnce() + Send + 'static) {
         self.shared.stop.store(true, Ordering::Relaxed);
         self.command(&["stop"]);
-        let closing = std::thread::Builder::new().name("reel-mpv-close".into()).spawn(move || drop(self));
+        let closing = std::thread::Builder::new().name("reel-mpv-close".into()).spawn(move || {
+            drop(self);
+            gone();
+        });
         if let Err(e) = closing {
             // The player came back with the error and went on this thread.
             tracing::warn!("reel mpv: no thread to close the player on: {e}");
