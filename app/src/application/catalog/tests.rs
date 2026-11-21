@@ -1361,3 +1361,13 @@ fn a_full_hd_screen_without_hdr_plays_1080p_sdr_by_itself() {
     let phone = fit::limits(Some("phone"), compat::Display::default());
     assert_eq!(picked_within(phone, "film", &releases, 160, 1, all), Some(2), "1080p within 5 GB an hour");
 }
+
+#[test]
+fn a_tvs_hero_says_what_two_lines_of_its_text_hold() {
+    let about = "Odysseus, the legendary King of Ithaca, embarks on a long and perilous journey home following the Trojan War. Throughout his voyage, he is forced to confront the whims of gods.";
+    let tv = typo::short_about(about, about_short_most(Some("tv")));
+    assert_eq!(tv, "Odysseus, the legendary King of Ithaca, embarks on a long and perilous journey home following the Trojan War.");
+    for desk in [Some("mac"), Some("phone"), None] {
+        assert_eq!(typo::short_about(about, about_short_most(desk)), about, "{desk:?}");
+    }
+}

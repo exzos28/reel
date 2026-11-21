@@ -60,7 +60,19 @@ export const u = (px: number) => px * scale();
 /** Type sizes (font size, line height). The same as `u` but on a phone, where the layout's
  * 0.45 made body text 12 pt and meta 10 pt: there text scales by 0.6 (body 15.6 pt). */
 const TEXT_COMPACT = 0.6;
-export const ts = (px: number) => (density() === "compact" ? px * TEXT_COMPACT : u(px));
+/** A TV's text, read from across a room: the 10-foot rule (.claude/skills/ui-design) wants
+ * nothing read under 28 px at 1080p and body text at 32–36, and the scale's sizes are a desk's
+ * (body 26, meta 22). On a TV they grow by `TEN_FOOT_TEXT` up to 36 (body 26 → 32, its line 36 →
+ * 44), never under 28, and by less and less above it, none from 60 (titles are big enough). */
+const TEN_FOOT_TEXT = 32 / 26;
+const TEN_FOOT_MIN = 28;
+const TEN_FOOT_FROM = 36;
+const TEN_FOOT_UNTIL = 60;
+export const tenFootText = (px: number) =>
+  px <= TEN_FOOT_FROM
+    ? Math.max(TEN_FOOT_MIN, px * TEN_FOOT_TEXT)
+    : px + TEN_FOOT_FROM * (TEN_FOOT_TEXT - 1) * Math.max(0, (TEN_FOOT_UNTIL - px) / (TEN_FOOT_UNTIL - TEN_FOOT_FROM));
+export const ts = (px: number) => (density() === "compact" ? px * TEXT_COMPACT : density() === "ten-foot" ? u(tenFootText(px)) : u(px));
 /** Control sizes (buttons, pills, fields, rows, icons): the same as `u` but on a phone, where
  * the layout's 0.45 made a 60 px button 27 pt, under a finger's 44: there they scale by 0.75. */
 const CONTROL_COMPACT = 0.75;
@@ -93,7 +105,7 @@ const text = (size: number, weight: number, extra: TextStyle = {}): TextStyle =>
   ...extra,
 });
 
-/** The type scale (TV pixels; nothing below 20 on a TV). */
+/** The type scale (TV pixels, as a desk reads them; a TV's grow to its rule: `ts`). */
 export const type = {
   /** The film's title as a light, tracked logotype. `chars`: the title's length: a long one is
    * tracked tighter (0.14em for 12 characters or fewer, down to 0.06em from 28), so its words

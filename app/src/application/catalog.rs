@@ -1484,8 +1484,15 @@ fn where_in(info: &Info) -> Where {
     }
 }
 
-/// The most characters of a hero's short description (about three lines on a TV).
+/// The most characters of a hero's short description (about three lines on a desktop).
 const ABOUT_SHORT: usize = 220;
+/// A TV's: two lines of its larger text (32 px over the hero's 980) hold about 120.
+const ABOUT_SHORT_TV: usize = 120;
+
+/// How long a hero's short description may be on this device (`compat::family`).
+fn about_short_most(family: Option<&str>) -> usize {
+    if family == Some("tv") { ABOUT_SHORT_TV } else { ABOUT_SHORT }
+}
 
 /// What a card, a shelf and a hero show of a title.
 fn summary(info: &Info) -> Value {
@@ -1501,7 +1508,7 @@ fn summary(info: &Info) -> Value {
         "title": typo::tidy(&info.title, &lang),
         "about": typo::tidy(&info.about, &lang),
         // A hero's few lines: whole sentences, so its cut never lands mid-thought.
-        "aboutShort": typo::tidy(&typo::short_about(&info.about, ABOUT_SHORT), &lang),
+        "aboutShort": typo::tidy(&typo::short_about(&info.about, about_short_most(compat::family())), &lang),
         "notice": null,
         "anime": info.anime,
         "year": info.year,

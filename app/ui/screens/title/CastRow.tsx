@@ -9,12 +9,13 @@ import { fontText, labelText, metaText } from "../../kit/text";
 import { SectionTitle } from "../../layout/Section";
 import { scroller, type Follow } from "../../layout/Scroller";
 import { Rail, railLead } from "../../layout/Rail";
-import { colors, focusRing, ts, u } from "../../theme";
+import { colors, density, focusRing, ts, u } from "../../theme";
 import { Pressable } from "../../kit/Pressable";
 
 const PHOTO = 150;
 
-const personBox = (): ViewStyle => ({ width: u(PHOTO + 30), flexShrink: 0, alignItems: "center", gap: u(6) });
+/** Room for a name and a part beside the photo: more on a TV, whose text is larger (`ts`). */
+const personBox = (): ViewStyle => ({ width: u(PHOTO + (density() === "ten-foot" ? 64 : 30)), flexShrink: 0, alignItems: "center", gap: u(6) });
 const discStyle = (focused: boolean): ViewStyle => ({
   width: u(PHOTO),
   height: u(PHOTO),
