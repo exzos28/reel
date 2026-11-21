@@ -479,7 +479,7 @@ settings:
   # The card beside Settings on a device that serves its settings page (a TV).
   phone:
     title: "Zmień to na telefonie"
-    text: "Zeskanuj kod lub otwórz %{url}."
+    text: "Zeskanuj kod lub otwórz poniższy adres."
   interface:
     title: "Interfejs"
   about:
@@ -525,7 +525,7 @@ setup:
     skip: "Pomiń"
   phone:
     title: "Albo skonfiguruj na telefonie"
-    text: "Zeskanuj kod aparatem telefonu lub otwórz %{url} w jego przeglądarce. Ten ekran zaktualizuje się sam."
+    text: "Zeskanuj kod aparatem telefonu lub otwórz poniższy adres w jego przeglądarce. Ten ekran zaktualizuje się sam."
     source_title: "Na telefonie łatwiej"
     source_text: "Wpisywanie adresu pilotem trwa długo. Zeskanuj kod lub otwórz %{url} i wklej tam adres. Ten ekran dokończy konfigurację sam."
 

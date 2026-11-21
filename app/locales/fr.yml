@@ -479,7 +479,7 @@ settings:
   # The card beside Settings on a device that serves its settings page (a TV).
   phone:
     title: "Modifiez-les depuis votre téléphone"
-    text: "Scannez le code, ou ouvrez %{url}."
+    text: "Scannez le code, ou ouvrez l'adresse ci-dessous."
   interface:
     title: "Interface"
   about:
@@ -525,7 +525,7 @@ setup:
     skip: "Passer"
   phone:
     title: "Ou configurez-le sur votre téléphone"
-    text: "Scannez le code avec l'appareil photo du téléphone, ou ouvrez %{url} dans son navigateur. Cet écran suit automatiquement."
+    text: "Scannez le code avec l'appareil photo du téléphone, ou ouvrez l'adresse ci-dessous dans son navigateur. Cet écran suit automatiquement."
     source_title: "Plus simple sur votre téléphone"
     source_text: "Saisir une adresse avec une télécommande est lent. Scannez le code, ou ouvrez %{url}, et collez-la là-bas. Cet écran termine la configuration tout seul."
 

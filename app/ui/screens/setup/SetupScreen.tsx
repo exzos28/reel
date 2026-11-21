@@ -319,7 +319,7 @@ function StepPage(props: { s: Setup; n: number }) {
           </If>
         </View>
         <If when={n < SOURCE_STEP}>
-          <PhoneCard title={() => t("setup.phone.title")} text={(url) => t("setup.phone.text", { url })} />
+          <PhoneCard title={() => t("setup.phone.title")} text={() => t("setup.phone.text")} />
         </If>
       </View>
     </PageFrame>

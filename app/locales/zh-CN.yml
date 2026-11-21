@@ -479,7 +479,7 @@ settings:
   # The card beside Settings on a device that serves its settings page (a TV).
   phone:
     title: "也可以在手机上更改"
-    text: "扫描二维码，或打开 %{url}。"
+    text: "扫描二维码，或打开下方的地址。"
   interface:
     title: "界面"
   about:
@@ -525,7 +525,7 @@ setup:
     skip: "跳过"
   phone:
     title: "或在手机上设置"
-    text: "用手机相机扫描二维码，或在手机浏览器中打开 %{url}。此屏幕会同步更新。"
+    text: "用手机相机扫描二维码，或在手机浏览器中打开下方的地址。此屏幕会同步更新。"
     source_title: "用手机更方便"
     source_text: "用遥控器输入地址很慢。扫描二维码或打开 %{url}，在那里粘贴地址，此屏幕会自动完成设置。"
 

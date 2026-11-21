@@ -225,7 +225,7 @@ export function SettingsScreen() {
           <View style={{ height: u(24) }} />
           <SettingRow label={t("settings.about.title")} focused={() => at() === aboutAt()} viewRef={page.follow(() => at() === aboutAt(), "nearest")} onPress={about} />
         </View>
-        <PhoneCard title={() => t("settings.phone.title")} text={(url) => t("settings.phone.text", { url })} />
+        <PhoneCard title={() => t("settings.phone.title")} text={() => t("settings.phone.text")} />
       </View>
     </PageFrame>
       <If when={picker()}>
