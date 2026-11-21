@@ -119,6 +119,31 @@ pub fn family() -> Option<&'static str> {
     device().or_else(|| *FAMILY.lock().unwrap())
 }
 
+/// What the screen shows, as the host reads it from the system once at start (Android: the
+/// display's modes and HDR types). A fact, not a policy: what follows from it (`fit::limits`) is
+/// decided there. `None` where the host does not say (every field unknown: nothing is held back).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Display {
+    /// The tallest picture it shows, in lines (1080 on a Full HD screen, 2160 on a 4K one).
+    pub lines: Option<u32>,
+    /// It shows HDR10 (or HDR10+).
+    pub hdr: Option<bool>,
+    /// It shows Dolby Vision.
+    pub dolby_vision: Option<bool>,
+}
+
+static DISPLAY: Mutex<Display> = Mutex::new(Display { lines: None, hdr: None, dolby_vision: None });
+
+/// The screen's facts, as the host found them. One per process, as `set_family`.
+pub fn set_display(d: Display) {
+    *DISPLAY.lock().unwrap() = d;
+}
+
+/// What the screen shows (unknown until the host says).
+pub fn display() -> Display {
+    *DISPLAY.lock().unwrap()
+}
+
 /// Why a release or file will not play here. The UI words it (`compat.<key>`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]

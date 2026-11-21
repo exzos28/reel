@@ -97,7 +97,10 @@ engine/src/
 ## Fit
 
 What Play (and so Save) picks by itself depends on the device (`domain/src/fit.rs`): the UI
-reports its platform family once (`Settings.setFamily`), the core decides.
+reports its platform family once (`Settings.setFamily`), the host the screen's facts where the
+system tells them (`compat::Display`; Android: its tallest mode, HDR10, Dolby Vision), the core
+decides. A release the viewer chose, or watched in, is kept for the title (or the season) with the
+watch progress and plays on after a restart, found again by its hash (else its name and size).
 
 - **Phone and tablet**: up to 1080p (what the screen shows) and up to 5 GB per hour of runtime
   (about 11 Mbit/s): every 1080p WEB-DL (2–4 GB/h) and the usual BluRay encodes (3–5 GB/h) are in,
@@ -105,7 +108,10 @@ reports its platform family once (`Settings.setFamily`), the core decides.
   10 GB. Within that: the best that plays now, else the best that 10 or more share, and only
   then whatever plays now. A pack counts its share per episode; a runtime the catalog lacks counts
   as 120 min (film) or 45 (episode). Big releases stay in the release list to pick by hand.
-- **TV and desktop**: no limits, as before (the best that plays now, else the most shared).
+- **Any device, on a screen it knows**: nothing taller than the screen, no HDR on a screen without
+  it, no Dolby Vision without an HDR10 layer on a screen without Dolby Vision; within that as for a
+  phone (the best that plays now, else the best that 10 share), then the rest.
+- **TV and desktop**: no other limits, as before (the best that plays now, else the most shared).
 - **Free space**: an item starts only when its size, a fiftieth of it more (pieces at the edges of
   a file write into its neighbours, subtitles), what is left of every unfinished item, what is
   set aside for items whose torrent is not read yet, and a reserve of 1 GiB fit on the folder's

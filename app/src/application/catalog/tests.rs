@@ -72,7 +72,6 @@ fn fresh(tmdb_on: bool, source: bool) -> std::sync::MutexGuard<'static, ()> {
 fn reset(tmdb_on: bool, source: bool) {
     SLOTS.0.lock().unwrap().clear();
     SEARCHES.lock().unwrap().clear();
-    CHOSEN.lock().unwrap().clear();
     crate::application::watchlist::clear();
     SHOWN.lock().unwrap().clear();
     filters::clear();
@@ -148,6 +147,40 @@ fn home_shelves_from_meta() {
     // A notice card alone: the hero says it, and its shelf stays (nothing would be left).
     assert_eq!(home(), json!({ "hero": notice("offline"), "shelves": shelves }));
     assert_eq!(shelves[0]["items"][0]["notice"], "offline");
+}
+
+#[test]
+fn homes_hero_searches_for_its_release_line() {
+    let _g = fresh(true, true);
+    seed_matrix();
+    for k in ["movie", "tv", "movie-popular", "tv-popular", "anime"] {
+        seed(Call::Trending(k), json!({ "items": [] }));
+    }
+    save_progress(MATRIX, 2472.0, 8160.0);
+    // A cold start: Home's hero (the film watched last) searches for its release itself, so its
+    // line comes in without its page being opened; until it does, the line is kept for it.
+    let h = home();
+    assert_eq!(h["hero"]["id"], MATRIX);
+    assert!(search_of(MATRIX).is_some(), "Home started the hero's search");
+    assert_eq!(h["hero"]["releasesState"], "searching");
+    assert_eq!(h["hero"]["release"], Value::Null);
+    found(MATRIX, vec![release("The.Matrix.1999.1080p.BluRay", Some(1080), "bluray", 8.0, 120, false)]);
+    let h = home();
+    assert_eq!(h["hero"]["releasesState"], "done");
+    assert_eq!(h["hero"]["release"]["quality"], "1080p");
+    // Nothing found: no line to keep.
+    found(MATRIX, vec![]);
+    let h = home();
+    assert_eq!((h["hero"]["releasesState"].as_str(), &h["hero"]["release"]), (Some("done"), &Value::Null));
+    // No source: nothing is searched.
+    reset(true, false);
+    seed_matrix();
+    for k in ["movie", "tv", "movie-popular", "tv-popular", "anime"] {
+        seed(Call::Trending(k), json!({ "items": [] }));
+    }
+    save_progress(MATRIX, 2472.0, 8160.0);
+    assert_eq!(home()["hero"]["releasesState"], "no_source");
+    assert!(search_of(MATRIX).is_none());
 }
 
 #[test]
@@ -999,7 +1032,7 @@ fn a_new_source_drops_what_the_old_one_found() {
 #[test]
 fn a_phone_plays_the_best_picture_up_to_1080p_when_one_plays_now() {
     let r = |res: u64, gb: f64, peers: u64| serde_json::json!({ "info": { "resolution": res }, "size": gb * 1e9, "seeders": peers, "peers": peers, "seasonPack": false });
-    let phone = fit::limits(Some("phone"));
+    let phone = fit::limits(Some("phone"), compat::Display::default());
     let any = fit::Limits::NONE;
     let all = |_: &Value| true;
     let releases = vec![r(2160, 20.0, 161), r(1080, 8.0, 468)];
@@ -1013,7 +1046,7 @@ fn a_phone_plays_the_best_picture_up_to_1080p_when_one_plays_now() {
 #[test]
 fn a_phone_skips_a_remux_for_a_release_of_a_sane_size() {
     let r = |res: u64, gb: f64, peers: u64| serde_json::json!({ "info": { "resolution": res }, "size": gb * 1e9, "seeders": peers, "peers": peers, "seasonPack": false });
-    let phone = fit::limits(Some("phone"));
+    let phone = fit::limits(Some("phone"), compat::Display::default());
     let all = |_: &Value| true;
     // Night of the Living Dead, 96 minutes: a 25 GB 1080p remux plays now, a 2.5 GB 1080p WEB-DL too.
     let releases = vec![r(1080, 25.0, 400), r(1080, 2.5, 120), r(720, 0.7, 300)];
@@ -1073,7 +1106,7 @@ fn save_offers_the_smaller_release_play_would_pick_among_those_that_fit() {
     assert!(smaller_release(MATRIX, |_| false).is_none(), "none fits");
     let SaveAsk::Ready(req) = save_request(MATRIX, Some("Matrix.720p.WEB")) else { panic!("ready") };
     assert_eq!(req.source, "magnet:?xt=urn:btih:Matrix.720p.WEB");
-    assert!(CHOSEN.lock().unwrap().is_empty(), "Play's release stays");
+    assert!(progress::release(MATRIX).is_none(), "Play's release stays");
 }
 
 #[test]
@@ -1194,4 +1227,147 @@ fn the_picture_line() {
     assert_eq!(v("Film 2160p WEB-DL DV H265"), "H.265 · DV");
     assert_eq!(v("Film 2160p WEB HDR10 AV1"), "AV1 · HDR");
     assert_eq!(v("Film DVDRip"), "");
+}
+
+/// A release as another search of the same source answers it: the same torrent (hash, name,
+/// size), a .torrent link signed anew.
+fn again(r: &Value) -> Value {
+    let mut r = r.clone();
+    r["source"] = json!(format!("{}&signed=again", r["source"].as_str().unwrap()));
+    r
+}
+
+fn with_hash(mut r: Value, hash: &str) -> Value {
+    r["infohash"] = json!(hash);
+    r
+}
+
+#[test]
+fn a_chosen_release_is_kept_after_a_restart_and_found_in_a_new_search() {
+    let _g = fresh(true, true);
+    seed_matrix();
+    // Nosferatu's case: 1080p BluRay 28 GB, 720p 8.7 GB, SD 1.5 GB, all 33 people or fewer.
+    let hd = with_hash(release("Nosferatu.1922.1080p.BluRay.Remux", Some(1080), "remux", 28.0, 33, false), "aa01");
+    let mid = with_hash(release("Nosferatu.1922.720p.BluRay", Some(720), "bluray", 8.7, 17, false), "aa02");
+    let sd = release("Nosferatu.1922.DVDRip", None, "dvd", 1.5, 33, false);
+    found(MATRIX, vec![hd.clone(), mid.clone(), sd.clone()]);
+    assert_eq!(title(MATRIX)["release"]["quality"], "1080p", "by itself: the best shared");
+    assert!(choose_release(MATRIX, 2));
+    assert_eq!(title(MATRIX)["release"]["quality"], "SD");
+
+    // A restart: what was found is gone; the next search answers in another order, with links
+    // signed anew. The SD release (no hash: found by its name and size) is still Play's.
+    SEARCHES.lock().unwrap().clear();
+    assert!(matches!(play_source(MATRIX), PlaySource::Searching));
+    found(MATRIX, vec![again(&sd), again(&hd), again(&mid)]);
+    let t = title(MATRIX);
+    assert_eq!(t["release"]["quality"], "SD");
+    let selected: Vec<_> = t["releases"].as_array().unwrap().iter().filter(|r| r["selected"] == true).map(|r| r["quality"].clone()).collect();
+    assert_eq!(selected, vec![json!("SD")], "the list marks it");
+    match play_source(MATRIX) {
+        PlaySource::Ready(s, None, _) => assert_eq!(s, again(&sd)["source"].as_str().unwrap()),
+        _ => panic!("the SD release plays"),
+    }
+    // A source that no longer has it: Play's own pick, until it is there again.
+    found(MATRIX, vec![again(&hd), again(&mid)]);
+    assert_eq!(title(MATRIX)["release"]["quality"], "1080p");
+    found(MATRIX, vec![again(&hd), again(&sd)]);
+    assert_eq!(title(MATRIX)["release"]["quality"], "SD");
+    // Another source, the same torrent (its hash): still the viewer's.
+    source_changed();
+    found(MATRIX, vec![with_hash(release("Nosferatu (1922) 720p", Some(720), "bluray", 8.7, 4, false), "AA02"), again(&hd)]);
+    assert!(choose_release(MATRIX, 0));
+    SEARCHES.lock().unwrap().clear();
+    found(MATRIX, vec![again(&hd), again(&mid)]);
+    assert_eq!(title(MATRIX)["release"]["quality"], "720p", "found again by its hash under another name");
+}
+
+#[test]
+fn resume_plays_on_in_the_release_it_was_watched_in() {
+    let _g = fresh(true, true);
+    seed_matrix();
+    let hd = with_hash(release("Matrix.1080p.WEB", Some(1080), "web", 8.0, 400, false), "bb01");
+    let uhd = with_hash(release("Matrix.2160p.WEB", Some(2160), "web", 20.0, 900, false), "bb02");
+    found(MATRIX, vec![hd.clone()]);
+    assert_eq!(title(MATRIX)["release"]["quality"], "1080p");
+    // Watched in Play's own pick (nothing chosen) for 20 minutes.
+    save_progress(MATRIX, 1200.0, 8160.0);
+    // Later the search finds a 4K that plays now, which Play would pick by itself: Resume stays
+    // in the release that has the progress.
+    SEARCHES.lock().unwrap().clear();
+    found(MATRIX, vec![again(&uhd), again(&hd)]);
+    assert_eq!(title(MATRIX)["release"]["quality"], "1080p");
+    assert!(matches!(play_source(MATRIX), PlaySource::Ready(s, ..) if s.contains("1080p")));
+    // The viewer picks the 4K: it plays from then on.
+    assert!(choose_release(MATRIX, 0));
+    save_progress(MATRIX, 1300.0, 8160.0);
+    assert_eq!(title(MATRIX)["release"]["quality"], "4K");
+    // A start of a few seconds keeps nothing.
+    let film = "tmdb:movie:604";
+    seed(Call::Title(film.into()), json!({ "id": film, "kind": "movie", "title": "The Matrix Reloaded", "runtimeMinutes": 138 }));
+    found(film, vec![hd.clone()]);
+    save_progress(film, 4.0, 8280.0);
+    assert!(progress::release(film).is_none());
+}
+
+#[test]
+fn a_seasons_release_is_kept_for_its_episodes_after_a_restart() {
+    let _g = fresh(true, true);
+    seed_aot();
+    let season = season_key(AOT, 3);
+    // MobLand's case: a 4K Dolby Vision pack of 96 GB and an SD one.
+    let mut uhd = with_hash(episodes_release("AoT.S03.2160p.DV.WEB", 3, &[], 300), "cc01");
+    uhd["info"]["resolution"] = json!(2160);
+    uhd["size"] = json!(96e9);
+    let mut sd = with_hash(episodes_release("AoT.S03.SD.WEB", 3, &[], 60), "cc02");
+    sd["info"]["resolution"] = Value::Null;
+    sd["size"] = json!(9e9);
+    // The viewer is in season 3: Play's release is its season's.
+    save_progress("tmdb:tv:1429:s3e2", 600.0, 1440.0);
+    found(&season, vec![uhd.clone(), sd.clone()]);
+    assert_eq!(title(AOT)["release"]["quality"], "4K");
+    assert!(choose_release(AOT, 1));
+    assert_eq!(title(AOT)["release"]["quality"], "SD");
+    // A restart: the season is searched again, the packs come in another order.
+    SEARCHES.lock().unwrap().clear();
+    found(&season, vec![again(&sd), again(&uhd)]);
+    assert!(matches!(play_source("tmdb:tv:1429:s3e2"), PlaySource::Ready(s, Some((3, 2)), _) if s.contains("SD")));
+    assert!(matches!(play_source("tmdb:tv:1429:s3e3"), PlaySource::Ready(s, ..) if s.contains("SD")), "every episode of the season");
+    assert_eq!(episodes(AOT, 3)[1]["inRelease"], "unknown", "the season's, not one of its own");
+}
+
+#[test]
+fn a_full_hd_screen_without_hdr_plays_1080p_sdr_by_itself() {
+    // The Odyssey on a 1080p SDR TV: a 4K HDR release that plays now, 38 GB, was Play's pick.
+    let r = |res: u64, hdr: bool, dv: bool, gb: f64, peers: u64| {
+        json!({ "info": { "resolution": res, "hdr": hdr || dv, "hdr10": hdr, "dolby_vision": dv }, "size": gb * 1e9, "seeders": peers, "seasonPack": false })
+    };
+    let releases = vec![r(2160, true, false, 38.0, 900), r(2160, false, true, 30.0, 700), r(1080, true, false, 12.0, 400), r(1080, false, false, 9.0, 300), r(720, false, false, 3.0, 500)];
+    let all = |_: &Value| true;
+    let screen = |lines, hdr, dv| compat::Display { lines: Some(lines), hdr: Some(hdr), dolby_vision: Some(dv) };
+    let pick = |display| picked_within(fit::limits(Some("tv"), display), "film", &releases, 160, 1, all);
+    assert_eq!(pick(compat::Display::default()), Some(0), "a screen not known: the best that plays now, as before");
+    assert_eq!(pick(screen(1080, false, false)), Some(3), "Full HD without HDR: the 1080p SDR");
+    assert_eq!(pick(screen(1080, true, false)), Some(2), "Full HD with HDR: the 1080p HDR");
+    assert_eq!(pick(screen(2160, true, false)), Some(0), "4K HDR10: the 4K HDR");
+    let dv_first = vec![releases[1].clone(), r(2160, true, false, 38.0, 50), releases[3].clone()];
+    let pick = |display| picked_within(fit::limits(Some("tv"), display), "film", &dv_first, 160, 1, all);
+    assert_eq!(pick(screen(2160, true, false)), Some(1), "no Dolby Vision on the screen: not the Dolby Vision alone");
+    assert_eq!(pick(screen(2160, true, true)), Some(0), "a Dolby Vision screen: it");
+    // Nothing the screen shows that people share: the best that plays now, as before.
+    let only_4k = vec![r(2160, true, false, 38.0, 900), r(1080, false, false, 9.0, 2)];
+    assert_eq!(picked_within(fit::limits(Some("tv"), screen(1080, false, false)), "film", &only_4k, 160, 1, all), Some(0));
+    // A phone's own limits hold on a screen that says nothing.
+    let phone = fit::limits(Some("phone"), compat::Display::default());
+    assert_eq!(picked_within(phone, "film", &releases, 160, 1, all), Some(2), "1080p within 5 GB an hour");
+}
+
+#[test]
+fn a_tvs_hero_says_what_two_lines_of_its_text_hold() {
+    let about = "Odysseus, the legendary King of Ithaca, embarks on a long and perilous journey home following the Trojan War. Throughout his voyage, he is forced to confront the whims of gods.";
+    let tv = typo::short_about(about, about_short_most(Some("tv")));
+    assert_eq!(tv, "Odysseus, the legendary King of Ithaca, embarks on a long and perilous journey home following the Trojan War.");
+    for desk in [Some("mac"), Some("phone"), None] {
+        assert_eq!(typo::short_about(about, about_short_most(desk)), about, "{desk:?}");
+    }
 }

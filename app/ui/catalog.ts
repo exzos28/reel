@@ -83,6 +83,9 @@ export interface Summary {
   playable: boolean;
   inList: boolean;
   release: ReleaseLine | null;
+  /** Home's hero only: where the search for its release line is (the line is kept for it only
+   * while it is "searching"). */
+  releasesState?: ReleasesState;
   play: PlayTarget;
   /** What Play says, as the core decides it: "resume" at `at` seconds, or "play" from the start
    * (`at` null); a show's names the episode (`season`, `episode`), a film's does not. */

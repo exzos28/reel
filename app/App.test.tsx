@@ -1,5 +1,5 @@
 import { expect, test } from "nsh/test";
-import { AOT_S3, ENGINE, episode, INCEPTION_NO_SOURCE, NATIVE, release, SHOW, openApp } from "./testEngine";
+import { AOT_S3, DUNE_FIRST, ENGINE, episode, INCEPTION_NO_SOURCE, NATIVE, release, SHOW, openApp } from "./testEngine";
 
 type Native = Record<string, {} | null>;
 const app_ = (native: Native = NATIVE, options: Record<string, unknown> = {}) =>
@@ -355,4 +355,20 @@ test("Mac: the releases open in a sheet under the window bar; Esc closes it, the
   expect(app.texts()).not.toContain("3 found, the best of each quality first");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("All movies");
+});
+
+test("Home's hero keeps a line for its release only while the core searches for it", async () => {
+  const home = JSON.parse(DUNE_FIRST["Catalog.home"]);
+  const heroWhile = (releasesState: string) =>
+    app_({ ...NATIVE, "Catalog.home": JSON.stringify({ ...home, hero: { ...home.hero, release: null, releasesState } }) });
+  const searching = await heroWhile("searching");
+  expect(searching.shows("hero-release-pending")).toBe(true);
+  await searching.dispose();
+  // Nothing found (or no source): no empty line over the buttons.
+  for (const state of ["done", "failed", "no_source"]) {
+    const app = await heroWhile(state);
+    expect(app.shows("hero-release-pending")).toBe(false);
+    expect(app.texts()).toContain("Dune");
+    await app.dispose();
+  }
 });

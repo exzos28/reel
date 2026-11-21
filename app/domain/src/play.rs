@@ -13,6 +13,28 @@ pub enum PlaySource {
     NotInRelease,
 }
 
+/// A release the viewer chose (or watched in), as another search finds it again: by its info
+/// hash, else by its name and size. A .torrent link is no mark (a source signs it anew for each
+/// search), and an index into one search's list says nothing of the next one's.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Pick {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub infohash: Option<String>,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<u64>,
+}
+
+impl Pick {
+    /// Whether a release (its info hash, name and size) is this one.
+    pub fn is(&self, infohash: Option<&str>, title: &str, size: Option<u64>) -> bool {
+        match (self.infohash.as_deref(), infohash) {
+            (Some(mine), Some(theirs)) => mine.eq_ignore_ascii_case(theirs),
+            _ => self.title == title && self.size == size,
+        }
+    }
+}
+
 /// Where the viewer stopped in what a job plays (the watch progress), seconds.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Resume {
@@ -74,7 +96,21 @@ pub fn shown_size(width: f64, height: f64, pixel_aspect: f64, rotation: f64) -> 
 
 #[cfg(test)]
 mod tests {
-    use super::{shown_size, starts_sideways};
+    use super::{Pick, shown_size, starts_sideways};
+
+    #[test]
+    fn a_pick_is_found_again_by_its_hash_else_its_name_and_size() {
+        let sd = Pick { infohash: Some("ab12".into()), title: "Nosferatu.1922.DVDRip".into(), size: Some(1_500_000_000) };
+        assert!(sd.is(Some("AB12"), "Nosferatu 1922 (another indexer's name)", Some(1)), "the hash says it");
+        assert!(!sd.is(Some("cd34"), "Nosferatu.1922.DVDRip", Some(1_500_000_000)), "another torrent of the same name");
+        assert!(sd.is(None, "Nosferatu.1922.DVDRip", Some(1_500_000_000)), "a source that gives no hash");
+        assert!(!sd.is(None, "Nosferatu.1922.DVDRip", Some(1_400_000_000)));
+        assert!(!sd.is(None, "Nosferatu.1922.1080p.BluRay", Some(1_500_000_000)));
+        let json = serde_json::to_string(&sd).unwrap();
+        assert_eq!(serde_json::from_str::<Pick>(&json).unwrap(), sd);
+        let bare: Pick = serde_json::from_str(r#"{"title":"Film"}"#).unwrap();
+        assert!(bare.is(None, "Film", None));
+    }
 
     #[test]
     fn shown_size_applies_the_pixel_aspect_and_a_quarter_turn() {

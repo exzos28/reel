@@ -16,8 +16,8 @@ import heartFilledIcon from "../../icons/heart-filled.svg";
 import { density } from "../../theme";
 
 /** The hero's height and its text's top, TV pixels. On a TV the first row (its cards
- * and their names) shows whole under it, inside the title-safe area. */
-export const HOME_HERO = density() === "ten-foot" ? { height: 640, top: 180 } : { height: 780, top: 236 };
+ * and their names, in a TV's larger text) shows whole under it, inside the title-safe area. */
+export const HOME_HERO = density() === "ten-foot" ? { height: 606, top: 146 } : { height: 780, top: 236 };
 
 
 /** The hero for the focused card: Play, the Watchlist and its page (Details on a TV, a round →

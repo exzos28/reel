@@ -6,7 +6,7 @@ import { t } from "nsh/i18n";
 import { aboutText, genresText, shortAboutText, titleText, type Summary } from "../catalog";
 import { cover } from "../kit/shape";
 import { bodyText, metaText } from "../kit/text";
-import { alpha, colors, heroFade, insetMaxWidth, safe, ts, type, u } from "../theme";
+import { alpha, colors, density, heroFade, insetMaxWidth, safe, ts, type, u } from "../theme";
 import { heroMeta, MetaLine } from "./HeroMeta";
 import { heroBoxNow, heroFollowsWindow, stillTop, type HeroBox } from "./metrics";
 import { Pressable } from "../kit/Pressable";
@@ -79,7 +79,10 @@ const steadyBlockStyle = (top: number, design: number, height: number): ViewStyl
 });
 /** The hero's own height (points): at least the backdrop's, or (`fit`) only what its text needs. */
 const heroStyle = (height: number, fit: boolean): ViewStyle => (fit ? {} : { minHeight: height });
-const ABOUT_LINES = 3;
+/** The about's lines: three, two on a TV, whose larger text (`ts`) would otherwise push the
+ * title up under the nav and the first row past the title-safe area (the core keeps a TV's short
+ * about to what two lines hold). */
+const aboutLines = () => (density() === "ten-foot" ? 2 : 3);
 /** A steady about's room past its three lines, in lines: exactly three lines' height lets the
  * system's rounding (a Mac's, at some window widths) drop the third, so it jumped between two and
  * three as the window resized. The limit stays three lines. */
@@ -91,7 +94,7 @@ const HERO_TEXT_ROOM = 444;
  * `whole`: every line (a desktop's title page), else three. */
 const aboutStyle = (steady: boolean, whole: boolean): TextStyle => {
   const body = bodyText(colors.soft());
-  return { ...(whole ? {} : { numberOfLines: ABOUT_LINES }), ...body, maxWidth: u(980), ...(steady ? { height: (body.lineHeight as number) * (ABOUT_LINES + ABOUT_SLACK) } : {}) };
+  return { ...(whole ? {} : { numberOfLines: aboutLines() }), ...body, maxWidth: u(980), ...(steady ? { height: (body.lineHeight as number) * (aboutLines() + ABOUT_SLACK) } : {}) };
 };
 /** The title: two lines on a TV and touch; a desktop's whole, however many lines (its hero grows
  * with its text, Home's too). */

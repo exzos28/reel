@@ -35,7 +35,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/catalog.ts`.
 - `chooseFilter(page: String, group: String, id: String) -> bool` (`choose_filter`): One choice in a browse page's filter panel (see `catalog::choose_filter`): `group` "genres" | "years" | "countries" | "sort", `id` an option's id, empty to clear the group. Whether the filter changed.
   Called from: `ui/catalog.ts`.
-- `chooseRelease(id: String, index: u32) -> bool` (`choose_release`): Makes release `index` the one Play uses for `id`.
+- `chooseRelease(id: String, index: u32) -> bool` (`choose_release`): Makes release `index` the one Play uses for `id`, kept after a restart (as the release something was watched in is: Resume plays on in it).
   Called from: `ui/catalog.ts`.
 - `episode(show: String, season: u32, number: u32) -> String`: Episode `number` of `season` of `show`, or null while it is not known.
   Called from: `ui/catalog.ts`.
@@ -258,7 +258,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/preferences.ts`.
 - `setContentLanguage(tag: String) -> String` (`set_content_language`): Saves the content language (titles, descriptions, episode names; one of `contentLanguages` from `load`) and drops what was asked in the old one; the language in effect.
   Called from: `ui/preferences.ts`.
-- `setFamily(name: String) -> bool` (`set_family`): Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows", "linux", "tablet", "phone"), once at start: what Play and Save pick by themselves follows from it (a phone keeps to 1080p and a size per hour, `fit::limits`). False for an unknown name.
+- `setFamily(name: String) -> bool` (`set_family`): Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows", "linux", "tablet", "phone"), once at start, before `Settings.load` and `Library.supported`: what Play and Save pick by themselves follows from it (a phone keeps to 1080p and a size per hour, `fit::limits`), and whether it saves films (not a TV, `fit::saves`). False for an unknown name. The screen's own facts are read here too where the system tells them (Android: its tallest mode, HDR10, Dolby Vision): Play does not pick by itself what the screen cannot show (`compat::Display`).
   Called from: `ui/platform/index.ts`.
 - `setLanguage(tag: String)` (`set_language`): Saves the UI language (a BCP 47 tag).
   Called from: nothing in the UI.

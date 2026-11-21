@@ -283,10 +283,15 @@ impl Settings {
     }
 
     /// Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows",
-    /// "linux", "tablet", "phone"), once at start: what Play and Save pick by themselves follows
-    /// from it (a phone keeps to 1080p and a size per hour, `fit::limits`). False for an
-    /// unknown name.
+    /// "linux", "tablet", "phone"), once at start, before `Settings.load` and `Library.supported`:
+    /// what Play and Save pick by themselves follows from it (a phone keeps to 1080p and a size
+    /// per hour, `fit::limits`), and whether it saves films (not a TV, `fit::saves`). False for
+    /// an unknown name. The screen's own facts are read here too where the system tells them
+    /// (Android: its tallest mode, HDR10, Dolby Vision): Play does not pick by itself what the
+    /// screen cannot show (`compat::Display`).
     pub fn set_family(name: String) -> bool {
+        #[cfg(target_os = "android")]
+        reel_domain::compat::set_display(crate::adapters::android_display::display());
         reel_domain::compat::set_family(&name).is_some()
     }
 
@@ -544,7 +549,8 @@ impl Catalog {
         catalog::search::forget()
     }
 
-    /// Makes release `index` the one Play uses for `id`.
+    /// Makes release `index` the one Play uses for `id`, kept after a restart (as the release
+    /// something was watched in is: Resume plays on in it).
     pub fn choose_release(id: String, index: u32) -> bool {
         catalog::choose_release(&id, index as usize)
     }

@@ -2,7 +2,8 @@
 //! `progress.json` in the app's data directory (handed over once by
 //! `Settings.load`; NSH's storage cannot be used from a `#[module]`). The
 //! player reports the position every few seconds and on stop; Continue
-//! watching, "Resume …" and the start position come from here.
+//! watching, "Resume …" and the start position come from here, and the
+//! release each title plays (so Resume plays on in the one it was watched in).
 
 use std::{
     collections::HashMap,
@@ -10,7 +11,7 @@ use std::{
     sync::Mutex,
 };
 
-use reel_domain::audio::Signature;
+use reel_domain::{audio::Signature, play::Pick};
 use serde::{Deserialize, Serialize};
 
 /// Watched to here (of the duration), the film or episode counts as seen.
@@ -75,6 +76,11 @@ struct Saved {
     /// another file (`audio::Signature`).
     #[serde(default)]
     audio: HashMap<String, Signature>,
+    /// The release Play uses per what its releases are searched for (a film, a show's season, an
+    /// episode the viewer picked one for apart; `catalog::release_key`): the viewer's choice, or
+    /// the one it was watched in.
+    #[serde(default)]
+    releases: HashMap<String, Pick>,
 }
 
 struct Store {
@@ -122,6 +128,9 @@ pub fn init(data_dir: Option<&Path>) {
         }
         for (title, pref) in read.audio {
             s.saved.audio.entry(title).or_insert(pref);
+        }
+        for (key, pick) in read.releases {
+            s.saved.releases.entry(key).or_insert(pick);
         }
         s.file = file;
     });
@@ -225,6 +234,24 @@ pub fn set_audio_pref(title: &str, pref: &Signature) {
     });
 }
 
+/// The release kept for `key` (see `Saved::releases`).
+pub fn release(key: &str) -> Option<Pick> {
+    with(|s| s.saved.releases.get(key).cloned())
+}
+
+/// Keeps `pick` as the release `key` plays.
+pub fn set_release(key: &str, pick: Pick) {
+    with(|s| {
+        if s.saved.releases.get(key) == Some(&pick) {
+            return;
+        }
+        s.saved.releases.insert(key.to_owned(), pick);
+        if let Some(file) = &s.file {
+            write(file, &s.saved);
+        }
+    });
+}
+
 /// The latest entry of `title`.
 pub fn latest(title: &str) -> Option<(String, Entry)> {
     recent().into_iter().find(|(_, e)| e.title == title)
@@ -279,12 +306,20 @@ mod tests {
         assert!(!save("x", "x", None, f64::NAN, 100.0, 150));
         assert!(get("x").is_none());
 
+        // The release a title plays is kept with it.
+        let sd = Pick { infohash: Some("ab12".into()), title: "Nosferatu.1922.DVDRip".into(), size: Some(1_500_000_000) };
+        set_release("tmdb:movie:653", sd.clone());
+        set_release("tmdb:tv:1399:s1", Pick { infohash: None, title: "Show.S01.720p".into(), size: None });
+
         // Saved to the data directory and read back.
         clear();
         assert!(get("tmdb:movie:603").is_none());
+        assert!(release("tmdb:movie:653").is_none());
         init(Some(&dir));
         assert!(get("tmdb:movie:603").unwrap().watched);
         assert_eq!(get("tmdb:tv:1399:s1e2").unwrap().position, 600.0);
+        assert_eq!(release("tmdb:movie:653"), Some(sd));
+        assert_eq!(release("tmdb:tv:1399:s1").unwrap().title, "Show.S01.720p");
 
         clear();
         std::fs::remove_dir_all(&dir).unwrap();
