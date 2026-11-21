@@ -304,5 +304,5 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/Player.tsx`.
 - `turn(landscape: bool)`: Turns the screen to landscape (`true`) or portrait, whatever the device's rotation lock says: the player's Rotate button, and its turn as it opens (iOS; elsewhere nothing). The device turning it back (rotation unlocked) still turns it.
   Called from: `ui/Player.tsx`.
-- `views() -> bool`: Whether reel's own native views are registered on this device (Android: the Java ones `build/android-views.sh` adds to the APK; registered on the first call).
+- `views() -> bool`: Whether reel's own native views are registered on this device (Android: the Java ones `build/android-views.sh` adds to the APK; registered on the first call, and on every activity made after it).
   Called from: nothing in the UI.
