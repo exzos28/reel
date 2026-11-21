@@ -136,7 +136,7 @@ mod tests {
         let mut p = Player::new(lib, "null", &[], Arc::new(move |name, data| sink.lock().unwrap().push((name.into(), data)))).unwrap();
         let gate = p.hold_until_drawn();
         p.set_prop("src", Some(&json!("file:///nowhere/held.mkv")));
-        assert!(events.lock().unwrap().is_empty(), "held until the view draws");
+        assert!(events.lock().unwrap().is_empty(), "held until the view draws: {:?}", events.lock().unwrap());
         gate.fail();
         let errors = |e: &[(String, Value)]| e.iter().filter(|(n, d)| n == "error" && d["code"] == "view").count();
         assert_eq!(errors(&events.lock().unwrap()), 1, "{:?}", events.lock().unwrap());
@@ -145,6 +145,40 @@ mod tests {
         std::thread::sleep(Duration::from_millis(500));
         assert!(!events.lock().unwrap().iter().any(|(n, _)| n == "load"), "nothing loads");
         drop(p);
+    }
+
+    /// The view unmounted (`close`, before NSH drops it seconds later): mpv stops at once, says
+    /// its playback ended, and no event reaches the view after. Needs libmpv and the sample:
+    /// `REEL_LIBMPV=… REEL_MPV_SAMPLE=… cargo test -- --ignored --nocapture --test-threads=1 close_ends`.
+    #[test]
+    #[ignore]
+    fn close_ends_the_playback_before_the_player_goes() {
+        let lib = super::ffi::lib().expect("libmpv (REEL_LIBMPV)");
+        let sample = std::env::var("REEL_MPV_SAMPLE").expect("REEL_MPV_SAMPLE");
+        let events: Arc<Mutex<Vec<(String, Value)>>> = Default::default();
+        let sink = events.clone();
+        let mut p = Player::new(lib, "null", &[], Arc::new(move |name, data| sink.lock().unwrap().push((name.into(), data)))).unwrap();
+        p.set_prop("volume", Some(&json!(0.0)));
+        p.set_prop("progressUpdateInterval", Some(&json!(50)));
+        p.set_prop("src", Some(&json!(sample)));
+        let started = Instant::now();
+        while !events.lock().unwrap().iter().any(|(n, d)| n == "progress" && d["currentTime"].as_f64().unwrap_or(0.0) > 0.3) {
+            assert!(started.elapsed() < Duration::from_secs(20), "plays");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        let block_on = |f| tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f);
+        assert!(!block_on(super::ending::none_playing(Duration::from_millis(10))), "it plays");
+        let began = Instant::now();
+        p.run("close", &Value::Null);
+        assert!(began.elapsed() < Duration::from_millis(50), "close waited {:?}", began.elapsed());
+        let heard = events.lock().unwrap().len();
+        assert!(block_on(super::ending::none_playing(Duration::from_secs(2))), "ended while the player is still there");
+        println!("the playback ended {:?} after close", began.elapsed());
+        std::thread::sleep(Duration::from_millis(300));
+        assert_eq!(events.lock().unwrap().len(), heard, "nothing reaches the view after close");
+        let dropping = Instant::now();
+        drop(p);
+        println!("then the player went in {:?}", dropping.elapsed());
     }
 
     /// Leaving while mpv waits for a stream that does not come: a server that takes the

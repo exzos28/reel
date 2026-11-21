@@ -187,27 +187,40 @@ export function VideoSurface(props: VideoSurfaceProps) {
 function PlayerView(props: VideoSurfaceProps) {
   return (
     <If when={videoKind() === "mpv"} else={<OtherSurface {...props} />}>
-      <MpvView
-        ref={(r: NativeComponentRef) => props.surfaceRef?.({ seek: (seconds) => r.command("seek", { seconds }) })}
-        src={props.src}
-        paused={props.paused}
-        volume={props.volume ?? 1}
-        subtitleLift={props.subtitleLift ?? 0}
-        subtitleSides={props.subtitleSides ?? 0}
-        subtitleScale={props.subtitleScale ?? 1}
-        audioLanguages={props.audioLanguages ?? ""}
-        audioTrack={props.audioTrack ?? null}
-        subtitleTrack={props.subtitleTrack ?? null}
-        progressUpdateInterval={props.progressUpdateInterval ?? 250}
-        onLoad={(e) => props.onLoad?.(e)}
-        onProgress={(e) => props.onProgress?.(e)}
-        onBuffer={(e) => props.onBuffer?.(e)}
-        onEnd={() => props.onEnd?.()}
-        onError={(e) => props.onError?.(e)}
-        onTracks={(e) => props.onTracks?.(JSON.stringify(e))}
-        style={props.style}
-      />
+      <MpvSurface {...props} />
     </If>
+  );
+}
+
+/** reel's mpv view. Unmounted, it is told to close: NSH lets go of a native view only once its
+ * node is released, seconds later, and mpv would play on until then. */
+function MpvSurface(props: VideoSurfaceProps) {
+  let native: NativeComponentRef | undefined;
+  cleanup(() => native?.command("close", {}));
+  return (
+    <MpvView
+      ref={(r: NativeComponentRef) => {
+        native = r;
+        props.surfaceRef?.({ seek: (seconds) => r.command("seek", { seconds }) });
+      }}
+      src={props.src}
+      paused={props.paused}
+      volume={props.volume ?? 1}
+      subtitleLift={props.subtitleLift ?? 0}
+      subtitleSides={props.subtitleSides ?? 0}
+      subtitleScale={props.subtitleScale ?? 1}
+      audioLanguages={props.audioLanguages ?? ""}
+      audioTrack={props.audioTrack ?? null}
+      subtitleTrack={props.subtitleTrack ?? null}
+      progressUpdateInterval={props.progressUpdateInterval ?? 250}
+      onLoad={(e) => props.onLoad?.(e)}
+      onProgress={(e) => props.onProgress?.(e)}
+      onBuffer={(e) => props.onBuffer?.(e)}
+      onEnd={() => props.onEnd?.()}
+      onError={(e) => props.onError?.(e)}
+      onTracks={(e) => props.onTracks?.(JSON.stringify(e))}
+      style={props.style}
+    />
   );
 }
 

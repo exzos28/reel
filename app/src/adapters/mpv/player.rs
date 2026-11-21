@@ -36,6 +36,15 @@ unsafe impl Sync for Raw {}
 
 struct Shared {
     stop: AtomicBool,
+    /// The view is gone or going (`Player::close`): mpv was told to stop, and nothing more reaches
+    /// the view. The event thread reads on until mpv says the playback ended.
+    closing: AtomicBool,
+    /// When the view let go: what the end is timed from.
+    let_go: OnceLock<Instant>,
+    /// mpv is idle (no file), as it last said (`idle-active`).
+    idle: AtomicBool,
+    /// The end was counted (`super::ending`), once.
+    counted: AtomicBool,
     /// Milliseconds between `progress` events.
     interval_ms: AtomicU64,
     /// The end was reached (mpv keeps the last frame: `keep-open`).
@@ -172,8 +181,6 @@ pub struct Player {
     gate: Option<Arc<LoadGate>>,
     /// The view's events (`load`, `error`…), for the gate's failure.
     emit: Emit,
-    /// When the view let go of it (`close_in_background_then`): what its end is timed from.
-    let_go: Option<Instant>,
 }
 
 /// Holds the file to load until the view can draw (`Player::hold_until_drawn`).
@@ -311,7 +318,7 @@ fn set_property(lib: &Lib, raw: Raw, name: &str, value: &str) {
     });
 }
 
-const OBSERVED: [(&str, c_int); 9] = [
+const OBSERVED: [(&str, c_int); 10] = [
     // The byte of the file mpv has read to: with demuxer-cache-time, where bytes are in time.
     ("stream-pos", ffi::FORMAT_INT64),
     ("time-pos", ffi::FORMAT_DOUBLE),
@@ -325,6 +332,8 @@ const OBSERVED: [(&str, c_int); 9] = [
     ("eof-reached", ffi::FORMAT_FLAG),
     // What decodes the video ("videotoolbox", "mediacodec", "no": the CPU), for the log.
     ("hwdec-current", ffi::FORMAT_STRING),
+    // No file: once the view went, the playback has ended (`Player::close`).
+    ("idle-active", ffi::FORMAT_FLAG),
 ];
 
 impl Player {
@@ -381,6 +390,10 @@ impl Player {
         }
         let shared = Arc::new(Shared {
             stop: AtomicBool::new(false),
+            closing: AtomicBool::new(false),
+            let_go: OnceLock::new(),
+            idle: AtomicBool::new(false),
+            counted: AtomicBool::new(false),
             interval_ms: AtomicU64::new(250),
             at_end: AtomicBool::new(false),
             own_wait: Default::default(),
@@ -397,7 +410,7 @@ impl Player {
                 .map_err(|e| e.to_string())?
         };
         super::ending::started();
-        Ok(Player { lib, raw, shared, thread: Some(thread), src: String::new(), gate: None, emit, let_go: None })
+        Ok(Player { lib, raw, shared, thread: Some(thread), src: String::new(), gate: None, emit })
     }
 
     pub fn raw(&self) -> Raw {
@@ -439,10 +452,9 @@ impl Player {
     /// the layer mpv draws into until then. If no thread can be made, the player goes here and
     /// `gone` with it, without running.
     #[cfg_attr(not(any(target_os = "macos", target_os = "ios", windows, all(target_os = "linux", not(target_arch = "arm")))), allow(dead_code))]
-    pub fn close_in_background_then(mut self, gone: impl FnOnce() + Send + 'static) {
-        self.let_go = Some(Instant::now());
+    pub fn close_in_background_then(self, gone: impl FnOnce() + Send + 'static) {
+        self.close();
         self.shared.stop.store(true, Ordering::Relaxed);
-        self.command(&["stop"]);
         let closing = std::thread::Builder::new().name("reel-mpv-close".into()).spawn(move || {
             drop(self);
             gone();
@@ -568,9 +580,29 @@ impl Player {
         }
     }
 
-    /// `ref.command(name, args)`: `seek` `{ seconds }`.
+    /// The view is going (unmounted: NSH lets go of the native view only once its node is
+    /// released, seconds later): mpv stops now, and nothing more reaches the view. The playback
+    /// has ended once mpv says so (`events`), or when the player goes (`Drop`). Once.
+    pub fn close(&self) {
+        if self.shared.closing.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        self.shared.let_go.get_or_init(Instant::now);
+        if let Some(g) = &self.gate {
+            g.forget();
+        }
+        self.command(&["stop"]);
+        // Nothing played (no file): nothing to end.
+        if self.shared.idle.load(Ordering::SeqCst) {
+            ended(&self.shared, "nothing played");
+        }
+    }
+
+    /// `ref.command(name, args)`: `seek` `{ seconds }`; `close` (`Player::close`).
     pub fn run(&mut self, name: &str, args: &Value) {
-        if name == "seek" {
+        if name == "close" {
+            self.close();
+        } else if name == "seek" {
             let s = args.get("seconds").and_then(Value::as_f64).or_else(|| args.as_f64()).unwrap_or(0.0).max(0.0);
             self.shared.at_end.store(false, Ordering::Relaxed);
             // The viewer's seek waits for the stream: it shows.
@@ -623,18 +655,20 @@ impl Drop for Player {
     /// (the file's end after the stop, or idle; at most `ENDING_WAIT` after the view let go),
     /// then mpv destroyed. The sound stops because mpv has stopped.
     fn drop(&mut self) {
-        let let_go = self.let_go.unwrap_or_else(Instant::now);
-        if !self.shared.stop.swap(true, Ordering::Relaxed) {
-            self.command(&["stop"]);
-        }
+        self.close();
+        let let_go = *self.shared.let_go.get_or_init(Instant::now);
+        self.shared.stop.store(true, Ordering::SeqCst);
         // mpv waits in a hook until it is let go, even to stop.
         self.shared.hooks.close();
         unsafe { (self.lib.wakeup)(self.raw.0) };
         if let Some(t) = self.thread.take() {
             let _ = t.join();
         }
-        self.wait_until_ended(let_go);
-        super::ending::ended();
+        // Ended already when the view went (`close`, and mpv said so): only mpv goes now.
+        let counted = self.shared.counted.load(Ordering::SeqCst);
+        if !counted {
+            self.wait_until_ended(let_go);
+        }
         // What mpv has not answered (no answer is read any more), taken while the handle is
         // still this player's (a new player may get its address once it is freed).
         let handle = self.raw.0 as usize;
@@ -645,6 +679,10 @@ impl Drop for Player {
         };
         unsafe { (self.lib.terminate_destroy)(self.raw.0) };
         tracing::warn!("reel mpv: destroyed {} ms after the view let go", let_go.elapsed().as_millis());
+        // The next film starts now (`VideoEngine.ended`).
+        if !counted && !self.shared.counted.swap(true, Ordering::SeqCst) {
+            super::ending::ended();
+        }
         // What waited for mpv runs now that it has gone.
         for p in left {
             if let Pending::Then(then) = p {
@@ -693,11 +731,22 @@ impl Player {
     }
 }
 
+/// The view went and mpv says its playback ended (`why`): counted once, and the next film may
+/// start (`VideoEngine.ended`). mpv itself is destroyed when the player goes.
+fn ended(shared: &Shared, why: &str) {
+    if shared.counted.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let after = shared.let_go.get().map_or(0, |t| t.elapsed().as_millis());
+    tracing::warn!("reel mpv: the playback ended {after} ms after the view let go ({why})");
+    super::ending::ended();
+}
+
 /// The event thread: until the player is dropped.
 fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
     // Nothing more for the view once the player is closing (it may be gone already).
     let emit = |name: &str, data: Value| {
-        if !shared.stop.load(Ordering::Relaxed) {
+        if !shared.stop.load(Ordering::Relaxed) && !shared.closing.load(Ordering::SeqCst) {
             emit(name, data);
         }
     };
@@ -754,6 +803,9 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
             }
             ffi::EVENT_END_FILE if !event.data.is_null() => {
                 let end = unsafe { &*(event.data as *const ffi::EventEndFile) };
+                if shared.closing.load(Ordering::SeqCst) && (end.reason == ffi::END_FILE_REASON_STOP || end.reason == ffi::END_FILE_REASON_QUIT) {
+                    ended(shared, "the file's end");
+                }
                 if end.reason == ffi::END_FILE_REASON_ERROR {
                     emit("error", json!({ "message": ffi::error_text(lib, end.error) }));
                 } else if end.reason == ffi::END_FILE_REASON_EOF && !shared.at_end.swap(true, Ordering::Relaxed) {
@@ -796,6 +848,13 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
                     (b"eof-reached", ffi::FORMAT_FLAG) => {
                         if unsafe { *(p.data as *const c_int) } != 0 && !shared.at_end.swap(true, Ordering::Relaxed) {
                             emit("end", json!({}));
+                        }
+                    }
+                    (b"idle-active", ffi::FORMAT_FLAG) => {
+                        let idle = unsafe { *(p.data as *const c_int) } != 0;
+                        shared.idle.store(idle, Ordering::SeqCst);
+                        if idle && shared.closing.load(Ordering::SeqCst) {
+                            ended(shared, "idle");
                         }
                     }
                     (b"hwdec-current", ffi::FORMAT_STRING) => {

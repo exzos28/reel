@@ -357,6 +357,8 @@ pub struct MpvComponent {
     /// Its number in `VIEWS`.
     id: usize,
     lifecycle: Option<Retained<Lifecycle>>,
+    /// The screen stays on for it (`ios_awake::playing`) until it lets go.
+    awake: bool,
 }
 
 impl MpvComponent {
@@ -364,7 +366,7 @@ impl MpvComponent {
         let mtm = MainThreadMarker::new().expect("components are made on the main thread");
         let Some(view) = MpvView::new(mtm) else {
             cx.emit("error", serde_json::json!({ "message": "no Metal layer", "code": "view" }));
-            return MpvComponent { view: UIView::new(mtm), inner: None, id: 0, lifecycle: None };
+            return MpvComponent { view: UIView::new(mtm), inner: None, id: 0, lifecycle: None, awake: false };
         };
         let emit_cx = cx.clone();
         let made = std::time::Instant::now();
@@ -415,7 +417,7 @@ impl MpvComponent {
         tracing::warn!("reel mpv: the player made in {} ms", made.elapsed().as_millis());
         let lifecycle = inner.as_ref().map(|i| Lifecycle::new(mtm, Rc::downgrade(i)));
         crate::adapters::ios_awake::playing(true);
-        MpvComponent { view: Retained::into_super(view), inner, id, lifecycle }
+        MpvComponent { view: Retained::into_super(view), inner, id, lifecycle, awake: true }
     }
 }
 
@@ -434,28 +436,43 @@ impl NativeComponent for MpvComponent {
     }
 
     fn command(&mut self, name: &str, args: &Value) {
+        // The view is unmounted: it lets go now, not when NSH releases its node (`let_go`).
+        if name == "close" {
+            return self.let_go();
+        }
         if let Some(inner) = &self.inner {
             inner.player.borrow_mut().run(name, args);
         }
     }
 }
 
-impl Drop for MpvComponent {
-    /// Leaving never waits for mpv (it may be waiting for the stream, and tearing its output
-    /// down takes a moment): the view lets go of it and it is destroyed on a thread of its own
-    /// (`close`).
-    fn drop(&mut self) {
+impl MpvComponent {
+    /// The view goes: unmounted (`close` from `VideoSurface`: NSH drops a native view only once
+    /// its node is released, seconds later, and mpv played on until then), or dropped. Leaving
+    /// never waits for mpv (it may be waiting for the stream, and tearing its output down takes
+    /// a moment): the view lets go of it, and it ends and is destroyed on a thread of its own
+    /// (`close`). Once.
+    fn let_go(&mut self) {
         let began = Instant::now();
         if let Some(l) = self.lifecycle.take() {
             unsafe { NSNotificationCenter::defaultCenter().removeObserver(&l) };
         }
         // mpv's hook finds no view from now on and only lets mpv go on.
         VIEWS.with(|v| v.borrow_mut().retain(|(n, _)| *n != self.id));
+        if !std::mem::take(&mut self.awake) {
+            return;
+        }
         if let Some(inner) = self.inner.take() {
             close(inner, began);
         }
         crate::adapters::ios_awake::playing(false);
         tracing::warn!("reel mpv: the view let go of the player in {} ms", began.elapsed().as_millis());
+    }
+}
+
+impl Drop for MpvComponent {
+    fn drop(&mut self) {
+        self.let_go();
     }
 }
 
