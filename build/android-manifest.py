@@ -15,6 +15,8 @@ Rewrites the APK in place (align and sign it after this):
   installs on a phone and a TV;
 - the app's links (nsh.json `schemes`) go to reel's own activity (`app.reel.views.Link`):
   NSH 0.6.1's Android runtime drops them (it does not read the schemes app.json claims);
+- reel's code runs at the process's start (`app.reel.views.Start`, a provider): every activity
+  gets reel's native views and the remote's keys (OK, media keys) from its first frame;
 - `<res dir>`'s resources are linked with the APK's own (aapt2), its resource ids kept.
 
 The manifest is edited as it is in the APK (Android's binary XML), so everything NSH wrote stays
@@ -44,8 +46,11 @@ ATTR_NAME, ATTR_CONFIG_CHANGES, ATTR_REQUIRED, ATTR_BANNER = 0x01010003, 0x01010
 ATTR_THEME, ATTR_EXPORTED, ATTR_EXCLUDE_FROM_RECENTS, ATTR_NO_HISTORY = 0x01010000, 0x01010010, 0x01010017, 0x0101022D
 THEME_NO_DISPLAY = 0x01030055  # @android:style/Theme.NoDisplay
 TRUE = 0xFFFFFFFF
+ATTR_AUTHORITIES = 0x01010018
 # reel's activity for the app's links (app/android/java/app/reel/views/Link.java).
 LINK_ACTIVITY = "app.reel.views.Link"
+# reel's provider that runs at the process's start (app/android/java/app/reel/views/Start.java).
+START_PROVIDER = "app.reel.views.Start"
 
 # android:configChanges values (ActivityInfo.CONFIG_*) the activity takes as well as NSH's.
 CONFIG_CHANGES = {
@@ -285,7 +290,7 @@ def set_attr(node, attr):
     node.attrs.sort(key=lambda a: (a.resid == 0, a.resid, a.name))
 
 
-def edit(root, banner):
+def edit(root, banner, package):
     manifest = next(n for n in root.walk() if n.kind == ELEMENT_START and n.name == "manifest")
     app = next(manifest.elements("application"))
     launchers = [(a, f) for a in app.elements("activity") for f in [is_launcher(a)] if f]
@@ -325,6 +330,14 @@ def edit(root, banner):
         ], links[0].line)
         link.children = links
         app.children.insert(app.children.index(activity) + 1, link)
+
+    if not any(a.data == START_PROVIDER for x in app.elements("provider") for a in x.attrs if a.resid == ATTR_NAME):
+        start = element("provider", [
+            android_name(START_PROVIDER),
+            Attr(ANDROID, "exported", ATTR_EXPORTED, None, TYPE_INT_BOOLEAN, 0),
+            Attr(ANDROID, "authorities", ATTR_AUTHORITIES, f"{package}.reel", TYPE_STRING, f"{package}.reel"),
+        ], activity.line)
+        app.children.insert(app.children.index(activity), start)
     return manifest
 
 
@@ -396,7 +409,7 @@ def main(argv):
         linked, ids = link(apk, res, aapt2, jar, package, work)
         if "drawable/banner" not in ids:
             raise ValueError(f"no drawable/banner in {res}")
-        edit(root, ids["drawable/banner"])
+        edit(root, ids["drawable/banner"], package)
         manifest = serialize(root, utf8)
         out = apk + ".new"
         with zipfile.ZipFile(apk) as src, zipfile.ZipFile(linked) as resz, zipfile.ZipFile(out, "w") as dst:
@@ -411,7 +424,7 @@ def main(argv):
                     # resources.arsc stays stored (Android maps it), as aapt2 wrote it.
                     dst.writestr(e, resz.read(e))
         os.replace(out, apk)
-    print(f"android-manifest: TV launcher, banner, configuration changes and links in {os.path.basename(apk)}", file=sys.stderr)
+    print(f"android-manifest: TV launcher, banner, configuration changes, links and start in {os.path.basename(apk)}", file=sys.stderr)
     return 0
 
 

@@ -1,9 +1,10 @@
 // reel's own native views on Android. An app packaged by `nsh package` has no Java of its own
-// for NSH to call, so the core calls `install()` once the app runs: it finds the activity's
-// NshView and registers reel's components on it, as an app embedding NSH would
-// (`NshView.registerComponent`). Components are registered per NshView, and an activity the
-// system makes again (the process lives on) has a new one: every activity made after is
-// followed and its view gets them too.
+// for NSH to call, so reel follows the app's activities from the process's start (`Start`, a
+// provider) and registers reel's components on each one's NshView, as an app embedding NSH
+// would (`NshView.registerComponent`), and gives its window the remote's keys (`RemoteKeys`).
+// Components are registered per NshView, and an activity the system makes again (the process
+// lives on) has a new one. The core's `install()` says whether they are there (and adopts the
+// running activity where nothing followed it).
 package app.reel.views;
 
 import android.app.Activity;
@@ -90,9 +91,10 @@ public final class Install {
     }
   }
 
-  /** Follows the app's activities: one made again (a configuration it does not handle, the
-   * system's memory) has a new NshView, which gets reel's components before its app runs. */
-  private static void follow(Application app) {
+  /** Follows the app's activities (main thread): each one, one made again included (a
+   * configuration it does not handle, the system's memory), has an NshView of its own, which gets
+   * reel's components before its app runs. */
+  static void follow(Application app) {
     if (following || app == null) return;
     following = true;
     app.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
@@ -123,7 +125,10 @@ public final class Install {
 
   private static void adopt(Activity a, NshView view) {
     activity = a;
-    if (registered.add(view)) register(view);
+    if (registered.add(view)) {
+      register(view);
+      RemoteKeys.wrap(a.getWindow());
+    }
   }
 
   /** reel's components: the mpv video view where libmpv is in the APK. */
