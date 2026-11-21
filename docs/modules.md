@@ -302,10 +302,10 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/playback.ts`.
 - `fullscreen(on: bool)`: The player's full screen (Android: the system bars hide while it plays; elsewhere nothing: the desktops have their own full screen, a TV is always full).
   Called from: `ui/platform/window.ts`.
-- `held() -> String`: How the device is held, for a phone's player, which draws itself sideways inside the upright window: JSON `{"turn","turns"}`. `turn`: the quarter turn the player gives its picture for it: 90 (clockwise: the device turned counter-clockwise, its top at the left, the common way), -90 (the other way), 0 (upright), null (flat, upside down, not known). `turns`: how many times the device has turned since the app started; the player follows a new one. With the rotation lock on, iOS reports no turn (only Rotate turns the player); off iOS always `{"turn":null,"turns":0}`.
+- `held() -> String`: How the device is held, for a phone's player, which draws itself sideways inside the upright window: JSON `{"turn","turns"}`. `turn`: the quarter turn the player gives its picture for it: 90 (clockwise: the device turned counter-clockwise, its top at the left, the common way), -90 (the other way), 0 (upright), null (flat, upside down, not known). `turns`: how many times the device has turned since the app started; the player follows a new one. With the rotation lock on (iOS) or auto-rotate off (Android), no turn is reported (only Rotate turns the player); elsewhere always `{"turn":null,"turns":0}`.
   JSON: `{"turn","turns"}`, `{"turn":null,"turns":0}`
   Called from: `ui/Player.tsx`.
-- `immersive(on: bool)`: The phone's player is drawn sideways (`true`): the home indicator, along the picture's side then, fades after a moment of no touches (iOS; elsewhere nothing).
+- `immersive(on: bool)`: The phone's player is drawn sideways (`true`): the home indicator, along the picture's side then, fades after a moment of no touches (iOS); the system bars stay hidden (Android); elsewhere nothing.
   Called from: `ui/Player.tsx`.
 - `kind() -> String`: `"mpv"` where reel's mpv view (`reel/mpv`) can play (macOS with libmpv found: MKV, every codec, track selection), else `"native"` (NSH's `<Video>`, the platform's player). Choosing mpv also sets the search profile to it, so releases only mpv plays are offered. On a Samsung TV (the `tizen` profile its host sets) `"avplay"`: the TV shell's AVPlay draws under the web UI.
   Called from: `ui/VideoSurface.tsx`.
@@ -313,5 +313,5 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/Player.tsx`.
 - `turnScale(from: i32, to: i32, width: f64, height: f64, aspect: f64) -> f64` (`turn_scale`): The scale a phone's player turn starts at, from `from` to `to` degrees (0, 90, -90), in a window `width` x `height` points, for a picture of `aspect` (its width over its height; 0: not known, 16:9): the new layout starts drawn as large as the old one showed the picture, and grows or shrinks to 1 as it turns (`reel_domain::play::turn_start_scale`).
   Called from: `ui/layout/TurnedBox.tsx`.
-- `views() -> bool`: Whether reel's own native views are registered on this device (Android: the Java ones `build/android-views.sh` adds to the APK; registered on the first call, and on every activity made after it).
-  Called from: nothing in the UI.
+- `views() -> bool`: Whether reel's own native views are registered on this device (Android: the Java ones `build/android-views.sh` adds to the APK; registered on the first call, and on every activity made after it). With them a phone's window stays upright, and its player draws itself sideways (`held`).
+  Called from: `ui/platform/index.ts`.
