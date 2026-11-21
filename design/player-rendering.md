@@ -143,15 +143,23 @@ close is gone with it.
   keyframe with mpv's own exact refresh seek, as a resume at open does, and `own_wait` keeps that
   wait from showing as buffering. This is the same kind of decoder re-creation the turn used to
   make, so it needs a device check (§5).
-- **Leaving:**
-  1. Silence first: `paused` and volume 0 in the UI, then `stop` as the view goes, sent without
-     waiting (`Player::close_in_background_then`). The view's events stop with it.
-  2. The view lets go on the main thread at once: no view for the hook, no lifecycle observer,
-     mpv's layer out of the view.
-  3. On a thread of its own: a held hook is continued, the event thread is joined, and mpv is
-     destroyed. mpv holds the layer without retaining it, so the layer is kept until mpv is gone
-     and released on the main thread after. The main thread never waits for mpv, so whatever
-     mpv's output or MoltenVK may ask of it meanwhile gets done.
+- **Leaving** (closing the player, another episode, Up next, another film), in this order on
+  every platform, and the main thread never waits for mpv:
+  1. The old job ends in the core (`Engine.close`, in `playback.ts`'s `end`) and the view goes
+     with the status that follows (closing: `paused` and volume 0 first, while the dialog fades).
+  2. The view lets go on the main thread at once: `stop` is sent without waiting
+     (`Player::close_in_background_then`), and the view's events stop. On iOS also no view for
+     the hook, no lifecycle observer, and mpv's layer out of the view.
+  3. On a thread of its own (`Player`'s drop): a held hook is continued (mpv cannot stop while it
+     waits in one), the event thread is joined, and mpv's own word is waited for: the file's end
+     after the stop, or idle. The sound stops because mpv has stopped. After 2 s mpv is destroyed
+     anyway (logged). The log times both from the moment the view let go: `the playback ended …
+     ms`, `destroyed … ms`.
+  4. mpv is destroyed. On iOS mpv holds the layer without retaining it, so the layer is kept
+     until mpv is gone and released on the main thread after. Whatever mpv's output or MoltenVK
+     may ask of the main thread meanwhile gets done.
+  5. The next film's job, stream and player start only once the last player has ended
+     (`VideoEngine.ended`; at most 3 s, logged). Its stage shows meanwhile.
 
 ## 4. What lies over the picture
 
