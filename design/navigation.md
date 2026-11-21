@@ -207,8 +207,12 @@ Mockups: `tablet.html` frames `ipad-home`, `ipad-film`, `ipad-film-scrolled`,
   Movies, Series, Cartoons, Anime), the chosen one in snow with a 2 pt red underline, the others
   ash; it scrolls sideways where it does not fit, over a dark veil where the hero's still is under
   it. A category picked there opens from its top (a filter of what to watch, not a place kept).
-- Root pages: a head under the status bar (y = `safeArea().top`, 44 pt): the logo; on a
-  category's page Home's tabs under it (44 pt); it scrolls away with the page.
+- Root pages: nothing of reel's over them (the room is the content's), but a category's: Home's
+  tabs under the status bar (y = `safeArea().top`, 44 pt), the page's own bar, fixed as it
+  scrolls. A title pushed on it slides in over the page and the tabs leave with the page; Back
+  (or the edge swipe) brings them back with it. A category picked is a new page whose tabs start
+  as the last ones were (the underline on the category left, the row where it was) and move on to
+  its own, so the bar reads as one that stays.
 - Back (Android's system back, Escape): from Search, Saved or Settings to the Home tab; from a
   category to All; from All the app leaves.
 - Phones are upright everywhere but in the player (iOS: the root controller allows landscape

@@ -9,6 +9,7 @@ import { bodyText, metaText } from "../kit/text";
 import { alpha, colors, density, heroFade, insetMaxWidth, safe, ts, type, u } from "../theme";
 import { heroMeta, MetaLine } from "./HeroMeta";
 import { heroBoxNow, heroFollowsWindow, stillTop, type HeroBox } from "./metrics";
+import { pageCategory } from "./frameState";
 import { Pressable } from "../kit/Pressable";
 import { caps } from "../platform";
 
@@ -140,9 +141,9 @@ function Logotype(props: { title: () => string; size: number; whole: boolean }) 
  * after the window's left edge, it also fades in from there. */
 function Backdrop(props: { item: () => Summary; box: () => HeroBox }) {
   const s = props.item;
-  // Where a fixed bar lies over the page (a phone's Home tabs), the still starts under it: the bar
-  // never cuts it. Taken once, as the page opens: it stays put under a page pushed over it.
-  const top = untracked(stillTop);
+  // Where a fixed bar lies over the page (a phone's Home tabs at a category's root page), the still
+  // starts under it: the bar never cuts it. Taken once, as the page opens.
+  const top = untracked(() => stillTop(pageCategory() !== null));
   return (
     <View style={backdropStyle(props.box(), top)}>
       <If when={s().still} else={<View style={paperStyle(s().paper)} />}>

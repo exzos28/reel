@@ -1,8 +1,8 @@
 // A page's frame: everything around a screen's content on every family, so a screen renders
 // only its content. It owns:
 // - what sits over the page (`metrics`): a TV's nav (root pages, scrolling away), a phone's
-//   head (root pages, scrolling away), its Back head (deep pages, fixed), its discs over a
-//   title's hero; a desktop's window bar and the tablet's top row are the app's, over all
+//   Home tabs (a category's root page, fixed), its Back head (deep pages, fixed), its discs over
+//   a title's hero; a desktop's window bar and the tablet's top row are the app's, over all
 //   pages, and turn solid by this page's scroll (`frameSolid`, the page on top only);
 // - the page's title, at the same place on every page of a family (none on a phone's category
 //   page: its tabs say where you are);
@@ -19,13 +19,13 @@ import { go, isCategory, section, toTop } from "../nav";
 import { caps } from "../platform";
 import { alpha, colors, safe, u } from "../theme";
 import { frame } from "./chrome";
-import { frameSolid, onTop } from "./frameState";
+import { frameSolid, onTop, pageCategory } from "./frameState";
 import { heroBoxNow, metrics, type PageKind } from "./metrics";
 import { NavBar } from "./NavBar";
 import { NAV } from "./navItems";
 import { navFocus } from "./navState";
 import { Scroller, type ScrollCtl } from "./Scroller";
-import { PhoneBackHead, PhoneHead, PhoneTitleBar } from "./TouchNav";
+import { PhoneBackHead, PhoneCategoryBar, PhoneHead, PhoneTitleBar } from "./TouchNav";
 
 const screenStyle = (): ViewStyle => ({ flex: 1, backgroundColor: colors.ink() });
 /** On a TV, room under the content so its last rows still rise to the focus line (a third
@@ -102,6 +102,8 @@ export function PageFrame(props: {
 }) {
   const m = () => metrics(props.kind);
   const root = props.kind === "root";
+  /** A category's root page: a phone's Home tabs at its top. */
+  const category = root ? pageCategory() : null;
   const pinned = () => !!props.foot && footPinned();
   const top = props.top ?? onTop();
   // The bars over the page turn solid once content is under them: past the top, or past the
@@ -124,6 +126,11 @@ export function PageFrame(props: {
   });
   return (
     <View style={{ flex: 1 }}>
+      {/* The page's own, first in the tree (a screen reader reaches it first), drawn over the
+          content and the status bar's scrim: it slides with the page as one is pushed on it. */}
+      <If when={category && frame().nav === "tab-bar"}>
+        <PhoneCategoryBar category={category!} />
+      </If>
       {/* First in the tree so a screen reader reaches Back first; it is drawn over the page. */}
       <If when={props.kind === "title" && phoneTitle()}>
         <PhoneTitleBar

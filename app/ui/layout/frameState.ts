@@ -3,7 +3,7 @@
 // knows its route through `PageRoute`, and only the one on top writes. Elsewhere one page
 // is mounted at a time (`PageRoute` is null): it is the one on top.
 import { context, signal } from "nsh";
-import { route, stack, type Route } from "../nav";
+import { isCategory, route, stack, type Destination, type Route } from "../nav";
 
 /** The route of the page being rendered (touch's stack), or null where one page shows. */
 export const PageRoute = context<Route | null>(null);
@@ -23,4 +23,11 @@ export function pushedPage(): boolean {
 export function onTop(): () => boolean {
   const mine = PageRoute();
   return () => mine === null || route() === mine;
+}
+
+/** The category whose root page renders this (a phone's Home tabs are at its top), else null:
+ * the page's own route, which does not change as pages are pushed on it. */
+export function pageCategory(): Destination | null {
+  const mine = PageRoute() ?? route();
+  return isCategory(mine.name) ? (mine.name as Destination) : null;
 }

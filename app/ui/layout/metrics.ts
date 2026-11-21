@@ -6,7 +6,7 @@ import { safeArea, windowSize } from "nsh";
 import { look } from "../platform/look";
 import { u } from "../theme";
 import { centering, frame, sideInset, sideSafeArea } from "./chrome";
-import { canGoBack, isCategory, section } from "../nav";
+import { isCategory, section } from "../nav";
 
 /** A root page (a destination: the nav over it), a title (its hero runs under what is
  * over it) or a deep page (Settings on touch, About: Back over it). */
@@ -98,10 +98,11 @@ export const phoneRail = () => frame().nav === "tab-bar" && windowSize().height 
 export const RAIL = 76;
 export const railWidth = () => (phoneRail() ? RAIL + sideSafeArea().left : 0);
 
-/** Where a hero's still starts, points from the page's top: under a phone's Home tabs (a fixed bar
- * over a category's root page), else at the top (it runs under what is over the page). */
-export function stillTop(): number {
-  return frame().nav === "tab-bar" && isCategory(section()) && !canGoBack() ? safeArea().top + CATEGORY_ROW : 0;
+/** Where a hero's still starts, points from the page's top: under a phone's Home tabs (the bar at
+ * the top of a category's root page: `category`), else at the top (it runs under what is over the
+ * page). */
+export function stillTop(category: boolean): number {
+  return frame().nav === "tab-bar" && category ? safeArea().top + CATEGORY_ROW : 0;
 }
 
 /** This device's metrics for a page of `kind`. */
