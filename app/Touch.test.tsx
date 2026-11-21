@@ -43,6 +43,26 @@ test("phone: the categories change the same with less motion, and the bar stays"
   expect(app.texts().filter((x) => x === "Anime").length).toBe(1);
 });
 
+test("phone: Home's tabs are the category page's own: a film opened over it covers them, Back and the swipe back bring them back", async () => {
+  const app = await phone();
+  expect(app.shows("category-bar")).toBe(true);
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  expect(app.shows("category-bar")).toBe(false); // on the page under the film, not over it
+  expect(app.shows("label:Anime")).toBe(false);
+  await app.press("label:Back to Movies");
+  expect(app.shows("category-bar")).toBe(true);
+  expect(app.texts()).toContain("All movies");
+  await app.press("label:Dune >> nth=0");
+  await app.back(); // the native stack's own back (the edge swipe)
+  expect(app.shows("category-bar")).toBe(true);
+  await app.press("label:Series"); // a new page, its tabs moving on from the last ones
+  await app.wait(300);
+  expect(app.shows("category-bar")).toBe(true);
+  expect(app.texts()).toContain("All series");
+  expect(app.texts().filter((x) => x === "Series").length).toBe(1);
+});
+
 test("phone: Settings is a tab of its own, without Back; Back from it goes to the Home tab", async () => {
   const app = await phone();
   await app.press("label:Movies");

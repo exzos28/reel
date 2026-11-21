@@ -1,7 +1,8 @@
 // The nav on touch (design/navigation.md, "Tablet" and "Phone"). The tabs are
 // Home, Movies, Shows, Anime and Search. Phone: a bottom tab bar (Home, Search, Saved, Settings)
-// on every page but the player, and a head over a root page (the logo; on a category's page
-// Home's tabs: All, Movies, Series, Cartoons, Anime) that scrolls away with it.
+// on every page but the player, and at the top of a category's root page Home's tabs (All,
+// Movies, Series, Cartoons, Anime), the page's own bar: it stays as the page scrolls and slides
+// with the page as one is pushed on it.
 // Tablet: one top row on every page: the logo (Back in its place on a deeper
 // page), the floating tabs centred, Add to list on a title, Saved and Settings (sections of their
 // own, each its own stack); solid once content is under it. A tablet's narrow window is a phone's.
@@ -17,7 +18,7 @@ import { look } from "../platform/look";
 import { alpha, colors, font, iconPt, targetSlop, u } from "../theme";
 import { ListToggle } from "./ListToggle";
 import { NAV } from "./navItems";
-import { frameSolid } from "./frameState";
+import { frameSolid, onTop } from "./frameState";
 import { sideSafeArea, windowControlsRoom } from "./chrome";
 import { PHONE_BACK_HEAD, PHONE_HEAD, PHONE_TITLE_BAR, phoneRail, railWidth, TAB_ROW, TOP_ROW } from "./metrics";
 import { CategoryTabs } from "./CategoryTabs";
@@ -190,16 +191,16 @@ export function PhoneHead() {
   return null;
 }
 
-/** Over a category's root page: Home's tabs, a bar that stays (the page scrolls
- * under it) and stays the same while the category changes: the tabs do not jump. Not over a
- * page pushed on a category (a title). */
-export function PhoneCategoryBar() {
+/** At the top of a category's root page: Home's tabs, a bar that stays as the page scrolls under
+ * it. The page's own, so it slides away and back with the page as one is pushed on it and popped
+ * (a title); a category picked opens its page with tabs that move on from the last ones
+ * (`CategoryTabs`), so the bar reads as staying while the category changes. */
+export function PhoneCategoryBar(props: { category: Destination }) {
+  const top = onTop();
   return (
-    <If when={isCategory(section()) && !canGoBack()}>
-      <View testID="category-bar" style={{ ...headColumnStyle(true), zIndex: 10 }}>
-        <CategoryTabs />
-      </View>
-    </If>
+    <View testID={top() ? "category-bar" : undefined} style={{ ...headColumnStyle(true), zIndex: 10 }}>
+      <CategoryTabs category={props.category} />
+    </View>
   );
 }
 

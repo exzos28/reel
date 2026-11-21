@@ -1,18 +1,22 @@
 // The categories at the top of a phone's Home (design/navigation.md, "Phone"): All, Movies,
-// Series, Cartoons, Anime, the chosen one underlined in red. `PhoneCategoryBar` (TouchNav) holds
-// them. They move as a system's tab bar does, all of it natively: the underline glides to the
-// chosen tab and takes its width (`Tabs`' indicator, a spring), the row slides to centre it, the
-// labels and icons fade between ash and snow; at once when the viewer asks for less motion.
-import { effect, reduceMotion, Text, View, type ImageAsset, type TextStyle, type ViewRef, type ViewStyle } from "nsh";
+// Series, Cartoons, Anime, the chosen one underlined in red. Each category's root page holds its
+// own (`PhoneCategoryBar` in TouchNav, placed by PageFrame), so the tabs leave and come back with
+// the page as a page pushed on it slides in and out. A category picked is a new page: its tabs
+// start where the last ones were (the category, the row's offset) and move on to its own as a
+// system's tab bar does, all of it natively: the underline glides to the chosen tab and takes its
+// width (`Tabs`' indicator, a spring), the row slides to centre it, the labels and icons fade
+// between ash and snow; at once when the viewer asks for less motion.
+import { effect, reduceMotion, signal, Text, View, type ImageAsset, type TextStyle, type ViewRef, type ViewStyle } from "nsh";
 import { Tab, Tabs } from "nsh/base";
 import { t } from "nsh/i18n";
 import { Haptics, isAvailable as hasHaptics } from "nsh/mobile";
 import { Icon } from "../kit/Icon";
 import { row } from "../kit/shape";
-import { CATEGORIES, openCategory, section, type Destination } from "../nav";
+import { CATEGORIES, openCategory, type Destination } from "../nav";
 import { caps } from "../platform";
 import { colors, font, iconPt as pt, u } from "../theme";
 import { windowControlsRoom } from "./chrome";
+import { onTop } from "./frameState";
 import { CATEGORY_ROW } from "./metrics";
 import { NAV } from "./navItems";
 import { Rail, railLead } from "./Rail";
@@ -52,8 +56,8 @@ const iconStyle = (on: boolean): ViewStyle => ({ opacity: on ? 1 : ICON_DIM, tra
 
 /** One category. Not a kit/Pressable: `Tab` is what `Tabs` moves its underline to; it takes the
  * press itself and shows it with the same dim (`pressedStyle`). */
-function CategoryTab(props: { id: Destination; chosen: (r: ViewRef) => void }) {
-  const on = () => section() === props.id;
+function CategoryTab(props: { id: Destination; on: () => boolean; chosen: (r: ViewRef) => void }) {
+  const on = props.on;
   let ref: ViewRef | undefined;
   effect(() => {
     // After this turn: the ref set and the row laid out with the new choice.
@@ -79,23 +83,49 @@ function CategoryTab(props: { id: Destination; chosen: (r: ViewRef) => void }) {
   );
 }
 
-/** All, Movies, Series, Cartoons, Anime: what Home shows, the chosen one underlined in red. A row
- * that scrolls sideways where it does not fit; the chosen one slides to its middle (as far as the
- * row's ends let it), at once when the bar appears. */
-export function CategoryTabs() {
+/** What the tabs on top showed last: the tabs of a category's page opened from them start there. */
+const last: { category: Destination | null; offset: number } = { category: null, offset: 0 };
+
+/** All, Movies, Series, Cartoons, Anime: what Home shows, `category` (the page's) underlined in
+ * red. A row that scrolls sideways where it does not fit; the chosen one slides to its middle (as
+ * far as the row's ends let it). A page's row starts as the last tabs were (their category, their
+ * offset) and moves on to its own once it is drawn, so picking a category reads as one bar
+ * moving; the app's first row is placed at once. */
+export function CategoryTabs(props: { category: Destination }) {
   const tabs = scroller({ horizontal: true, anchor: railLead });
-  /** Each bar shown places its row at once, then glides. */
-  let shown = false;
-  const chosen = (r: ViewRef) => {
-    r.reveal({ horizontal: "center", vertical: "nearest", animated: shown && !reduceMotion() });
-    shown = true;
+  const from = last.category;
+  const start = last.offset;
+  /** From the last tabs' category to this page's (with less motion, at this page's at once). */
+  const glide = from !== null && from !== props.category && !reduceMotion();
+  /** The row starts where the last tabs left it: on a glide, and back on the same category. */
+  const resume = glide || from === props.category;
+  /** The category the underline is on: the last tabs' until this row is drawn, then the page's. */
+  const chosen = signal(glide ? from! : props.category);
+  if (glide) requestAnimationFrame(() => requestAnimationFrame(() => chosen.set(props.category)));
+  // What these tabs show (the viewer may have moved the row), while they are the ones on top.
+  const top = onTop();
+  effect(() => {
+    const offset = tabs.offset() ?? 0;
+    if (!top()) return;
+    last.category = props.category;
+    last.offset = offset;
+  });
+  /** The row placed at once the first time, then gliding to the chosen tab. */
+  let placed = false;
+  const show = (r: ViewRef) => {
+    const first = !placed;
+    placed = true;
+    if (first && resume) {
+      tabs.scroll()?.scrollTo({ x: start, animated: false });
+      tabs.remember(start);
+    } else r.reveal({ horizontal: "center", vertical: "nearest", animated: !first && !reduceMotion() });
   };
   return (
     <View accessibilityLabel={t("nav.categories")} style={barStyle()}>
       <Rail ctl={tabs} gap={0}>
         <Tabs style={listStyle()} indicatorStyle={indicatorStyle()}>
           <Each of={CATEGORIES} key={(c) => c}>
-            {(c) => <CategoryTab id={c()} chosen={chosen} />}
+            {(c) => <CategoryTab id={c()} on={() => chosen() === c()} chosen={show} />}
           </Each>
         </Tabs>
       </Rail>
