@@ -41,12 +41,13 @@ UTF8 = 0x100
 # Value types.
 TYPE_REFERENCE, TYPE_STRING, TYPE_INT_HEX, TYPE_INT_BOOLEAN = 0x01, 0x03, 0x11, 0x12
 
-# Attributes reel sets (android.R.attr), and the theme of an activity with nothing to show.
-ATTR_NAME, ATTR_CONFIG_CHANGES, ATTR_REQUIRED, ATTR_BANNER = 0x01010003, 0x0101001F, 0x0101028E, 0x0101031F
+# Attributes reel sets (android.R.attr), and the theme of an activity with nothing to show: the
+# platform's public ids, checked against android.jar on every run (`check_ids`).
+ATTR_NAME, ATTR_CONFIG_CHANGES, ATTR_REQUIRED, ATTR_BANNER = 0x01010003, 0x0101001F, 0x0101028E, 0x010103F2
 ATTR_THEME, ATTR_EXPORTED, ATTR_EXCLUDE_FROM_RECENTS, ATTR_NO_HISTORY = 0x01010000, 0x01010010, 0x01010017, 0x0101022D
+ATTR_AUTHORITIES = 0x01010018
 THEME_NO_DISPLAY = 0x01030055  # @android:style/Theme.NoDisplay
 TRUE = 0xFFFFFFFF
-ATTR_AUTHORITIES = 0x01010018
 # reel's activity for the app's links (app/android/java/app/reel/views/Link.java).
 LINK_ACTIVITY = "app.reel.views.Link"
 # reel's provider that runs at the process's start (app/android/java/app/reel/views/Start.java).
@@ -285,7 +286,7 @@ def set_attr(node, attr):
     """Sets `attr` on `node`, keeping the order Android reads them in (by resource id)."""
     if node.special != (0, 0, 0):
         raise ValueError(f"<{node.name}> has id, class or style attributes: not edited")
-    node.attrs = [a for a in node.attrs if not (a.resid == attr.resid and a.name == attr.name)]
+    node.attrs = [a for a in node.attrs if not (a.ns == attr.ns and a.name == attr.name)]
     node.attrs.append(attr)
     node.attrs.sort(key=lambda a: (a.resid == 0, a.resid, a.name))
 
@@ -342,6 +343,33 @@ def edit(root, banner, package):
 
 
 # --- Resources -------------------------------------------------------------------------------
+
+
+def check_ids(aapt2, jar, work):
+    """The ids above are the ones aapt2 gives these attributes and the theme with `jar`."""
+    with open(f"{work}/ids.xml", "w") as f:
+        f.write(f"""<manifest xmlns:android="{ANDROID}" package="ids.check">
+  <uses-feature android:name="x" android:required="false" />
+  <application android:banner="@android:drawable/btn_star">
+    <provider android:name="x" android:authorities="ids.check" android:exported="false" />
+    <activity android:name="x" android:theme="@android:style/Theme.NoDisplay" android:configChanges="mcc"
+        android:excludeFromRecents="true" android:noHistory="true" />
+  </application>
+</manifest>
+""")
+    subprocess.run([aapt2, "link", "-I", jar, "--manifest", f"{work}/ids.xml", "-o", f"{work}/ids.apk"], check=True)
+    tree = subprocess.run([aapt2, "dump", "xmltree", "--file", "AndroidManifest.xml", f"{work}/ids.apk"],
+                          capture_output=True, text=True, check=True).stdout
+    found = {m.group(1): int(m.group(2), 16) for m in re.finditer(r"android:(\w+)\((0x[0-9a-f]{8})\)", tree)}
+    want = {"name": ATTR_NAME, "configChanges": ATTR_CONFIG_CHANGES, "required": ATTR_REQUIRED, "banner": ATTR_BANNER,
+            "theme": ATTR_THEME, "exported": ATTR_EXPORTED, "excludeFromRecents": ATTR_EXCLUDE_FROM_RECENTS,
+            "noHistory": ATTR_NO_HISTORY, "authorities": ATTR_AUTHORITIES}
+    wrong = {n: hex(found.get(n, 0)) for n, rid in want.items() if found.get(n) != rid}
+    theme = re.search(r"android:theme\(0x[0-9a-f]{8}\)=@(0x[0-9a-f]{8})", tree)
+    if not theme or int(theme.group(1), 16) != THEME_NO_DISPLAY:
+        wrong["Theme.NoDisplay"] = theme.group(1) if theme else "none"
+    if wrong:
+        raise ValueError(f"android.jar gives other ids: {wrong}")
 
 
 def resources(aapt2, apk):
@@ -406,6 +434,7 @@ def main(argv):
     package = next(n for n in root.walk() if n.kind == ELEMENT_START and n.name == "manifest")
     package = next(a.data for a in package.attrs if a.name == "package" and not a.resid)
     with tempfile.TemporaryDirectory() as work:
+        check_ids(aapt2, jar, work)
         linked, ids = link(apk, res, aapt2, jar, package, work)
         if "drawable/banner" not in ids:
             raise ValueError(f"no drawable/banner in {res}")
