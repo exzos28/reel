@@ -87,9 +87,17 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         no_args(&a)?;
         ret(VideoEngine::views())
     })
-    .sync("VideoEngine", "turn", |a| {
-        let (landscape,): (bool,) = args(a)?;
-        ret(VideoEngine::turn(landscape))
+    .sync("VideoEngine", "held", |a| {
+        no_args(&a)?;
+        ret(VideoEngine::held())
+    })
+    .sync("VideoEngine", "immersive", |a| {
+        let (on,): (bool,) = args(a)?;
+        ret(VideoEngine::immersive(on))
+    })
+    .sync("VideoEngine", "turnScale", |a| {
+        let (from, to, width, height, aspect): (i32, i32, f64, f64, f64) = args(a)?;
+        ret(VideoEngine::turn_scale(from, to, width, height, aspect))
     })
     .sync("VideoEngine", "sideways", |a| {
         let (width, height): (f64, f64) = args(a)?;
