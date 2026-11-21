@@ -3,6 +3,7 @@
 // stays where seeks put it); and the stage before the first frame.
 import { expect, test } from "nsh/test";
 import { episode, HOME, homeOf, NATIVE, STILL, openApp, DUNE_FIRST } from "./testEngine";
+import { turnedInsets } from "./ui/layout/surface";
 
 /** Home with Attack on Titan watched last: the hero. */
 const AOT_FIRST = { "Catalog.home": homeOf(HOME.map((s) => (s.id === "continue" ? { ...s, items: [...s.items].reverse() } : s))) };
@@ -147,6 +148,30 @@ test("left and right seek 10 seconds on the scrubber", async () => {
   expect(app.texts()).toContain("0:00");
 });
 
+// A remote's media keys (Android TV's come as F7 to F11).
+test("the remote's media keys: rewind and fast forward step 10 seconds, play/pause, play and pause", async () => {
+  const app = await playing();
+  await app.keyboard.press("f9");
+  await app.keyboard.press("f9");
+  expect(app.texts()).toContain("0:20");
+  await app.keyboard.press("f7");
+  expect(app.texts()).toContain("0:10");
+  await app.keyboard.press("f8");
+  expect(app.shows("label:Play")).toBe(true); // paused
+  await app.keyboard.press("f8");
+  expect(app.shows("label:Pause")).toBe(true);
+  await app.keyboard.press("f10"); // play: it plays already
+  expect(app.shows("label:Pause")).toBe(true);
+});
+
+test("F11 pauses where the system leaves it to the app (not Android, Linux, Windows: their full screen)", async () => {
+  const app = await phonePlaying(PORTRAIT);
+  await app.keyboard.press("f11");
+  expect(app.shows("label:Play")).toBe(true);
+  await app.keyboard.press("f10");
+  expect(app.shows("label:Pause")).toBe(true);
+});
+
 test("down moves to the buttons; left and right pick one, enter runs it", async () => {
   const app = await playing();
   await app.keyboard.press("down"); // on play/pause
@@ -272,6 +297,11 @@ test("Mac: the Back in the window bar's slot closes the player, while it starts 
 const PORTRAIT = { width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 } };
 const SIDEWAYS = { width: 852, height: 393, safeArea: { top: 0, bottom: 21, left: 62, right: 62 } };
 
+/** A picture taller than wide: a phone's player stands upright once it loads (its layout there is
+ * the window's, as headless tests lay it out: they do not apply the turned player's transform, so
+ * its edges lie outside their screen). */
+const UPRIGHT = { "VideoEngine.sideways": false };
+
 async function phonePlaying(screen: typeof PORTRAIT, over: Record<string, unknown> = {}, start = "Play", modules: Record<string, Record<string, unknown>> = {}) {
   const app = await openApp({
     platform: "ios", ...screen, clock: {},
@@ -283,7 +313,7 @@ async function phonePlaying(screen: typeof PORTRAIT, over: Record<string, unknow
 }
 
 test("phone: Audio and subtitles is a sheet, one list at a time under Audio, Subtitles and Release", async () => {
-  const app = await phonePlaying(PORTRAIT);
+  const app = await phonePlaying(PORTRAIT, UPRIGHT);
   await app.press("label:Audio and subtitles");
   expect(app.shows("tracks-panel")).toBe(true);
   expect(app.shows("tracks-grabber")).toBe(true); // from the bottom
@@ -318,7 +348,7 @@ test("phone held sideways: the tracks are a sheet at the right; Back closes it, 
 });
 
 test("phone: Episodes is a sheet titled with the season and its count, the numbers in their own column", async () => {
-  const app = await phonePlaying(PORTRAIT, AOT_FIRST, "Resume S3:E2 · 10:00");
+  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, ...UPRIGHT }, "Resume S3:E2 · 10:00");
   await app.press("label:Episodes");
   expect(app.shows("episodes-panel")).toBe(true);
   expect(app.texts()).toContain("Season 3 · 4 episodes");
@@ -336,7 +366,7 @@ test("phone: Episodes is a sheet titled with the season and its count, the numbe
 });
 
 test("phone: an episode picked in the Episodes sheet plays", async () => {
-  const app = await phonePlaying(PORTRAIT, AOT_FIRST, "Resume S3:E2 · 10:00");
+  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, ...UPRIGHT }, "Resume S3:E2 · 10:00");
   await app.press("label:Episodes");
   await app.press("Old Story");
   await app.wait(600);
@@ -345,7 +375,7 @@ test("phone: an episode picked in the Episodes sheet plays", async () => {
 });
 
 test("phone: Play and ±10 s sit in the middle of the picture, the rest at the top", async () => {
-  const app = await phonePlaying(PORTRAIT);
+  const app = await phonePlaying(PORTRAIT, UPRIGHT);
   expect(app.shows("player-middle")).toBe(true);
   expect(app.shows("label:Pause")).toBe(true);
   expect(app.shows("label:Back 10 seconds")).toBe(true);
@@ -366,45 +396,157 @@ test("iPad: no Rotate in the player (its window does not turn for an app); the �
 // The core's answer for a picture: sideways unless it is taller than wide.
 const sidewaysUnlessTall = (w: number, h: number) => !(w > 0 && h > w);
 
-test("phone held upright: the player turns sideways as it opens, before the film loads, and upright again on leaving", async () => {
-  const turns: boolean[] = [];
-  const loads: number[] = [];
+// A phone's interface never turns: the player draws itself sideways inside the upright window
+// (layout/TurnedBox), a box of the window's size the other way round, turned a quarter.
+/** How the device is held, as `VideoEngine.held` answers: the angle and the count of its turns. */
+const heldAs = (turn: number | null, turns = 0) => JSON.stringify({ turn, turns });
+/** Runs a phone player's button `index` from the keys: −10 s, Play, +10 s, then the top's. */
+async function runButton(app: Awaited<ReturnType<typeof phonePlaying>>, index: number) {
+  await app.keyboard.press("down");
+  for (let i = 0; i < 6; i++) await app.keyboard.press("left");
+  for (let i = 0; i < index; i++) await app.keyboard.press("right");
+  await app.keyboard.press("enter");
+}
+/** The buttons' places: Audio and subtitles, then Episodes (a series) and Rotate. */
+const TRACKS = 3;
+/** The angle the player is turned to: 90 clockwise (the common way), -90 the other way, 0 upright. */
+const angleOf = (app: Awaited<ReturnType<typeof phonePlaying>>) =>
+  app.shows("player-turned") ? 90 : app.shows("player-turned-other") ? -90 : app.shows("player-upright") ? 0 : null;
+
+test("turned insets: the screen's insets on the sides of the box they are on", () => {
+  const screen = { top: 54, right: 0, bottom: 34, left: 0 };
+  // Clockwise: the box's left is the screen's top (the Dynamic Island), its right the home indicator.
+  expect(turnedInsets(screen, 90)).toEqual({ top: 0, right: 34, bottom: 0, left: 54 });
+  expect(turnedInsets(screen, -90)).toEqual({ top: 0, right: 54, bottom: 0, left: 34 });
+  expect(turnedInsets(screen, 0)).toEqual(screen);
+});
+
+test("phone: the player opens drawn sideways in the upright window, before the film loads; the system is asked for no turn", async () => {
+  const immersive: boolean[] = [];
   const app = await openApp({
     platform: "ios", ...PORTRAIT, clock: {},
     // The engine still looks for people: no video view yet.
-    modules: { "app/native": { ...NATIVE, ...DUNE_FIRST, "Engine.status": JSON.stringify({ phase: "resolving", stage: "finding" }), "VideoEngine.sideways": (w: number, h: number) => (loads.push(w), sidewaysUnlessTall(w, h)), "VideoEngine.turn": (l: boolean) => { turns.push(l); } } },
+    modules: { "app/native": { ...NATIVE, ...DUNE_FIRST, "Engine.status": JSON.stringify({ phase: "resolving", stage: "finding" }), "VideoEngine.immersive": (on: boolean) => { immersive.push(on); } } },
   });
   await app.press("Play");
   await app.wait(600);
   expect(app.shows("stage")).toBe(true);
-  expect(turns).toEqual([true]);
-  expect(loads).toEqual([]);
-  await app.press("label:Close");
+  expect(app.shows("player-turned")).toBe(true);
+  expect(immersive).toEqual([true]); // the home indicator fades
+  await app.keyboard.press("escape"); // Back
   await app.wait(600);
-  expect(turns).toEqual([true, false]);
+  expect(app.shows("player")).toBe(false);
+  expect(immersive).toEqual([true, false]);
 });
 
-test("phone held upright: a wide film stays sideways once it loads", async () => {
-  const turns: boolean[] = [];
-  const app = await phonePlaying(PORTRAIT, { "VideoEngine.sideways": sidewaysUnlessTall, "VideoEngine.turn": (l: boolean) => { turns.push(l); } });
+test("phone: a wide film stays sideways once it loads; a picture taller than wide stands it upright", async () => {
+  const wide = await phonePlaying(PORTRAIT, { "VideoEngine.sideways": sidewaysUnlessTall });
+  expect(wide.shows("scrubber")).toBe(true);
+  expect(angleOf(wide)).toBe(90);
+  const tall = await phonePlaying(PORTRAIT, UPRIGHT);
+  expect(angleOf(tall)).toBe(0);
+});
+
+test("phone: Rotate turns the player sideways and stands it back upright", async () => {
+  const app = await phonePlaying(PORTRAIT, UPRIGHT);
+  await app.press("label:Rotate screen");
+  await app.wait(600);
+  expect(angleOf(app)).toBe(90);
   expect(app.shows("scrubber")).toBe(true);
-  expect(turns).toEqual([true]); // 1920×1080: the turn at the start only
+  await runButton(app, TRACKS + 1); // Rotate, from the keys (its place is off the headless screen)
+  await app.wait(600);
+  expect(angleOf(app)).toBe(0);
 });
 
-test("phone: a picture taller than wide turns it back upright once it loads; one already sideways does not turn", async () => {
-  const turns: boolean[] = [];
-  const tall = { "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } };
-  await phonePlaying(PORTRAIT, tall);
-  expect(turns).toEqual([true, false]);
-  turns.length = 0;
-  await phonePlaying(SIDEWAYS, tall);
-  expect(turns).toEqual([]);
+test("phone: the player turns towards how the device is held: the other way when its top is at the right", async () => {
+  const opened = await phonePlaying(PORTRAIT, { "VideoEngine.held": heldAs(-90) });
+  expect(angleOf(opened)).toBe(-90);
+  const rotated = await phonePlaying(PORTRAIT, { ...UPRIGHT, "VideoEngine.held": heldAs(-90) });
+  await rotated.press("label:Rotate screen");
+  expect(angleOf(rotated)).toBe(-90);
+  // Upright or not known: the common way.
+  for (const held of [heldAs(0), heldAs(null)]) expect(angleOf(await phonePlaying(PORTRAIT, { "VideoEngine.held": held }))).toBe(90);
+});
+
+test("phone: the player follows the device as it turns (rotation lock off); a reading that does not change turns nothing", async () => {
+  let held = heldAs(0, 3);
+  const app = await phonePlaying(PORTRAIT, { "VideoEngine.held": () => held });
+  expect(angleOf(app)).toBe(90); // it opened sideways, held upright
+  await app.wait(1000);
+  expect(angleOf(app)).toBe(90); // upright as at the start: no turn (with the lock on iOS says no more)
+  held = heldAs(-90, 4);
+  await app.wait(600);
+  expect(angleOf(app)).toBe(-90);
+  held = heldAs(0, 5);
+  await app.wait(600);
+  expect(angleOf(app)).toBe(0);
+  held = heldAs(null, 6); // flat on a table: as it was
+  await app.wait(600);
+  expect(angleOf(app)).toBe(0);
+  held = heldAs(90, 7);
+  await app.wait(600);
+  expect(angleOf(app)).toBe(90);
+});
+
+test("phone with a screen reader: the player opens upright and does not follow the device; Rotate turns it", async () => {
+  let held = heldAs(0);
+  const app = await phonePlaying(PORTRAIT, { "VideoEngine.held": () => held }, "Play", { nsh: { screenReaderEnabled: true } });
+  expect(app.shows("player-upright")).toBe(true);
+  held = heldAs(90, 1);
+  await app.wait(600);
+  expect(app.shows("player-upright")).toBe(true);
+  await app.press("label:Rotate screen");
+  await app.wait(600);
+  expect(app.shows("player-turned")).toBe(true);
+});
+
+test("iPad: the player is the window's, never turned", async () => {
+  const app = await phonePlaying({ width: 1180, height: 820, safeArea: { top: 24, bottom: 20, left: 0, right: 0 } }, {}, "Play", { nsh: { "platform.idiom": "pad" } });
+  expect(app.shows("scrubber")).toBe(true);
+  expect(app.shows("player-turned")).toBe(false);
+  expect(app.shows("player-upright")).toBe(false);
+});
+
+// NSH's Sheet is a dialog of its own, which shows the window's way up: in the turned player the
+// drawers are drawn in place, at the box's right.
+test("phone turned: Audio and subtitles are drawn in place at the box's right; Back closes them, not the player", async () => {
+  const app = await phonePlaying(PORTRAIT);
+  await runButton(app, TRACKS);
+  expect(app.shows("tracks-panel")).toBe(true);
+  expect(app.shows("tracks-sheet")).toBe(false); // no dialog
+  expect(app.shows("tracks-grabber")).toBe(false); // the side's, not from the bottom
+  await app.keyboard.press("escape");
+  await app.wait(600);
+  expect(app.shows("tracks-panel")).toBe(false);
+  expect(app.shows("scrubber")).toBe(true);
+  await app.keyboard.press("enter"); // the keys are still on it
+  expect(app.shows("tracks-panel")).toBe(true);
+  await app.press("id:tracks-backdrop"); // a tap beside it
+  expect(app.shows("tracks-panel")).toBe(false);
+});
+
+test("phone turned: Episodes are drawn in place; Back closes them; a turn closes an open drawer", async () => {
+  let held = heldAs(0, 0);
+  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, "VideoEngine.held": () => held }, "Resume S3:E2 · 10:00");
+  await runButton(app, TRACKS + 1);
+  expect(app.shows("episodes-panel")).toBe(true);
+  expect(app.shows("episodes-sheet")).toBe(false);
+  expect(app.texts()).toContain("Season 3 · 4 episodes");
+  await app.keyboard.press("escape");
+  expect(app.shows("episodes-panel")).toBe(false);
+  expect(app.shows("scrubber")).toBe(true);
+  await app.keyboard.press("enter"); // the keys are still on it
+  expect(app.shows("episodes-panel")).toBe(true);
+  held = heldAs(0, 1); // the device stood upright
+  await app.wait(600);
+  expect(app.shows("player-upright")).toBe(true);
+  expect(app.shows("episodes-panel")).toBe(false);
 });
 
 // The scrubber and the volume are sliders (ui/kit/TrackSlider): a drag holds the controls up and
 // sideways drags are theirs; a swipe down from the scrubber still closes the player.
 test("phone: a drag on the scrubber keeps the controls up until it is let go", async () => {
-  const app = await phonePlaying(PORTRAIT);
+  const app = await phonePlaying(PORTRAIT, UPRIGHT);
   await app.dragAndHold("scrubber", { x: 60 });
   await app.wait(7000); // longer than the controls stay on their own
   expect(app.shows("scrubber")).toBe(true);
@@ -415,7 +557,8 @@ test("phone: a drag on the scrubber keeps the controls up until it is let go", a
 });
 
 test("phone: sideways on the scrubber is not the swipe that closes; down is", async () => {
-  const app = await phonePlaying(PORTRAIT);
+  for (const over of [UPRIGHT, {}]) {
+  const app = await phonePlaying(PORTRAIT, over); // upright, and turned (its pan in the box)
   await app.drag("scrubber", { x: -120, y: 30 });
   await app.wait(600);
   expect(app.shows("scrubber")).toBe(true);
@@ -423,6 +566,7 @@ test("phone: sideways on the scrubber is not the swipe that closes; down is", as
   await app.wait(600);
   expect(app.shows("scrubber")).toBe(false);
   expect(app.shows("player")).toBe(false);
+  }
 });
 
 test("Mac: a drag on the volume keeps the controls up until it is let go", async () => {
@@ -440,56 +584,48 @@ test("Mac: a drag on the volume keeps the controls up until it is let go", async
 // Another episode plays in the same player: on iOS the player is a dialog of its own, and going
 // through "nothing plays" closed it and opened another over the one leaving (a blank screen).
 test("phone: an episode picked in the Episodes sheet plays in the same player, which stays up", async () => {
-  const turns: boolean[] = [];
-  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, "VideoEngine.sideways": true, "VideoEngine.turn": (l: boolean) => { turns.push(l); } }, "Resume S3:E2 · 10:00");
-  await app.press("label:Episodes");
-  await app.press("Old Story");
+  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, ...UPRIGHT }, "Resume S3:E2 · 10:00");
+  await app.press("label:Rotate screen"); // sideways: the viewer's choice
+  await app.wait(600);
+  await runButton(app, TRACKS + 1); // Episodes
+  await app.keyboard.press("down"); // the next one
+  await app.keyboard.press("enter");
   expect(app.shows("player-host")).toBe(true); // never closed on the way
   await app.wait(600);
   expect(app.shows("player-host")).toBe(true);
   expect(app.shows("scrubber")).toBe(true);
-  // Sideways as it opened, and no more: the player was not torn down (it turns upright as it
-  // goes), and the next episode does not turn it again.
-  expect(turns).toEqual([true]);
+  expect(app.texts()).toContain("S3:E3 · Pain");
+  // The player was not torn down, and the next episode keeps the way the viewer turned it
+  // (a tall picture stands only the first one upright).
+  expect(app.shows("player-turned")).toBe(true);
 });
 
 test("phone: Up next plays the next episode in the same player", async () => {
-  const turns: boolean[] = [];
-  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, "Catalog.upNext": nextEpisode, "VideoEngine.sideways": true, "VideoEngine.turn": (l: boolean) => { turns.push(l); } }, "Resume S3:E2 · 10:00");
+  const app = await phonePlaying(PORTRAIT, { ...AOT_FIRST, ...UPRIGHT, "Catalog.upNext": nextEpisode }, "Resume S3:E2 · 10:00");
   expect(app.texts()).toContain("Next episode · S3:E3");
   await app.press("label:Play now");
   expect(app.shows("player-host")).toBe(true);
   await app.wait(600);
   expect(app.shows("player-host")).toBe(true);
-  expect(turns).toEqual([true]);
   await app.press("label:Watch credits"); // the next one's card: the controls come back
   expect(app.shows("scrubber")).toBe(true);
 });
 
-test("phone: leaving the player turns it upright, even after Rotate upright and the phone turned sideways", async () => {
-  const turns: boolean[] = [];
-  const app = await phonePlaying(SIDEWAYS, { "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } });
-  await app.press("label:Rotate screen"); // upright
-  expect(turns).toEqual([false]);
-  await app.press("label:Close");
+test("phone: back from the background, the player keeps the way it is turned", async () => {
+  const app = await phonePlaying(PORTRAIT, UPRIGHT);
+  await app.press("label:Rotate screen"); // sideways
   await app.wait(600);
-  expect(turns).toEqual([false, false]);
-});
-
-test("phone: back from the background, the player keeps the orientation it had", async () => {
-  const turns: boolean[] = [];
-  const app = await phonePlaying(SIDEWAYS, { "VideoEngine.sideways": false, "VideoEngine.turn": (l: boolean) => { turns.push(l); } });
   await app.setLifecycle("background");
-  await app.setViewport(PORTRAIT.width, PORTRAIT.height); // iOS turned it as the phone is held
   await app.setLifecycle("active");
-  expect(turns).toEqual([true]);
+  await app.wait(600);
+  expect(app.shows("player-turned")).toBe(true);
 });
 
 // A saved film has no releases to switch to: no empty Release list.
 const SAVED_TRACKS = { "Catalog.tracks": JSON.stringify({ audio: [{ key: "original", selected: true }], subtitles: [{ key: "off", selected: true }], releases: [] }) };
 
 test("phone: a film without releases has no Release list in its tracks", async () => {
-  const app = await phonePlaying(PORTRAIT, SAVED_TRACKS);
+  const app = await phonePlaying(PORTRAIT, { ...SAVED_TRACKS, ...UPRIGHT });
   await app.press("label:Audio and subtitles");
   expect(app.shows("id:tracks-tab-1")).toBe(true);
   expect(app.shows("id:tracks-tab-2")).toBe(false);
@@ -504,7 +640,7 @@ test("iPad: a film without releases has no Release column in its tracks", async 
 
 test("phone: the secondary buttons sit at the top, the bottom keeps the timeline", async () => {
   for (const screen of [PORTRAIT, SIDEWAYS]) {
-    const app = await phonePlaying(screen);
+    const app = await phonePlaying(screen, UPRIGHT);
     expect(app.shows("player-top-buttons")).toBe(true);
     expect(app.shows("player-top-buttons >> label:Audio and subtitles")).toBe(true);
     expect(app.shows("player-top-buttons >> label:Rotate screen")).toBe(true);
