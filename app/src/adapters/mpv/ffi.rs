@@ -25,6 +25,8 @@ pub const FORMAT_DOUBLE: c_int = 5;
 pub const EVENT_NONE: c_int = 0;
 pub const EVENT_SHUTDOWN: c_int = 1;
 pub const EVENT_LOG_MESSAGE: c_int = 2;
+pub const EVENT_SET_PROPERTY_REPLY: c_int = 4;
+pub const EVENT_COMMAND_REPLY: c_int = 5;
 pub const EVENT_START_FILE: c_int = 6;
 pub const EVENT_END_FILE: c_int = 7;
 pub const EVENT_FILE_LOADED: c_int = 8;
@@ -127,6 +129,10 @@ pub struct Lib {
     pub set_property_string: unsafe extern "C" fn(Handle, *const c_char, *const c_char) -> c_int,
     pub get_property_string: unsafe extern "C" fn(Handle, *const c_char) -> *mut c_char,
     pub command: unsafe extern "C" fn(Handle, *mut *const c_char) -> c_int,
+    /// The asynchronous calls: queued for mpv's thread, answered by an event (the caller never
+    /// waits for mpv).
+    pub set_property_async: unsafe extern "C" fn(Handle, u64, *const c_char, c_int, *mut c_void) -> c_int,
+    pub command_async: unsafe extern "C" fn(Handle, u64, *mut *const c_char) -> c_int,
     pub observe_property: unsafe extern "C" fn(Handle, u64, *const c_char, c_int) -> c_int,
     pub request_log_messages: unsafe extern "C" fn(Handle, *const c_char) -> c_int,
     pub wait_event: unsafe extern "C" fn(Handle, c_double) -> *mut Event,
@@ -263,6 +269,8 @@ unsafe fn load(path: &std::path::Path) -> Result<Lib, String> {
         set_property_string: sym!("mpv_set_property_string"),
         get_property_string: sym!("mpv_get_property_string"),
         command: sym!("mpv_command"),
+        set_property_async: sym!("mpv_set_property_async"),
+        command_async: sym!("mpv_command_async"),
         observe_property: sym!("mpv_observe_property"),
         request_log_messages: sym!("mpv_request_log_messages"),
         wait_event: sym!("mpv_wait_event"),

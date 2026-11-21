@@ -2,7 +2,9 @@
 //! `build/android-views.sh`): NSH registers native components only from Java
 //! (`NshView.registerComponent`), and an app `nsh package` builds has no Java of its own to
 //! call it, so this calls `app.reel.views.Install.install()` once, through JNI: the JVM the
-//! app runs in, the app's class loader (where reel's classes are), the call.
+//! app runs in, the app's class loader (where reel's classes are), the call. From then on
+//! `Install` registers them on every activity's NshView, a new one included (an activity the
+//! system makes again while the process lives on).
 
 use std::{
     ffi::{CStr, c_char, c_void},
@@ -13,7 +15,8 @@ use std::{
 use jni_sys::{JNI_OK, JNI_VERSION_1_6, JNIEnv, JavaVM, jboolean, jint, jobject, jsize, jvalue};
 // (jboolean is Rust's bool in jni-sys 0.4.)
 
-/// Whether reel's views are registered (installed once; false when anything is missing).
+/// Whether reel's views are registered (installed once, then on every new activity by
+/// `Install`; false when anything is missing).
 pub fn installed() -> bool {
     static DONE: OnceLock<bool> = OnceLock::new();
     *DONE.get_or_init(|| match unsafe { install() } {
@@ -144,4 +147,23 @@ unsafe fn install_class(env: *mut JNIEnv) -> Result<jobject, String> {
     let install = unsafe { (f.v1_6.CallObjectMethodA)(env, loader, load, args.as_ptr()) };
     unsafe { check(env, "loading app.reel.views.Install (is the APK built with build/android-views.sh?)")? };
     Ok(install)
+}
+
+/// `Link.nativeOpen(String)`: a link that opened the app, offered to the screen
+/// (`hosted::offer_link`; `app/android/java/app/reel/views/Link.java` says why).
+#[unsafe(no_mangle)]
+extern "system" fn Java_app_reel_views_Link_nativeOpen(env: *mut JNIEnv, _: jobject, url: jobject) {
+    if url.is_null() {
+        return;
+    }
+    let f = unsafe { &**env };
+    let chars = unsafe { (f.v1_6.GetStringUTFChars)(env, url, ptr::null_mut()) };
+    if chars.is_null() {
+        return;
+    }
+    let link = unsafe { CStr::from_ptr(chars) }.to_string_lossy().into_owned();
+    unsafe { (f.v1_6.ReleaseStringUTFChars)(env, url, chars) };
+    if !crate::interface::hosted::offer_link(&link) {
+        tracing::warn!("reel: a link with no source to offer");
+    }
 }

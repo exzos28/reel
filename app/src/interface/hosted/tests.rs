@@ -224,6 +224,21 @@ fn the_page_is_self_contained() {
 }
 
 #[test]
+fn a_link_that_opened_the_app_is_offered_to_the_screen() {
+    let (_g, dir) = setup("offer-link");
+    *OFFERS.lock().unwrap() = Default::default();
+    let link = format!("reel://s?t=rented-key&u={}", URL.replace(':', "%3A").replace('/', "%2F"));
+    assert!(!offer_link("reel://other"), "a link without a source offers nothing");
+    assert_eq!(offered()["host"], Value::Null);
+    assert!(offer_link(&link));
+    assert_eq!(offered()["host"], "127.0.0.1");
+    assert!(settings::source().is_none(), "nothing saved before the yes");
+    answer_offer(true);
+    assert_eq!(settings::source().unwrap().key.as_deref(), Some("rented-key"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_source_offered_from_a_link_is_saved_only_after_a_yes_on_the_screen() {
     let (_g, dir) = setup("offer");
     *OFFERS.lock().unwrap() = Default::default();

@@ -1,8 +1,13 @@
 //! The mpv video view on Android: the Java side (`app/android/java/app/reel/views/MpvView.java`)
-//! is a SurfaceView that NSH lays out; these are its `native` methods, which drive the same
+//! is a TextureView that NSH lays out; these are its `native` methods, which drive the same
 //! `Player` as on macOS. mpv draws into the view's Surface itself (`vo=gpu`,
 //! `gpu-context=android`, `wid` a global reference to the Surface) and decodes with
 //! MediaCodec where it can. The player's events go back to the view's `emit`.
+//!
+//! The methods are called on the UI thread and never wait for mpv's (the player's calls are
+//! asynchronous): mpv's thread may be waiting for the stream, or for the UI thread itself, which
+//! takes the TextureView's frames. A Surface mpv drew into is let go once mpv has stopped using
+//! it (`MpvView.release`), and the player stops on a thread of its own.
 
 use std::{
     ffi::{c_char, c_void},
@@ -15,7 +20,9 @@ use serde_json::Value;
 
 use super::{ffi, player::Player};
 
-/// Where mpv draws and how it decodes and plays sound on Android (mpv-android's choices).
+/// Where mpv draws and how it decodes and plays sound on Android (mpv-android's choices). `vo=gpu`
+/// shows Dolby Vision alone (profile 5) in the wrong colours: the core does not offer such
+/// releases here (`reel_domain::compat`).
 const PLATFORM: [(&str, &str); 5] = [
     ("gpu-context", "android"),
     ("opengl-es", "yes"),
@@ -50,8 +57,12 @@ impl Global {
 /// One view's player and what it holds of Java.
 struct View {
     player: Player,
+    vm: Vm,
     /// The Java view (for `emit`), a global reference.
     this: Global,
+    /// `MpvView`'s class (for `release`), a global reference: threads of the player's find no
+    /// class of the app's by name.
+    class: Global,
     /// The Surface mpv draws into, a global reference while attached.
     surface: Option<Global>,
 }
@@ -140,7 +151,10 @@ extern "system" fn Java_app_reel_views_MpvView_nativeCreate(env: *mut JNIEnv, th
         unsafe { (f.v1_6.DeleteLocalRef)(env, args[1].l) };
     });
     match Player::new(lib, "null", &PLATFORM, emit) {
-        Ok(player) => Box::into_raw(Box::new(View { player, this: me, surface: None })) as jlong,
+        Ok(player) => {
+            let class = Global(unsafe { (f.v1_6.NewGlobalRef)(env, class) });
+            Box::into_raw(Box::new(View { player, vm, this: me, class, surface: None })) as jlong
+        }
         Err(e) => {
             tracing::warn!("reel mpv: {e}");
             unsafe { (f.v1_6.DeleteGlobalRef)(env, me.0) };
@@ -157,7 +171,7 @@ unsafe fn view<'a>(handle: jlong) -> Option<&'a mut View> {
 #[unsafe(no_mangle)]
 extern "system" fn Java_app_reel_views_MpvView_nativeAttach(env: *mut JNIEnv, _: jobject, handle: jlong, surface: jobject) {
     let Some(v) = (unsafe { view(handle) }) else { return };
-    unsafe { detach(env, v) };
+    unsafe { detach(env, v, ptr::null_mut()) };
     let f = unsafe { &**env };
     let global = Global(unsafe { (f.v1_6.NewGlobalRef)(env, surface) });
     v.surface = Some(global);
@@ -166,19 +180,44 @@ extern "system" fn Java_app_reel_views_MpvView_nativeAttach(env: *mut JNIEnv, _:
     v.player.set_property("vo", "gpu");
 }
 
-unsafe fn detach(env: *mut JNIEnv, v: &mut View) {
+/// mpv stops drawing into the Surface. Once it has, the Surface (and `texture`, its
+/// SurfaceTexture, when given) is released (`MpvView.release`) and its global reference
+/// deleted: mpv reads `wid` when its output starts, until then.
+unsafe fn detach(env: *mut JNIEnv, v: &mut View, texture: jobject) {
     let Some(surface) = v.surface.take() else { return };
+    let f = unsafe { &**env };
+    let texture = Global(if texture.is_null() { ptr::null_mut() } else { unsafe { (f.v1_6.NewGlobalRef)(env, texture) } });
     v.player.set_property("vo", "null");
     v.player.set_property("force-window", "no");
     v.player.set_window(0);
-    unsafe { ((**env).v1_6.DeleteGlobalRef)(env, surface.0) };
+    let (vm, class) = (v.vm, v.class);
+    v.player.after_requests(move || unsafe { release(vm, class, surface, texture) });
 }
 
-/// `nativeDetach(long)`: the Surface is going away.
+/// `MpvView.release(surface, texture)` (mpv no longer draws into them), and the references go.
+unsafe fn release(vm: Vm, class: Global, surface: Global, texture: Global) {
+    let Some(env) = (unsafe { env_of(vm) }) else { return };
+    let f = unsafe { &**env };
+    let id = unsafe { (f.v1_6.GetStaticMethodID)(env, class.get(), c"release".as_ptr(), c"(Landroid/view/Surface;Landroid/graphics/SurfaceTexture;)V".as_ptr()) };
+    if !id.is_null() {
+        let args = [jvalue { l: surface.get() }, jvalue { l: texture.get() }];
+        unsafe { (f.v1_6.CallStaticVoidMethodA)(env, class.get(), id, args.as_ptr()) };
+    }
+    if unsafe { (f.v1_6.ExceptionCheck)(env) } {
+        unsafe { (f.v1_6.ExceptionClear)(env) };
+    }
+    unsafe { (f.v1_6.DeleteGlobalRef)(env, surface.get()) };
+    if !texture.get().is_null() {
+        unsafe { (f.v1_6.DeleteGlobalRef)(env, texture.get()) };
+    }
+}
+
+/// `nativeDetach(long, SurfaceTexture)`: the Surface is going away; it and its texture are
+/// released once mpv no longer draws into them (the view keeps them until then).
 #[unsafe(no_mangle)]
-extern "system" fn Java_app_reel_views_MpvView_nativeDetach(env: *mut JNIEnv, _: jobject, handle: jlong) {
+extern "system" fn Java_app_reel_views_MpvView_nativeDetach(env: *mut JNIEnv, _: jobject, handle: jlong, texture: jobject) {
     if let Some(v) = unsafe { view(handle) } {
-        unsafe { detach(env, v) };
+        unsafe { detach(env, v, texture) };
     }
 }
 
@@ -206,15 +245,28 @@ extern "system" fn Java_app_reel_views_MpvView_nativeCommand(env: *mut JNIEnv, _
     v.player.run(&name, &value(&json).unwrap_or(Value::Null));
 }
 
-/// `nativeDestroy(long)`: the view is gone; the player stops and is freed.
+/// `nativeDestroy(long)`: the view is gone; the player stops and is freed on a thread of its
+/// own (stopping waits for mpv's thread). The Surface it may still draw into is the view's to
+/// release: mpv holds its own reference to the window while it stops.
 #[unsafe(no_mangle)]
-extern "system" fn Java_app_reel_views_MpvView_nativeDestroy(env: *mut JNIEnv, _: jobject, handle: jlong) {
+extern "system" fn Java_app_reel_views_MpvView_nativeDestroy(_: *mut JNIEnv, _: jobject, handle: jlong) {
     if handle == 0 {
         return;
     }
-    let mut v = unsafe { Box::from_raw(handle as *mut View) };
-    unsafe { detach(env, &mut v) };
-    let me = v.this;
-    drop(v); // stops the event thread before the Java view's reference goes
-    unsafe { ((**env).v1_6.DeleteGlobalRef)(env, me.0) };
+    let v = unsafe { Box::from_raw(handle as *mut View) };
+    let stopping = std::thread::Builder::new().name("reel-mpv-close".into()).spawn(move || {
+        let View { player, vm, this, class, surface } = *v;
+        // Stops the event thread too, before the Java view's reference goes.
+        drop(player);
+        let Some(env) = (unsafe { env_of(vm) }) else { return };
+        let f = unsafe { &**env };
+        for global in [surface.map(Global::get), Some(this.get()), Some(class.get())].into_iter().flatten() {
+            unsafe { (f.v1_6.DeleteGlobalRef)(env, global) };
+        }
+        // A thread of ours: it leaves the JVM before it ends.
+        unsafe { ((**vm.0).v1_4.DetachCurrentThread)(vm.0) };
+    });
+    if let Err(e) = stopping {
+        tracing::warn!("reel mpv: the player was not stopped: {e}");
+    }
 }
