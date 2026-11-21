@@ -57,9 +57,20 @@ interface Styled {
   style: { background: string };
 }
 
+/** This frame, when the TV shell is above it. The app's code runs in NSH's realm, a frame of NSH's
+ * page in the same origin; the shell is the top document around that page, in another origin (the
+ * packaged widget's). In a browser on a development host (reel-core) NSH's page is the top: no
+ * shell, and nothing there would answer. */
 const frame = (): FrameLike | null => {
   const w = (globalThis as { window?: FrameLike }).window;
-  return w && w.top && w.top !== w ? w : null;
+  if (!w || !w.top || w.top === w) return null;
+  if (w.top !== w.parent) return w;
+  try {
+    // Readable: NSH's own page, not the shell.
+    return w.top.document ? null : w;
+  } catch {
+    return w;
+  }
 };
 
 function frameLink(w: FrameLike): AvplayLink {
