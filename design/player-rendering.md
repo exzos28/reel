@@ -167,11 +167,15 @@ close is gone with it.
      episode heard over the next one's stage). `stop` is sent without waiting (`Player::close`),
      and the view's events stop. On iOS the view lets go on the main thread at once: no view for
      the hook, no lifecycle observer, mpv's layer out of the view, and steps 3–4 follow on their
-     own thread. Elsewhere mpv's own word ends the playback (step 3, on the event thread) and mpv
-     is destroyed when the view is dropped.
+     own thread. On Android the view lets go of its player at once too (`android.rs`: steps 3–4
+     on their own thread; mpv draws through its own reference to the Surface meanwhile, and a
+     Surface detached after that is released at once). Elsewhere mpv's own word ends the playback
+     (step 3, on the event thread) and mpv is destroyed when the view is dropped.
   3. On a thread of its own (`Player`'s drop): a held hook is continued (mpv cannot stop while it
      waits in one), the event thread is joined, and mpv's own word is waited for: the file's end
-     after the stop, or idle. The sound stops because mpv has stopped. After 2 s mpv is destroyed
+     after the stop, or idle. The event thread never waits for mpv's own thread (what `load`
+     reports is read with `mpv_get_property_async`), so the join returns at once even when mpv's
+     thread does not answer. The sound stops because mpv has stopped. After 2 s mpv is destroyed
      anyway (logged). The log times both from the moment the view let go: `the playback ended …
      ms`, `destroyed … ms`.
   4. mpv is destroyed. On iOS mpv holds the layer without retaining it, so the layer is kept
@@ -179,6 +183,15 @@ close is gone with it.
      may ask of the main thread meanwhile gets done.
   5. The next film's job, stream and player start only once the last player has ended
      (`VideoEngine.ended`; at most 3 s, logged). Its stage shows meanwhile.
+- **A decoder that never answers** (seen on the Android emulator): its C2 decoder
+  (`c2.goldfish.h264.decoder`) drops the codec data in the flush right after it starts, then
+  takes no input and gives no frame, and FFmpeg 9.0's `mediacodec_receive_frame` retries for ever
+  ("Try again if both input port and output port return EAGAIN"), a busy loop on mpv's own
+  thread. The player stays on Starting; leaving, mpv never ends its playback, and
+  `mpv_terminate_destroy` waits for that thread for ever, so that mpv stays with its decoder on
+  the closing thread. Nothing of the client API reaches it; ending it needs a bounded retry in
+  reel-libmpv's FFmpeg. A stream that stops coming is not the cause: mpv's read is cancelled at
+  once (`mpv::tests::closing_while_waiting_for_the_stream_does_not_wait`).
 
 ## 4. What lies over the picture
 

@@ -269,11 +269,16 @@ fn pending() -> &'static Mutex<HashMap<u64, (usize, Pending)>> {
     PENDING.get_or_init(Default::default)
 }
 
+/// `n` reply ids of mpv's asynchronous requests, in a row, unique across the players.
+fn reply_ids(n: u64) -> u64 {
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    NEXT.fetch_add(n, Ordering::Relaxed)
+}
+
 /// Sends a request mpv does on its own thread (`send` with the reply id): queued in order, never
 /// waited for. Its answer comes to the event thread (`answered`).
 fn request(lib: &Lib, raw: Raw, what: Pending, send: impl FnOnce(u64) -> c_int) {
-    static NEXT: AtomicU64 = AtomicU64::new(1);
-    let id = NEXT.fetch_add(1, Ordering::Relaxed);
+    let id = reply_ids(1);
     pending().lock().unwrap().insert(id, (raw.0 as usize, what));
     let r = send(id);
     if r < 0 {
@@ -443,7 +448,7 @@ impl Player {
     /// be waiting for a stream). For a view whose window mpv no longer uses (Android: it holds
     /// its own reference to the Surface; the desktops: the render context is freed first), or
     /// keeps until mpv is gone (iOS: `close_in_background_then`).
-    #[cfg_attr(not(any(target_os = "macos", windows, all(target_os = "linux", not(target_arch = "arm")))), allow(dead_code))]
+    #[cfg_attr(not(any(target_os = "macos", target_os = "android", windows, all(target_os = "linux", not(target_arch = "arm")))), allow(dead_code))]
     pub fn close_in_background(self) {
         self.close_in_background_then(|| {});
     }
@@ -758,6 +763,8 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
     let (mut buffering, mut cache_wait, mut seeking) = (false, false, false);
     // The video output failed (said once): mpv plays the sound on without a picture then.
     let mut no_picture = false;
+    // The file's facts `load` reports, asked for when it loaded and on their way.
+    let mut loading: Option<Loading> = None;
     loop {
         if shared.stop.load(Ordering::Relaxed) {
             return;
@@ -796,10 +803,22 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
                     on_hook(held);
                 }
             }
-            ffi::EVENT_FILE_LOADED => {
-                duration = get_f64(lib, raw, "duration").unwrap_or(duration);
-                let (width, height) = picture_size(lib, raw);
-                emit("load", json!({ "duration": duration, "width": width, "height": height }));
+            // Read without waiting for mpv's thread: it may never answer (Android: stuck in
+            // FFmpeg's MediaCodec decoder, which retries for ever when the codec takes no input
+            // and gives no frame), and an event thread that waited for it kept the player from
+            // going (`Drop` waits for this thread).
+            ffi::EVENT_FILE_LOADED => loading = Loading::ask(lib, raw),
+            ffi::EVENT_GET_PROPERTY_REPLY if !event.data.is_null() => {
+                let p = unsafe { &*(event.data as *const ffi::EventProperty) };
+                let value = (event.error >= 0 && p.format == ffi::FORMAT_STRING && !p.data.is_null())
+                    .then(|| unsafe { CStr::from_ptr(*(p.data as *const *const c_char)) }.to_string_lossy().parse::<f64>().ok())
+                    .flatten();
+                if let Some(facts) = loading.as_mut().and_then(|l| l.answer(event.reply_userdata, value)) {
+                    loading = None;
+                    duration = facts.duration.unwrap_or(duration);
+                    let (width, height) = facts.picture;
+                    emit("load", json!({ "duration": duration, "width": width, "height": height }));
+                }
             }
             ffi::EVENT_END_FILE if !event.data.is_null() => {
                 let end = unsafe { &*(event.data as *const ffi::EventEndFile) };
@@ -875,27 +894,68 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
     }
 }
 
-/// The picture's size as shown (pixels; 0 × 0 when there is no video track): the decoder's once it
-/// has one, else what the container says of the video track (just loaded, nothing decoded yet),
-/// its pixel aspect and rotation applied.
-fn picture_size(lib: &Lib, raw: Raw) -> (f64, f64) {
-    let shown = (get_f64(lib, raw, "dwidth"), get_f64(lib, raw, "dheight"));
-    if let (Some(w), Some(h)) = shown
-        && w > 0.0
-        && h > 0.0
-    {
-        return (w, h);
-    }
-    let track = |name: &str| get_f64(lib, raw, &format!("current-tracks/video/{name}")).unwrap_or(0.0);
-    reel_domain::play::shown_size(track("demux-w"), track("demux-h"), track("demux-par"), track("demux-rotation"))
+/// What `load` reports of a file that loaded, asked for with `mpv_get_property_async` (in this
+/// order): its duration, the decoder's picture, and what the container says of the video track.
+const LOAD_FACTS: [&str; 7] = [
+    "duration",
+    "dwidth",
+    "dheight",
+    "current-tracks/video/demux-w",
+    "current-tracks/video/demux-h",
+    "current-tracks/video/demux-par",
+    "current-tracks/video/demux-rotation",
+];
+
+/// The answers to `LOAD_FACTS` as they come (mpv answers in order, on the event thread).
+struct Loading {
+    /// The reply id of the first; the others follow it.
+    first: u64,
+    values: [Option<f64>; LOAD_FACTS.len()],
+    left: usize,
 }
 
-fn get_f64(lib: &Lib, raw: Raw, name: &str) -> Option<f64> {
-    property(lib, raw, name)?.parse().ok()
+struct LoadFacts {
+    duration: Option<f64>,
+    /// The picture's size as shown (pixels; 0 × 0 when there is no video track): the decoder's
+    /// once it has one, else what the container says of the video track (just loaded, nothing
+    /// decoded yet), its pixel aspect and rotation applied.
+    picture: (f64, f64),
+}
+
+impl Loading {
+    /// Asks for the facts; None when mpv took no request (it is going).
+    fn ask(lib: &Lib, raw: Raw) -> Option<Loading> {
+        let first = reply_ids(LOAD_FACTS.len() as u64);
+        for (i, name) in LOAD_FACTS.iter().enumerate() {
+            if unsafe { (lib.get_property_async)(raw.0, first + i as u64, cstr(name).as_ptr(), ffi::FORMAT_STRING) } < 0 {
+                return None;
+            }
+        }
+        Some(Loading { first, values: [None; LOAD_FACTS.len()], left: LOAD_FACTS.len() })
+    }
+
+    /// The answer to request `id` (None: the property is not there, or not a number); the facts
+    /// once the last has come.
+    fn answer(&mut self, id: u64, value: Option<f64>) -> Option<LoadFacts> {
+        let i = id.checked_sub(self.first).filter(|i| (*i as usize) < LOAD_FACTS.len())? as usize;
+        self.values[i] = value;
+        self.left = self.left.saturating_sub(1);
+        if self.left > 0 {
+            return None;
+        }
+        let v = |i: usize| self.values[i];
+        let picture = match (v(1), v(2)) {
+            (Some(w), Some(h)) if w > 0.0 && h > 0.0 => (w, h),
+            _ => reel_domain::play::shown_size(v(3).unwrap_or(0.0), v(4).unwrap_or(0.0), v(5).unwrap_or(0.0), v(6).unwrap_or(0.0)),
+        };
+        Some(LoadFacts { duration: v(0), picture })
+    }
 }
 
 /// A property's value as text (None: unavailable; a list or map is JSON), from any thread: the
-/// view reads the tracks while mpv waits in its hook.
+/// view reads the tracks while mpv waits in its hook. It waits for mpv's thread: never on the
+/// event thread outside a hook (`Loading`).
+#[cfg_attr(not(target_os = "ios"), allow(dead_code))]
 pub fn property(lib: &Lib, raw: Raw, name: &str) -> Option<String> {
     let p = unsafe { (lib.get_property_string)(raw.0, cstr(name).as_ptr()) };
     if p.is_null() {
@@ -920,6 +980,25 @@ mod tests {
         assert!(w.hides(true, now + Duration::from_secs(1)), "mpv seeks to bring its video back");
         assert!(!w.hides(false, now + Duration::from_secs(2)), "the wait is over");
         assert!(!w.hides(true, now + Duration::from_secs(3)), "a later wait is the stream's");
+    }
+
+    #[test]
+    fn a_loaded_files_facts_come_once_all_are_answered() {
+        let mut l = Loading { first: 40, values: [None; LOAD_FACTS.len()], left: LOAD_FACTS.len() };
+        assert!(l.answer(39, Some(1.0)).is_none(), "another request's answer");
+        // Nothing decoded yet: the container's 1920×800, square pixels, not rotated.
+        let answers = [Some(5400.0), None, None, Some(1920.0), Some(800.0), Some(1.0), Some(0.0)];
+        for (i, v) in answers.iter().enumerate().take(6) {
+            assert!(l.answer(40 + i as u64, *v).is_none(), "{} answered, not all", i + 1);
+        }
+        let facts = l.answer(46, answers[6]).expect("all answered");
+        assert_eq!(facts.duration, Some(5400.0));
+        assert_eq!(facts.picture, (1920.0, 800.0));
+        // The decoder's picture wins once it has one.
+        let mut l = Loading { first: 1, values: [None; LOAD_FACTS.len()], left: LOAD_FACTS.len() };
+        let answers = [None, Some(1280.0), Some(720.0), Some(1920.0), Some(1080.0), Some(1.0), Some(0.0)];
+        let facts = answers.iter().enumerate().filter_map(|(i, v)| l.answer(1 + i as u64, *v)).last().unwrap();
+        assert_eq!((facts.duration, facts.picture), (None, (1280.0, 720.0)));
     }
 
     #[test]

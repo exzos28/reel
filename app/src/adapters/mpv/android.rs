@@ -7,7 +7,8 @@
 //! The methods are called on the UI thread and never wait for mpv's (the player's calls are
 //! asynchronous): mpv's thread may be waiting for the stream, or for the UI thread itself, which
 //! takes the TextureView's frames. A Surface mpv drew into is let go once mpv has stopped using
-//! it (`MpvView.release`), and the player stops on a thread of its own.
+//! it (`MpvView.release`), and the player stops on a thread of its own: as the view unmounts
+//! (`close`), not when NSH frees it seconds later.
 
 use std::{
     ffi::{c_char, c_void},
@@ -56,7 +57,8 @@ impl Global {
 
 /// One view's player and what it holds of Java.
 struct View {
-    player: Player,
+    /// None once the view closed (`close`): the player went on a thread of its own.
+    player: Option<Player>,
     vm: Vm,
     /// The Java view (for `emit`), a global reference.
     this: Global,
@@ -153,7 +155,7 @@ extern "system" fn Java_app_reel_views_MpvView_nativeCreate(env: *mut JNIEnv, th
     match Player::new(lib, "null", &PLATFORM, emit) {
         Ok(player) => {
             let class = Global(unsafe { (f.v1_6.NewGlobalRef)(env, class) });
-            Box::into_raw(Box::new(View { player, vm, this: me, class, surface: None })) as jlong
+            Box::into_raw(Box::new(View { player: Some(player), vm, this: me, class, surface: None })) as jlong
         }
         Err(e) => {
             tracing::warn!("reel mpv: {e}");
@@ -172,26 +174,32 @@ unsafe fn view<'a>(handle: jlong) -> Option<&'a mut View> {
 extern "system" fn Java_app_reel_views_MpvView_nativeAttach(env: *mut JNIEnv, _: jobject, handle: jlong, surface: jobject) {
     let Some(v) = (unsafe { view(handle) }) else { return };
     unsafe { detach(env, v, ptr::null_mut()) };
+    let Some(player) = &v.player else { return };
     let f = unsafe { &**env };
     let global = Global(unsafe { (f.v1_6.NewGlobalRef)(env, surface) });
     v.surface = Some(global);
-    v.player.set_window(global.0 as i64);
-    v.player.set_property("force-window", "yes");
-    v.player.set_property("vo", "gpu");
+    player.set_window(global.0 as i64);
+    player.set_property("force-window", "yes");
+    player.set_property("vo", "gpu");
 }
 
 /// mpv stops drawing into the Surface. Once it has, the Surface (and `texture`, its
 /// SurfaceTexture, when given) is released (`MpvView.release`) and its global reference
-/// deleted: mpv reads `wid` when its output starts, until then.
+/// deleted: mpv reads `wid` when its output starts, until then. Once the player has gone
+/// (`close`), at once: mpv holds its own reference to the window while it stops.
 unsafe fn detach(env: *mut JNIEnv, v: &mut View, texture: jobject) {
     let Some(surface) = v.surface.take() else { return };
     let f = unsafe { &**env };
     let texture = Global(if texture.is_null() { ptr::null_mut() } else { unsafe { (f.v1_6.NewGlobalRef)(env, texture) } });
-    v.player.set_property("vo", "null");
-    v.player.set_property("force-window", "no");
-    v.player.set_window(0);
     let (vm, class) = (v.vm, v.class);
-    v.player.after_requests(move || unsafe { release(vm, class, surface, texture) });
+    let Some(player) = &v.player else {
+        unsafe { release(vm, class, surface, texture) };
+        return;
+    };
+    player.set_property("vo", "null");
+    player.set_property("force-window", "no");
+    player.set_window(0);
+    player.after_requests(move || unsafe { release(vm, class, surface, texture) });
 }
 
 /// `MpvView.release(surface, texture)` (mpv no longer draws into them), and the references go.
@@ -224,17 +232,17 @@ extern "system" fn Java_app_reel_views_MpvView_nativeDetach(env: *mut JNIEnv, _:
 /// `nativeSize(long, int, int)`: the Surface's size in pixels.
 #[unsafe(no_mangle)]
 extern "system" fn Java_app_reel_views_MpvView_nativeSize(_: *mut JNIEnv, _: jobject, handle: jlong, width: i32, height: i32) {
-    if let Some(v) = unsafe { view(handle) } {
-        v.player.set_property("android-surface-size", &format!("{width}x{height}"));
+    if let Some(player) = unsafe { view(handle) }.and_then(|v| v.player.as_ref()) {
+        player.set_property("android-surface-size", &format!("{width}x{height}"));
     }
 }
 
 /// `nativeProp(long, String name, String json)`: a prop of the TSX view, `[value]`.
 #[unsafe(no_mangle)]
 extern "system" fn Java_app_reel_views_MpvView_nativeProp(env: *mut JNIEnv, _: jobject, handle: jlong, name: jstring, json: jstring) {
-    let Some(v) = (unsafe { view(handle) }) else { return };
+    let Some(player) = (unsafe { view(handle) }).and_then(|v| v.player.as_mut()) else { return };
     let (name, json) = unsafe { (rust_string(env, name), rust_string(env, json)) };
-    v.player.set_prop(&name, value(&json).as_ref());
+    player.set_prop(&name, value(&json).as_ref());
 }
 
 /// `nativeCommand(long, String name, String json)`: `ref.command(name, args)`, `[args]`.
@@ -242,7 +250,17 @@ extern "system" fn Java_app_reel_views_MpvView_nativeProp(env: *mut JNIEnv, _: j
 extern "system" fn Java_app_reel_views_MpvView_nativeCommand(env: *mut JNIEnv, _: jobject, handle: jlong, name: jstring, json: jstring) {
     let Some(v) = (unsafe { view(handle) }) else { return };
     let (name, json) = unsafe { (rust_string(env, name), rust_string(env, json)) };
-    v.player.run(&name, &value(&json).unwrap_or(Value::Null));
+    // Unmounted (`VideoSurface`): the player stops and goes now, on a thread of its own
+    // (`Player::close_in_background`: stop, mpv's word that the playback ended, then mpv
+    // destroyed), not when NSH frees the view seconds later.
+    if name == "close" {
+        if let Some(player) = v.player.take() {
+            player.close_in_background();
+        }
+        return;
+    }
+    let Some(player) = v.player.as_mut() else { return };
+    player.run(&name, &value(&json).unwrap_or(Value::Null));
 }
 
 /// `nativeDestroy(long)`: the view is gone; the player stops and is freed on a thread of its
@@ -256,7 +274,8 @@ extern "system" fn Java_app_reel_views_MpvView_nativeDestroy(_: *mut JNIEnv, _: 
     let v = unsafe { Box::from_raw(handle as *mut View) };
     let stopping = std::thread::Builder::new().name("reel-mpv-close".into()).spawn(move || {
         let View { player, vm, this, class, surface } = *v;
-        // Stops the event thread too, before the Java view's reference goes.
+        // Stops the event thread too, before the Java view's reference goes (none left once the
+        // view closed).
         drop(player);
         let Some(env) = (unsafe { env_of(vm) }) else { return };
         let f = unsafe { &**env };
