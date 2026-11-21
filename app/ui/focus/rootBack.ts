@@ -17,7 +17,7 @@ export function useRootBack(page: { ctl: ScrollCtl; onNav: () => boolean; toNav:
     if (frame().nav === "window-bar") return true;
     if (frame().nav !== "page") return false;
     if (!page.onNav()) {
-      page.ctl.scroll()?.scrollTo({ y: 0, animated: true });
+      page.ctl.toStart();
       page.toNav();
     } else if (section() !== "home") {
       homeZone.set("nav");

@@ -120,7 +120,7 @@ export function PageFrame(props: {
   effect(() => {
     if (toTop() === seen) return;
     seen = toTop();
-    props.ctl.scroll()?.scrollTo({ y: 0, animated: true });
+    props.ctl.toStart();
   });
   return (
     <View style={{ flex: 1 }}>
