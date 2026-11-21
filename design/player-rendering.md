@@ -145,11 +145,16 @@ close is gone with it.
   make, so it needs a device check (§5).
 - **Leaving** (closing the player, another episode, Up next, another film), in this order on
   every platform, and the main thread never waits for mpv:
-  1. The old job ends in the core (`Engine.close`, in `playback.ts`'s `end`) and the view goes
-     with the status that follows (closing: `paused` and volume 0 first, while the dialog fades).
-  2. The view lets go on the main thread at once: `stop` is sent without waiting
-     (`Player::close_in_background_then`), and the view's events stop. On iOS also no view for
-     the hook, no lifecycle observer, and mpv's layer out of the view.
+  1. The old job ends in the core (`Engine.close`, in `playback.ts`'s `end`) and the view is
+     unmounted with the status that follows (closing: `paused` and volume 0 first, while the
+     dialog fades).
+  2. Unmounted, the view is told to `close` (`VideoSurface`): NSH drops a native view only when
+     its node is released, seconds later, and mpv played on from its cache until then (the old
+     episode heard over the next one's stage). `stop` is sent without waiting (`Player::close`),
+     and the view's events stop. On iOS the view lets go on the main thread at once: no view for
+     the hook, no lifecycle observer, mpv's layer out of the view, and steps 3–4 follow on their
+     own thread. Elsewhere mpv's own word ends the playback (step 3, on the event thread) and mpv
+     is destroyed when the view is dropped.
   3. On a thread of its own (`Player`'s drop): a held hook is continued (mpv cannot stop while it
      waits in one), the event thread is joined, and mpv's own word is waited for: the file's end
      after the stop, or idle. The sound stops because mpv has stopped. After 2 s mpv is destroyed
