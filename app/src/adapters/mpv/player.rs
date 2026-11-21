@@ -172,6 +172,8 @@ pub struct Player {
     gate: Option<Arc<LoadGate>>,
     /// The view's events (`load`, `error`…), for the gate's failure.
     emit: Emit,
+    /// When the view let go of it (`close_in_background_then`): what its end is timed from.
+    let_go: Option<Instant>,
 }
 
 /// Holds the file to load until the view can draw (`Player::hold_until_drawn`).
@@ -394,7 +396,8 @@ impl Player {
                 })
                 .map_err(|e| e.to_string())?
         };
-        Ok(Player { lib, raw, shared, thread: Some(thread), src: String::new(), gate: None, emit })
+        super::ending::started();
+        Ok(Player { lib, raw, shared, thread: Some(thread), src: String::new(), gate: None, emit, let_go: None })
     }
 
     pub fn raw(&self) -> Raw {
@@ -436,7 +439,8 @@ impl Player {
     /// the layer mpv draws into until then. If no thread can be made, the player goes here and
     /// `gone` with it, without running.
     #[cfg_attr(not(any(target_os = "macos", target_os = "ios", windows, all(target_os = "linux", not(target_arch = "arm")))), allow(dead_code))]
-    pub fn close_in_background_then(self, gone: impl FnOnce() + Send + 'static) {
+    pub fn close_in_background_then(mut self, gone: impl FnOnce() + Send + 'static) {
+        self.let_go = Some(Instant::now());
         self.shared.stop.store(true, Ordering::Relaxed);
         self.command(&["stop"]);
         let closing = std::thread::Builder::new().name("reel-mpv-close".into()).spawn(move || {
@@ -606,11 +610,20 @@ const LOG_LEVEL: &str = match option_env!("REEL_MPV_LOG") {
 const PLAYER_CACHE_OPTION: &str = "64MiB";
 const _: () = assert!(reel_domain::play::PLAYER_CACHE == 64 * 1024 * 1024, "keep PLAYER_CACHE_OPTION in step");
 
+/// How long a player let go waits for mpv to end its playback before mpv is destroyed anyway:
+/// a mpv that does not end (stuck in a read) must not hold the next film for long.
+const ENDING_WAIT: Duration = Duration::from_secs(2);
+
+/// The id `idle-active` is observed with while the player ends (past `OBSERVED`'s).
+const IDLE_ACTIVE: u64 = 100;
+
 impl Drop for Player {
-    /// Waits for mpv to stop (`close_in_background` waits on a thread of its own).
+    /// Ends the playback, then destroys mpv, in this order (`close_in_background` does it on a
+    /// thread of its own): `stop`, a held hook let go, mpv's own word that the playback ended
+    /// (the file's end after the stop, or idle; at most `ENDING_WAIT` after the view let go),
+    /// then mpv destroyed. The sound stops because mpv has stopped.
     fn drop(&mut self) {
-        // Silence first: tearing mpv down takes a moment, and it would play what it has
-        // buffered meanwhile (the viewer has already left the player).
+        let let_go = self.let_go.unwrap_or_else(Instant::now);
         if !self.shared.stop.swap(true, Ordering::Relaxed) {
             self.command(&["stop"]);
         }
@@ -620,6 +633,8 @@ impl Drop for Player {
         if let Some(t) = self.thread.take() {
             let _ = t.join();
         }
+        self.wait_until_ended(let_go);
+        super::ending::ended();
         // What mpv has not answered (no answer is read any more), taken while the handle is
         // still this player's (a new player may get its address once it is freed).
         let handle = self.raw.0 as usize;
@@ -629,10 +644,50 @@ impl Drop for Player {
             ids.into_iter().filter_map(|id| all.remove(&id)).map(|(_, p)| p).collect()
         };
         unsafe { (self.lib.terminate_destroy)(self.raw.0) };
+        tracing::warn!("reel mpv: destroyed {} ms after the view let go", let_go.elapsed().as_millis());
         // What waited for mpv runs now that it has gone.
         for p in left {
             if let Pending::Then(then) = p {
                 then();
+            }
+        }
+    }
+}
+
+impl Player {
+    /// Reads mpv's events here (the event thread has gone) until mpv says its playback ended:
+    /// the file's end after `stop` (or `quit`), or idle (no file). Answers to requests are
+    /// handled on the way, in order. At most until `ENDING_WAIT` after `let_go`.
+    fn wait_until_ended(&self, let_go: Instant) {
+        let (lib, raw) = (self.lib, self.raw);
+        unsafe { (lib.observe_property)(raw.0, IDLE_ACTIVE, cstr("idle-active").as_ptr(), ffi::FORMAT_FLAG) };
+        let deadline = let_go + ENDING_WAIT;
+        loop {
+            let left = deadline.saturating_duration_since(Instant::now());
+            if left.is_zero() {
+                tracing::warn!("reel mpv: the playback had not ended {} ms after the view let go; mpv is destroyed anyway", let_go.elapsed().as_millis());
+                return;
+            }
+            let event = unsafe { &*(lib.wait_event)(raw.0, left.as_secs_f64()) };
+            let ended = match event.event_id {
+                ffi::EVENT_SHUTDOWN => true,
+                ffi::EVENT_END_FILE if !event.data.is_null() => {
+                    let reason = unsafe { &*(event.data as *const ffi::EventEndFile) }.reason;
+                    reason == ffi::END_FILE_REASON_STOP || reason == ffi::END_FILE_REASON_QUIT
+                }
+                ffi::EVENT_PROPERTY_CHANGE if event.reply_userdata == IDLE_ACTIVE && !event.data.is_null() => {
+                    let p = unsafe { &*(event.data as *const ffi::EventProperty) };
+                    p.format == ffi::FORMAT_FLAG && !p.data.is_null() && unsafe { *(p.data as *const c_int) } != 0
+                }
+                ffi::EVENT_SET_PROPERTY_REPLY | ffi::EVENT_COMMAND_REPLY => {
+                    answered(lib, event.reply_userdata, event.error);
+                    false
+                }
+                _ => false,
+            };
+            if ended {
+                tracing::warn!("reel mpv: the playback ended {} ms after the view let go", let_go.elapsed().as_millis());
+                return;
             }
         }
     }
