@@ -56,7 +56,7 @@ export const caps = {
   remote: tv,
   /** The window can fill the screen (a full-screen button and F in the player). */
   fullscreen: runtime.desktop && !tv,
-  /** The player turns the screen itself (a Rotate button): an iPhone, where the rotation lock
-   * keeps a film upright otherwise. Not an iPad: its window does not turn for an app. */
+  /** The player draws itself sideways inside the upright window (a Rotate button, `TurnedBox`):
+   * an iPhone, whose interface stays upright. Not an iPad: its window turns with the device. */
   rotate: runtime.os === "ios" && family === "phone",
 };

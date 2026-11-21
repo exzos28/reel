@@ -1,28 +1,34 @@
 //! iOS and iPadOS: the screen stays on while a film plays (mpv, unlike AVPlayer, does not hold
 //! it) or something saves (the app stops in the background, and saving with it:
-//! design/offline-downloads.md), and dims as usual otherwise.
+//! design/offline-downloads.md), and dims as usual otherwise. A phone's interface stays upright
+//! (`upright_on_phones`), and how the device is held is read for the player (`held`).
 
 use std::{
     ffi::c_void,
     sync::{
         Once,
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicIsize, AtomicU64, AtomicUsize, Ordering},
     },
     time::Duration,
 };
 
-use objc2::MainThreadMarker;
+use objc2::{MainThreadMarker, MainThreadOnly};
+use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol};
 use objc2_ui_kit::UIApplication;
 
 /// Players on screen.
 static PLAYING: AtomicUsize = AtomicUsize::new(0);
 /// Something saves (checked every few seconds).
 static SAVING: AtomicBool = AtomicBool::new(false);
-/// The player asked for landscape (`turn`): a phone's root controller allows it from then on, as
-/// the player opens, before its video view comes (`upright_on_phones`).
-static SIDEWAYS_ASKED: AtomicBool = AtomicBool::new(false);
+/// How the device is held, as UIKit last said (`UIDeviceOrientation`: 1 upright, 2 upside down,
+/// 3 landscape left, 4 landscape right, 5 and 6 flat, 0 unknown): read on the main thread.
+static HELD: AtomicIsize = AtomicIsize::new(0);
+/// How many times the device has turned (`HELD` changed) since the app started.
+static TURNS: AtomicU64 = AtomicU64::new(0);
+/// The home indicator fades after a moment (`immersive`): the phone's player drawn sideways.
+static IMMERSIVE: AtomicBool = AtomicBool::new(false);
 
-/// A player came (`true`) or went: the screen stays on, and a phone may turn (`upright_on_phones`).
+/// A player came (`true`) or went: the screen stays on.
 pub fn playing(on: bool) {
     if on {
         PLAYING.fetch_add(1, Ordering::Relaxed);
@@ -30,23 +36,11 @@ pub fn playing(on: bool) {
         let _ = PLAYING.try_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_sub(1));
     }
     apply();
-    orientations_changed();
 }
 
-/// Asks UIKit to read the root controller's orientations again (iOS 16+): it turns back upright
-/// when the player goes.
-fn orientations_changed() {
-    extern "C" fn run(_: *mut c_void) {
-        if MainThreadMarker::new().is_some() {
-            reread_orientations();
-        }
-    }
-    unsafe { dispatch_async_f(&raw const _dispatch_main_q, std::ptr::null_mut(), run) };
-}
-
-/// Every window's controllers, the root and those it presents (the player's dialog), read their
-/// orientations again (iOS 16+). On the main thread.
-fn reread_orientations() {
+/// Every controller of every window, the root and those it presents (the player's dialog), on
+/// the main thread.
+fn each_controller(mut f: impl FnMut(&objc2::runtime::AnyObject)) {
     use objc2::{msg_send, rc::Retained, runtime::AnyObject};
     let Some(mtm) = MainThreadMarker::new() else { return };
     let app = UIApplication::sharedApplication(mtm);
@@ -62,15 +56,71 @@ fn reread_orientations() {
             for window in windows.iter() {
                 let mut controller: Option<Retained<AnyObject>> = msg_send![&window, rootViewController];
                 while let Some(c) = controller {
-                    let can: bool = msg_send![&c, respondsToSelector: objc2::sel!(setNeedsUpdateOfSupportedInterfaceOrientations)];
-                    if can {
-                        let _: () = msg_send![&c, setNeedsUpdateOfSupportedInterfaceOrientations];
-                    }
+                    f(&c);
                     controller = msg_send![&c, presentedViewController];
                 }
             }
         }
     }
+}
+
+/// How the device is held, as the quarter turn a phone's player gives its picture: `Some(90)`
+/// turned counter-clockwise (its top at the left: UIKit's landscape left), `Some(-90)` the other
+/// way, `Some(0)` upright, `None` flat, upside down or not known; and how many times it has turned
+/// since the app started. With the rotation lock on, iOS reports no turn.
+pub fn held() -> (Option<i32>, u64) {
+    let turn = match HELD.load(Ordering::Relaxed) {
+        1 => Some(0),
+        3 => Some(90),
+        4 => Some(-90),
+        _ => None,
+    };
+    (turn, TURNS.load(Ordering::Relaxed))
+}
+
+/// The device's turns as they come, read on the main thread.
+fn read_held() {
+    use objc2::{msg_send, rc::Retained, runtime::AnyObject};
+    if MainThreadMarker::new().is_none() {
+        return;
+    }
+    let device: Retained<AnyObject> = unsafe { msg_send![objc2::class!(UIDevice), currentDevice] };
+    let held: isize = unsafe { msg_send![&device, orientation] };
+    if HELD.swap(held, Ordering::Relaxed) != held {
+        TURNS.fetch_add(1, Ordering::Relaxed);
+    }
+}
+
+objc2::define_class!(
+    /// Hears the device turn (`UIDeviceOrientationDidChangeNotification`).
+    #[unsafe(super(NSObject))]
+    #[thread_kind = MainThreadOnly]
+    #[name = "ReelHeld"]
+    struct Held;
+
+    unsafe impl NSObjectProtocol for Held {}
+
+    impl Held {
+        #[unsafe(method(turned:))]
+        fn turned(&self, _n: &NSNotification) {
+            read_held();
+        }
+    }
+);
+
+/// The home indicator fades after a moment of no touches (`true`: the phone's player drawn
+/// sideways, where it runs along the picture's side) or stays (`false`). UIKit asks the topmost
+/// full-screen controller (`prefersHomeIndicatorAutoHidden`, answered from here for NSH's
+/// controllers: `upright_on_phones`) as it shows, and again when told.
+pub fn immersive(on: bool) {
+    extern "C" fn run(_: *mut c_void) {
+        use objc2::msg_send;
+        each_controller(|c| unsafe {
+            let _: () = msg_send![c, setNeedsUpdateOfHomeIndicatorAutoHidden];
+        });
+    }
+    IMMERSIVE.store(on, Ordering::Relaxed);
+    unsafe { dispatch_async_f(&raw const _dispatch_main_q, std::ptr::null_mut(), run) };
 }
 
 /// Starts following what saves; once.
@@ -92,6 +142,10 @@ pub fn watch() {
 unsafe extern "C" {
     static _dispatch_main_q: c_void;
     fn dispatch_async_f(queue: *const c_void, context: *mut c_void, work: extern "C" fn(*mut c_void));
+    // The Objective-C runtime: a method added to, or put in place of, one of NSH's controllers'.
+    fn object_getClass(object: *const c_void) -> *mut c_void;
+    fn sel_registerName(name: *const std::ffi::c_char) -> *const c_void;
+    fn class_replaceMethod(class: *mut c_void, sel: *const c_void, imp: *const c_void, types: *const std::ffi::c_char) -> *const c_void;
 }
 
 /// Runs `work(context)` on the main thread, a moment later (from any thread).
@@ -166,88 +220,59 @@ pub fn paint_root() {
     }
 }
 
-/// Asks the window's scene for landscape or portrait (iOS 16+'s geometry request: it works with the
-/// rotation lock on, which a phone's own turning does not).
-pub fn turn(landscape: bool) {
-    extern "C" fn run(context: *mut c_void) {
-        use objc2::{msg_send, rc::Retained, runtime::AnyObject};
-        let Some(mtm) = MainThreadMarker::new() else { return };
-        // UIInterfaceOrientationMask: portrait 1 << 1, landscape (left and right) 1 << 3 | 1 << 4.
-        let mask: usize = if context.is_null() { 1 << 1 } else { (1 << 3) | (1 << 4) };
-        let Some(class) = objc2::runtime::AnyClass::get(c"UIWindowSceneGeometryPreferencesIOS") else { return };
-        // The controllers' orientations first: the player's dialog may have just come or be going.
-        reread_orientations();
-        let app = UIApplication::sharedApplication(mtm);
-        unsafe {
-            let prefs: Retained<AnyObject> = msg_send![msg_send![class, alloc], initWithInterfaceOrientations: mask];
-            let scenes: Retained<AnyObject> = msg_send![&app, connectedScenes];
-            let scenes: Retained<objc2_foundation::NSArray<AnyObject>> = msg_send![&scenes, allObjects];
-            for scene in scenes.iter() {
-                let responds: bool = msg_send![&scene, respondsToSelector: objc2::sel!(requestGeometryUpdateWithPreferences:errorHandler:)];
-                if responds {
-                    let none: *const AnyObject = std::ptr::null();
-                    let _: () = msg_send![&scene, requestGeometryUpdateWithPreferences: &*prefs, errorHandler: none];
-                }
-            }
-        }
-    }
-    SIDEWAYS_ASKED.store(landscape, Ordering::Relaxed);
-    unsafe { dispatch_async_f(&raw const _dispatch_main_q, landscape as usize as *mut c_void, run) };
-}
-
-/// A phone shows reel upright only; the player (a full-screen dialog of its own, with its own
-/// orientations) turns sideways. NSH's window root controller has no say in it, so reel adds its
-/// `supportedInterfaceOrientations`: portrait on a phone, every orientation on a tablet. Once, at
+/// A phone's interface stays upright, the player too: it draws itself sideways inside the upright
+/// window (`Player.tsx`, design/player-rendering.md). NSH's window root controller answers its
+/// `supportedInterfaceOrientations` itself (every orientation but upside down), so on a phone reel
+/// puts portrait in place of that answer and has UIKit read it again (the window was shown before
+/// this runs: an app opened with the phone sideways starts upright); a tablet keeps NSH's (its
+/// window turns with the device). On a phone the device's turns are followed from here on
+/// (`held`), and NSH's controllers answer whether the home indicator fades (`immersive`). Once, at
 /// start, on the main thread.
 pub fn upright_on_phones() {
-    use std::ffi::{c_char, c_void};
-    unsafe extern "C" {
-        fn object_getClass(object: *mut c_void) -> *mut c_void;
-        fn sel_registerName(name: *const c_char) -> *const c_void;
-        fn class_addMethod(class: *mut c_void, sel: *const c_void, imp: *const c_void, types: *const c_char) -> bool;
+    extern "C" fn portrait(_this: *mut c_void, _cmd: *const c_void) -> usize {
+        // UIInterfaceOrientationMask.portrait.
+        1 << 1
     }
-    extern "C" fn orientations(_this: *mut c_void, _cmd: *const c_void) -> usize {
-        use objc2::{msg_send, rc::Retained, runtime::AnyObject};
-        // UIUserInterfaceIdiomPhone is 0; masks: portrait 1 << 1, all 1 << 1 | 1 << 2 | 1 << 3 | 1 << 4.
-        let device: Retained<AnyObject> = unsafe { msg_send![objc2::class!(UIDevice), currentDevice] };
-        let idiom: isize = unsafe { msg_send![&device, userInterfaceIdiom] };
-        // A phone's player turns: portrait and landscape while one is on screen, or asked for
-        // landscape as it opens.
-        if idiom != 0 {
-            30
-        } else if PLAYING.load(Ordering::Relaxed) > 0 || SIDEWAYS_ASKED.load(Ordering::Relaxed) {
-            (1 << 1) | (1 << 3) | (1 << 4)
-        } else {
-            1 << 1
-        }
+    extern "C" fn indicator_hidden(_this: *mut c_void, _cmd: *const c_void) -> bool {
+        IMMERSIVE.load(Ordering::Relaxed)
     }
     static ONCE: Once = Once::new();
     ONCE.call_once(|| unsafe {
         use objc2::{msg_send, rc::Retained, runtime::AnyObject};
         let Some(mtm) = MainThreadMarker::new() else { return };
-        let app = UIApplication::sharedApplication(mtm);
-        // The window's root controller's own class (NSH's), whatever objc2 named it.
-        let mut class: *mut c_void = std::ptr::null_mut();
-        let scenes: Retained<AnyObject> = msg_send![&app, connectedScenes];
-        let scenes: Retained<objc2_foundation::NSArray<AnyObject>> = msg_send![&scenes, allObjects];
-        for scene in scenes.iter() {
-            let responds: bool = msg_send![&scene, respondsToSelector: objc2::sel!(windows)];
-            if !responds {
-                continue;
-            }
-            let windows: Retained<objc2_foundation::NSArray<AnyObject>> = msg_send![&scene, windows];
-            for window in windows.iter() {
-                let root: Option<Retained<AnyObject>> = msg_send![&window, rootViewController];
-                if let Some(root) = root {
-                    class = object_getClass(Retained::as_ptr(&root) as *mut c_void);
-                }
-            }
-        }
-        if class.is_null() {
-            tracing::warn!("reel: no root controller: the phone turns sideways everywhere");
+        // UIUserInterfaceIdiomPhone is 0.
+        let device: Retained<AnyObject> = msg_send![objc2::class!(UIDevice), currentDevice];
+        let idiom: isize = msg_send![&device, userInterfaceIdiom];
+        if idiom != 0 {
             return;
         }
-        let imp = orientations as extern "C" fn(*mut c_void, *const c_void) -> usize;
-        class_addMethod(class, sel_registerName(c"supportedInterfaceOrientations".as_ptr()), imp as *const c_void, c"Q@:".as_ptr());
+        // UIKit reports how the device is held only to an app that asks; the player reads it.
+        let _: () = msg_send![&device, beginGeneratingDeviceOrientationNotifications];
+        let held: Retained<Held> = msg_send![Held::alloc(mtm), init];
+        let center = objc2_foundation::NSNotificationCenter::defaultCenter();
+        center.addObserver_selector_name_object(&held, objc2::sel!(turned:), Some(objc2_foundation::ns_string!("UIDeviceOrientationDidChangeNotification")), None);
+        // Kept for the app's life.
+        std::mem::forget(held);
+        HELD.store(msg_send![&device, orientation], Ordering::Relaxed);
+        // UIViewController's own answer (none of NSH's controllers has one): the player's dialog,
+        // presented later, answers too.
+        let imp = indicator_hidden as extern "C" fn(*mut c_void, *const c_void) -> bool;
+        let base = objc2::class!(UIViewController) as *const objc2::runtime::AnyClass as *mut c_void;
+        class_replaceMethod(base, sel_registerName(c"prefersHomeIndicatorAutoHidden".as_ptr()), imp as *const c_void, c"B@:".as_ptr());
+        // The window's root controller's own class (NSH's), whatever objc2 named it.
+        let mut root: Option<Retained<AnyObject>> = None;
+        each_controller(|c| {
+            if root.is_none() {
+                root = Some(objc2::Message::retain(c));
+            }
+        });
+        let Some(root) = root else {
+            tracing::warn!("reel: no root controller: a phone may turn its pages sideways");
+            return;
+        };
+        let class = object_getClass(Retained::as_ptr(&root) as *const c_void);
+        let imp = portrait as extern "C" fn(*mut c_void, *const c_void) -> usize;
+        class_replaceMethod(class, sel_registerName(c"supportedInterfaceOrientations".as_ptr()), imp as *const c_void, c"Q@:".as_ptr());
+        let _: () = msg_send![&root, setNeedsUpdateOfSupportedInterfaceOrientations];
     });
 }

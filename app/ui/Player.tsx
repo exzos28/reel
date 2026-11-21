@@ -9,7 +9,7 @@
 // buttons on the buttons row), Up/Down switch rows, Escape closes the
 // panel, then hides the overlay, then leaves. Near the end of an episode
 // the Up next card (tv-player-end.html) takes the remote instead.
-import { cleanup, computed, createAnimatedValue, effect, Image, keymap, lifecycle, safeArea, Scroll, signal, Text, untracked, View, windowSize, type ImageAsset, type TextStyle, type ViewStyle } from "nsh";
+import { cleanup, computed, createAnimatedValue, effect, Image, keymap, screenReaderEnabled, Scroll, signal, Text, untracked, View, type ImageAsset, type TextStyle, type ViewStyle } from "nsh";
 import { BufferingNote, PlayerStage, WaitingLine, type StageLine } from "./PlayerStage";
 import { t } from "nsh/i18n";
 import { Catalog, Fmt, VideoEngine } from "./native";
@@ -20,6 +20,8 @@ import plusIcon from "./icons/plus.svg";
 import { streamDetails } from "./preferences";
 import { cachedAhead, currentJob, duration, firstFrame, readAt, playing as what, play, position, startAt, status as core, stop, timeline } from "./playback";
 import { chrome, frame, sideSafeArea, windowControlsRoom } from "./layout/chrome";
+import { surfaceInsets, surfaceSize, surfaceTurned } from "./layout/surface";
+import { createTurn, TurnedBox, type Angle, type Turn } from "./layout/TurnedBox";
 import { alpha, colors, density, focusRing, font, iconPt, radius, safe, showFocus, targetSlop, ts as layoutTs, type, u as layoutU } from "./theme";
 
 /** A phone: play and ±10 s in the middle of the picture, under the thumbs; the secondary buttons
@@ -55,6 +57,8 @@ import { PlayerEpisodes } from "./PlayerEpisodes";
 import checkIcon from "./icons/check.svg";
 import { Pressable } from "./kit/Pressable";
 
+/** How often the player asks how the device is held, ms (it follows the device's turns). */
+const HELD_POLL_MS = 250;
 /** How long the overlay stays without input. */
 export const OVERLAY_MS = 5000;
 /** How long the Up next card counts down before the next episode plays. */
@@ -81,10 +85,11 @@ const barBackSlot = (full: boolean): ViewStyle => {
   return { position: "absolute", top: b.top, left: b.left, zIndex: 3 };
 };
 /** Touch's ✕, points: 44 on a tablet at (24, 24), 40 on a phone at the
- * landscape safe area's left (x 62 beside a Dynamic Island). */
+ * sideways safe area's left (x 59 beside a Dynamic Island). The player's box's insets
+ * (`surface`: the turned player's own). */
 const CLOSE = () => (chrome() === "tablet" ? 44 : 40);
 const touchCorner = () =>
-  chrome() === "tablet" ? { top: 24, left: Math.max(24, windowControlsRoom()) } : { top: Math.max(18, safeArea().top), left: Math.max(20, sideSafeArea().left, windowControlsRoom()) };
+  chrome() === "tablet" ? { top: 24, left: Math.max(24, windowControlsRoom()) } : { top: Math.max(18, surfaceInsets().top), left: Math.max(20, sideSafeArea().left, windowControlsRoom()) };
 const closeDisc = (): ViewStyle => ({
   width: CLOSE(),
   height: CLOSE(),
@@ -126,7 +131,7 @@ const BUTTON = 68;
 const BIG_BUTTON = 96;
 /** The bottom controls' distance from the screen's bottom: a phone's clear of the home indicator
  * by 16 pt. */
-const controlsBottom = () => (PHONE() ? Math.max(safe().y, safeArea().bottom + 16) : safe().y);
+const controlsBottom = () => (PHONE() ? Math.max(safe().y, surfaceInsets().bottom + 16) : safe().y);
 /** The times under the scrubber (and a phone's waiting line between them). */
 const timeText = (color: string): TextStyle => ({ fontFamily: font, fontSize: ts(24), fontWeight: 500, color });
 
@@ -138,7 +143,19 @@ interface Tracks {
  * stage and the overlays keep theirs). */
 const screenBackground = () => (videoUnderUi() ? "transparent" : colors.ink());
 
+/** The player. On a phone (`caps.rotate`) it is drawn in a box that turns sideways inside the
+ * upright window (`TurnedBox`); elsewhere it is the window's. */
 export function Player() {
+  if (!caps.rotate) return <PlayerScreen turn={null} />;
+  const turn = createTurn();
+  return (
+    <TurnedBox turn={turn}>
+      <PlayerScreen turn={turn} />
+    </TurnedBox>
+  );
+}
+
+function PlayerScreen(props: { turn: Turn | null }) {
   // Computed, so the twice-a-second status from the core wakes only what changed
   // (a fresh status object must not restart the overlay's hide timer).
   const ready = computed(() => core().phase === "ready");
@@ -201,50 +218,6 @@ export function Player() {
   const episodesOpen = signal(false);
   /** The window fills the screen (desktops). Left as it was found when the player closes. */
   const { on: fullscreen, set: setFullscreen } = useFullscreen();
-  /** Rotate: to the other orientation than the window's now. */
-  const turn = () => {
-    const { width, height } = windowSize();
-    VideoEngine.turn(width <= height);
-  };
-  // A phone is upright again when the player closes, however it came to be sideways (Rotate,
-  // the film's own turn, the phone turned in the hand after Rotate upright): else the app
-  // stayed sideways with the rotation lock on.
-  if (caps.rotate) cleanup(() => VideoEngine.turn(false));
-  /** The phone's orientation as the app left for the background (null: in front). iOS brings it
-   * back as the phone is held, which undid a turn the player asked for (Rotate, the film's own):
-   * back in front, the player keeps the orientation it had. */
-  let leftSideways: boolean | null = null;
-  if (caps.rotate)
-    effect(() => {
-      const state = lifecycle();
-      untracked(() => {
-        if (state !== "active") {
-          if (leftSideways == null) leftSideways = windowSize().width > windowSize().height;
-        } else if (leftSideways != null) {
-          // Asked whatever the window says now: iOS may turn it a moment after the app is back.
-          VideoEngine.turn(leftSideways);
-          leftSideways = null;
-        }
-      });
-    });
-  /** A phone held upright turns sideways as the player opens, before the picture's size is
-   * known: most films play sideways, and the player opens the way they play. Once the film
-   * loads, a picture taller than wide (the core says) turns it back upright. Only for the
-   * player's first load: not again for the next episode, which keeps what the viewer chose. */
-  let turnedSideways = false;
-  if (PHONE() && caps.rotate) {
-    const w = untracked(windowSize);
-    if (w.width <= w.height) {
-      VideoEngine.turn(true);
-      turnedSideways = true;
-    }
-  }
-  const turnForPicture = (width?: number, height?: number) => {
-    if (!turnedSideways) return;
-    turnedSideways = false;
-    if (!leaving() && !VideoEngine.sideways(width ?? 0, height ?? 0)) VideoEngine.turn(false);
-  };
-
   // The tracks panel: three columns, the focus inside it while it is open.
   const panel = signal(false);
   const panelCol = signal(0);
@@ -259,6 +232,70 @@ export function Player() {
   const timeWidths = signal<[number, number]>([0, 0]);
   /** The picture's width over its height, once the view says. */
   const pictureAspect = signal<number | undefined>(undefined);
+  // A phone's turns (`TurnedBox`): the window stays upright and the player draws itself sideways.
+  const turn = props.turn;
+  /** How the device is held, as the core reads it: the angle it asks for (null: not known) and
+   * how many times it has turned. A stand-in that answers later (headless tests) knows nothing. */
+  const heldOf = (raw: unknown): { turn: Angle | null; turns: number | null } =>
+    typeof raw === "string" ? JSON.parse(raw) : { turn: null, turns: null };
+  /** The side the player turns to from upright: the way the device is held, else the common way
+   * (the phone turned counter-clockwise). */
+  const side = (): Angle => (heldOf(VideoEngine.held()).turn === -90 ? -90 : 90);
+  /** With a screen reader the player turns only with Rotate: VoiceOver's gestures and its reading
+   * order follow the real screen, upright. */
+  const followsDevice = !untracked(screenReaderEnabled);
+  /** Rotate: upright, or sideways towards how the device is held. */
+  const rotate = () => turn?.to(turn.angle() === 0 ? side() : 0, true, pictureAspect());
+  /** A wide film plays sideways: the player opens drawn sideways at once (the picture's size is
+   * not known yet), before anything shows. Once the film loads, a picture taller than wide (the
+   * core says) stands it back upright. Only for the player's first load: not again for the next
+   * episode, which keeps what the viewer chose. */
+  let turnedAtOpen = false;
+  if (turn && followsDevice && PHONE()) {
+    const w = untracked(surfaceSize);
+    if (w.width <= w.height) {
+      turn.to(side(), false);
+      turnedAtOpen = true;
+    }
+  }
+  const turnForPicture = (width?: number, height?: number) => {
+    if (!turnedAtOpen) return;
+    turnedAtOpen = false;
+    if (turn && !leaving() && !VideoEngine.sideways(width ?? 0, height ?? 0)) turn.to(0, true, width && height ? width / height : undefined);
+  };
+  if (turn) {
+    // The device turned (the rotation lock off): the player follows it, upright or to its side.
+    // Only a turn counts: with the lock on iOS keeps saying what it said, and Rotate decides.
+    if (followsDevice) {
+      /** The turns counted when the player last asked (null: not yet). */
+      let seen = heldOf(VideoEngine.held()).turns;
+      const follow = setInterval(() => {
+        void Promise.resolve(VideoEngine.held()).then((raw) => {
+          const h = heldOf(raw);
+          const was = seen;
+          seen = h.turns;
+          if (was == null || h.turns === was) return;
+          if (h.turn != null && !leaving()) turn.to(h.turn, true, pictureAspect());
+        });
+      }, HELD_POLL_MS);
+      cleanup(() => clearInterval(follow));
+    }
+    // Sideways, the home indicator runs along the picture's side: it fades after a moment.
+    effect(() => VideoEngine.immersive(turn.angle() !== 0));
+    cleanup(() => VideoEngine.immersive(false));
+    // A drawer open as the player turns closes: it was laid out for the other way.
+    let angleWas = untracked(turn.angle);
+    effect(() => {
+      const a = turn.angle();
+      if (a === angleWas) return;
+      angleWas = a;
+      untracked(() => (panel.set(false), episodesOpen.set(false)));
+    });
+  }
+
+  /** A drawer is drawn in place over the controls (the turned player's: `Drawer`): screen readers
+   * keep to it, as they do to a sheet. */
+  const behindDrawer = () => surfaceTurned() && SHEETS() && (panel() || episodesOpen());
   /** The phone's middle buttons show (Play and ±10 s over the picture's centre). */
   const middleShown = () => middleButtons.length > 0 && ready() && overlay() && !staged() && !panel() && !episodesOpen() && !card();
   /** How far from the window's bottom the subtitles stay above (`subtitleBottom`): the controls'
@@ -267,12 +304,12 @@ export function Player() {
   const subtitlesAbove = () => {
     const controls = overlay() && !card() && controlsHeight() > 0 ? controlsBottom() + controlsHeight() + u(12) : 0;
     const bottom = subtitleBottom({
-      window: windowSize(),
+      window: surfaceSize(),
       aspect: pictureAspect(),
       rest: subtitleRest(),
       controls,
       middle: middleShown() ? u(BIG_BUTTON) : 0,
-      size: subtitleFit(windowSize(), pictureAspect(), safe().x, 0, "").size,
+      size: subtitleFit(surfaceSize(), pictureAspect(), safe().x, 0, "").size,
       gap: u(12),
     });
     return bottom > subtitleRest() + 0.5 ? bottom : 0;
@@ -281,8 +318,8 @@ export function Player() {
    * sides, as shares of the picture's height (mpv's margins follow the picture), and how much
    * larger than mpv's 5 % of it (no smaller than our overlay's least). */
   const filmSubtitles = () => {
-    const fit = subtitleFit(windowSize(), pictureAspect(), safe().x, 0, "");
-    const scale = subtitleScale(windowSize(), pictureAspect());
+    const fit = subtitleFit(surfaceSize(), pictureAspect(), safe().x, 0, "");
+    const scale = subtitleScale(surfaceSize(), pictureAspect());
     // mpv scales its margins with the subtitles (`sub-scale`): they are given before it.
     const h = Math.max(1, fit.frame) * scale;
     return { lift: subtitlesAbove() / h, sides: fit.side / h, scale };
@@ -473,7 +510,7 @@ export function Player() {
     else if (id === "tracks") (episodesOpen.set(false), panel() ? panel.set(false) : openPanel());
     else if (id === "episodes") (panel.set(false), episodesOpen.set(!episodesOpen()));
     else if (id === "fullscreen") setFullscreen(!fullscreen());
-    else if (id === "rotate") turn();
+    else if (id === "rotate") rotate();
     else scrubBy(id === "back" ? -1 : 1);
   };
   const movePanel = (dc: number, dr: number) => {
@@ -511,6 +548,17 @@ export function Player() {
     },
     { repeat: true },
   );
+  // A remote's media keys (Android TV's come as F7 to F11: app/android RemoteKeys.java): rewind
+  // and fast forward step as Left and Right do on the scrubber (held, further), play/pause,
+  // play, pause.
+  keymap.bind({ f7: key(() => scrubBy(-1)), f9: key(() => scrubBy(1)) }, { repeat: true });
+  keymap.bind({ f8: key(togglePause), f10: key(() => paused.set(false)) });
+  // F11 is the system's full screen on Android, Linux and Windows: NSH refuses it there.
+  try {
+    keymap.bind({ f11: key(() => paused.set(true)) });
+  } catch {
+    // Not bound here.
+  }
   // F: full screen, as in other players.
   if (caps.fullscreen) keymap.bind({ f: () => setFullscreen(!fullscreen()) });
   if (volumeShown) keymap.bind({ m: () => (toggleMute(), poke()) });
@@ -656,8 +704,9 @@ export function Player() {
 
       // Touch: a swipe down closes the player, as a full-screen cover does.
       // Not while a sheet is open: its own swipe (or its list's scroll) closes only the sheet.
-      // Up and down only: sideways drags are the scrubber's.
-      pan={{ y: closeDrag }}
+      // Up and down only: sideways drags are the scrubber's. In the turned box, the box's down (its
+      // pan is measured in it), and none under a drawer drawn there (its list scrolls).
+      pan={panel() || episodesOpen() ? undefined : { y: closeDrag }}
       onPanEnd={(e) => {
         closeDrag.set(0);
         if (caps.touch && !panel() && !episodesOpen() && !e.cancelled && (e.translation.y > 120 || e.velocity.y > 800)) leave();
@@ -770,7 +819,9 @@ export function Player() {
         </View>
       </If>
 
-      <If when={overlay() && !card() && !staged()}>
+      {/* Not while the player turns (`TurnedBox`): laid out for the new angle at once, they would
+          show at the turn's start scale. */}
+      <If when={overlay() && !card() && !staged() && !turn?.turning()}>
         {/* Shade: dark at the top and the bottom, the picture clear between. */}
         <View
           style={{
@@ -781,7 +832,7 @@ export function Player() {
           }}
         />
         {/* Top: back, title, the episode or release, what the engine is doing. */}
-        <View style={topRowStyle(fullscreen())}>
+        <View testID="player-top" style={topRowStyle(fullscreen())} accessibilityElementsHidden={behindDrawer()}>
           <If when={caps.touch}>
             <CloseButton onPress={leave} />
           </If>
@@ -865,7 +916,7 @@ export function Player() {
 
         {/* A phone's middle: −10 s, Play (larger), +10 s over the picture's centre. */}
         <If when={middleShown()}>
-          <View testID="player-middle" style={middleStyle()}>
+          <View testID="player-middle" style={middleStyle()} accessibilityElementsHidden={behindDrawer()}>
             <Each of={middleButtons} key="index">
               {(id) => (
                 <RoundButton
@@ -883,7 +934,7 @@ export function Player() {
 
         {/* Bottom: engine line, scrubber, times, buttons. */}
         <If when={ready()}>
-          <View testID="player-bottom" onLayout={(e) => controlsHeight.set(e.bounds.size.height)} style={{ position: "absolute", left: safe().x, right: safe().x, bottom: controlsBottom() }}>
+          <View testID="player-bottom" accessibilityElementsHidden={behindDrawer()} onLayout={(e) => controlsHeight.set(e.bounds.size.height)} style={{ position: "absolute", left: safe().x, right: safe().x, bottom: controlsBottom() }}>
             <If when={streamDetails()}>
             <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", minHeight: u(32) }}>
               <If when={aheadText() !== ""}>

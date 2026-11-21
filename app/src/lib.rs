@@ -53,7 +53,7 @@ fn ios_components(components: &nsh_platform_ios::Components) {
     adapters::ios_awake::paint_root();
     // The screen's size, to tell a window that does not fill it (`Settings.windowed`).
     adapters::ios_awake::remember_screen();
-    // A phone is upright but in the player.
+    // A phone's interface stays upright: its player draws itself sideways.
     adapters::ios_awake::upright_on_phones();
 }
 
@@ -221,19 +221,41 @@ impl VideoEngine {
         let _ = on;
     }
 
-    /// Turns the screen to landscape (`true`) or portrait, whatever the device's rotation lock
-    /// says: the player's Rotate button, and its turn as it opens (iOS; elsewhere nothing). The
-    /// device turning it back (rotation unlocked) still turns it.
-    pub fn turn(landscape: bool) {
+    /// How the device is held, for a phone's player, which draws itself sideways inside the
+    /// upright window: JSON `{"turn","turns"}`. `turn`: the quarter turn the player gives its
+    /// picture for it: 90 (clockwise: the device turned counter-clockwise, its top at the left,
+    /// the common way), -90 (the other way), 0 (upright), null (flat, upside down, not known).
+    /// `turns`: how many times the device has turned since the app started; the player follows a
+    /// new one. With the rotation lock on, iOS reports no turn (only Rotate turns the player); off
+    /// iOS always `{"turn":null,"turns":0}`.
+    pub fn held() -> String {
         #[cfg(target_os = "ios")]
-        crate::adapters::ios_awake::turn(landscape);
+        let (turn, turns) = crate::adapters::ios_awake::held();
         #[cfg(not(target_os = "ios"))]
-        let _ = landscape;
+        let (turn, turns): (Option<i32>, u64) = (None, 0);
+        serde_json::json!({ "turn": turn, "turns": turns }).to_string()
+    }
+
+    /// The scale a phone's player turn starts at, from `from` to `to` degrees (0, 90, -90), in a
+    /// window `width` x `height` points, for a picture of `aspect` (its width over its height; 0:
+    /// not known, 16:9): the new layout starts drawn as large as the old one showed the picture,
+    /// and grows or shrinks to 1 as it turns (`reel_domain::play::turn_start_scale`).
+    pub fn turn_scale(from: i32, to: i32, width: f64, height: f64, aspect: f64) -> f64 {
+        reel_domain::play::turn_start_scale(from, to, width, height, aspect)
+    }
+
+    /// The phone's player is drawn sideways (`true`): the home indicator, along the picture's side
+    /// then, fades after a moment of no touches (iOS; elsewhere nothing).
+    pub fn immersive(on: bool) {
+        #[cfg(target_os = "ios")]
+        crate::adapters::ios_awake::immersive(on);
+        #[cfg(not(target_os = "ios"))]
+        let _ = on;
     }
 
     /// Whether a phone's player plays sideways for a film of this size (the video view's `width`
-    /// and `height` once loaded): it turned sideways as it opened, and only a picture taller than
-    /// wide turns it back upright (`reel_domain::play::starts_sideways`).
+    /// and `height` once loaded): it opened sideways, and only a picture taller than wide
+    /// stands it back upright (`reel_domain::play::starts_sideways`).
     pub fn sideways(width: f64, height: f64) -> bool {
         reel_domain::play::starts_sideways(width, height)
     }

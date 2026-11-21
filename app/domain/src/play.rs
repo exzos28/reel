@@ -76,13 +76,35 @@ impl SeekReady {
 }
 
 /// Whether a phone's player plays sideways for a picture this size (the video view's width and
-/// height once loaded, pixels). A phone held upright turns sideways as the player opens, before
-/// the picture is known (mpv's output then starts at the sideways size); once loaded, only a
-/// picture taller than wide (a phone's vertical clip) turns it back upright. Any picture wider
-/// than tall plays sideways, 4:3 too (larger on a phone than upright); a square one, or one not
-/// known (0), stays sideways as it turned.
+/// height once loaded, pixels). A phone's player opens drawn sideways, before the picture is
+/// known; once loaded, only a picture taller than wide (a phone's vertical clip) stands it back
+/// upright. Any picture wider than tall plays sideways, 4:3 too (larger on a phone than upright);
+/// a square one, or one not known (0), stays sideways as it opened.
 pub fn starts_sideways(width: f64, height: f64) -> bool {
     !(width > 0.0 && height > width)
+}
+
+/// The scale a phone's player starts a turn at, from `from` to `to` degrees (0 upright, 90 or -90
+/// sideways), in a window `width` x `height` points, for a picture of `aspect` (its width over its
+/// height; 0 or less: 16:9). The player is laid out for the new angle at once and drawn at the old
+/// one, scaled so that its picture is as large as it showed: upright the picture is as wide as the
+/// window, sideways as long as the window is tall (or as its height lets it be). It then turns and
+/// scales to 1. Between two sideways angles, and for no turn, 1.
+pub fn turn_start_scale(from: i32, to: i32, width: f64, height: f64, aspect: f64) -> f64 {
+    let aspect = if aspect > 0.0 { aspect } else { 16.0 / 9.0 };
+    // The picture's width in a box, laid unturned (fitted, centred).
+    let fitted = |w: f64, h: f64| w.min(h * aspect);
+    let (short, long) = (width.min(height), width.max(height));
+    let upright = fitted(short, long);
+    let sideways = fitted(long, short);
+    if upright <= 0.0 || sideways <= 0.0 {
+        return 1.0;
+    }
+    match (from == 0, to == 0) {
+        (true, false) => upright / sideways,
+        (false, true) => sideways / upright,
+        _ => 1.0,
+    }
 }
 
 /// A video track's picture as shown, from what its container says: the stored size, its pixel
@@ -96,7 +118,7 @@ pub fn shown_size(width: f64, height: f64, pixel_aspect: f64, rotation: f64) -> 
 
 #[cfg(test)]
 mod tests {
-    use super::{Pick, shown_size, starts_sideways};
+    use super::{Pick, shown_size, starts_sideways, turn_start_scale};
 
     #[test]
     fn a_pick_is_found_again_by_its_hash_else_its_name_and_size() {
@@ -142,5 +164,27 @@ mod tests {
         assert!(starts_sideways(0.0, 0.0));
         assert!(starts_sideways(1920.0, 0.0));
         assert!(starts_sideways(0.0, 1080.0));
+    }
+
+    #[test]
+    fn a_turn_starts_as_large_as_the_picture_showed() {
+        // 16:9 on a 393 x 852 phone: 393 wide upright, 698.7 sideways (as high as the window).
+        let turn = turn_start_scale(0, 90, 393.0, 852.0, 16.0 / 9.0);
+        assert!((turn - 393.0 / 698.67).abs() < 1e-3, "{turn}");
+        let back = turn_start_scale(90, 0, 393.0, 852.0, 16.0 / 9.0);
+        assert!((back * turn - 1.0).abs() < 1e-9, "back is the inverse");
+        // The other side, and the window's sides either way round: the same.
+        assert_eq!(turn_start_scale(0, -90, 852.0, 393.0, 16.0 / 9.0), turn);
+        // 2.39:1 is as wide as the window's height sideways: 393 / 852.
+        assert!((turn_start_scale(0, 90, 393.0, 852.0, 2.39) - 393.0 / 852.0).abs() < 1e-9);
+        // Not known: 16:9.
+        assert_eq!(turn_start_scale(0, 90, 393.0, 852.0, 0.0), turn);
+    }
+
+    #[test]
+    fn a_turn_between_the_sides_or_none_keeps_its_scale() {
+        assert_eq!(turn_start_scale(90, -90, 393.0, 852.0, 16.0 / 9.0), 1.0);
+        assert_eq!(turn_start_scale(0, 0, 393.0, 852.0, 16.0 / 9.0), 1.0);
+        assert_eq!(turn_start_scale(0, 90, 0.0, 0.0, 16.0 / 9.0), 1.0);
     }
 }

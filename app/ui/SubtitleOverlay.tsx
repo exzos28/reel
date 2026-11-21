@@ -6,7 +6,8 @@
 // upright shows the frame a third to a half as tall as the window, and its
 // subtitles shrink with it. Two lines (a longer cue gets smaller), with room at the sides.
 // The film's own subtitles (mpv draws them) get the same box: `subtitleFit`.
-import { Text, View, windowSize, type TextStyle, type ViewStyle } from "nsh";
+import { Text, View, type TextStyle, type ViewStyle } from "nsh";
+import { surfaceSize } from "./layout/surface";
 import { alpha, colors, font, radius, safe, u } from "./theme";
 
 /** The line's size as a share of the picture's height (54 px at 1080). */
@@ -152,7 +153,8 @@ export const subtitleRest = () => safe().y + u(24);
 /** `above`: how far from the window's bottom to stay above (`subtitleBottom`, or 0: at rest);
  * `aspect`: the picture's width over its height, when known. */
 export function SubtitleOverlay(props: { text: () => string; above: () => number; aspect: () => number | undefined }) {
-  const fit = () => subtitleFit(windowSize(), props.aspect(), safe().x, u(22), props.text());
+  // The player's box (the window, or the turned player's: `surface`).
+  const fit = () => subtitleFit(surfaceSize(), props.aspect(), safe().x, u(22), props.text());
   return (
     <If when={props.text() !== ""}>
       <View testID="subtitle" style={place(fit().side, Math.max(0, props.above() - subtitleRest()))}>
