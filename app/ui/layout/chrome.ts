@@ -2,9 +2,10 @@
 // "Platform families"): where the nav sits, where Back is, how panels open.
 // The family comes from the platform layer (ui/platform); this file turns it
 // into layout decisions, so components ask `frame` instead of the family.
-import { computed, safeArea, windowSize } from "nsh";
+import { computed, windowSize } from "nsh";
 import { Settings } from "../native";
 import { family, runtime, type Family } from "../platform";
+import { surfaceInsets, surfaceSize } from "./surface";
 
 export type Chrome = Family;
 
@@ -49,11 +50,12 @@ const FRAMES: Record<Chrome, Frame> = {
  * moves them): read it where it is used, never once at import. */
 export const frame = (): Frame => FRAMES[chrome()];
 
-/** A phone held sideways (its window wider than tall): a drawer that asks for it (`Drawer`'s
- * `sideways`) is a full-height sheet at the right instead of a short one from the bottom. */
+/** A phone held sideways (its window wider than tall, or the player drawn sideways: `surface`):
+ * a drawer that asks for it (`Drawer`'s `sideways`) is a full-height sheet at the right instead of
+ * a short one from the bottom. */
 export const phoneSideways = () => {
   if (chrome() !== "phone") return false;
-  const w = windowSize();
+  const w = surfaceSize();
   return w.width > w.height;
 };
 
@@ -70,13 +72,13 @@ export function windowControlsRoom(): number {
   return Settings.windowed(w.width, w.height) ? WINDOW_CONTROLS : 0;
 }
 
-/** The system's insets at the window's left and right, points: a phone's notch and rounded
- * corners held sideways. An iPad has none of its own (its home indicator is at the bottom in
+/** The system's insets at the window's left and right (the turned player's box's: `surface`),
+ * points: a phone's notch and rounded corners held sideways. An iPad has none of its own (its home indicator is at the bottom in
  * every orientation), but in a window that does not fill the screen iPadOS reports 66 at its left
  * (the window controls' corner), the full height: only the top left needs room,
  * `windowControlsRoom`, so an iPad's sides are 0. */
 export function sideSafeArea(): { left: number; right: number } {
-  return sideSafeAreaFor(family === "tablet" && runtime.os === "ios", safeArea());
+  return sideSafeAreaFor(family === "tablet" && runtime.os === "ios", surfaceInsets());
 }
 /** `sideSafeArea` for a device that is an iPad or not, with the system's insets `area`. */
 export const sideSafeAreaFor = (ipad: boolean, area: { left: number; right: number }) =>

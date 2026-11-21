@@ -6,7 +6,9 @@
 // - tablet: a floating sheet at the right, under the status bar, with ✕ (a short list of choices
 //   is a popover instead: ChoicePanel);
 // - phone: a sheet from the bottom, with a grabber and ✕; held sideways, a drawer that asks for
-//   it (`sideways`: the player's) is a full-height sheet at the right. Its heading stays put and
+//   it (`sideways`: the player's) is a full-height sheet at the right. In the player drawn
+//   sideways (`surface` turned) that sheet is drawn in place, sliding in from the box's right: NSH's
+//   Sheet is a dialog of its own, which would show the window's way up. Its heading stays put and
 //   only the rows scroll under it. From the bottom it is as tall as its rows (one detent); a list
 //   taller than `MEDIUM` of the screen opens there and grows to `LARGE`, as tall as its rows at
 //   most (iOS's medium and large detents). NSH's `Sheet` moves it: a drag follows the finger on
@@ -20,7 +22,7 @@
 // The TV keeps reel's own panel: on Android (Android TV), after an NSH Sheet has
 // been open, Escape (the remote's Back in the tests) no longer reached the app's key
 // bindings in a headless run, and the remote must always reach Back.
-import { cleanup, effect, keyboardFrame, safeArea, signal, Text, untracked, View, windowSize, type JSX, type ViewStyle } from "nsh";
+import { cleanup, createAnimatedValue, effect, keyboardFrame, reduceMotion, signal, Text, untracked, View, type JSX, type ViewStyle } from "nsh";
 import { Sheet, type SheetDetent } from "nsh/base";
 import { titleBar } from "../platform/titlebar";
 import { t } from "nsh/i18n";
@@ -31,6 +33,7 @@ import { alpha, colors, iconPt, safe, targetSlop, u } from "../theme";
 import closeIcon from "../icons/plus.svg";
 import { frame, phoneSideways, sideSafeArea, type PanelPlace } from "./chrome";
 import { scroller, Scroller, type ScrollCtl } from "./Scroller";
+import { surfaceInsets, surfaceSize, surfaceTurned } from "./surface";
 import { Pressable } from "../kit/Pressable";
 
 const veil = () => alpha(colors.ink(), 0.6);
@@ -44,6 +47,10 @@ const tvPanel = (width: number): ViewStyle => ({
 
 /** A sideways phone's sheet at the right, points, besides the safe area beside it. */
 const SIDE_WIDTH = 360;
+/** How long the in-place sheet takes to slide in, ms. */
+const SLIDE_MS = 250;
+/** The in-place sheet (the turned player's): at the box's right, the full height, over its backdrop. */
+const inPlaceStyle = (): ViewStyle => ({ position: "absolute", top: 0, right: 0, bottom: 0, zIndex: 21, ...sheetStyle("side") });
 /** A tablet's floating sheet: its width, the most of the screen's it takes (a portrait one's
  * 834 points), and its room from the screen's edges and bars, points. */
 const FLOAT_WIDTH = 440;
@@ -71,9 +78,9 @@ const GRABBER_ROOM = 13;
 const GRABBER_REACH = 44;
 const HEAD_ROOM = 8;
 /** The keyboard is up: NSH then lifts a bottom sheet over it, at its largest detent. */
-const keyboardUp = () => keyboardFrame().height - safeArea().bottom > 0;
+const keyboardUp = () => keyboardFrame().height - surfaceInsets().bottom > 0;
 /** The tallest a bottom sheet gets: under the status bar (NSH keeps it over the keyboard). */
-const room = () => windowSize().height - safeArea().top - 8;
+const room = () => surfaceSize().height - surfaceInsets().top - 8;
 /** Each drawer's rows as they last measured (by its id and title: the choices share one id): it
  * opens at the height it had. */
 const lastRows = new Map<string, number>();
@@ -89,10 +96,10 @@ function sheetStyle(place: Place): ViewStyle {
   // A tablet's: clear of the status bar and the home indicator; in portrait under half the screen.
   if (frame().panel === "floating-sheet")
     return {
-      width: Math.min(FLOAT_WIDTH, windowSize().width * FLOAT_SHARE),
+      width: Math.min(FLOAT_WIDTH, surfaceSize().width * FLOAT_SHARE),
       margin: FLOAT_MARGIN,
-      marginTop: safeArea().top + FLOAT_MARGIN,
-      marginBottom: safeArea().bottom + FLOAT_MARGIN,
+      marginTop: surfaceInsets().top + FLOAT_MARGIN,
+      marginBottom: surfaceInsets().bottom + FLOAT_MARGIN,
       backgroundColor: colors.card(),
       ...rounded(22),
     };
@@ -109,8 +116,8 @@ const grabberArea = (): ViewStyle => ({ height: GRABBER_ROOM, justifyContent: "f
 /** The system's insets inside a sheet that has them on its sides: a sideways phone's (the notch
  * side, the home indicator), and the home indicator under a bottom sheet. */
 const insets = (place: Place) =>
-  place === "side" ? { top: safeArea().top, right: sideSafeArea().right, bottom: safeArea().bottom }
-  : place === "bottom-sheet" ? { top: 0, right: 0, bottom: safeArea().bottom }
+  place === "side" ? { top: surfaceInsets().top, right: sideSafeArea().right, bottom: surfaceInsets().bottom }
+  : place === "bottom-sheet" ? { top: 0, right: 0, bottom: surfaceInsets().bottom }
   : { top: 0, right: 0, bottom: 0 };
 const closeStyle = (place: Place): ViewStyle => ({
   position: "absolute",
@@ -272,6 +279,18 @@ export function Drawer(props: {
   });
   const inset = () => insets(place());
   const bottom = () => place() === "bottom-sheet";
+  /** Drawn in place, not as a Sheet: the turned player's (`surface`). */
+  const inPlace = () => place() === "side" && surfaceTurned();
+  /** The in-place panel's way in: from beyond the box's right edge. */
+  const slide = createAnimatedValue(0);
+  effect(() => {
+    if (!inPlace() || !props.open()) return;
+    untracked(() => {
+      if (reduceMotion()) return slide.set(0);
+      slide.set(SIDE_WIDTH + sideSafeArea().right);
+      void slide.timing(0, { duration: SLIDE_MS, easing: "easeOut" });
+    });
+  });
   // A bottom sheet's detents: its parts as they lay out, the rows at the longest they have been
   // since it opened (a switch to a shorter list does not drop it). It opens at the height its rows
   // had last time (the detents set before it comes in: a change while it comes in would land it
@@ -296,8 +315,8 @@ export function Drawer(props: {
     rows.set(next);
   };
   const natural = () => GRABBER_ROOM + heading() + rows() + foot();
-  const medium = () => Math.min(room(), windowSize().height * MEDIUM);
-  const large = () => Math.min(room(), windowSize().height * LARGE, rows() === 0 ? Infinity : natural());
+  const medium = () => Math.min(room(), surfaceSize().height * MEDIUM);
+  const large = () => Math.min(room(), surfaceSize().height * LARGE, rows() === 0 ? Infinity : natural());
   /** Much taller than the medium height (or not measured yet): two detents. */
   const long = () => rows() === 0 || natural() > medium() * MEDIUM_SLACK;
   const detents = (): SheetDetent[] => (long() ? [{ height: medium() }, { height: large() }] : [{ height: Math.min(natural(), room()) }]);
@@ -308,7 +327,7 @@ export function Drawer(props: {
   const hidden = () => (top() ? 0 : Math.max(0, large() - medium()));
   /** A bottom sheet's foot: NSH keeps it at the bottom of what shows, at every detent. */
   const sheetFooter = () => (
-    <View style={{ ...footerStyle(), paddingBottom: (footerStyle().paddingBottom as number) + safeArea().bottom, backgroundColor: colors.card() }}
+    <View style={{ ...footerStyle(), paddingBottom: (footerStyle().paddingBottom as number) + surfaceInsets().bottom, backgroundColor: colors.card() }}
       onLayout={(e) => foot.set(e.bounds.size.height)}>
       {props.footer!()}
     </View>
@@ -327,6 +346,20 @@ export function Drawer(props: {
         </If>
       }
     >
+      <If when={!inPlace()} else={
+        <If when={props.open()}>
+          {[
+            <Pressable feedback="none" testID={`${props.id}-backdrop`} style={tvBackdrop()} onPress={close} />,
+            <View testID={`${props.id}-panel`} accessibilityLabel={props.title?.() ?? props.label?.()}
+              style={{ ...inPlaceStyle(), transform: [{ translateX: slide }] }}>
+              <CloseButton id={props.id} onPress={close} place="side" />
+              <Body title={props.title} note={props.note} head={props.head} footer={props.footer} inset={inset} onHeading={heading.set}>
+                {props.children}
+              </Body>
+            </View>,
+          ]}
+        </If>
+      }>
       <Sheet
         testID={`${props.id}-sheet`}
         open={props.open()}
@@ -368,6 +401,7 @@ export function Drawer(props: {
           </Body>
         </View>
       </Sheet>
+      </If>
     </If>
   );
 }

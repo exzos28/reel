@@ -214,8 +214,10 @@ export const VideoEngine: VideoEngineModule = {
   // A TV's web view has no native views of reel's.
   views: () => false,
   fullscreen: () => {},
-  turn: () => {},
-  // A browser turns no screen.
+  // A browser turns no screen and draws no player sideways.
+  held: () => JSON.stringify({ turn: null, turns: 0 }),
+  immersive: () => {},
+  turnScale: () => 1,
   sideways: () => false,
 };
 
