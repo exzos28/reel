@@ -1115,7 +1115,9 @@ fn season_done(show: &str, s: u32) -> bool {
     search_of(&season_key(show, s)).is_some_and(|x| x.releases.is_some() || x.failed.is_some())
 }
 
-/// The release `key` plays, starting what is needed to know it.
+/// The release `key` plays, starting what is needed to know it: `Failed` when the search source
+/// did not answer (an episode's own search, after its season's found nothing or failed),
+/// `NotFound` when it found nothing to play or the title is not known.
 pub fn play_source(key: &str) -> PlaySource {
     if !has_source() {
         return PlaySource::None;
@@ -1123,7 +1125,7 @@ pub fn play_source(key: &str) -> PlaySource {
     let (title, ep) = parse_key(key);
     let call = Call::Title(title.to_owned());
     let Some(t) = meta(&call) else {
-        return if answered(&call) { PlaySource::None } else { PlaySource::Searching };
+        return if answered(&call) { PlaySource::NotFound } else { PlaySource::Searching };
     };
     let info = from_title(&t);
     if let Some((s, e)) = ep
@@ -1135,7 +1137,7 @@ pub fn play_source(key: &str) -> PlaySource {
             }
             Some((_, Has::No)) => return PlaySource::NotInRelease,
             None if !season_done(title, s) => return PlaySource::Searching,
-            // The season has no release at all: look for this episode alone.
+            // The season has no release at all (or its search failed): look for this episode alone.
             None => {}
         }
     }
@@ -1149,11 +1151,28 @@ pub fn play_source(key: &str) -> PlaySource {
                     ep.map(|(s, e)| (s as u16, e as u16)),
                     ep.and_then(|(s, _)| numbering(&info).through_of(s as u16)),
                 ),
-                None => PlaySource::None,
+                None => PlaySource::NotFound,
             }
         }
-        Some(Search { failed: Some(_), .. }) | None => PlaySource::None,
-        Some(_) => PlaySource::Searching,
+        Some(Search { failed: Some(_), .. }) => PlaySource::Failed,
+        // Running, or dropped this moment for another source's (`source_changed`).
+        Some(_) | None => PlaySource::Searching,
+    }
+}
+
+/// What Play pressed on `key` (what plays: a film, an episode) does at once: "play" (the player
+/// opens, and a release not known yet is found inside it), "no_source" (no search source: the
+/// drawer that adds one) or "failed" (the source did not answer: the drawer to fix it; a failure
+/// a while ago is searched again instead, `ensure_search`). What is saved on the device plays
+/// from its file whatever the source.
+pub fn on_play(key: &str) -> &'static str {
+    if crate::wiring::keep().local_file(key).is_some() {
+        return "play";
+    }
+    match play_source(key) {
+        PlaySource::None => "no_source",
+        PlaySource::Failed => "failed",
+        _ => "play",
     }
 }
 
@@ -1182,7 +1201,7 @@ pub fn save_request(key: &str, pick: Option<&str>) -> SaveAsk {
         _ => match play_source(key) {
             PlaySource::Ready(source, episode, through) => (source, episode, through),
             PlaySource::Searching => return SaveAsk::Searching,
-            PlaySource::None => return SaveAsk::No("no_source"),
+            PlaySource::None | PlaySource::Failed | PlaySource::NotFound => return SaveAsk::No("no_source"),
             PlaySource::NotInRelease => return SaveAsk::No("not_in_release"),
         },
     };

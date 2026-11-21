@@ -490,6 +490,52 @@ fn an_episode_plays_from_its_seasons_release() {
     assert_eq!(episodes(AOT, 3)[1]["inRelease"], "unknown", "a pack named for the whole season");
 }
 
+/// A search that ended without an answer from the source.
+fn failed(key: &str) {
+    SEARCHES.lock().unwrap().insert(key.into(), Search { releases: None, failed: Some("unreachable".into()), ended: Some(Instant::now()) });
+}
+
+#[test]
+fn what_plays_says_why_nothing_does() {
+    let _g = fresh(true, true);
+    seed_matrix();
+    // The source did not answer: the viewer fixes it (the player's drawer), not "no source".
+    failed(MATRIX);
+    assert!(matches!(play_source(MATRIX), PlaySource::Failed));
+    assert_eq!(on_play(MATRIX), "failed", "Play opens the drawer to fix it");
+    // It answered with nothing this device plays: the player says so.
+    found(MATRIX, vec![]);
+    assert!(matches!(play_source(MATRIX), PlaySource::NotFound));
+    assert_eq!(on_play(MATRIX), "play");
+    // Still searching: the player opens and waits.
+    SEARCHES.lock().unwrap().clear();
+    assert!(matches!(play_source(MATRIX), PlaySource::Searching));
+    assert_eq!(on_play(MATRIX), "play");
+    // A title the metadata source never gave.
+    land(&Call::Title("tmdb:movie:1".into()), &json!({ "data": null }), 0);
+    assert!(matches!(play_source("tmdb:movie:1"), PlaySource::NotFound));
+    // No search source at all.
+    reset(true, false);
+    seed_matrix();
+    assert!(matches!(play_source(MATRIX), PlaySource::None));
+    assert_eq!(on_play(MATRIX), "no_source");
+}
+
+#[test]
+fn an_episode_whose_searches_failed_says_the_source_did_not_answer() {
+    let _g = fresh(true, true);
+    seed_aot();
+    TORRENT_FILES.lock().unwrap().clear();
+    failed(&season_key(AOT, 3));
+    // A season's search asks by several names at once (the likelier to be turned away): the
+    // episode is looked for alone before Play says the source did not answer.
+    assert!(matches!(play_source("tmdb:tv:1429:s3e2"), PlaySource::Searching));
+    assert_eq!(on_play("tmdb:tv:1429:s3e2"), "play", "the player opens and waits for it");
+    failed("tmdb:tv:1429:s3e2");
+    assert!(matches!(play_source("tmdb:tv:1429:s3e2"), PlaySource::Failed));
+    assert_eq!(on_play("tmdb:tv:1429:s3e2"), "failed");
+}
+
 #[test]
 fn an_episode_not_in_its_seasons_release_asks_for_another() {
     let _g = fresh(true, true);

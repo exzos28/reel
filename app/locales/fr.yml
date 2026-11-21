@@ -397,6 +397,7 @@ player:
   watch_credits: "Voir le générique"
   no_source: "Aucune version à lire."
   no_source_hint: "Ajoutez une source de recherche dans Paramètres, ou choisissez une autre version."
+  not_found_hint: "Votre source de recherche n'a trouvé aucune version lisible sur cet appareil."
   not_in_release: "Cet épisode n'est pas dans la version."
   not_in_release_hint: "Revenez en arrière pour choisir une version pour cet épisode."
   failed: "Lecture impossible : %{message}"

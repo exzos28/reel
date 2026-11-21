@@ -397,6 +397,7 @@ player:
   watch_credits: "Jeneriği izle"
   no_source: "Oynatılacak sürüm yok."
   no_source_hint: "Ayarlar'dan bir arama kaynağı ekle veya başka bir sürüm seç."
+  not_found_hint: "Arama kaynağın bu cihazda oynatılabilen bir sürüm bulamadı."
   not_in_release: "Bu bölüm sürümde yok."
   not_in_release_hint: "Geri dön ve bu bölüm için bir sürüm seç."
   failed: "Oynatılamadı: %{message}"

@@ -280,6 +280,12 @@ export interface Home {
 }
 
 export const home = () => read<Home>("home", () => Catalog.home());
+
+/** What Play pressed on `key` (what plays) does now, as the core decides it: "play" (the player
+ * opens; a release not known yet is found inside it), "no_source" (the drawer that adds a search
+ * source), "failed" (the source did not answer: the drawer to fix it). */
+export const onPlay = (key: string) => Catalog.onPlay(key) as "play" | "no_source" | "failed";
+
 /** A row of a filter panel: `name` when the source names it (a genre, a
  * country), else `key` under `browse.option.*` with its number `n`. */
 export interface FilterOption {

@@ -25,7 +25,7 @@ import { ConfirmDialog, type Confirm } from "../../layout/ConfirmDialog";
 import { Fmt } from "../../native";
 import { SaveDrawer } from "./SaveDrawer";
 import { openSourceDrawer, sourceDrawerOpen } from "../source/SourceDrawer";
-import { playGate } from "../source/playGate";
+import { pressPlay } from "../source/pressPlay";
 import { pickReleaseFor, play as startPlay, playing } from "../../playback";
 import { safe, u } from "../../theme";
 import { aboutBesideDetails, TEXT_MAX } from "../../layout/wide";
@@ -74,7 +74,6 @@ export function TitleScreen(props: { id: string }) {
     releaseAt.set(Math.max(0, shownReleases().findIndex((r) => r.selected)));
     zone.set("releases");
   };
-  const gate = playGate(data, () => startPlay({ ...data().play, title: data() }));
   // ---- Save (design/offline-downloads.md): a film saves at once; a show opens the drawer.
   watchSaved();
   /** The drawer's season, the episodes ticked in it (keys) and its focused row. */
@@ -197,9 +196,10 @@ export function TitleScreen(props: { id: string }) {
     if (url) openUrl(url).catch((e) => console.warn(`reel: the trailer did not open: ${e}`));
   };
   const run: Record<HeroAction, () => void> = {
-    // Play waits for the source's answer: the release plays once known, the drawer opens if there is none.
-    // A saved film plays at once, offline too; else Play waits for the source's answer.
-    play: () => (isSaved(data().play.id) ? startPlay({ ...data().play, title: data() }) : gate.press()),
+    // Play answers at once (`pressPlay`): the player opens and finds the release inside it, or the
+    // drawer opens when there is no source or it did not answer. A saved film plays from its file,
+    // offline too (the core's call).
+    play: () => pressPlay(data(), () => startPlay({ ...data().play, title: data() })),
     releases: () => openPanel(),
     save: openSave,
     trailer: openTrailer,

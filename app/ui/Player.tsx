@@ -592,6 +592,9 @@ function PlayerScreen(props: { turn: Turn | null }) {
   const problem = (): StageLine | null => {
     const s = core();
     if (s.phase === "no_source") return { text: t("player.no_source"), hint: t("player.no_source_hint") };
+    if (s.phase === "not_found") return { text: t("player.no_source"), hint: t("player.not_found_hint") };
+    // Under the drawer that fixes the source (SourceDrawer).
+    if (s.phase === "source_failed") return { text: t("settings.source_drawer.failed_title"), hint: "" };
     if (s.phase === "not_in_release") return { text: t("player.not_in_release"), hint: t("player.not_in_release_hint") };
     if (s.phase === "unsupported") return { text: t(`compat.${s.reason}`), hint: "" };
     if (s.phase === "no_space")

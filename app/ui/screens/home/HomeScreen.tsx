@@ -3,13 +3,13 @@
 // Remote: the focus starts on the first card; Up goes to the hero's
 // buttons, then to the nav. OK on a card opens its title; on Play, plays.
 import { computed, View } from "nsh";
-import { home, title, toggleList, type Summary } from "../../catalog";
+import { home, toggleList, type Summary } from "../../catalog";
 import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
 import { NAV } from "../../layout/navItems";
 import { PageFrame } from "../../layout/PageFrame";
-import { openSourceDrawer, sourceDrawerOpen } from "../source/SourceDrawer";
-import { playGate } from "../source/playGate";
+import { sourceDrawerOpen } from "../source/SourceDrawer";
+import { pressPlay } from "../source/pressPlay";
 import { scroller } from "../../layout/Scroller";
 import { showNav } from "../../layout/navState";
 import { go, goFromNav, openTitle } from "../../nav";
@@ -30,15 +30,9 @@ export function HomeScreen() {
   });
   /** The hero stays on the title watched last, wherever the focus goes (the core picks it). */
   const hero = computed<Summary>(() => data().hero);
-  /** The hero's title as its page has it: asking for it (once Play is pressed) starts the search for its release. */
-  const heroTitle = () => title(hero().id);
-  /** Play waits for the source's answer (`playGate`); a release the card already knows plays at once. */
-  const gate = playGate(heroTitle, () => play({ ...hero().play, title: hero() }));
-  const playFocused = () => {
-    if (!hero().playable) return openSourceDrawer("missing");
-    if (hero().release) return play({ ...hero().play, title: hero() });
-    gate.press();
-  };
+  /** Play answers at once (`pressPlay`): the player opens, its release found inside it when the
+   * hero's search still runs. */
+  const playFocused = () => pressPlay(hero(), () => play({ ...hero().play, title: hero() }));
   /** Play, the Watchlist, the title's page (left to right as the remote walks them). */
   const heroActions = [playFocused, () => toggleList(hero().id), () => openTitle(hero().id)];
 

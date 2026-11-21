@@ -18,12 +18,12 @@ test("home starts on Continue watching; the hero stays on the title watched last
   expect(app.texts()).not.toContain("2013–2023");
 });
 
-test("when the engine has no source to play from, the drawer that adds one opens instead of the player", async () => {
+test("when the engine has no source to play from, the drawer that adds one opens over the player; Back closes both", async () => {
   const app = await app_({ ...NATIVE, "Engine.status": JSON.stringify({ phase: "no_source" }) });
   await app.keyboard.press("up"); // the hero's Resume
   await app.keyboard.press("enter");
   expect(app.shows("source-panel")).toBe(true);
-  expect(app.texts()).not.toContain("No release to play.");
+  expect(app.texts()).toContain("Add a search source");
   await app.keyboard.press("escape");
   expect(app.shows("source-panel")).toBe(false);
   expect(app.texts()).toContain("Continue watching");

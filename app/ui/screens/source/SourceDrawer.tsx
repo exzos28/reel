@@ -5,7 +5,7 @@
 // button where it shows, the address, the key, Save and Remove; Up and Down walk them, Left and
 // Right go between Save and Remove, OK on a field brings the system's keyboard. Back closes it,
 // and the page's focus is where it was (the row or the button that opened it).
-import { effect, keymap, signal, Text, View } from "nsh";
+import { effect, keymap, signal, Text, untracked, View } from "nsh";
 import { t } from "nsh/i18n";
 import { bindOnTop, byKeys } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
@@ -106,11 +106,21 @@ function Body(props: { list: ScrollCtl }) {
 
 /** Over any screen (App). Back (a remote's, Escape, Android's) closes it first (its body's). */
 export function SourceDrawer() {
-  // The engine has no source to play from: no player with an error, this drawer instead.
+  // The engine has no source to play from, or the source did not answer while the player waited
+  // for it: this drawer opens over the player, and the player goes with it once it closes. (Not the
+  // player first: on iOS a sheet presented while the player's dialog was leaving never showed.)
+  let over = false;
   effect(() => {
-    if (status().phase !== "no_source") return;
-    stop();
-    openSourceDrawer();
+    const phase = status().phase;
+    const open = shown();
+    const cannot = phase === "no_source" || phase === "source_failed";
+    if (cannot && !over) {
+      over = true;
+      untracked(() => openSourceDrawer(phase === "source_failed" ? "failed" : "missing"));
+    } else if (over && !open) {
+      over = false;
+      if (cannot) untracked(stop);
+    }
   });
   return (
     <Drawer id="source" open={shown} onClose={() => shown.set(false)} title={() => t(`settings.source_drawer.${why()}_title`)} tvWidth={900}>
