@@ -32,7 +32,8 @@ So the layer is a fixed **canvas**:
   set even when `C` is unchanged, to undo MoltenVK's 1×1. MoltenVK always sees `C`.
 - Where the canvas shows: `layer.position` (the view's centre) and `layer.transform` (a uniform
   scale) fit it into the view, centred. The view is black and clips. Inside UIKit's rotation
-  animation the two change with the turn's duration (`UIView.inheritedAnimationDuration`).
+  animation (an iPad's) the two change with the turn's duration
+  (`UIView.inheritedAnimationDuration`).
 - `C`'s aspect is the picture's. `C` is the largest box of that aspect that fits the window
   (`bounds × scale`, the screen on a phone) in either orientation. The picture is 1:1 in its
   best orientation, and Core Animation scales it down (linear, no mipmaps) in the other. 16:9 on
@@ -44,8 +45,7 @@ So the layer is a fixed **canvas**:
   else not cover art, else the first). From it, `shown_size` of its crop (or size), pixel
   aspect and rotation gives the picture. A wrong guess only letterboxes the picture inside `C`.
   Unknown: `C` stays. Until the first file's hook, `C` is a 16:9 box of the window, as mpv
-  assumes 16:9 for a picture it knows nothing of; the phone may still be turning at the first
-  layout.
+  assumes 16:9 for a picture it knows nothing of.
 - Threading:
   - The hook event comes on the player's event thread, which reads the track list (mpv answers
     property reads while it waits in a hook). It never waits for the main thread.
@@ -70,20 +70,58 @@ fixed 1920×1080 rectangle, letterboxed, under a page that is 1920×1080 as well
 
 ## 2. Turns, resizes, split view
 
-- One owner turns the phone: the player, through `VideoEngine.turn` (`ios_awake::turn`, a scene
-  geometry request that works with the rotation lock on). It turns:
-  - sideways as the player opens on a phone held upright;
-  - back upright at load, only for a picture taller than wide;
-  - either way with Rotate;
-  - upright when the player closes;
-  - back to the orientation it had when the app returns from the background.
-- The root controller allows landscape on a phone only while a player is up or has asked for it
-  (`SIDEWAYS_ASKED`). A device turning in the hand still turns it while rotation is unlocked.
-- The sequence: UIKit turns the scene → `layoutSubviews` of `ReelMpvView` → the canvas is fitted
-  again (position and transform), and the film's subtitle margins are mapped again (§4). mpv is
-  not called for the picture. iPad split view, Stage Manager and slide over take the same path.
-  The canvas chosen at the hook stays when the window changes size later, so it is scaled.
-- Turning at open is now for the viewer only (the film opens sideways). mpv no longer needs it.
+**A phone's interface never turns.** The window stays upright in every orientation (`ios_awake::
+upright_on_phones` puts portrait in place of NSH's root controller's answer; the player's dialog
+asks for nothing of its own). The system is never asked for a turn: the screen recording that
+showed the player open upright, the whole window tilt with black corners, and Home tilt back on
+close is gone with it.
+
+**The player draws itself sideways** (`layout/TurnedBox.tsx`):
+
+- Its root is a box of the window's size the other way round (852 × 393 in a 393 × 852 window),
+  centred and turned ±90° with a style transform (a layer transform on iOS). Upright, the box is
+  the window, with no transform.
+- Everything in it lays out in the box's own coordinates: the video view, reel's subtitles, the
+  controls, the stage, the drawers. What reads the window's size and insets for them reads the
+  box's (`layout/surface.ts`, an NSH context: `chrome`'s side insets and so `theme.safe`, the
+  drawers, the subtitles' fit). The screen's insets go to the sides they are on once turned:
+  turned clockwise, the box's left is the screen's top (the Dynamic Island) and its right the
+  screen's bottom (the home indicator).
+- Touch: UIKit hit-tests through the transform. A press's position is in the pressed view's own
+  coordinates and a pan's translation in its superview's, so both are the box's for every view in
+  it. The swipe down to close is the player's `Pressable` inside the box: down is the box's down.
+  NSH's headless tests do not apply transforms; the device or the simulator shows it.
+- NSH's `Sheet` is a dialog of its own and shows the window's way up, so in the turned box the
+  player's drawers (tracks, episodes) are drawn in place at the box's right (`Drawer`), the
+  controls behind them hidden from VoiceOver and the swipe to close off while one is open. A
+  dialog of the app's (pairing, an offered source) still shows upright over the player.
+- Which way: turned clockwise (the phone turned counter-clockwise, the common way), or the other
+  way when the device says it is held so (`VideoEngine.held`, UIKit's device orientation, read
+  from its notifications). With the rotation lock on, iOS reports no turn and only Rotate turns
+  the player; with it off, the player follows each turn of the device (upright or to either side).
+  With VoiceOver on, the player turns only with Rotate: VoiceOver's gestures and reading order
+  follow the real, upright screen.
+- When: sideways at once as the player opens, before the picture is known (most films play
+  sideways); upright again at load only for a picture taller than wide
+  (`reel_domain::play::starts_sideways`), animated; either way with Rotate. The next episode
+  keeps what the viewer chose. Closing needs nothing: the window was upright all along.
+- A turn (Rotate, the device, the tall picture) lays the box out for the new angle at once and
+  draws it at the old angle, scaled so that the picture is as large as it showed
+  (`reel_domain::play::turn_start_scale`: ×0.56 to sideways for 16:9 on a 393 × 852 phone), then
+  turns and scales it into place in 300 ms; the controls fade out meanwhile. Less motion asked
+  for: at once. A drawer open as it turns closes.
+- Sideways, the home indicator fades after a moment (`VideoEngine.immersive`:
+  `prefersHomeIndicatorAutoHidden`); the status bar is hidden for the whole player (its dialog).
+- **mpv is not called for a turn.** The video view's bounds change from 393 × 852 to 852 × 393;
+  `layoutSubviews` of `ReelMpvView` fits the canvas again from its bounds (its own, unturned
+  coordinates) and maps the film's subtitle margins again (§4). The canvas chosen at the hook was
+  for the window in either orientation, so it stays.
+- An iPad's window turns with the device as before: UIKit turns the scene, the video view's
+  `layoutSubviews` fits the canvas again, and split view, Stage Manager and slide over take the
+  same path. The canvas chosen at the hook stays when the window changes size later, so it is
+  scaled.
+- Android phones keep the system's rotation (their window turns when auto-rotate is on) and have
+  no Rotate; drawing the player sideways there needs the activity kept upright first.
 
 ## 3. Lifecycle
 
@@ -122,13 +160,14 @@ fixed 1920×1080 rectangle, letterboxed, under a page that is 1920×1080 as well
     them.
   - Sideways, they keep to the picture's width.
   - Styled ASS tracks keep their own placement (mpv's margins do not move them), as before.
-- **reel's subtitles** (`SubtitleOverlay`, files from the release) are a view in window
-  coordinates. Their picture is the picture's aspect fitted into the window, the same box as
-  the canvas, so both kinds line up. Where `C` is not the picture's aspect (unknown at the hook,
+- **reel's subtitles** (`SubtitleOverlay`, files from the release) are a view in the player's
+  box. Their picture is the picture's aspect fitted into the box, the same box as the canvas, so
+  both kinds line up. Where `C` is not the picture's aspect (unknown at the hook,
   or the container's size differs from the frames) mpv letterboxes inside `C`, and the two may
   differ by those bars.
-- **Controls, the loading stage, the waiting line:** NSH views above the video view, in window
-  coordinates. The canvas does not change them.
+- **Controls, the loading stage, the waiting line:** NSH views above the video view, in the
+  player's box's coordinates (the window's, or the turned box's on a phone). The canvas does not
+  change them.
 
 ## 5. Removed, costs, and what needs the device
 
@@ -148,10 +187,11 @@ Costs accepted:
 
 To confirm on an iPhone (the simulator has no VideoToolbox, so it decodes on the CPU):
 
-1. Open a film upright, Rotate several times, turn the phone by hand, pause and turn. The
-   picture stays, sound does not stutter, there is no jump back, and the log has `reel mpv:
-   canvas …` lines only as a file opens (two: 16:9, then the picture's) and after the
-   background, none on a turn.
+1. Open a film upright: it shows sideways at once, the window does not turn. Rotate several
+   times, turn the phone by hand (the lock off), pause and turn. The picture stays, sound does
+   not stutter, there is no jump back, and the log has `reel mpv: canvas …` lines only as a file
+   opens (two: 16:9, then the picture's) and after the background, none on a turn. Close: Home
+   is upright, with no tilt.
 2. Back to the home screen mid-film for 10 s and return. The picture comes back, and the log
    should say `decoding with videotoolbox`, with no `hardware accelerator failed`. If decoding
    fails there, the fallback to try is `hwdec=videotoolbox-copy`. After that comes pausing in
