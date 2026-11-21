@@ -548,14 +548,14 @@ function PlayerScreen(props: { turn: Turn | null }) {
     },
     { repeat: true },
   );
-  // A remote's media keys (Android TV's come as F7 to F11: app/android RemoteKeys.java): rewind
+  // A remote's media keys (Android TV's come as F7 to F10 and F12: app/android RemoteKeys.java): rewind
   // and fast forward step as Left and Right do on the scrubber (held, further), play/pause,
   // play, pause.
   keymap.bind({ f7: key(() => scrubBy(-1)), f9: key(() => scrubBy(1)) }, { repeat: true });
   keymap.bind({ f8: key(togglePause), f10: key(() => paused.set(false)) });
-  // F11 is the system's full screen on Android, Linux and Windows: NSH refuses it there.
+  // Pause is F12: F11 is the system's full screen on Android, Linux and Windows (NSH refuses it).
   try {
-    keymap.bind({ f11: key(() => paused.set(true)) });
+    keymap.bind({ f12: key(() => paused.set(true)) });
   } catch {
     // Not bound here.
   }

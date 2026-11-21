@@ -148,7 +148,7 @@ test("left and right seek 10 seconds on the scrubber", async () => {
   expect(app.texts()).toContain("0:00");
 });
 
-// A remote's media keys (Android TV's come as F7 to F11).
+// A remote's media keys (Android TV's come as F7 to F10 and F12).
 test("the remote's media keys: rewind and fast forward step 10 seconds, play/pause, play and pause", async () => {
   const app = await playing();
   await app.keyboard.press("f9");
@@ -164,9 +164,10 @@ test("the remote's media keys: rewind and fast forward step 10 seconds, play/pau
   expect(app.shows("label:Pause")).toBe(true);
 });
 
-test("F11 pauses where the system leaves it to the app (not Android, Linux, Windows: their full screen)", async () => {
-  const app = await phonePlaying(PORTRAIT);
-  await app.keyboard.press("f11");
+// Android binds F12, not F11 (its full screen): the remote's Pause comes as F12 (RemoteKeys.java).
+test("on Android TV the remote's Pause (F12) pauses, and Play (F10) plays again", async () => {
+  const app = await playing();
+  await app.keyboard.press("f12");
   expect(app.shows("label:Play")).toBe(true);
   await app.keyboard.press("f10");
   expect(app.shows("label:Pause")).toBe(true);

@@ -8,9 +8,10 @@
 //   MEDIA_PLAY_PAUSE                            ->  F8             (keymap "f8")
 //   MEDIA_FAST_FORWARD                          ->  F9             (keymap "f9")
 //   MEDIA_PLAY                                  ->  F10            (keymap "f10")
-//   MEDIA_PAUSE                                 ->  F11            (keymap "f11")
+//   MEDIA_PAUSE                                 ->  F12            (keymap "f12")
 //
-// (F7 to F9 are a Mac keyboard's media keys.) A key the app does not take goes on as it came: the
+// (F7 to F9 are a Mac keyboard's media keys. Not F11: NSH keeps it for the system's full screen on
+// Android and refuses to bind it.) A key the app does not take goes on as it came: the
 // window's own fallback (a media key to the system's playback).
 package app.reel.views;
 
@@ -54,7 +55,7 @@ final class RemoteKeys implements InvocationHandler {
       case KeyEvent.KEYCODE_MEDIA_PLAY:
         return KeyEvent.KEYCODE_F10;
       case KeyEvent.KEYCODE_MEDIA_PAUSE:
-        return KeyEvent.KEYCODE_F11;
+        return KeyEvent.KEYCODE_F12;
       default:
         return code;
     }
