@@ -13,6 +13,8 @@ Rewrites the APK in place (align and sign it after this):
 - Android TV: the launcher's entry (`LEANBACK_LAUNCHER`), the banner (`android:banner`, from
   `<res dir>`: `drawable/banner`), and no touchscreen or leanback required, so the same APK
   installs on a phone and a TV;
+- the launcher icon (`android:icon`, `android:roundIcon`): `<res dir>`'s adaptive `mipmap/icon`
+  instead of NSH's square picture, which a launcher shrinks into a white circle;
 - the app's links (nsh.json `schemes`) go to reel's own activity (`app.reel.views.Link`):
   NSH 0.6.1's Android runtime drops them (it does not read the schemes app.json claims);
 - reel's code runs at the process's start (`app.reel.views.Start`, a provider): every activity
@@ -44,6 +46,7 @@ TYPE_REFERENCE, TYPE_STRING, TYPE_INT_HEX, TYPE_INT_BOOLEAN = 0x01, 0x03, 0x11, 
 # Attributes reel sets (android.R.attr), and the theme of an activity with nothing to show: the
 # platform's public ids, checked against android.jar on every run (`check_ids`).
 ATTR_NAME, ATTR_CONFIG_CHANGES, ATTR_REQUIRED, ATTR_BANNER = 0x01010003, 0x0101001F, 0x0101028E, 0x010103F2
+ATTR_ICON, ATTR_ROUND_ICON = 0x01010002, 0x0101052C
 ATTR_THEME, ATTR_EXPORTED, ATTR_EXCLUDE_FROM_RECENTS, ATTR_NO_HISTORY = 0x01010000, 0x01010010, 0x01010017, 0x0101022D
 ATTR_AUTHORITIES = 0x01010018
 THEME_NO_DISPLAY = 0x01030055  # @android:style/Theme.NoDisplay
@@ -291,7 +294,7 @@ def set_attr(node, attr):
     node.attrs.sort(key=lambda a: (a.resid == 0, a.resid, a.name))
 
 
-def edit(root, banner, package):
+def edit(root, banner, icon, package):
     manifest = next(n for n in root.walk() if n.kind == ELEMENT_START and n.name == "manifest")
     app = next(manifest.elements("application"))
     launchers = [(a, f) for a in app.elements("activity") for f in [is_launcher(a)] if f]
@@ -317,6 +320,8 @@ def edit(root, banner, package):
             at += 1
 
     set_attr(app, Attr(ANDROID, "banner", ATTR_BANNER, None, TYPE_REFERENCE, banner))
+    set_attr(app, Attr(ANDROID, "icon", ATTR_ICON, None, TYPE_REFERENCE, icon))
+    set_attr(app, Attr(ANDROID, "roundIcon", ATTR_ROUND_ICON, None, TYPE_REFERENCE, icon))
 
     links = [f for f in activity.elements("intent-filter") if is_link(f)]
     if links and not any(a.data == LINK_ACTIVITY for x in app.elements("activity") for a in x.attrs if a.resid == ATTR_NAME):
@@ -350,7 +355,8 @@ def check_ids(aapt2, jar, work):
     with open(f"{work}/ids.xml", "w") as f:
         f.write(f"""<manifest xmlns:android="{ANDROID}" package="ids.check">
   <uses-feature android:name="x" android:required="false" />
-  <application android:banner="@android:drawable/btn_star">
+  <application android:banner="@android:drawable/btn_star" android:icon="@android:drawable/btn_star"
+      android:roundIcon="@android:drawable/btn_star">
     <provider android:name="x" android:authorities="ids.check" android:exported="false" />
     <activity android:name="x" android:theme="@android:style/Theme.NoDisplay" android:configChanges="mcc"
         android:excludeFromRecents="true" android:noHistory="true" />
@@ -362,6 +368,7 @@ def check_ids(aapt2, jar, work):
                           capture_output=True, text=True, check=True).stdout
     found = {m.group(1): int(m.group(2), 16) for m in re.finditer(r"android:(\w+)\((0x[0-9a-f]{8})\)", tree)}
     want = {"name": ATTR_NAME, "configChanges": ATTR_CONFIG_CHANGES, "required": ATTR_REQUIRED, "banner": ATTR_BANNER,
+            "icon": ATTR_ICON, "roundIcon": ATTR_ROUND_ICON,
             "theme": ATTR_THEME, "exported": ATTR_EXPORTED, "excludeFromRecents": ATTR_EXCLUDE_FROM_RECENTS,
             "noHistory": ATTR_NO_HISTORY, "authorities": ATTR_AUTHORITIES}
     wrong = {n: hex(found.get(n, 0)) for n, rid in want.items() if found.get(n) != rid}
@@ -436,9 +443,10 @@ def main(argv):
     with tempfile.TemporaryDirectory() as work:
         check_ids(aapt2, jar, work)
         linked, ids = link(apk, res, aapt2, jar, package, work)
-        if "drawable/banner" not in ids:
-            raise ValueError(f"no drawable/banner in {res}")
-        edit(root, ids["drawable/banner"], package)
+        for name in ("drawable/banner", "mipmap/icon"):
+            if name not in ids:
+                raise ValueError(f"no {name} in {res}")
+        edit(root, ids["drawable/banner"], ids["mipmap/icon"], package)
         manifest = serialize(root, utf8)
         out = apk + ".new"
         with zipfile.ZipFile(apk) as src, zipfile.ZipFile(linked) as resz, zipfile.ZipFile(out, "w") as dst:
@@ -453,7 +461,7 @@ def main(argv):
                     # resources.arsc stays stored (Android maps it), as aapt2 wrote it.
                     dst.writestr(e, resz.read(e))
         os.replace(out, apk)
-    print(f"android-manifest: TV launcher, banner, configuration changes, links and start in {os.path.basename(apk)}", file=sys.stderr)
+    print(f"android-manifest: TV launcher, banner, icon, configuration changes, links and start in {os.path.basename(apk)}", file=sys.stderr)
     return 0
 
 

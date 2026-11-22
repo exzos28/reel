@@ -25,7 +25,7 @@
     document.documentElement.setAttribute("data-dev", d);
   })();
 </script>
-<link rel="stylesheet" href="{{@base}}style.css?v=20261122">
+<link rel="stylesheet" href="{{@base}}style.css?v=20261122.3">
 </head>
 <body>
 <a class="skip" href="#main">{{top.skip}}</a>
@@ -350,13 +350,27 @@
     <div class="get-panel" id="get-mac" role="tabpanel" data-p="mac">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-macos.zip">{{install.mac}}</a><span class="get-note">{{install.mac_note}}</span>
     </div>
-    <div class="get-panel ios" id="get-ios" role="tabpanel" data-p="ios">
+    <div class="get-panel paths" id="get-ios" role="tabpanel" data-p="ios">
       <!-- The source (altstore.json) comes with the first release that has the iPhone and iPad app; until then these links lead nowhere. -->
-      <ol class="get-steps">
-        <li><b>{{ios.step1}}</b><span>{{ios.step1_text|https://altstore.io|https://sidestore.io}}</span></li>
-        <li><b>{{ios.step2}}</b><span>{{ios.step2_text}}</span><div class="get-btns"><a class="btn primary" href="altstore://source?url={{@source_q}}">{{ios.altstore}}</a><a class="btn secondary" href="sidestore://source?url={{@source_q}}">{{ios.sidestore}}</a></div><code class="get-url">{{@source}}</code></li>
-        <li><b>{{ios.step3}}</b><span>{{ios.step3_text}}</span></li>
-      </ol>
+      <p class="get-lead">{{ios.lead}}</p>
+      <section class="get-main" aria-labelledby="ios-main">
+        <h3 id="ios-main">SideStore <span class="get-tag">{{install.recommended}}</span></h3>
+        <ol class="get-steps">
+          <li><b>{{ios.side1}}</b><span>{{ios.side1_text}}</span><a class="btn secondary" href="https://docs.sidestore.io/docs/installation/prerequisites">{{ios.side_guide}}</a></li>
+          <li><b>{{ios.side2}}</b><span>{{ios.side2_text}}</span><a class="btn primary" href="sidestore://source?url={{@source_q}}">{{ios.side_add}}</a></li>
+          <li><b>{{ios.side3}}</b><span>{{ios.side3_text}}</span></li>
+        </ol>
+        <p class="get-small">{{ios.side_small}}</p>
+      </section>
+      <section class="get-alt" aria-labelledby="ios-alt">
+        <h3 id="ios-alt">{{ios.alt_title}}</h3>
+        <p>{{ios.alt_text}}</p>
+        <a class="btn secondary small" href="altstore://source?url={{@source_q}}">{{ios.alt_add}}</a>
+      </section>
+      <div class="get-foot">
+        <p>{{ios.manual}} <code class="get-url">{{@source}}</code></p>
+        <p>{{ios.why}}</p>
+      </div>
     </div>
     <div class="get-panel" id="get-windows" role="tabpanel" data-p="windows">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-windows.zip">{{install.windows}}</a><span class="get-note">{{install.windows_note}}</span>
@@ -367,12 +381,22 @@
     <div class="get-panel" id="get-android" role="tabpanel" data-p="android">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-android.apk">{{install.android}}</a><span class="get-note">{{install.android_note}}</span>
     </div>
-    <div class="get-panel tizen" id="get-tizen" role="tabpanel" data-p="tizen">
-      <ol class="get-steps">
-        <li><b>{{tizen.step1}}</b><span>{{tizen.step1_text}}</span></li>
-        <li><b>{{tizen.step2}}</b><span>{{tizen.step2_text|https://github.com/Apps2Samsung/Apps2Samsung}}</span></li>
-        <li><b>{{tizen.step3}}</b><span>{{tizen.step3_text}}</span><a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-samsung-tv.wgt">{{tizen.download}}</a></li>
-      </ol>
+    <div class="get-panel paths" id="get-tizen" role="tabpanel" data-p="tizen">
+      <p class="get-lead">{{tizen.lead}}</p>
+      <section class="get-main" aria-labelledby="tizen-main">
+        <h3 id="tizen-main">TV-&#8288;Store <span class="get-tag">{{install.recommended}}</span></h3>
+        <ol class="get-steps">
+          <li><b>{{tizen.step1}}</b><span>{{tizen.step1_text}}</span></li>
+          <li><b>{{tizen.store2}}</b><span>{{tizen.store2_text|https://github.com/Apps2Samsung/Apps2Samsung}}</span><a class="btn secondary" href="https://github.com/Apps2Samsung/TV-Store#setting-it-up">{{tizen.store_guide}}</a></li>
+          <li><b>{{tizen.step3}}</b><span>{{tizen.store3_text}}</span></li>
+        </ol>
+        <p class="get-small">{{tizen.store_small}}</p>
+      </section>
+      <section class="get-alt" aria-labelledby="tizen-alt">
+        <h3 id="tizen-alt">{{tizen.alt_title}}</h3>
+        <p>{{tizen.alt_text}}</p>
+        <a class="btn secondary small" href="https://github.com/exzos28/reel/releases/latest/download/reel-samsung-tv.wgt">{{tizen.download}}</a>
+      </section>
     </div>
   </div>
 </section>

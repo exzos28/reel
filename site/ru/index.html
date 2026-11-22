@@ -37,7 +37,7 @@
     document.documentElement.setAttribute("data-dev", d);
   })();
 </script>
-<link rel="stylesheet" href="../style.css?v=20261122">
+<link rel="stylesheet" href="../style.css?v=20261122.3">
 </head>
 <body>
 <a class="skip" href="#main">Перейти к содержимому</a>
@@ -362,13 +362,27 @@
     <div class="get-panel" id="get-mac" role="tabpanel" data-p="mac">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-macos.zip">Скачать для Mac</a><span class="get-note">Mac с чипом Apple</span>
     </div>
-    <div class="get-panel ios" id="get-ios" role="tabpanel" data-p="ios">
+    <div class="get-panel paths" id="get-ios" role="tabpanel" data-p="ios">
       <!-- The source (altstore.json) comes with the first release that has the iPhone and iPad app; until then these links lead nowhere. -->
-      <ol class="get-steps">
-        <li><b>Установите AltStore или SideStore</b><span>Поставьте <a href="https://altstore.io">AltStore</a> или <a href="https://sidestore.io">SideStore</a> на iPhone или iPad; для AltStore нужен ещё AltServer на компьютере. С бесплатным Apple ID приложения переподписываются каждые 7 дней, и оба приложения делают это сами.</span></li>
-        <li><b>Добавьте источник reel</b><span>На iPhone или iPad нажмите кнопку своего приложения или добавьте адрес ниже как источник.</span><div class="get-btns"><a class="btn primary" href="altstore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">Добавить в AltStore</a><a class="btn secondary" href="sidestore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">Добавить в SideStore</a></div><code class="get-url">https://github.com/exzos28/reel/<wbr>releases/<wbr>latest/<wbr>download/<wbr>altstore.json</code></li>
-        <li><b>Установите reel</b><span>Откройте reel в источнике и установите. Обновления тоже приходят оттуда.</span></li>
-      </ol>
+      <p class="get-lead">reel нет в App Store. Его ставят через SideStore — бесплатное приложение, которое устанавливает программы с вашим Apple ID.</p>
+      <section class="get-main" aria-labelledby="ios-main">
+        <h3 id="ios-main">SideStore <span class="get-tag">Рекомендуем</span></h3>
+        <ol class="get-steps">
+          <li><b>Установите SideStore</b><span>Следуйте их инструкции. Компьютер понадобится один раз, минут на 10.</span><a class="btn secondary" href="https://docs.sidestore.io/docs/installation/prerequisites">Инструкция SideStore</a></li>
+          <li><b>Добавьте reel</b><span>Откройте эту страницу на iPhone и нажмите кнопку.</span><a class="btn primary" href="sidestore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">Добавить reel в SideStore</a></li>
+          <li><b>Установите</b><span>В SideStore откройте reel и нажмите «Установить».</span></li>
+        </ol>
+        <p class="get-small">SideStore сам продлевает reel раз в 7 дней и приносит обновления. Нужна iOS 15 или новее.</p>
+      </section>
+      <section class="get-alt" aria-labelledby="ios-alt">
+        <h3 id="ios-alt">Уже пользуетесь AltStore Classic?</h3>
+        <p>Держите AltServer включённым на компьютере в той же сети Wi-Fi, иначе через 7 дней reel перестанет открываться.</p>
+        <a class="btn secondary small" href="altstore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">Добавить reel в AltStore Classic</a>
+      </section>
+      <div class="get-foot">
+        <p>Добавить источник вручную: <code class="get-url">https://github.com/exzos28/reel/<wbr>releases/<wbr>latest/<wbr>download/<wbr>altstore.json</code></p>
+        <p>В AltStore PAL reel пока нет: туда берут только приложения, нотаризованные Apple.</p>
+      </div>
     </div>
     <div class="get-panel" id="get-windows" role="tabpanel" data-p="windows">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-windows.zip">Скачать для Windows</a><span class="get-note">x64: распакуйте и запустите reel.exe</span>
@@ -379,12 +393,22 @@
     <div class="get-panel" id="get-android" role="tabpanel" data-p="android">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-android.apk">Скачать APK</a><span class="get-note">Телефон, планшет, ТВ</span>
     </div>
-    <div class="get-panel tizen" id="get-tizen" role="tabpanel" data-p="tizen">
-      <ol class="get-steps">
-        <li><b>Включите режим разработчика</b><span>На телевизоре откройте «Приложения» и наберите на пульте 1 2 3 4 5. Включите режим разработчика и введите IP-адрес своего компьютера.</span></li>
-        <li><b>Откройте Apps2Samsung</b><span>Установите <a href="https://github.com/Apps2Samsung/Apps2Samsung">Apps2Samsung</a> на компьютер, откройте его и выберите свой телевизор.</span></li>
-        <li><b>Установите reel</b><span>Скачайте пакет и установите его на телевизор через Apps2Samsung.</span><a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-samsung-tv.wgt">Скачать для Samsung TV</a></li>
-      </ol>
+    <div class="get-panel paths" id="get-tizen" role="tabpanel" data-p="tizen">
+      <p class="get-lead">reel нет в магазине приложений Samsung. Один раз настройте TV-&#8288;Store с компьютера — дальше reel ставится и обновляется с пульта.</p>
+      <section class="get-main" aria-labelledby="tizen-main">
+        <h3 id="tizen-main">TV-&#8288;Store <span class="get-tag">Рекомендуем</span></h3>
+        <ol class="get-steps">
+          <li><b>Включите режим разработчика</b><span>На телевизоре откройте «Приложения» и наберите на пульте 1 2 3 4 5. Включите режим разработчика и введите IP-адрес своего компьютера.</span></li>
+          <li><b>Настройте TV-&#8288;Store</b><span>В <a href="https://github.com/Apps2Samsung/Apps2Samsung">Apps2Samsung</a> на компьютере установите TV-&#8288;Store на телевизор и нажмите Arm TV-&#8288;Store в разделе Toolbox телевизора. Затем смените IP в режиме разработчика на 127.0.0.1.</span><a class="btn secondary" href="https://github.com/Apps2Samsung/TV-Store#setting-it-up">Инструкция TV-&#8288;Store</a></li>
+          <li><b>Установите reel</b><span>Откройте TV-&#8288;Store на телевизоре, найдите reel и нажмите OK.</span></li>
+        </ol>
+        <p class="get-small">Дальше компьютер не нужен: обновления reel появляются в TV-&#8288;Store. TV-&#8288;Store работает на телевизорах 2017 года и новее.</p>
+      </section>
+      <section class="get-alt" aria-labelledby="tizen-alt">
+        <h3 id="tizen-alt">Без TV-&#8288;Store</h3>
+        <p>Подходит и для телевизоров до 2017 года. После шага 1 скачайте пакет и установите его на телевизор через Apps2Samsung; обновления ставятся так же.</p>
+        <a class="btn secondary small" href="https://github.com/exzos28/reel/releases/latest/download/reel-samsung-tv.wgt">Скачать для Samsung TV</a>
+      </section>
     </div>
   </div>
 </section>

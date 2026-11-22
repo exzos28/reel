@@ -37,7 +37,7 @@
     document.documentElement.setAttribute("data-dev", d);
   })();
 </script>
-<link rel="stylesheet" href="../style.css?v=20261122">
+<link rel="stylesheet" href="../style.css?v=20261122.3">
 </head>
 <body>
 <a class="skip" href="#main">Vai al contenuto</a>
@@ -362,13 +362,27 @@
     <div class="get-panel" id="get-mac" role="tabpanel" data-p="mac">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-macos.zip">Scarica per Mac</a><span class="get-note">Mac con chip Apple</span>
     </div>
-    <div class="get-panel ios" id="get-ios" role="tabpanel" data-p="ios">
+    <div class="get-panel paths" id="get-ios" role="tabpanel" data-p="ios">
       <!-- The source (altstore.json) comes with the first release that has the iPhone and iPad app; until then these links lead nowhere. -->
-      <ol class="get-steps">
-        <li><b>Installa AltStore o SideStore</b><span>Configura <a href="https://altstore.io">AltStore</a> o <a href="https://sidestore.io">SideStore</a> sul tuo iPhone o iPad; AltStore richiede anche AltServer su un computer. Con un ID Apple gratuito le app vanno firmate di nuovo ogni 7 giorni, ed entrambe le app lo fanno da sole.</span></li>
-        <li><b>Aggiungi la fonte di reel</b><span>Sull'iPhone o sull'iPad tocca il pulsante della tua app, oppure aggiungi l'indirizzo qui sotto come fonte.</span><div class="get-btns"><a class="btn primary" href="altstore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">Aggiungi ad AltStore</a><a class="btn secondary" href="sidestore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">Aggiungi a SideStore</a></div><code class="get-url">https://github.com/exzos28/reel/<wbr>releases/<wbr>latest/<wbr>download/<wbr>altstore.json</code></li>
-        <li><b>Installa reel</b><span>Apri reel nella fonte e installalo. Anche gli aggiornamenti arrivano dalla fonte.</span></li>
-      </ol>
+      <p class="get-lead">reel non è sull'App Store. Si installa con SideStore, un'app gratuita che installa app con il tuo ID Apple.</p>
+      <section class="get-main" aria-labelledby="ios-main">
+        <h3 id="ios-main">SideStore <span class="get-tag">Consigliato</span></h3>
+        <ol class="get-steps">
+          <li><b>Installa SideStore</b><span>Segui la sua guida. Serve un computer una sola volta, per circa 10 minuti.</span><a class="btn secondary" href="https://docs.sidestore.io/docs/installation/prerequisites">Guida di SideStore</a></li>
+          <li><b>Aggiungi reel</b><span>Apri questa pagina sull'iPhone e tocca il pulsante.</span><a class="btn primary" href="sidestore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">Aggiungi reel a SideStore</a></li>
+          <li><b>Installa</b><span>In SideStore apri reel e tocca Installa.</span></li>
+        </ol>
+        <p class="get-small">SideStore rinnova reel da solo ogni 7 giorni e porta i suoi aggiornamenti. Serve iOS 15 o successivo.</p>
+      </section>
+      <section class="get-alt" aria-labelledby="ios-alt">
+        <h3 id="ios-alt">Usi già AltStore Classic?</h3>
+        <p>Tieni AltServer acceso su un computer nella stessa rete Wi-Fi, altrimenti dopo 7 giorni reel non si apre più.</p>
+        <a class="btn secondary small" href="altstore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">Aggiungi reel ad AltStore Classic</a>
+      </section>
+      <div class="get-foot">
+        <p>Per aggiungere la sorgente a mano: <code class="get-url">https://github.com/exzos28/reel/<wbr>releases/<wbr>latest/<wbr>download/<wbr>altstore.json</code></p>
+        <p>reel non è ancora su AltStore PAL: accetta solo app notarizzate da Apple.</p>
+      </div>
     </div>
     <div class="get-panel" id="get-windows" role="tabpanel" data-p="windows">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-windows.zip">Scarica per Windows</a><span class="get-note">x64: estrai ed esegui reel.exe</span>
@@ -379,12 +393,22 @@
     <div class="get-panel" id="get-android" role="tabpanel" data-p="android">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-android.apk">Scarica l'APK</a><span class="get-note">Telefono, tablet, TV</span>
     </div>
-    <div class="get-panel tizen" id="get-tizen" role="tabpanel" data-p="tizen">
-      <ol class="get-steps">
-        <li><b>Attiva la modalità sviluppatore</b><span>Sulla TV apri App e premi 1 2 3 4 5 sul telecomando. Attiva la modalità sviluppatore e inserisci l'indirizzo IP del tuo computer.</span></li>
-        <li><b>Apri Apps2Samsung</b><span>Installa <a href="https://github.com/Apps2Samsung/Apps2Samsung">Apps2Samsung</a> sul computer, aprilo e scegli la tua TV.</span></li>
-        <li><b>Installa reel</b><span>Scarica il pacchetto e installalo sulla TV con Apps2Samsung.</span><a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-samsung-tv.wgt">Scarica per Samsung TV</a></li>
-      </ol>
+    <div class="get-panel paths" id="get-tizen" role="tabpanel" data-p="tizen">
+      <p class="get-lead">reel non è nello store di app di Samsung. Configura TV-&#8288;Store una volta da un computer, poi installa e aggiorna reel con il telecomando.</p>
+      <section class="get-main" aria-labelledby="tizen-main">
+        <h3 id="tizen-main">TV-&#8288;Store <span class="get-tag">Consigliato</span></h3>
+        <ol class="get-steps">
+          <li><b>Attiva la modalità sviluppatore</b><span>Sulla TV apri App e premi 1 2 3 4 5 sul telecomando. Attiva la modalità sviluppatore e inserisci l'indirizzo IP del tuo computer.</span></li>
+          <li><b>Configura TV-&#8288;Store</b><span>Con <a href="https://github.com/Apps2Samsung/Apps2Samsung">Apps2Samsung</a> sul computer installa TV-&#8288;Store sulla TV e premi Arm TV-&#8288;Store nella Toolbox della TV. Poi cambia l'IP della modalità sviluppatore in 127.0.0.1.</span><a class="btn secondary" href="https://github.com/Apps2Samsung/TV-Store#setting-it-up">Guida di TV-&#8288;Store</a></li>
+          <li><b>Installa reel</b><span>Apri TV-&#8288;Store sulla TV, cerca reel e premi OK.</span></li>
+        </ol>
+        <p class="get-small">Da lì in poi la TV non ha più bisogno del computer: gli aggiornamenti di reel compaiono in TV-&#8288;Store. TV-&#8288;Store funziona sulle TV dal 2017 in poi.</p>
+      </section>
+      <section class="get-alt" aria-labelledby="tizen-alt">
+        <h3 id="tizen-alt">Senza TV-&#8288;Store</h3>
+        <p>Anche per le TV precedenti al 2017. Dopo il passo 1 scarica il pacchetto e installalo sulla TV con Apps2Samsung; ogni aggiornamento si installa allo stesso modo.</p>
+        <a class="btn secondary small" href="https://github.com/exzos28/reel/releases/latest/download/reel-samsung-tv.wgt">Scarica per Samsung TV</a>
+      </section>
     </div>
   </div>
 </section>

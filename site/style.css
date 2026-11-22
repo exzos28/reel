@@ -111,7 +111,8 @@ section { padding: clamp(3.5rem, 8vw, 6.5rem) 0; }
 .shots { margin: 0; }
 /* Every device at once: the TV and the two monitors at the back, the laptop, the tablet and the
    phones in front. Sizes and places are shares of the group's width. */
-.family { position: relative; aspect-ratio: 16 / 9.4; }
+/* Its own layer: the devices' stacking stays inside, under the sticky header. */
+.family { position: relative; isolation: isolate; aspect-ratio: 16 / 9.4; }
 .family .shot { position: absolute; }
 .shot[data-s=windows] { left: 0; top: 7%; width: 33%; z-index: 1; }
 .shot[data-s=linux] { right: 0; top: 7%; width: 33%; z-index: 1; }
@@ -311,8 +312,6 @@ svg.i { width: 1.5rem; height: 1.5rem; stroke: currentColor; fill: none; stroke-
 .plain { margin-top: 1rem; }
 .plain li { padding: 0.75rem 1rem; background: var(--card); border-radius: var(--radius); color: var(--soft); }
 
-.tizen, .ios { background: var(--ink); border: 1px solid var(--line); border-radius: 0.875rem; padding: 1.5rem; }
-.tizen > p { margin-top: 0.6rem; color: var(--soft); }
 .numbered { margin: 1.25rem 0 0; padding-left: 1.4rem; display: grid; gap: 0.75rem; color: var(--soft); }
 .numbered li::marker { color: var(--ash); }
 
@@ -387,19 +386,37 @@ details p { padding: 0 0 1.25rem; color: var(--soft); max-width: 42rem; }
 [data-dev] .get-panel { display: none; }
 [data-dev=tizen] #get-tizen, [data-dev=android] #get-android, [data-dev=mac] #get-mac, [data-dev=ios] #get-ios, [data-dev=windows] #get-windows, [data-dev=linux] #get-linux { display: flex; }
 [data-dev=tizen] #get-tizen, [data-dev=ios] #get-ios { display: block; }
-.get-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; counter-reset: step; max-width: 62rem; }
-@media (min-width: 760px) { .get-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; } }
-.get-steps li { counter-increment: step; display: grid; align-content: start; gap: 0.35rem; }
+/* Samsung TV and iPhone: a line on what it takes, the recommended way in three steps, then the
+   other way below a rule, smaller. No box inside the box: the rule and the type sizes do it. */
+.paths { display: block; background: var(--ink); border: 1px solid var(--line); border-radius: 0.875rem; padding: 1.5rem; }
+.get-main { padding: 0; }
+.get-lead { max-width: 44rem; color: var(--soft); font-size: 1.0625rem; text-wrap: pretty; }
+.get-main h3 { margin: 1.5rem 0 1.1rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.7rem; }
+.get-tag { padding: 0.1rem 0.6rem; border-radius: 999px; background: var(--raise); color: var(--soft); font-size: 0.8125rem; font-weight: 500; line-height: 1.5; letter-spacing: 0; }
+.get-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.5rem; counter-reset: step; max-width: 62rem; }
+.get-steps li { counter-increment: step; display: grid; align-content: start; justify-items: start; gap: 0.35rem; }
 .get-steps li::before { content: counter(step); display: grid; place-items: center; width: 1.75rem; height: 1.75rem; margin-bottom: 0.25rem; border-radius: 50%; background: var(--red); color: var(--snow); font-size: 0.85rem; font-weight: 600; }
 .get-steps b { color: var(--snow); }
-.get-steps span { color: var(--soft); font-size: 0.95rem; }
-.get-steps .btn { justify-self: start; margin-top: 0.5rem; }
-/* A step's column can be narrower than a long label (three columns from 760px): it wraps. */
-.get-steps .btn { white-space: normal; text-align: center; padding-block: 0.6rem; }
-/* iPhone and iPad: a button for each app, then the source's address to copy (one tap selects it). */
-.get-btns { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; margin-top: 0.5rem; }
-.get-btns .btn { margin-top: 0; }
-.get-url { justify-self: start; max-width: 100%; margin-top: 0.4rem; padding: 0.3rem 0.55rem; color: var(--soft); font-size: 0.875rem; font-weight: 400; overflow-wrap: anywhere; -webkit-user-select: all; user-select: all; }
+.get-steps span { max-width: 40rem; color: var(--soft); font-size: 0.95rem; }
+.get-steps .btn, .get-alt .btn { margin-top: 0.6rem; max-width: 100%; white-space: normal; text-align: center; }
+/* Three columns once the longest button label fits its column on one line; the number, title,
+   text and button rows line up across the columns. */
+@media (min-width: 1000px) {
+  .get-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, auto); gap: 0 1.75rem; }
+  .get-steps li { grid-row: span 4; grid-template-rows: subgrid; }
+}
+.get-small { margin-top: 1.25rem; max-width: 62rem; color: var(--ash); font-size: 0.9rem; }
+.get-alt { margin-top: 1.75rem; padding: 1.5rem 0 0; border-top: 1px solid var(--line); display: grid; justify-items: start; gap: 0.3rem; }
+.get-alt h3 { font-size: 1rem; letter-spacing: 0; }
+.get-alt p { max-width: 44rem; color: var(--soft); font-size: 0.95rem; }
+.get-foot { margin-top: 1.5rem; display: grid; gap: 0.4rem; max-width: 62rem; color: var(--ash); font-size: 0.875rem; }
+/* The source's address: one tap selects it all; it wraps inside its own box. */
+.get-url { display: inline-block; max-width: 100%; padding: 0.05rem 0.5rem; color: var(--soft); font-size: inherit; font-weight: 400; overflow-wrap: anywhere; -webkit-user-select: all; user-select: all; }
+/* A phone: the buttons take the width, so they share one edge and a thumb finds them. */
+@media (max-width: 519px) {
+  .paths { padding: 1.25rem; }
+  .get-steps .btn, .get-alt .btn { justify-self: stretch; }
+}
 .foot .wrap { display: grid; gap: 1.5rem; }
 .runner { display: block; width: 100%; height: 150px; }
 .tv-screen .ui-shelf.second, .win-body .ui-shelf.second { display: none; }
