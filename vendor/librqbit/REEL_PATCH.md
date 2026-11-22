@@ -213,3 +213,23 @@ Run from `vendor/librqbit`: `cargo test --lib fastresume`.
   crash is safe (the page cache survives).
 - Rewritten data of the right length is caught only by the hashed sample (first claimed piece of
   each file plus up to 64 random ones).
+
+## Bytes in of a piece, written but not verified yet (src/chunk_tracker.rs, src/torrent_state/mod.rs)
+
+### Why
+
+reel's loading bar counts the bytes the player reads before its first frame (the file's start,
+its index at the end, the place to resume from). Releases with 16-32 MiB pieces need one piece for
+each, and a piece only becomes "have" once all of it is in and verified, so a bar counting pieces
+stood still for seconds and then jumped by a third.
+
+### What
+
+`ManagedTorrent::pieces_bytes_in(&self, pieces: &[u32]) -> anyhow::Result<Vec<u64>>`: for each
+piece, its length once it is "have", else the bytes of its chunks written so far
+(`ChunkTracker::piece_bytes_in`, from the chunk bitfield patch 2 reads with
+`is_chunk_downloaded`); 0 for an index past the last piece. One read of the chunk tracker for all
+of them. Live and paused torrents. Written chunks of a piece that then fails its hash check are
+cleared as before, so the count can go back; reel's bar never does.
+
+Test: `chunk_tracker::tests::test_piece_bytes_in`.
