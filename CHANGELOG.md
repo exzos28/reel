@@ -2,6 +2,10 @@
 
 What each version of reel changed for the viewer. Earlier versions: GitHub Releases.
 
+## 0.7.1 (2026-11-22)
+
+- On Android, the app icon fills the launcher's shape instead of sitting small inside a white circle.
+
 ## 0.7.0 (2026-11-22)
 
 - iPhone and iPad: install reel with AltStore or SideStore. Add the source https://github.com/exzos28/reel/releases/latest/download/altstore.json once, and its updates come from it.
