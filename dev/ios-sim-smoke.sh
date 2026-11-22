@@ -51,7 +51,9 @@ xcrun simctl launch --terminate-running-process "$udid" "$id" ||
   { sleep 20; xcrun simctl launch --terminate-running-process "$udid" "$id"; }
 sleep "${REEL_SMOKE_SECONDS:-20}"
 
-running() { xcrun simctl spawn "$udid" launchctl list | grep -q "UIKitApplication:$id"; }
+# grep reads the whole list (not -q): -q stops at the match, launchctl dies of SIGPIPE and, with
+# pipefail, a running app counts as not running.
+running() { xcrun simctl spawn "$udid" launchctl list | grep "UIKitApplication:$id" > /dev/null; }
 if running; then
   echo "==> $id is running on ${name//_/ }" >&2
   xcrun simctl io "$udid" screenshot "$repo/app/.nsh/dist/ios-simulator/screenshot-$family.png" > /dev/null 2>&1 || true
