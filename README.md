@@ -31,9 +31,9 @@
 <td align="center"><img src="design/readme/platforms/linux.svg" width="36" alt=""><br>Linux</td>
 </tr></table>
 
-**iPhone and iPad:** add this source in [AltStore](https://altstore.io) or
+**iPhone and iPad:** add this source in [AltStore Classic](https://altstore.io) or
 [SideStore](https://sidestore.io) (Sources, +); it installs reel with your Apple ID and brings
-its updates:<br>
+its updates (not AltStore PAL, which takes only apps approved by Apple):<br>
 `https://github.com/exzos28/reel/releases/latest/download/altstore.json`
 
 [How it works](docs/how-it-works.md) · [Building](docs/building.md) · [Releasing](docs/releasing.md) ·
