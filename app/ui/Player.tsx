@@ -629,11 +629,11 @@ function PlayerScreen(props: { turn: Turn | null }) {
     if (s.stage === "fetching") return quiet(t("player.stage.fetching", { percent: s.start ?? 0 }));
     return quiet(s.found ? t(`player.stage.found.${s.found === 1 ? "one" : "other"}`, { count: s.found }) : t("player.stage.connecting"));
   };
-  /** The bar under it: the film's start coming in; full once the player has it. */
+  /** The bar under it: how far the film is from its first frame, as the core counts it. */
   const stageProgress = () => {
     if (problem()) return null;
     const s = core();
-    return s.phase !== "ready" ? 0 : loaded() ? 100 : (s.start ?? 0);
+    return s.phase === "ready" || s.phase === "resolving" ? (s.ready ?? 0) : 0;
   };
   /** The top-left line while the overlay is up: only running out of space. */
   const status = () => (lowSpace() ? t("player.low_space") : "");

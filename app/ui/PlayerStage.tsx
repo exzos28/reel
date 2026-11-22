@@ -1,8 +1,9 @@
 // The player's waiting states. From Play until the first frame plays (and
 // when the film cannot play) the stage fills the screen: the title's still,
 // darkened (not blurred: the direction refuses blur), its logotype in the middle, the release
-// under it, one calm line from the core and a thin bar of the film's start coming in (the
-// dinosaur over the line when Settings asks for it); an error takes the same place, still.
+// under it, one calm line from the core and a thin bar of how far the film is from its first
+// frame (the dinosaur over the line when Settings asks for it); an error takes the same place,
+// still.
 // Once the film plays, a stall only shows a line over the picture (`BufferingNote`; a phone's is
 // in the controls' bottom row, `WaitingLine`), with no loader.
 import { Image, reduceMotion, Text, View, type TextStyle, type ViewStyle } from "nsh";
@@ -54,9 +55,13 @@ const BAR = 360;
 const trackStyle = (): ViewStyle => ({
   width: u(BAR), height: Math.max(2, u(4)), marginTop: u(22), overflow: "hidden", ...rounded(u(2)), backgroundColor: alpha(colors.snow(), 0.16),
 });
+/** The core says how far it is twice a second: the fill glides from one value to the next in
+ * that time, so it moves steadily. A transform, not the width: nothing is laid out again. */
+const STEP_MS = 500;
 const fillStyle = (percent: number): ViewStyle => ({
-  height: "100%", width: `${percent}%`, backgroundColor: colors.snow(),
-  transitionProperty: "all", transitionDuration: 400, transitionTimingFunction: "ease-out",
+  height: "100%", width: "100%", backgroundColor: colors.snow(),
+  transform: [{ scaleX: Math.max(0, Math.min(100, percent)) / 100 }], transformOrigin: "0% 50%",
+  ...(reduceMotion() ? {} : { transitionProperty: "transform", transitionDuration: STEP_MS, transitionTimingFunction: "linear" }),
 });
 const metaStyle = (): TextStyle => ({ fontFamily: font, fontSize: ts(22), color: colors.ash(), textAlign: "center", marginTop: u(16) });
 
@@ -66,7 +71,7 @@ export function PlayerStage(props: {
   /** The episode or the release under the title. */
   subtitle: () => string;
   line: () => StageLine;
-  /** Percent of the start in; null hides the bar (an error). */
+  /** How far the film is from its first frame, percent; null hides the bar (an error). */
   progress: () => number | null;
   /** Speed and people, when known. */
   meta: () => string;
@@ -97,8 +102,10 @@ export function PlayerStage(props: {
           <Text style={hintStyle()}>{props.line().hint!}</Text>
         </If>
         <If when={props.progress() != null}>
-          <View testID="stage-bar" accessible accessibilityLabel={props.line().quiet ? props.line().text : undefined} style={trackStyle()}>
-            <View style={fillStyle(props.progress()!)} />
+          <View testID="stage-bar" accessible role="progressbar" accessibilityLabel={props.line().quiet ? props.line().text : undefined}
+            accessibilityValue={{ min: 0, max: 100, now: Math.round(props.progress()!) }} style={trackStyle()}>
+            {/* Its value in the test id: headless tests read what the bar shows. */}
+            <View testID={`stage-fill-${Math.round(props.progress()!)}`} style={fillStyle(props.progress()!)} />
           </View>
         </If>
         <If when={props.meta() !== ""}>
