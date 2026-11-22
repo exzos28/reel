@@ -427,25 +427,42 @@ struct Info {
     certifications: Value,
 }
 
-/// Backdrop sizes: the hero's and a 16:9 card's; posters (2:3).
-const STILL_W: u32 = 1280;
-/// A TV's browser decodes and repaints a smaller still more easily: w780, scaled up.
-const STILL_W_TV: u32 = 780;
-/// A desktop's hero runs across a wide window on a 2x screen (2000 pt is 4000 px): the largest
-/// the source has (TMDB's original, 1920 to 3840 px), as w1280 shows soft there.
-const STILL_W_DESKTOP: u32 = u32::MAX;
+/// The width a 16:9 still needs to cover a box of `width` × `height` pixels: the hero scales
+/// its still to cover its box (`ui/layout/Hero.tsx`), so a box taller than 16:9 of its width
+/// (a phone's) cuts the frame's sides and wants 16/9 of its height.
+fn cover_width(width: u32, height: u32) -> u32 {
+    width.max((height * 16).div_ceil(9))
+}
 
-fn still_width() -> u32 {
-    // A desktop build: the Mac, Windows, Linux (not the TV's 32-bit ARM core, nor a phone).
-    const DESKTOP: bool = cfg!(any(target_os = "macos", windows, all(target_os = "linux", not(target_arch = "arm"))));
-    if compat::profile().device() == Some("tv") {
-        STILL_W_TV
-    } else if DESKTOP {
-        STILL_W_DESKTOP
-    } else {
-        STILL_W
+/// The largest box a hero's still covers on a kind of device (`compat::family`), in the
+/// screen's pixels: the widest screen of the kind, with Home's still across it (`heroBox` in
+/// `ui/layout/metrics.ts`). The still is taken no smaller (`still_width`): there is one hero on
+/// a screen, and it is the picture people look at.
+fn hero_box(family: Option<&str>) -> (u32, u32) {
+    match family {
+        // The canvas is the screen at a pixel to the point, 1920 × 1080 (a Samsung TV draws its
+        // web UI at 1080 lines on a 4K panel too, as Android TV boxes mostly do): Home's still
+        // runs across it, at least 16:9.
+        Some("tv") => (1920, 1080),
+        // Held sideways, a phone's still runs across the screen: 956 pt at 3x on the largest
+        // iPhone (Android's are as wide). Held upright, a film's page still is 315 pt tall, cut
+        // from a frame 560 pt wide: 1680 px.
+        Some("phone") => (2868, 1613),
+        // A 13-inch iPad held wide: 1376 pt at 2x.
+        Some("tablet") => (2752, 1548),
+        // A desktop's: a wide window on a 2x screen, 2000 pt and more (and a device that has not
+        // said what it is).
+        _ => (4000, 2250),
     }
 }
+
+/// The hero's still: as wide as this device's hero box needs, from the sizes the source has
+/// (TMDB's w1280 and w1920, else its original, 1920 to 3840 px wide; an AniList banner's one).
+fn still_width() -> u32 {
+    let (width, height) = hero_box(compat::family());
+    cover_width(width, height)
+}
+/// Backdrop sizes: a 16:9 card's; posters (2:3).
 const CARD_W: u32 = 780;
 /// A TV's card is 352 px wide at 1x: w500 (13 KB, 0.14 MP decoded) is enough; w780 is for
 /// a desktop's 2x screen.
@@ -1207,14 +1224,16 @@ pub fn save_request(key: &str, pick: Option<&str>) -> SaveAsk {
     };
     let Some(t) = peek(&Call::Title(show.to_owned())) else { return SaveAsk::Searching };
     let info = Info { id: show.to_owned(), ..from_title(&t) };
+    // The Saved screen's pictures are cards: the card's size, not the hero's.
+    let picture = info.card.clone().or(info.still.clone());
     let (label, image) = match ep {
         Some((s, e)) => {
             let found = peek(&Call::Season(show.to_owned(), s)).and_then(|season| find_episode(&season, e).cloned());
             let name = found.as_ref().and_then(|x| text(&x["name"])).unwrap_or_default();
             let thumb = found.as_ref().and_then(|x| image_url(&x["still"], THUMB_W));
-            (name, thumb.or(info.still.clone()))
+            (name, thumb.or(picture.clone()))
         }
-        None => (String::new(), info.still.clone()),
+        None => (String::new(), picture.clone()),
     };
     SaveAsk::Ready(reel_domain::ports::KeepRequest {
         key: key.to_owned(),
@@ -1225,7 +1244,7 @@ pub fn save_request(key: &str, pick: Option<&str>) -> SaveAsk {
         year: info.year.map(u32::from),
         label,
         image: image.unwrap_or_default(),
-        cover: info.still.clone().unwrap_or_default(),
+        cover: picture.unwrap_or_default(),
     })
 }
 
@@ -1295,11 +1314,12 @@ pub fn aired_episodes(show: &str) -> Option<usize> {
     )
 }
 
-/// A title's still as the catalog has it now (never asking the network), for the Saved row
-/// of a show's episodes.
-pub fn known_still(id: &str) -> Option<String> {
+/// A title's card picture as the catalog has it now (never asking the network), for the Saved
+/// row of a show's episodes.
+pub fn known_card(id: &str) -> Option<String> {
     let t = peek(&Call::Title(id.to_owned()))?;
-    from_title(&t).still
+    let info = from_title(&t);
+    info.card.or(info.still)
 }
 
 /// The release the season's episodes play from and its files, when known (sizes in the

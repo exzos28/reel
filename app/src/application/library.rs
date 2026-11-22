@@ -360,7 +360,7 @@ fn groups(items: Vec<Value>) -> Vec<Value> {
                 "title": first["title"],
                 // A show's own picture: the catalog's when it has it (items saved before they
                 // kept one), else the one kept with them.
-                "image": if show { catalog::known_still(&id).map(Value::from).unwrap_or_else(|| first["cover"].clone()) } else { first["cover"].clone() },
+                "image": if show { catalog::known_card(&id).map(Value::from).unwrap_or_else(|| first["cover"].clone()) } else { first["cover"].clone() },
                 "show": show,
                 "count": items.len(),
                 "size": size,
