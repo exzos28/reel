@@ -1448,3 +1448,22 @@ fn the_hero_takes_the_size_its_box_needs() {
     assert_eq!(size(CARD_W_TV), "w500");
 }
 
+#[test]
+fn a_mapped_anime_shows_tmdbs_backdrop_else_anilists_banner() {
+    let _g = fresh(true, false);
+    use crate::adapters::metadata::anilist::Anilist;
+    // An AniList card the anime lists tie to one TMDB title is that title (`canonicalize`): its
+    // id is TMDB's, its pictures still AniList's until the title is in.
+    let mut card = serde_json::to_value(&Anilist.map_cards(&fixture("anilist_trending.json"), &cx()).unwrap()[0]).unwrap();
+    card["id"] = json!(AOT);
+    assert!(summary(&card_info(&card))["still"].as_str().unwrap().starts_with("https://s4.anilist.co/"));
+    seed_aot();
+    let still = |v: &Value| v["still"].as_str().unwrap().to_owned();
+    let tmdb = "https://image.tmdb.org/t/p/original/rqbCbjB19amtOtFQbb3K2lgm2zv.jpg";
+    assert_eq!(still(&summary(&card_info(&card))), tmdb, "with the title in, the card's hero is TMDB's");
+    assert_eq!(still(&title(AOT)), tmdb);
+    // One the lists do not tie to TMDB stays AniList's, with its banner (its only size).
+    let anilist = Anilist.map_title(&fixture("anilist_media_16498.json"), &cx()).unwrap();
+    seed(Call::Title("anilist:16498".into()), serde_json::to_value(anilist).unwrap());
+    assert_eq!(still(&title("anilist:16498")), "https://s4.anilist.co/file/anilistcdn/media/anime/banner/16498-8jpFCOcDmneX.jpg");
+}

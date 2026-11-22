@@ -434,9 +434,11 @@ fn anime_merges_into_the_tmdb_title() {
     let kept = super::merge_anime(with_trailer, entries.clone(), primary, Some(anilist.clone()));
     assert_eq!(kept.trailer.as_deref(), Some("https://www.youtube.com/watch?v=tmdb"), "TMDB's trailer first");
     assert_eq!(base.trailer, None);
-    let t = super::merge_anime(base.clone(), entries, primary, Some(anilist));
+    let t = super::merge_anime(base.clone(), entries, primary, Some(anilist.clone()));
     assert_eq!(t.trailer.as_deref(), Some("https://www.youtube.com/watch?v=LHtdKWJdif4"), "else AniList's");
     assert_eq!(t.id, "tmdb:tv:1429");
+    assert_eq!(anilist.backdrop.as_ref().unwrap().kind, ImageKind::Banner);
+    assert_eq!(t.backdrop, base.backdrop, "TMDB's backdrop, not AniList's banner");
     assert_eq!(t.title, base.title, "TMDB keeps the text in the UI's language");
     assert_eq!(t.overview, base.overview);
     assert_eq!(sources(&t.ratings), [RatingSource::Tmdb, RatingSource::Anilist, RatingSource::Mal]);
@@ -512,6 +514,11 @@ fn service_answers_from_the_cache() {
     let data = &r["data"];
     assert_eq!(data["id"], "tmdb:tv:1429");
     assert_eq!(data["title"], "Atak Tytanów");
+    // Its hero is TMDB's 16:9 backdrop (up to its original), not AniList's 1900 × 400 banner.
+    assert_eq!(data["backdrop"]["source"], "tmdb");
+    assert_eq!(data["backdrop"]["kind"], "backdrop");
+    let sizes: Vec<&str> = data["backdrop"]["variants"].as_array().unwrap().iter().map(|v| v["size"].as_str().unwrap()).collect();
+    assert_eq!(sizes, ["w300", "w500", "w780", "w1280", "w1920", "original"]);
     let ratings: Vec<&str> =
         data["ratings"].as_array().unwrap().iter().map(|r| r["source"].as_str().unwrap()).collect();
     assert_eq!(ratings, ["tmdb", "anilist", "mal"]);
