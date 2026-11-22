@@ -37,7 +37,7 @@
     document.documentElement.setAttribute("data-dev", d);
   })();
 </script>
-<link rel="stylesheet" href="../style.css?v=20261122">
+<link rel="stylesheet" href="../style.css?v=20261122.2">
 </head>
 <body>
 <a class="skip" href="#main">本文へスキップ</a>
@@ -362,13 +362,27 @@
     <div class="get-panel" id="get-mac" role="tabpanel" data-p="mac">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-macos.zip">Mac 版をダウンロード</a><span class="get-note">Appleシリコン搭載の Mac</span>
     </div>
-    <div class="get-panel ios" id="get-ios" role="tabpanel" data-p="ios">
+    <div class="get-panel paths" id="get-ios" role="tabpanel" data-p="ios">
       <!-- The source (altstore.json) comes with the first release that has the iPhone and iPad app; until then these links lead nowhere. -->
-      <ol class="get-steps">
-        <li><b>AltStore Classic か SideStore を入れる</b><span>iPhone か iPad に <a href="https://altstore.io">AltStore Classic</a> か <a href="https://sidestore.io">SideStore</a> をセットアップします。AltStore にはコンピュータ上の AltServer も必要です。無料の Apple ID ではアプリを 7 日ごとに署名し直す必要がありますが、どちらのアプリも自動で行います。AltStore PAL は使えません。Apple が承認したアプリしか扱えません。</span></li>
-        <li><b>reel のソースを追加</b><span>iPhone か iPad で、使っているアプリのボタンをタップするか、下のアドレスをソースとして追加します。</span><div class="get-btns"><a class="btn primary" href="altstore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">AltStore Classic に追加</a><a class="btn secondary" href="sidestore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">SideStore に追加</a></div><code class="get-url">https://github.com/exzos28/reel/<wbr>releases/<wbr>latest/<wbr>download/<wbr>altstore.json</code></li>
-        <li><b>reel をインストール</b><span>ソースで reel を開いてインストールします。アップデートもこのソースから届きます。</span></li>
-      </ol>
+      <p class="get-lead">reel は App Store にはありません。自分の Apple ID でアプリをインストールできる無料アプリ、SideStore でインストールします。</p>
+      <section class="get-main" aria-labelledby="ios-main">
+        <h3 id="ios-main">SideStore <span class="get-tag">おすすめ</span></h3>
+        <ol class="get-steps">
+          <li><b>SideStore をインストール</b><span>SideStore のガイドに従います。コンピュータが必要なのは一度だけ、10 分ほどです。</span><a class="btn secondary" href="https://docs.sidestore.io/docs/installation/prerequisites">SideStore のガイド</a></li>
+          <li><b>reel を追加</b><span>このページを iPhone で開き、ボタンをタップします。</span><a class="btn primary" href="sidestore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">SideStore に reel を追加</a></li>
+          <li><b>インストール</b><span>SideStore で reel を開き、「インストール」をタップします。</span></li>
+        </ol>
+        <p class="get-small">SideStore が 7 日ごとに reel の署名を自動で更新し、アップデートも届けます。iOS 15 以降が必要です。</p>
+      </section>
+      <section class="get-alt" aria-labelledby="ios-alt">
+        <h3 id="ios-alt">AltStore Classic をすでに使っている場合</h3>
+        <p>同じ Wi-Fi のコンピュータで AltServer を動かしたままにしてください。そうしないと 7 日後に reel が開かなくなります。</p>
+        <a class="btn secondary small" href="altstore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">AltStore Classic に reel を追加</a>
+      </section>
+      <div class="get-foot">
+        <p>ソースを手動で追加する場合： <code class="get-url">https://github.com/exzos28/reel/<wbr>releases/<wbr>latest/<wbr>download/<wbr>altstore.json</code></p>
+        <p>reel はまだ AltStore PAL にはありません。Apple の公証を受けたアプリしか扱わないためです。</p>
+      </div>
     </div>
     <div class="get-panel" id="get-windows" role="tabpanel" data-p="windows">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-windows.zip">Windows 版をダウンロード</a><span class="get-note">x64。展開して reel.exe を実行</span>
@@ -379,12 +393,22 @@
     <div class="get-panel" id="get-android" role="tabpanel" data-p="android">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-android.apk">APK をダウンロード</a><span class="get-note">スマホ、タブレット、TV</span>
     </div>
-    <div class="get-panel tizen" id="get-tizen" role="tabpanel" data-p="tizen">
-      <ol class="get-steps">
-        <li><b>開発者モードをオンにする</b><span>テレビで「アプリ」を開き、リモコンで 1 2 3 4 5 と押します。開発者モードをオンにして、コンピュータの IP アドレスを入力します。</span></li>
-        <li><b>Apps2Samsung を開く</b><span>コンピュータに <a href="https://github.com/Apps2Samsung/Apps2Samsung">Apps2Samsung</a> をインストールして開き、テレビを選びます。</span></li>
-        <li><b>reel をインストール</b><span>パッケージをダウンロードし、Apps2Samsung でテレビにインストールします。</span><a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-samsung-tv.wgt">Samsung TV 版をダウンロード</a></li>
-      </ol>
+    <div class="get-panel paths" id="get-tizen" role="tabpanel" data-p="tizen">
+      <p class="get-lead">reel は Samsung のアプリストアにはありません。コンピュータから TV-&#8288;Store を一度設定すれば、あとはリモコンで reel をインストール・更新できます。</p>
+      <section class="get-main" aria-labelledby="tizen-main">
+        <h3 id="tizen-main">TV-&#8288;Store <span class="get-tag">おすすめ</span></h3>
+        <ol class="get-steps">
+          <li><b>開発者モードをオンにする</b><span>テレビで「アプリ」を開き、リモコンで 1 2 3 4 5 と押します。開発者モードをオンにして、コンピュータの IP アドレスを入力します。</span></li>
+          <li><b>TV-&#8288;Store を設定する</b><span>コンピュータの <a href="https://github.com/Apps2Samsung/Apps2Samsung">Apps2Samsung</a> で TV-&#8288;Store をテレビにインストールし、テレビの Toolbox で Arm TV-&#8288;Store を押します。その後、開発者モードの IP を 127.0.0.1 に変更します。</span><a class="btn secondary" href="https://github.com/Apps2Samsung/TV-Store#setting-it-up">TV-&#8288;Store のガイド</a></li>
+          <li><b>reel をインストール</b><span>テレビで TV-&#8288;Store を開き、reel を見つけて OK を押します。</span></li>
+        </ol>
+        <p class="get-small">以降、コンピュータは要りません。reel のアップデートは TV-&#8288;Store に表示されます。TV-&#8288;Store は 2017 年以降のテレビで動作します。</p>
+      </section>
+      <section class="get-alt" aria-labelledby="tizen-alt">
+        <h3 id="tizen-alt">TV-&#8288;Store を使わない場合</h3>
+        <p>2017 年より前のテレビにも使えます。手順 1 のあと、パッケージをダウンロードし、Apps2Samsung でテレビにインストールします。アップデートも同じ方法です。</p>
+        <a class="btn secondary small" href="https://github.com/exzos28/reel/releases/latest/download/reel-samsung-tv.wgt">Samsung TV 版をダウンロード</a>
+      </section>
     </div>
   </div>
 </section>
