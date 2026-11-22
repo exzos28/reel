@@ -252,6 +252,10 @@ Mockups: `phone.html` frames `ios-home`, `ios-movies-scrolled`, `ios-film`,
   their own beside the tabs (`nav.useOwnSections`), outside every tab's stack, and Back from their
   root returns to where they were opened from. Only the shown tab's native stack
   writes the history; a pop another tab's stack reports late goes to that tab's kept stack.
+  A tab shown again gets a native stack made at once with all its pages (no frame of its root,
+  no push); the stack follows the history, never its own routes, which a native pop changes
+  first. The player opens over the pages, which stay as they are under it (hidden on Android,
+  where it is not a layer of its own): closing it makes nothing again.
 - The section of a page is the first route of its stack (`stack[0].name`); for About it is
   Settings.
 
