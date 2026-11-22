@@ -76,6 +76,8 @@ const playPartStyle = (lit: boolean, stretch: boolean): ViewStyle => ({
   paddingHorizontal: cs(26),
   backgroundColor: partFill(lit),
   ...playEdge("left"),
+  // The watched bar along its bottom follows the rounded corner instead of covering it.
+  overflow: "hidden",
 });
 const morePartStyle = (lit: boolean): ViewStyle => ({
   width: cs(76),
@@ -93,8 +95,8 @@ const playLabelStyle = (): TextStyle => ({ ...labelText(colors.snow()), fontSize
  * its size and weight. */
 const subStyle = (): TextStyle => ({ fontFamily: font, fontSize: Math.max(13, ts(20)), color: colors.snow() });
 /** The watched part along the red part's bottom: white on a darker track. */
-const trackStyle = (): ViewStyle => ({ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.max(2, cs(4)), backgroundColor: alpha(colors.ink(), 0.3), borderBottomLeftRadius: radius() });
-const watchedStyle = (part: number): ViewStyle => ({ width: `${Math.round(Math.min(1, part) * 100)}%`, height: "100%", borderBottomLeftRadius: radius(), backgroundColor: colors.snow() });
+const trackStyle = (): ViewStyle => ({ position: "absolute", left: 0, right: 0, bottom: 0, height: Math.max(2, cs(4)), backgroundColor: alpha(colors.ink(), 0.3) });
+const watchedStyle = (part: number): ViewStyle => ({ width: `${Math.round(Math.min(1, part) * 100)}%`, height: "100%", backgroundColor: colors.snow() });
 /** The release line while it is coming: pulsing, as the release list's skeleton does. */
 const pendingStyle = (): TextStyle => ({
   ...subStyle(),
