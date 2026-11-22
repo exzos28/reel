@@ -56,7 +56,7 @@ test("while the engine looks for people, the stage shows the title and what it d
   const app = await waiting({ phase: "resolving", stage: "finding" });
   expect(app.shows("stage")).toBe(true);
   expect(app.texts()).toContain("DUNE"); // the logotype
-  expect(app.texts()).toContain("Finding people sharing it");
+  expect(app.shows("label:Finding people sharing it")).toBe(true);
   noControls(app);
   await app.keyboard.press("enter"); // nothing to play or pause yet
   noControls(app);
@@ -66,14 +66,14 @@ test("while the engine looks for people, the stage shows the title and what it d
 
 test("connected, the stage counts the film's start in until the video loads", async () => {
   const app = await waiting({ ...JSON.parse(status), stage: "connecting", peers: 0, found: 12, start: 0 });
-  expect(app.texts()).toContain("Found 12 people, connecting");
+  expect(app.shows("label:Found 12 people, connecting")).toBe(true);
   noControls(app);
   const fetching = await waiting({ ...JSON.parse(status), stage: "fetching", start: 42 });
-  expect(fetching.texts()).toContain("Fetching the start, 42%");
+  expect(fetching.shows("label:Fetching the start, 42%")).toBe(true);
   expect(fetching.texts()).toContain("streaming at 3.4 MB/s from 37 people");
   noControls(fetching);
   const starting = await waiting(JSON.parse(status));
-  expect(starting.texts()).toContain("Starting");
+  expect(starting.shows("label:Starting")).toBe(true);
   noControls(starting);
   await starting.keyboard.press("escape"); // the remote's Back
   expect(starting.texts()).toContain("Trending movies");

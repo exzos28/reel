@@ -621,12 +621,13 @@ function PlayerScreen(props: { turn: Turn | null }) {
     const p = problem();
     if (p) return p;
     const s = core();
-    if (s.phase === "resolving") return { text: t(`player.stage.${s.stage ?? "finding"}`), hint: null };
-    if (s.phase !== "ready" || loaded() || s.stage === "starting" || s.stage == null) return { text: t("player.stage.starting"), hint: null };
-    if (s.stage === "fetching") return { text: t("player.stage.fetching", { percent: s.start ?? 0 }), hint: null };
-    return s.found
-      ? { text: t(`player.stage.found.${s.found === 1 ? "one" : "other"}`, { count: s.found }), hint: null }
-      : { text: t("player.stage.connecting"), hint: null };
+    // All going well: no words on screen (the bar shows the start coming in), only the bar's
+    // label for a screen reader.
+    const quiet = (text: string): StageLine => ({ text, hint: null, quiet: true });
+    if (s.phase === "resolving") return quiet(t(`player.stage.${s.stage ?? "finding"}`));
+    if (s.phase !== "ready" || loaded() || s.stage === "starting" || s.stage == null) return quiet(t("player.stage.starting"));
+    if (s.stage === "fetching") return quiet(t("player.stage.fetching", { percent: s.start ?? 0 }));
+    return quiet(s.found ? t(`player.stage.found.${s.found === 1 ? "one" : "other"}`, { count: s.found }) : t("player.stage.connecting"));
   };
   /** The bar under it: the film's start coming in; full once the player has it. */
   const stageProgress = () => {

@@ -603,7 +603,7 @@ test("phone, with a source: Home's Play opens the player at once while the hero'
   });
   await app.press("label:Resume 41:12");
   expect(upBeforeTheAnswer).toBe(true);
-  await app.waitFor("text:Looking for a release");
+  await app.waitFor("label:Looking for a release");
 });
 
 test("phone, with a source that did not answer: Home's Play opens the drawer to fix it", async () => {
