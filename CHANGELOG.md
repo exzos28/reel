@@ -2,6 +2,19 @@
 
 What each version of reel changed for the viewer. Earlier versions: GitHub Releases.
 
+## 0.7.0 (2026-11-22)
+
+- iPhone and iPad: install reel with AltStore or SideStore. Add the source https://github.com/exzos28/reel/releases/latest/download/altstore.json once, and its updates come from it.
+- Samsung TV: a seek the TV answers late no longer ends the film with an error, and the audio track you picked is set as the film starts.
+- Samsung TV: the player no longer stops with "invalid state" when it is paused, resumed or closed at a moment the TV's player does not take it, or when the next film opens.
+- At the end of a catalog the grey cards for the next titles fill the last row first, and the titles take their places when they arrive.
+- The bar under a starting film moves steadily from Play to the picture: it counts the search, the torrent, the first person connected and the bytes the player needs first, and it is full only when the picture shows.
+- The watched bar under Resume follows the button's rounded corner.
+- On a Mac, Windows and Linux the pointer turns into a hand over buttons, cards and rows.
+- A film starts without status words: the title, the release and the bar of its start; words show only when something needs you (an error, no release, no space).
+- Play and Resume are red, in the colour of the logo, with white words: on Home and on a film's or show's page, the other releases' arrow and the release line inside it too.
+- The picture at the top of Home and of a film's or show's page is sharp on phones, tablets and TVs: it loads in the size the screen shows.
+
 ## 0.6.0 (2026-11-22)
 
 - Android phones: the app stays upright and the player shows the film sideways inside it, as on an iPhone: Rotate turns it, it follows the phone while auto-rotate is on, and the scrubber and the swipe down to close work sideways.
