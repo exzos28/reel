@@ -2,7 +2,7 @@
 // each tab keeping its own stack, a phone's Home with its categories at the
 // top, Settings and Saved as sections of their own (tablet), a narrow tablet as a phone, Back.
 import { expect, test } from "nsh/test";
-import { INCEPTION_NO_SOURCE, NATIVE, SEARCH_DUNE, openApp } from "./testEngine";
+import { INCEPTION_NO_SOURCE, NATIVE, SEARCH_DUNE, SHOW, openApp } from "./testEngine";
 
 const phone = () => openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": NATIVE } });
 
@@ -138,6 +138,42 @@ test("phone: the player's ✕ closes it", async () => {
   await app.press("Resume 41:12");
   expect(app.shows("tab-bar")).toBe(false); // not over the player
   await app.press("label:Close");
+  expect(app.texts()).toContain("Continue watching");
+});
+
+/** A phone held sideways, as the player's ✕ test: a headless run draws no turned box, so an
+ * upright window's sideways player has its ✕ off the screen. */
+const SIDEWAYS = { width: 852, height: 393, safeArea: { top: 0, bottom: 21, left: 62, right: 62 } };
+const FINDING = { ...NATIVE, ...SHOW, "Engine.status": '{"phase":"resolving","stage":"finding"}' };
+
+test("phone: the series page stays under the player (its tab's native stack is not made again), and closing it shows the page as it was", async () => {
+  const app = await openApp({ platform: "ios", ...SIDEWAYS, modules: { "app/native": FINDING } });
+  await app.press("label:Inception >> nth=0"); // the stand-in answers with Attack on Titan's page
+  await app.press("Season 2");
+  await app.press("Resume S3:E2 · 10:00");
+  expect(app.shows("player-host")).toBe(true);
+  // The player is a dialog of its own over the pages: they stay, as they are, under it.
+  expect(app.texts()).toContain("12 episodes · Season 2");
+  await app.press("label:Close");
+  expect(app.shows("player-host")).toBe(false);
+  expect(app.shows("title-discs")).toBe(true);
+  expect(app.texts()).toContain("12 episodes · Season 2");
+  expect(app.texts()).not.toContain("Continue watching"); // Home is under it
+  await app.back(); // the edge swipe: Home
+  expect(app.texts()).toContain("Continue watching");
+});
+
+test("Android phone: the pages stay hidden while the player is up; the system back closes the player, not the page under it", async () => {
+  const app = await openApp({ platform: "android", ...SIDEWAYS, modules: { "app/native": FINDING } });
+  await app.press("label:Inception >> nth=0");
+  await app.press("Season 2");
+  await app.press("Resume S3:E2 · 10:00");
+  expect(app.shows("title-discs")).toBe(false);
+  expect(app.texts()).not.toContain("12 episodes · Season 2");
+  await app.back();
+  expect(app.shows("title-discs")).toBe(true);
+  expect(app.texts()).toContain("12 episodes · Season 2");
+  await app.back();
   expect(app.texts()).toContain("Continue watching");
 });
 

@@ -30,7 +30,7 @@ import { TouchStack } from "./ui/layout/TouchStack";
 import { ExitDialog } from "./ui/layout/ExitDialog";
 import { keysInUse } from "./ui/focus/keys";
 import { Player } from "./ui/Player";
-import { PlayerHost } from "./ui/layout/PlayerHost";
+import { PlayerHost, playerOverPages } from "./ui/layout/PlayerHost";
 import { playerUp, status } from "./ui/playback";
 import { loadSettings, setupDone } from "./ui/preferences";
 import { SetupScreen } from "./ui/screens/setup/SetupScreen";
@@ -163,27 +163,37 @@ function App() {
       <If when={setupDone() === false}>
         <SetupScreen />
       </If>
-      <If when={setupDone() !== false && !playing()} else={<If when={setupDone() !== false}><PlayerHost><Player /></PlayerHost></If>}>
-        <If when={caps.touch} else={<OneScreen />}>
-          {/* A tablet's window resized across a phone's width lays the pages out again from
-              scratch (what they chose as they opened is the other family's). */}
-          <Each of={[chrome()]} key={(c) => c}>
-            {() => (
-              <View style={{ flex: 1 }}>
-                {/* Right of the phone's rail when it is held sideways. */}
-                <View style={{ flex: 1, marginLeft: railWidth() }}>
-                  <TouchStack page={screenFor} />
+      <If when={setupDone() !== false}>
+        <If when={caps.touch} else={<If when={!playing()} else={<PlayerHost><Player /></PlayerHost>}><OneScreen /></If>}>
+          {/* Touch: the pages stay while a film plays (hidden where the player is not a layer of
+              its own over them), so closing it finds each tab's native stack as it was: made
+              again, it showed the tab's root before the page came back. */}
+          <View style={{ flex: 1, display: playing() && !playerOverPages ? "none" : "flex" }}>
+            {/* A tablet's window resized across a phone's width lays the pages out again from
+                scratch (what they chose as they opened is the other family's). */}
+            <Each of={[chrome()]} key={(c) => c}>
+              {() => (
+                <View style={{ flex: 1 }}>
+                  {/* Right of the phone's rail when it is held sideways. */}
+                  <View style={{ flex: 1, marginLeft: railWidth() }}>
+                    <TouchStack page={screenFor} />
+                  </View>
+                  <If when={frame().nav === "tab-bar"}>
+                    <PhoneTabBar />
+                  </If>
+                  <If when={frame().nav === "top-row"}>
+                    <TabletTopRow />
+                    <TabletEdgeBack />
+                  </If>
                 </View>
-                <If when={frame().nav === "tab-bar"}>
-                  <PhoneTabBar />
-                </If>
-                <If when={frame().nav === "top-row"}>
-                  <TabletTopRow />
-                  <TabletEdgeBack />
-                </If>
-              </View>
-            )}
-          </Each>
+              )}
+            </Each>
+          </View>
+          <If when={playing()}>
+            <PlayerHost>
+              <Player />
+            </PlayerHost>
+          </If>
         </If>
       </If>
       {/* A desktop's window bar (the player's drag strips while a film plays). */}
