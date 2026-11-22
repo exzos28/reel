@@ -90,7 +90,10 @@ impl Engine {
         })
     }
 
-    /// What the player shows for the job, JSON with a `phase` (see `Playback::status`).
+    /// What the player shows for the job, JSON with a `phase` and, while it starts, `ready`:
+    /// how far it is from its first frame, 0..=100, the loading bar (a share for each step
+    /// before the bytes, then the bytes the player reads first; never going back, 100 only
+    /// after `firstFrame`). See `Playback::status`.
     pub fn status(job: u32) -> String {
         playback().status(job).to_string()
     }
@@ -123,8 +126,8 @@ impl Engine {
         })
     }
 
-    /// The player shows the first frame of the job's film (for the timing log,
-    /// `$TMPDIR/reel-timings.log`).
+    /// The player shows the first frame of the job's film: its `ready` is 100 (and the timing
+    /// log, `$TMPDIR/reel-timings.log`, notes it).
     pub fn first_frame(job: u32) {
         playback().first_frame(job);
     }

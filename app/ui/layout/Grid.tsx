@@ -14,6 +14,8 @@ export interface GridRow<T> {
   /** The index of its first item among all of them. */
   at: number;
   items: T[];
+  /** Cells after its items that stand in for ones on their way (`gridRows`' `coming`). */
+  stubs?: number;
 }
 
 /** The most cards in a row: more make them small and the page heavy to look at. An ultra-wide
@@ -43,17 +45,23 @@ export const gridColumnsNow = () => gridColumns(GRID_CELL, GRID_GAP);
  * and the grid show cards of one size. */
 export const gridCardWidth = () => cellWidth(gridColumnsNow(), GRID_GAP);
 
-export function gridRows<T>(all: T[], columns: number): GridRow<T>[] {
+/** `all` in rows of `columns`. `coming` (more is on its way): stand-ins where it will land, the
+ * last row's empty cells and one row more, so its items take their cells and nothing moves. */
+export function gridRows<T>(all: T[], columns: number, coming = false): GridRow<T>[] {
   const out: GridRow<T>[] = [];
   for (let i = 0; i < all.length; i += columns) out.push({ at: i, items: all.slice(i, i + columns) });
+  if (!coming) return out;
+  const last = out[out.length - 1];
+  if (last && last.items.length < columns) out[out.length - 1] = { ...last, stubs: columns - last.items.length };
+  out.push({ at: out.length * columns, items: [], stubs: columns });
   return out;
 }
 
 const gridStyle = (top: number, rowGap: number): ViewStyle => ({ paddingHorizontal: safe().x, marginTop: u(top), gap: u(rowGap) });
 
-/** `rowRef` follows a row; `cell` draws the item at index `at` of all. Only the rows
- * around the one in view are mounted: the focused row (`focusRow`), else the one the
- * page (`page`) is scrolled to. */
+/** `rowRef` follows a row; `cell` draws the item at index `at` of all, `stub` a row's stand-ins
+ * (`GridRow.stubs`). Only the rows around the one in view are mounted: the focused row
+ * (`focusRow`), else the one the page (`page`) is scrolled to. */
 export function Grid<T>(props: {
   rows: () => GridRow<T>[];
   key: (item: T) => string;
@@ -62,6 +70,7 @@ export function Grid<T>(props: {
   gap: number;
   rowRef: (row: () => GridRow<T>) => (r: ViewRef) => void;
   cell: (item: () => T, at: () => number) => JSX.Element;
+  stub?: () => JSX.Element;
   page: ScrollCtl;
   focusRow: () => number | null;
 }) {
@@ -77,6 +86,7 @@ export function Grid<T>(props: {
     rowHeight.set(r.bounds.size.height);
   };
   const step = () => rowHeight() + u(props.rowGap);
+  const stubs = (r: GridRow<T>) => Array.from({ length: props.stub ? (r.stubs ?? 0) : 0 }, (_, i) => i);
   const center = computed(() => {
     const f = props.focusRow();
     if (f != null) return f;
@@ -96,12 +106,17 @@ export function Grid<T>(props: {
             <View
               ref={(v: ViewRef) => {
                 props.rowRef(r)(v);
-                Promise.resolve().then(() => measure(v));
+                // A row of stand-ins only is shorter than one of cards.
+                if (r().items.length > 0) Promise.resolve().then(() => measure(v));
               }}
+              testID={`grid-row-${r().at}`}
               style={{ flexDirection: "row", gap: u(props.gap) }}
             >
               <Each of={r().items} key={props.key}>
                 {(item, c) => props.cell(item, () => r().at + c())}
+              </Each>
+              <Each of={stubs(r())} key={(i) => i}>
+                {() => props.stub!()}
               </Each>
             </View>
           </If>

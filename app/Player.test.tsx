@@ -56,7 +56,7 @@ test("while the engine looks for people, the stage shows the title and what it d
   const app = await waiting({ phase: "resolving", stage: "finding" });
   expect(app.shows("stage")).toBe(true);
   expect(app.texts()).toContain("DUNE"); // the logotype
-  expect(app.texts()).toContain("Finding people sharing it");
+  expect(app.shows("label:Finding people sharing it")).toBe(true);
   noControls(app);
   await app.keyboard.press("enter"); // nothing to play or pause yet
   noControls(app);
@@ -66,22 +66,55 @@ test("while the engine looks for people, the stage shows the title and what it d
 
 test("connected, the stage counts the film's start in until the video loads", async () => {
   const app = await waiting({ ...JSON.parse(status), stage: "connecting", peers: 0, found: 12, start: 0 });
-  expect(app.texts()).toContain("Found 12 people, connecting");
+  expect(app.shows("label:Found 12 people, connecting")).toBe(true);
   noControls(app);
   const fetching = await waiting({ ...JSON.parse(status), stage: "fetching", start: 42 });
-  expect(fetching.texts()).toContain("Fetching the start, 42%");
+  expect(fetching.shows("label:Fetching the start, 42%")).toBe(true);
   expect(fetching.texts()).toContain("streaming at 3.4 MB/s from 37 people");
   noControls(fetching);
   const starting = await waiting(JSON.parse(status));
-  expect(starting.texts()).toContain("Starting");
+  expect(starting.shows("label:Starting")).toBe(true);
   noControls(starting);
   await starting.keyboard.press("escape"); // the remote's Back
   expect(starting.texts()).toContain("Trending movies");
 });
 
+test("the bar is how far the core says the film is from its first frame, as it moves", async () => {
+  // The core's answers in turn: a search, the torrent's metadata, the bytes the player reads
+  // first coming in (their `start` alone would say the start is all in).
+  let ready = 10;
+  const answer = () =>
+    ready < 20 ? { phase: "resolving", stage: "searching", ready } : { ...JSON.parse(status), stage: "fetching", start: 100, ready };
+  const app = await openApp({
+    clock: {},
+    modules: { "app/native": { ...NATIVE, ...DUNE_FIRST, ...DETAILS, "Engine.status": () => JSON.stringify(answer()) } },
+  });
+  await app.press("Play");
+  await app.wait(600);
+  expect(app.shows("stage-fill-10")).toBe(true);
+  ready = 20;
+  await app.wait(600);
+  expect(app.shows("stage-fill-20")).toBe(true);
+  ready = 63;
+  await app.wait(600);
+  expect(app.shows("stage-fill-63")).toBe(true);
+  // Loaded, no frame yet: the bar is still the core's, not full.
+  ready = 95;
+  await app.wait(600);
+  expect(app.shows("stage-fill-95")).toBe(true);
+  expect(app.shows("stage-fill-100")).toBe(false);
+  noControls(app);
+});
+
+test("the bar never counts the start alone: without the core's readiness it stays empty", async () => {
+  const app = await waiting({ ...JSON.parse(status), stage: "fetching", start: 42 });
+  expect(app.shows("stage-fill-0")).toBe(true);
+});
+
 test("a film that cannot play says so in the middle of the stage, with what to do", async () => {
   const app = await waiting({ phase: "failed", message: "the torrent was only listed" });
   expect(app.shows("stage")).toBe(true);
+  expect(app.shows("stage-bar")).toBe(false); // no bar over an error
   expect(app.texts()).toContain("Could not play: the torrent was only listed");
   expect(app.texts()).toContain("Go back and pick another release.");
   noControls(app);

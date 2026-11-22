@@ -17,8 +17,9 @@ use reel_domain::{
     compat, episode,
     container::{Index, NoIndex},
     numbering::Through,
-    play::{PlaySource, SeekReady},
+    play::{PlaySource, Resume, SeekReady},
     ports::PlaybackHost,
+    ready::{Readiness, Step},
     timeline,
 };
 
@@ -244,6 +245,7 @@ pub fn close(job: u32) {
     crate::subtitles::forget(job);
     drop_seek(job);
     drop_index(job);
+    ready_drop(job);
     let Some(state) = jobs().remove(&job) else { return };
     if let Job::Ready(handle, _) = state {
         let Some(core) = CORE.get() else { return };
@@ -346,6 +348,7 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
                                 return;
                             }
                             time_step(job, "release chosen");
+                            ready_step(job, Step::Release);
                             if let Some(ep) = episode {
                                 EPISODES.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, (ep, through));
                             }
@@ -371,9 +374,16 @@ pub fn open(key: &str) -> anyhow::Result<u32> {
     }
 }
 
-/// A new job in `state` (no engine needed for it).
+/// A new job in `state` (no engine needed for it), with the steps to its first frame that
+/// apply (`ready_begin`): a search first, or the torrent at once; none for a saved film.
 fn new_job(state: Job) -> u32 {
     let job = NEXT_JOB.fetch_add(1, Ordering::Relaxed);
+    match &state {
+        Job::Searching => ready_begin(job, &[Step::Release, Step::Metadata, Step::Peer]),
+        Job::Resolving => ready_begin(job, &[Step::Metadata, Step::Peer]),
+        Job::Local(_) => ready_begin(job, &[]),
+        _ => {}
+    }
     jobs().insert(job, state);
     job
 }
@@ -591,6 +601,7 @@ fn remember_key(job: u32, key: &str) {
 /// The player shows its first frame: warming is over.
 pub fn first_frame_shown(job: u32) {
     FIRST_FRAMES.lock().unwrap().get_or_insert_with(std::collections::HashSet::new).insert(job);
+    with_ready(job, |r| r.ready.frame());
 }
 
 fn first_frame_seen(job: u32) -> bool {
@@ -607,7 +618,7 @@ fn warm(job: u32, handle: Arc<librqbit::ManagedTorrent>) {
     let h = handle.clone();
     tokio::spawn(async move { hold_spot(job, h, file, len.saturating_sub(TAIL_BYTES), "end of the file in").await });
     // The index, and from it the resume point's keyframe (`read_index`).
-    read_index(job, handle, file, len);
+    read_index(job, handle, file, layout);
 }
 
 /// Asks for the piece at byte `at` of the file now and keeps it (a stream held there) until the
@@ -646,16 +657,21 @@ type IndexState = Option<Result<Arc<Index>, NoIndex>>;
 /// (`read_index`), and the task reading it (stopped by `close`).
 static INDEXES: Mutex<Option<HashMap<u32, (tokio::sync::watch::Receiver<IndexState>, tokio::task::JoinHandle<()>)>>> = Mutex::new(None);
 
-/// The torrent's file as the index reader's `Source`: one stream, moved to each read.
+/// The torrent's file as the index reader's `Source`: one stream, moved to each read. What it
+/// reads the player reads too before its first frame (`ready_need`).
 struct StreamSource<S> {
     stream: S,
-    len: u64,
+    job: u32,
+    layout: Layout,
 }
 
 impl<S: tokio::io::AsyncRead + tokio::io::AsyncSeek + Unpin + Send> reel_domain::container::Source for StreamSource<S> {
     fn read(&mut self, at: u64, len: u64) -> impl std::future::Future<Output = std::io::Result<Vec<u8>>> + Send {
         use tokio::io::{AsyncReadExt, AsyncSeekExt};
-        let n = len.min(self.len.saturating_sub(at));
+        let n = len.min(self.layout.file_length.saturating_sub(at));
+        if n > 0 {
+            ready_need(self.job, self.layout.pieces(at, at + n));
+        }
         async move {
             self.stream.seek(std::io::SeekFrom::Start(at)).await?;
             let mut out = vec![0u8; n as usize];
@@ -667,27 +683,28 @@ impl<S: tokio::io::AsyncRead + tokio::io::AsyncSeek + Unpin + Send> reel_domain:
 
 /// Reads the film's index (its keyframes) in the background: its pieces come first, as the
 /// player's own reads of it would. Then warms the resume point at its keyframe.
-fn read_index(job: u32, handle: Arc<librqbit::ManagedTorrent>, file: usize, len: u64) {
+fn read_index(job: u32, handle: Arc<librqbit::ManagedTorrent>, file: usize, layout: Layout) {
     let (tx, rx) = tokio::sync::watch::channel::<IndexState>(None);
     let h = handle.clone();
+    let len = layout.file_length;
     let task = tokio::spawn(async move {
         let started = std::time::Instant::now();
         let state = match h.clone().stream(file).await {
-            Ok(stream) => reel_domain::container::read_index(&mut StreamSource { stream, len }, len).await,
+            Ok(stream) => reel_domain::container::read_index(&mut StreamSource { stream, job, layout }, len).await,
             Err(e) => Err(NoIndex::Read(format!("{e:#}"))),
         };
         match &state {
             Ok(i) => log_line(&format!("job {job}: index of {} keyframes read in {} ms", i.keyframes.len(), started.elapsed().as_millis())),
             Err(e) => log_line(&format!("job {job}: no index ({e:?}): seeks are not prepared")),
         }
-        let index = state.as_ref().ok().cloned();
+        // Where the viewer stopped, at its keyframe: asked for now, kept until the first frame,
+        // and needed before it (known before the index is, so the bar never counts without it).
+        let resume = resume_of(job).and_then(|e| state.as_ref().ok()?.place(e.position, 0.0, len)).map(|(at, _)| at);
+        if let Some(at) = resume {
+            ready_need(job, layout.pieces(at, at + 1));
+        }
         tx.send_replace(Some(state.map(Arc::new)));
-        // Where the viewer stopped, at its keyframe: asked for now, kept until the first frame.
-        let key = JOB_KEYS.lock().unwrap().as_ref().and_then(|k| k.get(&job).cloned());
-        let resume = key.and_then(|k| host()?.resume(&k)).filter(|e| !e.watched && e.position > 0.0);
-        if let (Some(index), Some(e)) = (index, resume)
-            && let Some((at, _)) = index.place(e.position, 0.0, len)
-        {
+        if let Some(at) = resume {
             hold_spot(job, h, file, at, "resume point in").await;
         }
     });
@@ -830,6 +847,10 @@ pub async fn seek(job: u32, seconds: f64) -> SeekReady {
                 .unwrap_or(false),
         };
         let in_already = have_all();
+        // A seek before the first frame (Resume): its place is what the picture waits for.
+        if !first_frame_seen(job) {
+            ready_need(job, first..=start);
+        }
         log_line(&format!(
             "seek job {job} to {seconds:.0} s: place {:.1}..{:.1} MiB (keyframe and {SEEK_AFTER_S} s on), pieces {first}..={last}, {}",
             from as f64 / MB,
@@ -1076,6 +1097,7 @@ fn add_to(core: &Core, job: u32, url: &str) {
             Ok(librqbit::AddTorrentResponse::Added(id, handle)) => {
                 leases::with(|l| l.take_stream(id));
                 time_step(job, "torrent added, metadata known");
+                ready_step(job, Step::Metadata);
                 if let Ok((piece, total)) = handle.with_metadata(|m| (m.lengths().default_piece_length(), m.lengths().total_length())) {
                     time_note(job, &format!("{} KiB pieces, {} MiB torrent", piece / 1024, total / MIB));
                 }
@@ -1094,6 +1116,7 @@ fn add_to(core: &Core, job: u32, url: &str) {
             Ok(librqbit::AddTorrentResponse::AlreadyManaged(id, handle)) => {
                 leases::with(|l| l.take_stream(id));
                 time_step(job, "torrent already in the session");
+                ready_step(job, Step::Metadata);
                 // A saved film the user paused: it downloads while it plays, and pauses again
                 // when the player closes (`close`).
                 if handle.is_paused() && crate::keep::paused_by_user(id) {
@@ -1132,10 +1155,109 @@ fn add_to(core: &Core, job: u32, url: &str) {
 }
 
 /// How much of the file's start must be in before the player can open it
-/// (headers and the first seconds): what the loading screen counts up to.
+/// (headers and the first seconds): the first bytes the loading bar counts.
 const START_BYTES: u64 = 8 * MIB;
 
-/// What the player shows for the job, as JSON with a `phase`:
+// ---- Readiness: how far each job is from its first frame, for the loading bar ---------
+
+/// A starting job's way to its first frame (`reel_domain::ready`) and the pieces the player
+/// reads before it, known so far: the file's start, what the index's reader read (the index
+/// the demuxer reads at the end of an MKV), the place it resumes from.
+struct Starting {
+    ready: Readiness,
+    pieces: std::collections::BTreeSet<u32>,
+    /// Whether it resumes where the viewer stopped (None: not asked yet).
+    resumes: Option<bool>,
+    /// The last value written to the timing log.
+    logged: Option<u8>,
+}
+
+static READINESS: Mutex<Option<HashMap<u32, Starting>>> = Mutex::new(None);
+
+/// Job `job` starts with `steps` before its bytes (`new_job`).
+fn ready_begin(job: u32, steps: &[Step]) {
+    let start = Starting { ready: Readiness::new(steps), pieces: Default::default(), resumes: None, logged: None };
+    READINESS.lock().unwrap().get_or_insert_with(HashMap::new).insert(job, start);
+}
+
+/// `f` with the job's readiness; None for a job that has none (closed, or not starting).
+fn with_ready<R>(job: u32, f: impl FnOnce(&mut Starting) -> R) -> Option<R> {
+    READINESS.lock().unwrap().as_mut()?.get_mut(&job).map(f)
+}
+
+fn ready_step(job: u32, step: Step) {
+    with_ready(job, |r| r.ready.step(step));
+}
+
+/// The player reads `pieces` before its first frame.
+fn ready_need(job: u32, pieces: impl IntoIterator<Item = u32>) {
+    with_ready(job, |r| r.pieces.extend(pieces));
+}
+
+fn ready_drop(job: u32) {
+    if let Some(all) = READINESS.lock().unwrap().as_mut() {
+        all.remove(&job);
+    }
+}
+
+/// The job's readiness as it stands, before any bytes (a search, the metadata).
+fn ready_percent(job: u32) -> Option<u8> {
+    with_ready(job, |r| r.ready.percent())
+}
+
+/// Where the viewer stopped in what the job plays, when it resumes there (not watched to the
+/// end, not at the start).
+fn resume_of(job: u32) -> Option<Resume> {
+    let key = JOB_KEYS.lock().unwrap().as_ref().and_then(|k| k.get(&job).cloned())?;
+    host()?.resume(&key).filter(|e| !e.watched && e.position > 0.0)
+}
+
+/// The job's readiness with its bytes counted now (`status` of a ready job, `peers` connected):
+/// the pieces the player reads first, each counted by its chunks in, so the bar moves inside
+/// big pieces. While the index is being read, what it will ask for is expected but not known:
+/// the file's last piece (an MKV's index is at its end) counts, and a piece's worth for the
+/// place to resume from, so the start coming in alone does not fill the bar.
+fn ready_of(job: u32, handle: &librqbit::ManagedTorrent, layout: &Layout, peers: u32) -> Option<u8> {
+    ready_need(job, layout.pieces(0, START_BYTES.min(layout.file_length)));
+    let index_known = index_of(job).is_some_and(|rx| rx.borrow().is_some());
+    let resumes = with_ready(job, |r| r.resumes)?.unwrap_or_else(|| {
+        let resumes = resume_of(job).is_some();
+        with_ready(job, |r| r.resumes = Some(resumes));
+        resumes
+    });
+    let mut pieces: Vec<u32> = with_ready(job, |r| r.pieces.iter().copied().collect())?;
+    let mut expected = 0;
+    if !index_known {
+        let all = layout.pieces(0, layout.file_length);
+        if !all.is_empty() && !pieces.contains(all.end()) {
+            pieces.push(*all.end());
+        }
+        if resumes {
+            expected = layout.piece_length;
+        }
+    }
+    let have: u64 = handle.pieces_bytes_in(&pieces).ok()?.iter().sum();
+    let need = pieces.iter().map(|&p| layout.piece_len(p)).sum::<u64>() + expected;
+    let (percent, log) = with_ready(job, |r| {
+        if peers > 0 {
+            r.ready.step(Step::Peer);
+        }
+        r.ready.bytes(have, need);
+        let percent = r.ready.percent();
+        let log = r.logged != Some(percent);
+        r.logged = Some(percent);
+        (percent, log)
+    })?;
+    if log {
+        let mb = |b: u64| b as f64 / MIB as f64;
+        time_note(job, &format!("ready {percent}% ({:.1} of {:.1} MiB in, {} pieces{})", mb(have), mb(need), pieces.len(), if expected > 0 { ", a resume piece expected" } else { "" }));
+    }
+    Some(percent)
+}
+
+/// What the player shows for the job, as JSON with a `phase`, and while it starts (`resolving`,
+/// `ready`) `ready`: how far it is from its first frame, 0..=100, never going back
+/// (`ready_of`, `reel_domain::ready`), the loading bar's value:
 /// - `"no_source"` (no search source set), `"source_failed"` (it did not answer), `"not_found"`
 ///   (it found nothing to play), `"not_in_release"` (the episode is not in its season's
 ///   release: the viewer picks another), `"no_space"` (`needed`, `free` bytes, `free` may be null),
@@ -1160,8 +1282,8 @@ pub fn status(job: u32) -> Value {
         Job::NotFound => json!({ "phase": "not_found" }),
         Job::NotInRelease => json!({ "phase": "not_in_release" }),
         Job::NoSpace { needed, free } => json!({ "phase": "no_space", "needed": needed, "free": free }),
-        Job::Searching => json!({ "phase": "resolving", "stage": "searching" }),
-        Job::Resolving => json!({ "phase": "resolving", "stage": "finding" }),
+        Job::Searching => json!({ "phase": "resolving", "stage": "searching", "ready": ready_percent(job) }),
+        Job::Resolving => json!({ "phase": "resolving", "stage": "finding", "ready": ready_percent(job) }),
         Job::Failed(message) => json!({ "phase": "failed", "message": message }),
         Job::Local(path) => json!({
             "phase": "ready",
@@ -1176,6 +1298,11 @@ pub fn status(job: u32) -> Value {
             "stage": "starting",
             "progress": 1.0,
             "local": true,
+            // All of it is on disk: only the first frame is still to come.
+            "ready": with_ready(job, |r| {
+                r.ready.bytes(1, 1);
+                r.ready.percent()
+            }),
         }),
         Job::Ready(handle, link) => {
             // A ready job's torrent is in the session: the engine is up.
@@ -1210,6 +1337,7 @@ pub fn status(job: u32) -> Value {
             let peers = live.map(|l| l.snapshot.peer_stats.live);
             let found = live.map(|l| l.snapshot.peer_stats.seen);
             let start = start_percent(core, &handle, file);
+            let ready = file_layout(&handle, file).and_then(|layout| ready_of(job, &handle, &layout, peers.unwrap_or(0)));
             if let Some(l) = live {
                 if l.snapshot.peer_stats.seen > 0 {
                     time_step(job, "first peer seen");
@@ -1252,6 +1380,7 @@ pub fn status(job: u32) -> Value {
                 "found": found,
                 "start": start,
                 "stage": stage,
+                "ready": ready,
                 "progress": match file_len { Some(len) if len > 0 => cached as f64 / len as f64, _ => 0.0 },
             })
         }
@@ -1420,6 +1549,22 @@ struct Layout {
 }
 
 impl Layout {
+    /// The pieces that hold bytes `from..to` of the file (none when empty).
+    fn pieces(&self, from: u64, to: u64) -> std::ops::RangeInclusive<u32> {
+        let to = to.min(self.file_length);
+        if to <= from || self.piece_length == 0 {
+            return std::ops::RangeInclusive::new(1, 0);
+        }
+        let piece = |b: u64| ((self.file_offset + b) / self.piece_length) as u32;
+        piece(from)..=piece(to - 1)
+    }
+
+    /// The length of piece `piece` (the torrent's last one may be shorter).
+    fn piece_len(&self, piece: u32) -> u64 {
+        let start = piece as u64 * self.piece_length;
+        self.total_length.saturating_sub(start).min(self.piece_length)
+    }
+
     /// Percent (0..=100) of the file's first `want` bytes (all of a smaller
     /// file) that lie in downloaded pieces without a gap from its first byte.
     fn start_percent(&self, have: impl Fn(u32) -> bool, want: u64) -> u64 {
@@ -1566,6 +1711,22 @@ pub(crate) mod tests {
         assert_eq!(small.start_percent(|p| p == 0, 400), 66);
         assert_eq!(small.start_percent(|_| true, 400), 100);
         assert_eq!(Layout { file_length: 0, ..small }.start_percent(|_| true, 400), 0);
+    }
+
+    #[test]
+    fn the_pieces_of_a_stretch_of_the_file_and_their_lengths() {
+        // Pieces of 100 bytes; the file is bytes 50..1050 of a torrent of 1080.
+        let l = Layout { piece_length: 100, total_length: 1080, file_offset: 50, file_length: 1000 };
+        // The file's first 400 bytes: torrent bytes 50..450.
+        assert_eq!(l.pieces(0, 400), 0..=4);
+        // One byte at the file's 960: torrent byte 1010, the last piece.
+        assert_eq!(l.pieces(960, 961), 10..=10);
+        // Past the file's end: cut there.
+        assert_eq!(l.pieces(990, 5000), 10..=10);
+        assert!(l.pieces(10, 10).is_empty());
+        assert_eq!(l.piece_len(3), 100);
+        // The torrent's last piece is short.
+        assert_eq!(l.piece_len(10), 80);
     }
 
     /// Sintel (Blender Foundation, CC BY 3.0): the open test torrent WebTorrent uses.

@@ -92,4 +92,8 @@ releases: `docs/releasing.md`.
   (`build/release.sh`, `docs/releasing.md`); never bump `app/nsh.json` by hand.
 - Stage only your own files (several agents work in this repo): never `git add -A`, `git add .` or
   `git commit -a`, and check `git diff --cached --stat` before committing.
-- Tizen installs go through Apps2Samsung from GitHub Releases (`.tpk`), never the Samsung store.
+- Samsung TV (Tizen) installs never go through the Samsung store. Releases: Apps2Samsung from GitHub
+  Releases. A build onto a TV on this network (`docs/tizen.md`, "Install on the TV"):
+  `apps2samsung-cli install <file.wgt> --tv <ip>` (signs it for that TV and installs it), or
+  TV-Store's upload, `curl -T <file.wgt> "http://<ip>:8077/upload?name=<file.wgt>"` (the TV asks to
+  install it). The TV's logs: `http://<ip>:47392/logs`.

@@ -1,8 +1,8 @@
 {
   "name": "reel",
   "id": "app.reel.concept",
-  "version": "0.6.0",
-  "build": 9,
+  "version": "0.7.0",
+  "build": 10,
   "icon": {
     "macos": "icon/icon-macos@2x.png",
     "ios": "icon/icon@2x.png",
@@ -37,6 +37,7 @@
         "snow": "#F5F5F5",
         "ash": "#8C8C8C",
         "red": "#E5383B",
+        "play": "#CC2A2E",
         "nav": "#333333",
         "soft": "#D6D6D6",
         "dim": "#C8C8C8",
@@ -62,6 +63,7 @@
         "snow": "#F5F5F5",
         "ash": "#8C8C8C",
         "red": "#E5383B",
+        "play": "#CC2A2E",
         "nav": "#333333",
         "soft": "#D6D6D6",
         "dim": "#C8C8C8",

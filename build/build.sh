@@ -22,7 +22,7 @@
 #   ios-simulator  universal (iPhone + iPad) simulator .app, zipped  (macOS + Xcode)
 #   ios            .ipa with libmpv: signed with REEL_IOS_SIGN_IDENTITY and REEL_IOS_PROFILE
 #                  (REEL_IOS_BUNDLE_ID: under another id, e.g. a developer's own team), else
-#                  unsigned for AltStore / SideStore (macOS + Xcode)
+#                  unsigned for AltStore / SideStore, the release's (macOS + Xcode)
 #   web            static site, tarred
 #
 # Deliverables land in app/.nsh/dist/<target>/ as reel-<target>*.{zip,tar.gz,apk,ipa};
@@ -314,10 +314,13 @@ case "$target" in
       [ -f "${REEL_IOS_PROFILE:-}" ] || die "REEL_IOS_PROFILE is not a file (a .mobileprovision)"
       "$repo/build/ios-sign.sh" "$bundle" "$out/reel-ios.ipa" "$REEL_IOS_SIGN_IDENTITY" "$REEL_IOS_PROFILE" "${REEL_IOS_BUNDLE_ID:-}"
     else
-      # For AltStore and SideStore: they sign it with the viewer's Apple ID.
+      # For AltStore and SideStore: they sign it with the viewer's Apple ID. The release's .ipa
+      # (build/publish-release.sh), listed by its source (build/altstore-source.py).
       log "REEL_IOS_SIGN_IDENTITY is not set: an unsigned .ipa"
       work="$(mktemp -d)" && mkdir "$work/Payload" && cp -R "$bundle" "$work/Payload/"
-      (cd "$work" && zip -qry -X "$OLDPWD/$out/reel-ios-unsigned.ipa" Payload) && rm -rf "$work"
+      # Without this machine's metadata (owners, extended attributes, file times).
+      python3 -I "$repo/build/pack.py" zip "$work/Payload" "$out/reel-ios-unsigned.ipa" && rm -rf "$work"
+      package_check "$out/reel-ios-unsigned.ipa"
     fi
     ;;
 

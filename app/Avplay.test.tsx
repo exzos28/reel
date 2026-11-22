@@ -254,13 +254,14 @@ test("a stall shows the buffering note until AVPlay has enough again", async () 
   expect(note()).toBe(false);
 });
 
-test("the start shows no loader by default: the title, the release, the line and the bar; the dinosaur when Settings picks it", async () => {
+test("the start shows no loader by default: the title, the release and the bar (its progress is the bar's label, no words); the dinosaur when Settings picks it", async () => {
   const plain = await tv();
   expect(plain.app.shows("stage")).toBe(true);
   expect(plain.app.shows("loader-dinosaur")).toBe(false);
   expect(plain.app.texts()).not.toContain("reel"); // no logotype on the stage
   expect(plain.app.texts()).toContain("DUNE");
-  expect(plain.app.shows("stage-line")).toBe(true);
+  expect(plain.app.shows("stage-line")).toBe(false); // all going well: no words
+  expect(plain.app.shows("stage-bar")).toBe(true);
 
   const dino = await tv({
     "Settings.load": JSON.stringify({ language: "en", bufferMB: 256, bufferChoices: [{ mb: 256, default: true }], streamDetails: true, loader: "dinosaur" }),
@@ -285,5 +286,7 @@ test("AVPlay's error shows on the stage, and Back stops AVPlay", async () => {
   expect(app.texts()).toContain("Could not play: PLAYER_ERROR_NOT_SUPPORTED_FILE");
   await app.keyboard.press("escape"); // the remote's Back
   expect(app.texts()).toContain("Trending movies");
-  expect(ops().at(-1)).toEqual({ op: "stop" });
+  // The stop names the stream it opened: the shell leaves a newer one alone.
+  const opened = ops().find((o) => o.op === "open") as { url: string } | undefined;
+  expect(ops().at(-1)).toEqual({ op: "stop", url: opened?.url });
 });

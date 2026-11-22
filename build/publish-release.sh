@@ -13,8 +13,13 @@
 #   reel-linux.tar.gz      out/linux/reel-linux-*.tar.gz
 #   reel-windows.zip       out/windows/reel-windows-*.zip
 #                          (build/linux-docker.sh windows)
+#   reel-ios.ipa           out/ios/reel-ios-unsigned.ipa (never a signed one: AltStore and
+#                          SideStore sign it with the viewer's Apple ID)
 # Each goes through build/package-check.py; a kind with no package, or one that fails it, is
-# left out and named. The notes are the version's CHANGELOG.md section (build/changes.py notes).
+# left out and named. Beside the .ipa, altstore.json: the AltStore / SideStore source that lists
+# it (build/altstore-source.py), which viewers add as releases/latest/download/altstore.json; a
+# release without the .ipa carries the latest release's source over, so that address keeps
+# working. The notes are the version's CHANGELOG.md section (build/changes.py notes).
 # REEL_RELEASE_TARGET: the commit a new tag goes on (CI: the release's commit; default: gh's,
 # the default branch). Needs gh, signed in with access to the repository.
 set -euo pipefail
@@ -55,7 +60,8 @@ take() {
   local name="$1"; shift
   local f; f="$(newest "$@")"
   if [ -z "$f" ]; then missing+=("$name"); return; fi
-  if ! python3 -I "$repo/build/package-check.py" "$f"; then
+  # The project's own repository is no one's personal data (build/build.sh's package_check).
+  if ! python3 -I "$repo/build/package-check.py" --allow "github.com/exzos28/reel" "$f"; then
     log "$name: ${f#"$repo"/} fails the package check; left out (build it again with build/build.sh)"
     missing+=("$name")
     return
@@ -84,8 +90,18 @@ files reel-android.apk android 'reel-android-*.apk'
 files reel-samsung-tv.wgt tizen 'reel-tv-v*.wgt'
 files reel-linux.tar.gz linux 'reel-linux-*.tar.gz'
 files reel-windows.zip windows 'reel-windows-*.zip'
+files reel-ios.ipa ios 'reel-ios-unsigned.ipa'
 
 ls "$stage"/* > /dev/null 2>&1 || die "no package to publish"
+if [ -f "$stage/reel-ios.ipa" ]; then
+  python3 -I "$repo/build/altstore-source.py" "$stage/reel-ios.ipa" "$version" --repo "$releases" -o "$stage/altstore.json" \
+    || die "could not write altstore.json for reel-ios.ipa"
+  log "altstore.json <- reel-ios.ipa"
+elif [ "$dry" = 0 ] && gh release download --repo "$releases" --pattern altstore.json --dir "$stage" 2> /dev/null; then
+  log "altstore.json: no iOS package; the latest release's source carried over (it lists that release's .ipa)"
+else
+  log "altstore.json: no iOS package and no earlier source; releases/latest/download/altstore.json will not be found"
+fi
 (cd "$stage" && shasum -a 256 -- * > SHA256SUMS.txt)
 [ "${#missing[@]}" -eq 0 ] || log "not in this release: ${missing[*]}"
 ls -la "$stage" >&2

@@ -3,9 +3,10 @@
 # app/nsh.json's version, and if the release v<version> does not exist yet, this checks the commit,
 # builds every platform and the Samsung TV package and publishes them as the release v<version>
 # (the tag made on this commit) under the names the site and the README link to
-# (build/publish-release.sh: each package checked by build/package-check.py), with the version's
-# CHANGELOG.md section as its notes. By hand (workflow_dispatch) it publishes main's version again,
-# replacing the release's files (docs/releasing.md, "Fixing a release").
+# (build/publish-release.sh: each package checked by build/package-check.py; the iOS .ipa with its
+# AltStore / SideStore source, altstore.json), with the version's CHANGELOG.md section as its
+# notes. By hand (workflow_dispatch) it publishes main's version again, replacing the release's
+# files (docs/releasing.md, "Fixing a release").
 name: release
 
 on:
@@ -72,7 +73,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       # Every package the builds uploaded (reel-macos, reel-linux, reel-windows, reel-android,
-      # reel-tv, and the ones the release leaves out), each in its own folder.
+      # reel-ios-unsigned, reel-tv, and the ones the release leaves out), each in its own folder;
+      # publish-release.sh writes altstore.json, the iOS app's source, from the .ipa.
       - uses: actions/download-artifact@v8.0.2
         with:
           pattern: reel-*

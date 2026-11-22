@@ -269,7 +269,7 @@ test("with a source, Play answers at once: while it searches, the player opens a
   await app.press("label:Resume 41:12");
   expect(upBeforeTheAnswer).toBe(true);
   expect(app.shows("source-panel")).toBe(false);
-  await app.waitFor("text:Looking for a release");
+  await app.waitFor("label:Looking for a release");
 });
 
 test("the source does not answer while the player waits for it: the drawer to fix it opens over the player, and the player goes with it", async () => {

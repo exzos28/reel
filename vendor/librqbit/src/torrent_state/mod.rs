@@ -657,6 +657,23 @@ impl ManagedTorrent {
         live.forget_pieces(pieces)
     }
 
+    /// reel: how many bytes of each of `pieces` are in: all of a verified one ("have"), else
+    /// its chunks written so far (not verified yet); 0 past the last piece. A loading bar moves
+    /// inside big pieces with it. Live and paused torrents only.
+    pub fn pieces_bytes_in(&self, pieces: &[u32]) -> anyhow::Result<Vec<u64>> {
+        self.with_chunk_tracker(|chunks| {
+            pieces
+                .iter()
+                .map(|&p| {
+                    chunks
+                        .get_lengths()
+                        .validate_piece_index(p)
+                        .map_or(0, |p| chunks.piece_bytes_in(p))
+                })
+                .collect()
+        })
+    }
+
     // Returns true if needed to unpause torrent.
     // This is just implementation detail - it's easier to pause/unpause than to tinker with internals.
     pub(crate) fn update_only_files(&self, only_files: &HashSet<usize>) -> anyhow::Result<()> {

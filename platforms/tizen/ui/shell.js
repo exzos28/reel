@@ -117,23 +117,35 @@
     },
 
     // `hold`: prepared, AVPlay waits for the page's `play` (it picks the audio track first).
+    // The stream AVPlay has open (null: none): a late `stop` or a callback of an older one
+    // must not touch the next.
+    current: null,
+
     open: function (url, emit, hold) {
       if (typeof webapis === 'undefined' || !webapis.avplay) throw new Error('webapis.avplay is not available');
       var p = webapis.avplay;
       try { p.stop(); p.close(); } catch (e) { /* nothing was open */ }
       av.resetSeek();
+      av.pendingTrack = null;
+      av.current = url;
+      // What AVPlay says about this stream, only while it is still the one open.
+      var mine = function (event) { if (av.current === url) emit(event); };
       emit({ type: 'step', step: 'open ' + url });
       p.open(url);
       p.setDisplayRect(0, 0, 1920, 1080);
       p.setDisplayMethod('PLAYER_DISPLAY_MODE_LETTER_BOX');
-      p.setListener(av.listener(emit));
+      p.setListener(av.listener(mine));
       emit({ type: 'step', step: 'prepareAsync, state ' + p.getState() });
       p.prepareAsync(function () {
-        emit({ type: 'loaded', duration: p.getDuration() / 1000, tracks: av.tracks() });
+        if (av.current !== url) return;
+        mine({ type: 'loaded', duration: p.getDuration() / 1000, tracks: av.tracks() });
         if (hold) return;
         p.play();
-        emit({ type: 'step', step: 'play, state ' + p.getState() });
-      }, function (e) { emit({ type: 'error', message: 'prepare: ' + (e && (e.name + ' ' + e.message)) }); });
+        mine({ type: 'step', step: 'play, state ' + p.getState() });
+      }, function (e) {
+        if (av.current !== url) return note('avplay prepare of an older stream: ' + (e && (e.name || e)));
+        mine({ type: 'error', message: 'prepare: ' + (e && (e.name + ' ' + e.message)) });
+      });
     },
 
     tracks: function () {
@@ -150,8 +162,10 @@
     seeking: false,
     pendingSeek: null,
     seekTimer: null,
+    seekRunning: null,
     resetSeek: function () {
       av.seeking = false;
+      av.seekRunning = null;
       av.pendingSeek = null;
       if (av.seekTimer) clearTimeout(av.seekTimer);
       av.seekTimer = null;
@@ -163,22 +177,36 @@
       var t0 = Date.now();
       var state = p.getState();
       var finished = false;
+      // A seek is never an error for the viewer: AVPlay answers late on a stream still
+      // downloading (or says it failed while it plays on from where it is), and the player only
+      // waits — the viewer can leave at any moment. Its end (done or failed) ends the wait.
       var done = function (ok, e) {
         if (finished) return;
         finished = true;
         if (av.seekTimer) clearTimeout(av.seekTimer);
         av.seekTimer = null;
-        av.seeking = false;
+        if (av.seekRunning === run) av.seeking = false;
         note('avplay seek ' + ms + ' ms from ' + state + ': ' + (ok ? 'done' : 'failed ' + (e && (e.name || e))) + ' in ' + (Date.now() - t0) + ' ms');
         if (av.pendingSeek != null) {
           var next = av.pendingSeek;
           av.pendingSeek = null;
           av.seek(next, emit);
-        } else if (ok) emit({ type: 'seeked' });
-        else emit({ type: 'error', message: 'seek: ' + (e && (e.name || e)) });
+        } else emit({ type: 'seeked' });
       };
-      // Some firmware never calls back: after 10 s the next seek may go anyway.
-      av.seekTimer = setTimeout(function () { done(false, 'no answer in 10 s'); }, 10000);
+      var run = {};
+      av.seekRunning = run;
+      // Some firmware never calls back: after 10 s the next seek may go anyway (this one's
+      // answer, if it comes, still ends the wait).
+      av.seekTimer = setTimeout(function () {
+        av.seekTimer = null;
+        note('avplay seek ' + ms + ' ms: no answer in 10 s, still waiting');
+        if (av.seekRunning === run) av.seeking = false;
+        if (av.pendingSeek != null) {
+          var next = av.pendingSeek;
+          av.pendingSeek = null;
+          av.seek(next, emit);
+        }
+      }, 10000);
       // seekTo holds this page's thread (and the app's, in the same renderer) until AVPlay has
       // data at the target, seconds on a stream still downloading: two frames first, so the
       // app's loader, asked for with the seek, is on screen while it waits.
@@ -191,16 +219,56 @@
       });
     },
 
+    // Each op only in the states AVPlay takes it in (an op in another state throws
+    // InvalidStateError): one that comes too early or too late — a pause before the prepared
+    // stream plays, a play after it was closed — is skipped and logged, never an error.
+    allowed: {
+      play: ['READY', 'PAUSED'],
+      pause: ['PLAYING'],
+      seek: ['READY', 'PLAYING', 'PAUSED'],
+      // Some firmware refuses setSelectTrack while READY (a prepared stream that waits for
+      // `play`): the track waits and is set as it starts playing.
+      track: ['READY', 'PLAYING', 'PAUSED']
+    },
+    pendingTrack: null,
+
     handle: function (msg, emit) {
       var p = webapis.avplay;
-      switch (msg.op) {
-        case 'open': av.open(msg.url, emit, !!msg.hold); break;
-        case 'play': p.play(); break;
-        case 'pause': p.pause(); break;
-        case 'seek': av.seek(Math.round(msg.position * 1000), emit); break;
-        case 'track': p.setSelectTrack(msg.trackType, msg.index); break;
-        case 'stop': av.resetSeek(); try { p.stop(); p.close(); } catch (e) { /* already closed */ } break;
-        default: emit({ type: 'error', message: 'unknown op ' + msg.op });
+      if (msg.op === 'open') return av.open(msg.url, emit, !!msg.hold);
+      if (msg.op === 'stop') {
+        // A stop of the stream that was open before this one (a view that left after the next
+        // one opened) leaves the next alone.
+        if (msg.url && msg.url !== av.current) return note('avplay stop of an older stream, skipped');
+        av.resetSeek();
+        av.pendingTrack = null;
+        av.current = null;
+        try { p.stop(); p.close(); } catch (e) { /* already closed */ }
+        return;
+      }
+      var states = av.allowed[msg.op];
+      if (!states) return emit({ type: 'error', message: 'unknown op ' + msg.op });
+      var state = p.getState();
+      if (states.indexOf(state) < 0) return note('avplay ' + msg.op + ' skipped in ' + state);
+      try {
+        switch (msg.op) {
+          case 'play':
+            p.play();
+            if (av.pendingTrack) {
+              var t = av.pendingTrack;
+              av.pendingTrack = null;
+              try { p.setSelectTrack(t.trackType, t.index); } catch (e) { note('avplay track failed as it played: ' + (e && (e.name || e))); }
+            }
+            break;
+          case 'pause': p.pause(); break;
+          case 'seek': av.seek(Math.round(msg.position * 1000), emit); break;
+          case 'track':
+            if (state === 'READY') { av.pendingTrack = { trackType: msg.trackType, index: msg.index }; break; }
+            p.setSelectTrack(msg.trackType, msg.index);
+            break;
+        }
+      } catch (e) {
+        // AVPlay moved on between the check and the call: logged, the stream plays on.
+        note('avplay ' + msg.op + ' failed in ' + state + ': ' + (e && (e.name || e)));
       }
     }
   };

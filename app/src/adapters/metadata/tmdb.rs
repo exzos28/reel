@@ -54,7 +54,7 @@ impl Default for ImageConfig {
         ImageConfig {
             base: "https://image.tmdb.org/t/p/".into(),
             poster: v(&["w92", "w154", "w185", "w342", "w500", "w780", "original"]),
-            backdrop: v(&["w300", "w500", "w780", "w1280", "original"]),
+            backdrop: v(&["w300", "w500", "w780", "w1280", "w1920", "original"]),
             logo: v(&["w45", "w92", "w154", "w185", "w300", "w500", "original"]),
             still: v(&["w92", "w185", "w300", "original"]),
             profile: v(&["w45", "w185", "h632", "original"]),
@@ -62,12 +62,20 @@ impl Default for ImageConfig {
     }
 }
 
-/// TMDB lists w300 and w780 for backdrops, but its CDN serves w500 too: the size a TV's
-/// card (352 px) needs, at less than half w780's bytes.
-fn with_w500(mut sizes: Vec<String>) -> Vec<String> {
-    if !sizes.iter().any(|s| s == "w500") {
-        let at = sizes.iter().position(|s| s.strip_prefix('w').and_then(|n| n.parse::<u32>().ok()).is_none_or(|w| w > 500));
-        sizes.insert(at.unwrap_or(sizes.len()), "w500".into());
+/// Backdrop sizes TMDB's CDN serves past the ones it lists (w300, w780, w1280, original):
+/// w500, the size a TV's card (352 px) needs, at less than half w780's bytes; and w1920, a
+/// 1080p TV's whole width (its hero), at a third of a 4K original's bytes and a quarter of its
+/// memory decoded (8 MB, not 33). Its CDN answers both; w2560 and up it refuses.
+const UNLISTED_BACKDROPS: [u32; 2] = [500, 1920];
+
+/// `sizes` with `UNLISTED_BACKDROPS` among them, each once, in order of width.
+fn with_unlisted(mut sizes: Vec<String>) -> Vec<String> {
+    for width in UNLISTED_BACKDROPS {
+        let size = format!("w{width}");
+        if !sizes.contains(&size) {
+            let at = sizes.iter().position(|s| s.strip_prefix('w').and_then(|n| n.parse::<u32>().ok()).is_none_or(|w| w > width));
+            sizes.insert(at.unwrap_or(sizes.len()), size);
+        }
     }
     sizes
 }
@@ -82,7 +90,7 @@ impl ImageConfig {
         Ok(ImageConfig {
             base: s(images, "secure_base_url").ok_or_else(|| parse_err("secure_base_url"))?,
             poster: list("poster_sizes")?,
-            backdrop: with_w500(list("backdrop_sizes")?),
+            backdrop: with_unlisted(list("backdrop_sizes")?),
             logo: list("logo_sizes")?,
             still: list("still_sizes")?,
             profile: list("profile_sizes")?,
@@ -917,9 +925,14 @@ pub fn absolute_base(seasons: &[SeasonSummary], n: u32) -> Option<u32> {
 #[cfg(test)]
 mod backdrop_sizes {
     #[test]
-    fn w500_goes_between_w300_and_w780_once() {
+    fn unlisted_sizes_go_in_order_once() {
         let v = |x: &[&str]| x.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        assert_eq!(super::with_w500(v(&["w300", "w780", "w1280", "original"])), v(&["w300", "w500", "w780", "w1280", "original"]));
-        assert_eq!(super::with_w500(v(&["w300", "w500", "original"])), v(&["w300", "w500", "original"]));
+        assert_eq!(
+            super::with_unlisted(v(&["w300", "w780", "w1280", "original"])),
+            v(&["w300", "w500", "w780", "w1280", "w1920", "original"])
+        );
+        assert_eq!(super::with_unlisted(v(&["w300", "w500", "w1920", "original"])), v(&["w300", "w500", "w1920", "original"]));
+        assert_eq!(super::with_unlisted(v(&["w300", "w780"])), v(&["w300", "w500", "w780", "w1920"]));
+        assert_eq!(super::ImageConfig::default().backdrop, super::with_unlisted(super::ImageConfig::default().backdrop));
     }
 }

@@ -124,9 +124,8 @@ fn home_shelves_from_meta() {
     assert_eq!(first["id"], "tmdb:movie:1368337");
     assert_eq!(first["kind"], "movie");
     assert_eq!(first["title"], "Odyseja");
-    // The hero's still: the original on a desktop (a wide window on a 2x screen), w1280 elsewhere.
-    let still = if cfg!(any(target_os = "macos", windows, all(target_os = "linux", not(target_arch = "arm")))) { "original" } else { "w1280" };
-    assert!(first["still"].as_str().unwrap().starts_with(&format!("https://image.tmdb.org/t/p/{still}/")));
+    // The hero's still: the original for a device that has not said what it is (as a desktop).
+    assert!(first["still"].as_str().unwrap().starts_with("https://image.tmdb.org/t/p/original/"));
     assert!(first["card"].as_str().unwrap().starts_with("https://image.tmdb.org/t/p/w780/"));
     assert!(first["poster"].as_str().unwrap().starts_with("https://image.tmdb.org/t/p/w342/"));
     assert_eq!(first["play"]["id"], "tmdb:movie:1368337");
@@ -1416,4 +1415,55 @@ fn a_tvs_hero_says_what_two_lines_of_its_text_hold() {
     for desk in [Some("mac"), Some("phone"), None] {
         assert_eq!(typo::short_about(about, about_short_most(desk)), about, "{desk:?}");
     }
+}
+
+/// A TMDB backdrop's sizes, as the catalog reads them.
+fn backdrop() -> Value {
+    let image = cx().images.image(crate::adapters::metadata::model::ImageKind::Backdrop, "/x.jpg");
+    serde_json::to_value(image).unwrap()
+}
+
+#[test]
+fn the_hero_takes_the_size_its_box_needs() {
+    let size = |width: u32| image_url(&backdrop(), width).unwrap().trim_start_matches("https://image.tmdb.org/t/p/").trim_end_matches("/x.jpg").to_owned();
+    // A 16:9 box needs its width; a taller one 16/9 of its height (the frame's sides are cut).
+    assert_eq!(cover_width(1920, 1080), 1920);
+    assert_eq!(cover_width(1920, 606), 1920);
+    // A phone held upright: a film page's still is 150 × 315 pt at 3x, cut from a frame 560 pt wide.
+    assert_eq!(cover_width(450, 945), 1680);
+    assert_eq!(size(cover_width(450, 945)), "w1920");
+    // Home's still under a 402-pt phone's tabs (402 × 225 pt at 3x, 16:9) fits w1280.
+    assert_eq!(size(cover_width(1206, 675)), "w1280");
+    // Each kind of device's largest hero: a 1080p TV's screen-wide still is w1920, pixel for pixel
+    // (not w780 scaled up 2.5×, nor a 4K original's 33 MB decoded); a phone held sideways, a
+    // tablet and a desktop need more than w1920 has: the original.
+    for (family, want) in
+        [(Some("tv"), "w1920"), (Some("phone"), "original"), (Some("tablet"), "original"), (Some("mac"), "original"), (Some("windows"), "original"), (None, "original")]
+    {
+        let (w, h) = hero_box(family);
+        assert_eq!(size(cover_width(w, h)), want, "{family:?}");
+    }
+    // A card keeps its size.
+    assert_eq!(size(CARD_W), "w780");
+    assert_eq!(size(CARD_W_TV), "w500");
+}
+
+#[test]
+fn a_mapped_anime_shows_tmdbs_backdrop_else_anilists_banner() {
+    let _g = fresh(true, false);
+    use crate::adapters::metadata::anilist::Anilist;
+    // An AniList card the anime lists tie to one TMDB title is that title (`canonicalize`): its
+    // id is TMDB's, its pictures still AniList's until the title is in.
+    let mut card = serde_json::to_value(&Anilist.map_cards(&fixture("anilist_trending.json"), &cx()).unwrap()[0]).unwrap();
+    card["id"] = json!(AOT);
+    assert!(summary(&card_info(&card))["still"].as_str().unwrap().starts_with("https://s4.anilist.co/"));
+    seed_aot();
+    let still = |v: &Value| v["still"].as_str().unwrap().to_owned();
+    let tmdb = "https://image.tmdb.org/t/p/original/rqbCbjB19amtOtFQbb3K2lgm2zv.jpg";
+    assert_eq!(still(&summary(&card_info(&card))), tmdb, "with the title in, the card's hero is TMDB's");
+    assert_eq!(still(&title(AOT)), tmdb);
+    // One the lists do not tie to TMDB stays AniList's, with its banner (its only size).
+    let anilist = Anilist.map_title(&fixture("anilist_media_16498.json"), &cx()).unwrap();
+    seed(Call::Title("anilist:16498".into()), serde_json::to_value(anilist).unwrap());
+    assert_eq!(still(&title("anilist:16498")), "https://s4.anilist.co/file/anilistcdn/media/anime/banner/16498-8jpFCOcDmneX.jpg");
 }

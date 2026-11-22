@@ -106,18 +106,23 @@ export function AvplaySurface(props: VideoSurfaceProps) {
   });
 
   // A new stream: AVPlay closes what played and opens it.
+  /** The stream this view opened: its `stop` names it, so a later view's stream stays. */
+  let opened: string | undefined;
   effect(() => {
     const src = props.src;
     loaded = false;
     seekTo = null;
-    if (src) send({ op: "open", url: src, hold: true });
+    if (src) {
+      opened = src;
+      send({ op: "open", url: src, hold: true });
+    }
   });
   effect(() => {
     void props.paused;
     void props.audioTrack;
     apply();
   });
-  cleanup(() => send({ op: "stop" }));
+  cleanup(() => send({ op: "stop", url: opened }));
 
   return <View style={props.style} />;
 }

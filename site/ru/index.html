@@ -1,0 +1,468 @@
+<!doctype html>
+<!-- Written by build/site-pages.py from site/i18n/: edit the template or the strings and run it. -->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>reel: фильмы и сериалы из торрентов, запуск за секунды</title>
+<meta name="description" content="reel — приложение со встроенным торрент-движком и открытым для чтения кодом. Выберите фильм или серию, и он начнёт играть, пока данные ещё приходят. Раздачи берутся только из источника поиска, который вы добавите сами. Сделано прежде всего для телевизора.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0F0F0F">
+<link rel="canonical" href="https://reel-site.fly.dev/ru/">
+<link rel="alternate" hreflang="en" href="https://reel-site.fly.dev/">
+<link rel="alternate" hreflang="ru" href="https://reel-site.fly.dev/ru/">
+<link rel="alternate" hreflang="uk" href="https://reel-site.fly.dev/uk/">
+<link rel="alternate" hreflang="pl" href="https://reel-site.fly.dev/pl/">
+<link rel="alternate" hreflang="de" href="https://reel-site.fly.dev/de/">
+<link rel="alternate" hreflang="fr" href="https://reel-site.fly.dev/fr/">
+<link rel="alternate" hreflang="es" href="https://reel-site.fly.dev/es/">
+<link rel="alternate" hreflang="it" href="https://reel-site.fly.dev/it/">
+<link rel="alternate" hreflang="pt-BR" href="https://reel-site.fly.dev/pt-br/">
+<link rel="alternate" hreflang="tr" href="https://reel-site.fly.dev/tr/">
+<link rel="alternate" hreflang="ja" href="https://reel-site.fly.dev/ja/">
+<link rel="alternate" hreflang="zh-CN" href="https://reel-site.fly.dev/zh-cn/">
+<link rel="alternate" hreflang="x-default" href="https://reel-site.fly.dev/">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="preload" href="../fonts/Geist.ttf" as="font" type="font/ttf" crossorigin>
+<script>
+  // The visitor's device, before the first paint: Install shows its row at once (install.js).
+  (function () {
+    var ua = navigator.userAgent || "", d = "mac";
+    if (/Tizen|SMART-TV/i.test(ua)) d = "tizen";
+    else if (/Android/i.test(ua)) d = "android";
+    else if (/iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) d = "ios";
+    else if (/Mac OS X|Macintosh/i.test(ua)) d = "mac";
+    else if (/Windows/i.test(ua)) d = "windows";
+    else if (/Linux|X11/i.test(ua)) d = "linux";
+    document.documentElement.setAttribute("data-dev", d);
+  })();
+</script>
+<link rel="stylesheet" href="../style.css?v=20261122">
+</head>
+<body>
+<a class="skip" href="#main">Перейти к содержимому</a>
+
+<header class="top">
+  <div class="wrap top-row">
+    <a class="wordmark" href="#" aria-label="reel, наверх">reel</a>
+    <nav aria-label="Разделы">
+      <ul class="top-links">
+        <li><a href="#install">Установка</a></li>
+        <li><a href="#how">Как это работает</a></li>
+      </ul>
+    </nav>
+    <a class="gh" href="https://github.com/exzos28/reel" aria-label="reel на GitHub"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- Hero -->
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap hero-grid">
+    <div class="hero-text">
+      <h1 id="hero-title">Выберите фильм. Он запустится за секунды.</h1>
+      <p class="lead">Фильмы и сериалы из торрентов. Ничего не нужно скачивать заранее.</p>
+      <p class="note">Работает с любым источником Torznab.</p>
+      <div class="actions"><a class="btn red" href="#install">Установить reel</a></div>
+      <ul id="platforms" class="logos" aria-label="Платформы">
+        <li title="macOS, iPhone и iPad">
+          <svg viewBox="2.6 1.6 18.8 18.8" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.15-2.8.85-3.5.85-.75 0-1.85-.83-3.05-.8C6.9 7.48 5 8.9 5 12.3c0 2 .75 4.1 1.65 5.4.8 1.1 1.5 2.05 2.55 2 1-.04 1.4-.66 2.65-.66 1.2 0 1.55.66 2.65.64 1.1-.02 1.8-1 2.45-2 .78-1.12 1.1-2.22 1.12-2.28-.02-.01-1.67-.65-1.67-2.7zM14.3 5.9c.57-.69.95-1.64.85-2.6-.82.03-1.81.55-2.4 1.24-.53.6-.99 1.58-.86 2.51.91.07 1.84-.46 2.41-1.15z"/></svg>
+          <span>Apple<small>macOS · iPhone · iPad</small></span>
+        </li>
+        <li title="Windows">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5 11 4.5v7H4zM12.5 4.3 20 3.2v8.3h-7.5zM4 12.9h7v7l-7-1zM12.5 12.9H20v8l-7.5-1.1z"/></svg>
+          <span>Windows</span>
+        </li>
+        <li title="Linux (GTK 4.14 или новее)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c-2.2 0-3.5 1.8-3.5 4.3 0 1.4-.55 2.4-1.45 3.6C5.8 12 5 13.7 5 15.6c0 1.15.35 2.15.95 2.95l-1.1 1.55c-.3.42 0 .9.5.9h13.3c.5 0 .8-.48.5-.9l-1.1-1.55c.6-.8.95-1.8.95-2.95 0-1.9-.8-3.6-2.05-5.2-.9-1.2-1.45-2.2-1.45-3.6 0-2.5-1.3-4.3-3.5-4.3z"/><ellipse cx="12" cy="15.3" rx="3.1" ry="3.9" class="cut"/><circle cx="10.6" cy="6.6" r=".8" class="cut"/><circle cx="13.4" cy="6.6" r=".8" class="cut"/></svg>
+          <span>Linux</span>
+        </li>
+        <li title="Телевизоры Samsung на Tizen">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="line"><rect x="2.5" y="4.5" width="19" height="12.5" rx="1.5"/><path d="M8 20.5h8M12 17v3.5"/></svg>
+          <span>Samsung TV<small>Tizen</small></span>
+        </li>
+        <li title="Android и Android TV">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 18.5a8.5 8.5 0 0 1 17 0z"/><path d="m6.3 9.2-1.7-2.9M17.7 9.2l1.7-2.9" class="stroke"/><circle cx="8.9" cy="14.4" r="1.15" class="cut"/><circle cx="15.1" cy="14.4" r="1.15" class="cut"/></svg>
+          <span>Android<small>телефон · ТВ</small></span>
+        </li>
+      </ul>
+    </div>
+
+    <figure class="shots" aria-label="Рисунки главного экрана reel на всех устройствах, где он работает">
+      <div class="family" aria-hidden="true">
+        <div class="shot" data-s="tv">
+        <div class="tv-screen"><div class="scr">
+        <div class="ui">
+        <div class="ui-backdrop"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
+        <div class="ui-logo">reel</div>
+        <div class="ui-nav">
+        <span class="ui-pills"><span class="sel">Главная</span><span>Фильмы</span><span>Сериалы</span><span>Аниме</span></span>
+        <span class="ui-round"><svg viewBox="0 0 24 24" class="i"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></span>
+        </div>
+        <div class="ui-info">
+        <div class="ui-title">Metropolis</div>
+        <div class="ui-meta"><span class="star">★</span> 8.3 <span class="ash">· 1927 · 2 ч 33 мин</span> <span class="ui-badge">1080p</span> <span class="ui-badge">Без звука</span></div>
+        <div class="ui-release"><b>1080p</b> · 4.2 GB · Раздают 37 чел. · запустится за секунды</div>
+        <div class="ui-actions"><span class="ui-btn primary">▶&#xFE0E; Продолжить с 1:12:40</span><span class="ui-btn">+ Мой список</span></div>
+        </div>
+        <div class="ui-shelf">
+        <div class="ui-h">Продолжить просмотр</div>
+        <div class="ui-row">
+        <div class="ui-card focus"><div class="ui-thumb t1"><i style="width:47%"></i></div><div class="ui-ct">Metropolis</div><div class="ui-cm">Осталось 1 ч 21 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t2"><i style="width:72%"></i></div><div class="ui-ct">Flash Gordon</div><div class="ui-cm">S1:E4 · Осталось 7 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t3"><i style="width:18%"></i></div><div class="ui-ct">The General</div><div class="ui-cm">Осталось 1 ч 4 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t4"><i style="width:33%"></i></div><div class="ui-ct">Nosferatu</div><div class="ui-cm">Осталось 58 мин</div></div>
+        </div>
+        </div>
+        <div class="ui-shelf second">
+        <div class="ui-h">Популярные фильмы</div>
+        <div class="ui-row">
+        <div class="ui-card"><div class="ui-thumb t3"></div><div class="ui-ct">The Kid</div><div class="ui-cm">1921 · Комедия</div></div>
+        <div class="ui-card"><div class="ui-thumb t4"></div><div class="ui-ct">Sherlock Jr.</div><div class="ui-cm">1924 · Комедия</div></div>
+        <div class="ui-card"><div class="ui-thumb t1"></div><div class="ui-ct">The Gold Rush</div><div class="ui-cm">1925 · Приключения</div></div>
+        <div class="ui-card"><div class="ui-thumb t2"></div><div class="ui-ct">Safety Last!</div><div class="ui-cm">1923 · Комедия</div></div>
+        </div>
+        </div>
+        </div>
+        </div></div>
+        <div class="tv-stand"></div>
+        </div>
+        <div class="shot" data-s="mac">
+        <div class="laptop"><div class="laptop-screen"><span class="notch"></span><div class="scr win">
+        <div class="win-bar"><span class="lights"><i></i><i></i><i></i></span></div>
+        <div class="win-body">
+        <div class="ui">
+        <div class="ui-backdrop"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
+        <div class="ui-logo">reel</div>
+        <div class="ui-nav">
+        <span class="ui-pills"><span class="sel">Главная</span><span>Фильмы</span><span>Сериалы</span><span>Аниме</span></span>
+        <span class="ui-round"><svg viewBox="0 0 24 24" class="i"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></span>
+        </div>
+        <div class="ui-info">
+        <div class="ui-title">Metropolis</div>
+        <div class="ui-meta"><span class="star">★</span> 8.3 <span class="ash">· 1927 · 2 ч 33 мин</span> <span class="ui-badge">1080p</span> <span class="ui-badge">Без звука</span></div>
+        <div class="ui-release"><b>1080p</b> · 4.2 GB · Раздают 37 чел. · запустится за секунды</div>
+        <div class="ui-actions"><span class="ui-btn primary">▶&#xFE0E; Продолжить с 1:12:40</span><span class="ui-btn">+ Мой список</span></div>
+        </div>
+        <div class="ui-shelf">
+        <div class="ui-h">Продолжить просмотр</div>
+        <div class="ui-row">
+        <div class="ui-card focus"><div class="ui-thumb t1"><i style="width:47%"></i></div><div class="ui-ct">Metropolis</div><div class="ui-cm">Осталось 1 ч 21 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t2"><i style="width:72%"></i></div><div class="ui-ct">Flash Gordon</div><div class="ui-cm">S1:E4 · Осталось 7 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t3"><i style="width:18%"></i></div><div class="ui-ct">The General</div><div class="ui-cm">Осталось 1 ч 4 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t4"><i style="width:33%"></i></div><div class="ui-ct">Nosferatu</div><div class="ui-cm">Осталось 58 мин</div></div>
+        </div>
+        </div>
+        <div class="ui-shelf second">
+        <div class="ui-h">Популярные фильмы</div>
+        <div class="ui-row">
+        <div class="ui-card"><div class="ui-thumb t3"></div><div class="ui-ct">The Kid</div><div class="ui-cm">1921 · Комедия</div></div>
+        <div class="ui-card"><div class="ui-thumb t4"></div><div class="ui-ct">Sherlock Jr.</div><div class="ui-cm">1924 · Комедия</div></div>
+        <div class="ui-card"><div class="ui-thumb t1"></div><div class="ui-ct">The Gold Rush</div><div class="ui-cm">1925 · Приключения</div></div>
+        <div class="ui-card"><div class="ui-thumb t2"></div><div class="ui-ct">Safety Last!</div><div class="ui-cm">1923 · Комедия</div></div>
+        </div>
+        </div>
+        </div>
+        </div></div></div><div class="laptop-base"></div></div>
+        </div>
+        <div class="shot" data-s="windows">
+        <div class="monitor"><div class="monitor-screen"><div class="scr win">
+        <div class="win-bar"><span class="wctl"><svg viewBox="0 0 30 20"><path d="M10 10h10"/></svg><svg viewBox="0 0 30 20"><rect x="10" y="5" width="10" height="10"/></svg><svg viewBox="0 0 30 20"><path d="m10 5 10 10m0-10L10 15"/></svg></span></div>
+        <div class="win-body">
+        <div class="ui">
+        <div class="ui-backdrop"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
+        <div class="ui-logo">reel</div>
+        <div class="ui-nav">
+        <span class="ui-pills"><span class="sel">Главная</span><span>Фильмы</span><span>Сериалы</span><span>Аниме</span></span>
+        <span class="ui-round"><svg viewBox="0 0 24 24" class="i"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></span>
+        </div>
+        <div class="ui-info">
+        <div class="ui-title">Metropolis</div>
+        <div class="ui-meta"><span class="star">★</span> 8.3 <span class="ash">· 1927 · 2 ч 33 мин</span> <span class="ui-badge">1080p</span> <span class="ui-badge">Без звука</span></div>
+        <div class="ui-release"><b>1080p</b> · 4.2 GB · Раздают 37 чел. · запустится за секунды</div>
+        <div class="ui-actions"><span class="ui-btn primary">▶&#xFE0E; Продолжить с 1:12:40</span><span class="ui-btn">+ Мой список</span></div>
+        </div>
+        <div class="ui-shelf">
+        <div class="ui-h">Продолжить просмотр</div>
+        <div class="ui-row">
+        <div class="ui-card focus"><div class="ui-thumb t1"><i style="width:47%"></i></div><div class="ui-ct">Metropolis</div><div class="ui-cm">Осталось 1 ч 21 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t2"><i style="width:72%"></i></div><div class="ui-ct">Flash Gordon</div><div class="ui-cm">S1:E4 · Осталось 7 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t3"><i style="width:18%"></i></div><div class="ui-ct">The General</div><div class="ui-cm">Осталось 1 ч 4 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t4"><i style="width:33%"></i></div><div class="ui-ct">Nosferatu</div><div class="ui-cm">Осталось 58 мин</div></div>
+        </div>
+        </div>
+        <div class="ui-shelf second">
+        <div class="ui-h">Популярные фильмы</div>
+        <div class="ui-row">
+        <div class="ui-card"><div class="ui-thumb t3"></div><div class="ui-ct">The Kid</div><div class="ui-cm">1921 · Комедия</div></div>
+        <div class="ui-card"><div class="ui-thumb t4"></div><div class="ui-ct">Sherlock Jr.</div><div class="ui-cm">1924 · Комедия</div></div>
+        <div class="ui-card"><div class="ui-thumb t1"></div><div class="ui-ct">The Gold Rush</div><div class="ui-cm">1925 · Приключения</div></div>
+        <div class="ui-card"><div class="ui-thumb t2"></div><div class="ui-ct">Safety Last!</div><div class="ui-cm">1923 · Комедия</div></div>
+        </div>
+        </div>
+        </div>
+        </div></div></div><div class="monitor-stand"></div></div>
+        </div>
+        <div class="shot" data-s="linux">
+        <div class="monitor"><div class="monitor-screen"><div class="scr win">
+        <div class="win-bar"><span class="gclose"><svg viewBox="0 0 20 20"><path d="m7 7 6 6m0-6-6 6"/></svg></span></div>
+        <div class="win-body">
+        <div class="ui">
+        <div class="ui-backdrop"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
+        <div class="ui-logo">reel</div>
+        <div class="ui-nav">
+        <span class="ui-pills"><span class="sel">Главная</span><span>Фильмы</span><span>Сериалы</span><span>Аниме</span></span>
+        <span class="ui-round"><svg viewBox="0 0 24 24" class="i"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></span>
+        </div>
+        <div class="ui-info">
+        <div class="ui-title">Metropolis</div>
+        <div class="ui-meta"><span class="star">★</span> 8.3 <span class="ash">· 1927 · 2 ч 33 мин</span> <span class="ui-badge">1080p</span> <span class="ui-badge">Без звука</span></div>
+        <div class="ui-release"><b>1080p</b> · 4.2 GB · Раздают 37 чел. · запустится за секунды</div>
+        <div class="ui-actions"><span class="ui-btn primary">▶&#xFE0E; Продолжить с 1:12:40</span><span class="ui-btn">+ Мой список</span></div>
+        </div>
+        <div class="ui-shelf">
+        <div class="ui-h">Продолжить просмотр</div>
+        <div class="ui-row">
+        <div class="ui-card focus"><div class="ui-thumb t1"><i style="width:47%"></i></div><div class="ui-ct">Metropolis</div><div class="ui-cm">Осталось 1 ч 21 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t2"><i style="width:72%"></i></div><div class="ui-ct">Flash Gordon</div><div class="ui-cm">S1:E4 · Осталось 7 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t3"><i style="width:18%"></i></div><div class="ui-ct">The General</div><div class="ui-cm">Осталось 1 ч 4 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t4"><i style="width:33%"></i></div><div class="ui-ct">Nosferatu</div><div class="ui-cm">Осталось 58 мин</div></div>
+        </div>
+        </div>
+        <div class="ui-shelf second">
+        <div class="ui-h">Популярные фильмы</div>
+        <div class="ui-row">
+        <div class="ui-card"><div class="ui-thumb t3"></div><div class="ui-ct">The Kid</div><div class="ui-cm">1921 · Комедия</div></div>
+        <div class="ui-card"><div class="ui-thumb t4"></div><div class="ui-ct">Sherlock Jr.</div><div class="ui-cm">1924 · Комедия</div></div>
+        <div class="ui-card"><div class="ui-thumb t1"></div><div class="ui-ct">The Gold Rush</div><div class="ui-cm">1925 · Приключения</div></div>
+        <div class="ui-card"><div class="ui-thumb t2"></div><div class="ui-ct">Safety Last!</div><div class="ui-cm">1923 · Комедия</div></div>
+        </div>
+        </div>
+        </div>
+        </div></div></div><div class="monitor-stand"></div></div>
+        </div>
+        <div class="shot" data-s="ipad">
+        <div class="tablet"><div class="scr">
+        <div class="ui">
+        <div class="ui-backdrop"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
+        <div class="ui-logo">reel</div>
+        <div class="ui-nav">
+        <span class="ui-pills"><span class="sel">Главная</span><span>Фильмы</span><span>Сериалы</span><span>Аниме</span></span>
+        <span class="ui-round"><svg viewBox="0 0 24 24" class="i"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg></span>
+        </div>
+        <div class="ui-info">
+        <div class="ui-title">Metropolis</div>
+        <div class="ui-meta"><span class="star">★</span> 8.3 <span class="ash">· 1927 · 2 ч 33 мин</span> <span class="ui-badge">1080p</span> <span class="ui-badge">Без звука</span></div>
+        <div class="ui-release"><b>1080p</b> · 4.2 GB · Раздают 37 чел. · запустится за секунды</div>
+        <div class="ui-actions"><span class="ui-btn primary">▶&#xFE0E; Продолжить с 1:12:40</span><span class="ui-btn">+ Мой список</span></div>
+        </div>
+        <div class="ui-shelf">
+        <div class="ui-h">Продолжить просмотр</div>
+        <div class="ui-row">
+        <div class="ui-card focus"><div class="ui-thumb t1"><i style="width:47%"></i></div><div class="ui-ct">Metropolis</div><div class="ui-cm">Осталось 1 ч 21 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t2"><i style="width:72%"></i></div><div class="ui-ct">Flash Gordon</div><div class="ui-cm">S1:E4 · Осталось 7 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t3"><i style="width:18%"></i></div><div class="ui-ct">The General</div><div class="ui-cm">Осталось 1 ч 4 мин</div></div>
+        <div class="ui-card"><div class="ui-thumb t4"><i style="width:33%"></i></div><div class="ui-ct">Nosferatu</div><div class="ui-cm">Осталось 58 мин</div></div>
+        </div>
+        </div>
+        <div class="ui-shelf second">
+        <div class="ui-h">Популярные фильмы</div>
+        <div class="ui-row">
+        <div class="ui-card"><div class="ui-thumb t3"></div><div class="ui-ct">The Kid</div><div class="ui-cm">1921 · Комедия</div></div>
+        <div class="ui-card"><div class="ui-thumb t4"></div><div class="ui-ct">Sherlock Jr.</div><div class="ui-cm">1924 · Комедия</div></div>
+        <div class="ui-card"><div class="ui-thumb t1"></div><div class="ui-ct">The Gold Rush</div><div class="ui-cm">1925 · Приключения</div></div>
+        <div class="ui-card"><div class="ui-thumb t2"></div><div class="ui-ct">Safety Last!</div><div class="ui-cm">1923 · Комедия</div></div>
+        </div>
+        </div>
+        </div>
+        </div></div>
+        </div>
+        <div class="shot" data-s="iphone">
+        <div class="phone iphone"><div class="scr">
+        <div class="ui ph">
+        <div class="ph-status"><b>9:41</b><span class="ph-icons"><i></i><i></i><i></i></span></div>
+        <div class="ph-hero"><span class="b1"></span><span class="b2"></span></div>
+        <div class="ph-logo">reel</div>
+        <div class="ph-info">
+        <div class="ph-title">Metropolis</div>
+        <div class="ph-meta"><span class="star">★</span> 8.3 <span class="ash">· 1927 · 2 ч 33 мин</span></div>
+        <div class="ph-release"><b>1080p</b> · 4.2 GB · запустится за секунды</div>
+        <div class="ph-actions"><span class="ui-btn primary">▶&#xFE0E; Продолжить с 1:12:40</span><span class="ui-btn">+</span></div>
+        </div>
+        <div class="ph-shelf">
+        <div class="ph-h">Продолжить просмотр</div>
+        <div class="ph-row">
+        <div class="ph-card"><div class="ph-thumb t1"><i style="width:47%"></i></div><div class="ph-ct">Metropolis</div><div class="ph-cm">Осталось 1 ч 21 мин</div></div>
+        <div class="ph-card"><div class="ph-thumb t2"><i style="width:72%"></i></div><div class="ph-ct">Flash Gordon</div><div class="ph-cm">S1:E4 · Осталось 7 мин</div></div>
+        <div class="ph-card"><div class="ph-thumb t3"><i style="width:18%"></i></div><div class="ph-ct">The General</div><div class="ph-cm">Осталось 1 ч 4 мин</div></div>
+        </div>
+        </div>
+        <div class="ph-shelf second">
+<div class="ph-h">Популярные фильмы</div>
+<div class="ph-row">
+<div class="ph-card"><div class="ph-thumb t3"></div><div class="ph-ct">The Kid</div><div class="ph-cm">1921 · Комедия</div></div>
+<div class="ph-card"><div class="ph-thumb t4"></div><div class="ph-ct">Sherlock Jr.</div><div class="ph-cm">1924 · Комедия</div></div>
+<div class="ph-card"><div class="ph-thumb t1"></div><div class="ph-ct">The Gold Rush</div><div class="ph-cm">1925 · Приключения</div></div>
+</div>
+</div>
+<div class="ph-tabs"><span class="sel"><svg viewBox="0 0 24 24" class="i"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg><b>Главная</b></span><span class=""><svg viewBox="0 0 24 24" class="i"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 5v14M16 5v14M4 12h16"/></svg><b>Фильмы</b></span><span class=""><svg viewBox="0 0 24 24" class="i"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="m9 3 3 3 3-3"/></svg><b>Сериалы</b></span><span class=""><svg viewBox="0 0 24 24" class="i"><path d="m12 4 2.3 5 5.2.5-3.9 3.5 1.1 5.2L12 15.6 7.3 18.2l1.1-5.2L4.5 9.5 9.7 9z"/></svg><b>Аниме</b></span><span class=""><svg viewBox="0 0 24 24" class="i"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><b>Поиск</b></span></div>
+        </div>
+        <span class="island"></span><span class="home-bar"></span></div></div>
+        </div>
+        <div class="shot" data-s="android">
+        <div class="phone android"><div class="scr">
+        <div class="ui ph">
+        <div class="ph-status"><b>9:41</b><span class="ph-icons"><i></i><i></i><i></i></span></div>
+        <div class="ph-hero"><span class="b1"></span><span class="b2"></span></div>
+        <div class="ph-logo">reel</div>
+        <div class="ph-info">
+        <div class="ph-title">Metropolis</div>
+        <div class="ph-meta"><span class="star">★</span> 8.3 <span class="ash">· 1927 · 2 ч 33 мин</span></div>
+        <div class="ph-release"><b>1080p</b> · 4.2 GB · запустится за секунды</div>
+        <div class="ph-actions"><span class="ui-btn primary">▶&#xFE0E; Продолжить с 1:12:40</span><span class="ui-btn">+</span></div>
+        </div>
+        <div class="ph-shelf">
+        <div class="ph-h">Продолжить просмотр</div>
+        <div class="ph-row">
+        <div class="ph-card"><div class="ph-thumb t1"><i style="width:47%"></i></div><div class="ph-ct">Metropolis</div><div class="ph-cm">Осталось 1 ч 21 мин</div></div>
+        <div class="ph-card"><div class="ph-thumb t2"><i style="width:72%"></i></div><div class="ph-ct">Flash Gordon</div><div class="ph-cm">S1:E4 · Осталось 7 мин</div></div>
+        <div class="ph-card"><div class="ph-thumb t3"><i style="width:18%"></i></div><div class="ph-ct">The General</div><div class="ph-cm">Осталось 1 ч 4 мин</div></div>
+        </div>
+        </div>
+        <div class="ph-shelf second">
+<div class="ph-h">Популярные фильмы</div>
+<div class="ph-row">
+<div class="ph-card"><div class="ph-thumb t3"></div><div class="ph-ct">The Kid</div><div class="ph-cm">1921 · Комедия</div></div>
+<div class="ph-card"><div class="ph-thumb t4"></div><div class="ph-ct">Sherlock Jr.</div><div class="ph-cm">1924 · Комедия</div></div>
+<div class="ph-card"><div class="ph-thumb t1"></div><div class="ph-ct">The Gold Rush</div><div class="ph-cm">1925 · Приключения</div></div>
+</div>
+</div>
+<div class="ph-tabs"><span class="sel"><svg viewBox="0 0 24 24" class="i"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg><b>Главная</b></span><span class=""><svg viewBox="0 0 24 24" class="i"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 5v14M16 5v14M4 12h16"/></svg><b>Фильмы</b></span><span class=""><svg viewBox="0 0 24 24" class="i"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="m9 3 3 3 3-3"/></svg><b>Сериалы</b></span><span class=""><svg viewBox="0 0 24 24" class="i"><path d="m12 4 2.3 5 5.2.5-3.9 3.5 1.1 5.2L12 15.6 7.3 18.2l1.1-5.2L4.5 9.5 9.7 9z"/></svg><b>Аниме</b></span><span class=""><svg viewBox="0 0 24 24" class="i"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><b>Поиск</b></span></div>
+        </div>
+        <span class="punch"></span><span class="home-bar"></span></div></div>
+        </div>
+      </div>
+      <figcaption>reel на телевизоре, Mac, Windows и Linux, iPad, iPhone и Android. Нарисовано для этой страницы; все фильмы на рисунках — общественное достояние.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="install" class="band" aria-labelledby="install-title">
+  <div class="wrap">
+    <h2 id="install-title">Установка</h2>
+    <div class="get-tabs" role="tablist" aria-label="Устройство">
+      <button type="button" role="tab" data-p="tizen" aria-controls="get-tizen"><svg viewBox="0 0 24 24" aria-hidden="true" class="line"><rect x="2.5" y="4.5" width="19" height="12.5" rx="1.5"/><path d="M8 20.5h8M12 17v3.5"/></svg><span>Samsung TV</span></button>
+      <button type="button" role="tab" data-p="android" aria-controls="get-android"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 18.5a8.5 8.5 0 0 1 17 0z"/><path d="m6.3 9.2-1.7-2.9M17.7 9.2l1.7-2.9" class="stroke"/><circle cx="8.9" cy="14.4" r="1.15" class="cut"/><circle cx="15.1" cy="14.4" r="1.15" class="cut"/></svg><span>Android</span></button>
+      <button type="button" role="tab" data-p="mac" aria-controls="get-mac"><svg viewBox="2.6 1.6 18.8 18.8" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.15-2.8.85-3.5.85-.75 0-1.85-.83-3.05-.8C6.9 7.48 5 8.9 5 12.3c0 2 .75 4.1 1.65 5.4.8 1.1 1.5 2.05 2.55 2 1-.04 1.4-.66 2.65-.66 1.2 0 1.55.66 2.65.64 1.1-.02 1.8-1 2.45-2 .78-1.12 1.1-2.22 1.12-2.28-.02-.01-1.67-.65-1.67-2.7zM14.3 5.9c.57-.69.95-1.64.85-2.6-.82.03-1.81.55-2.4 1.24-.53.6-.99 1.58-.86 2.51.91.07 1.84-.46 2.41-1.15z"/></svg><span>Mac</span></button>
+      <button type="button" role="tab" data-p="ios" aria-controls="get-ios"><svg viewBox="0 0 24 24" aria-hidden="true" class="line"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg><span>iPhone и iPad</span></button>
+      <button type="button" role="tab" data-p="windows" aria-controls="get-windows"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5 11 4.5v7H4zM12.5 4.3 20 3.2v8.3h-7.5zM4 12.9h7v7l-7-1zM12.5 12.9H20v8l-7.5-1.1z"/></svg><span>Windows</span></button>
+      <button type="button" role="tab" data-p="linux" aria-controls="get-linux"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c-2.2 0-3.5 1.8-3.5 4.3 0 1.4-.55 2.4-1.45 3.6C5.8 12 5 13.7 5 15.6c0 1.15.35 2.15.95 2.95l-1.1 1.55c-.3.42 0 .9.5.9h13.3c.5 0 .8-.48.5-.9l-1.1-1.55c.6-.8.95-1.8.95-2.95 0-1.9-.8-3.6-2.05-5.2-.9-1.2-1.45-2.2-1.45-3.6 0-2.5-1.3-4.3-3.5-4.3z"/><ellipse cx="12" cy="15.3" rx="3.1" ry="3.9" class="cut"/><circle cx="10.6" cy="6.6" r=".8" class="cut"/><circle cx="13.4" cy="6.6" r=".8" class="cut"/></svg><span>Linux</span></button>
+    </div>
+    <div class="get-panel" id="get-mac" role="tabpanel" data-p="mac">
+      <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-macos.zip">Скачать для Mac</a><span class="get-note">Mac с чипом Apple</span>
+    </div>
+    <div class="get-panel ios" id="get-ios" role="tabpanel" data-p="ios">
+      <!-- The source (altstore.json) comes with the first release that has the iPhone and iPad app; until then these links lead nowhere. -->
+      <ol class="get-steps">
+        <li><b>Установите AltStore или SideStore</b><span>Поставьте <a href="https://altstore.io">AltStore</a> или <a href="https://sidestore.io">SideStore</a> на iPhone или iPad; для AltStore нужен ещё AltServer на компьютере. С бесплатным Apple ID приложения переподписываются каждые 7 дней, и оба приложения делают это сами.</span></li>
+        <li><b>Добавьте источник reel</b><span>На iPhone или iPad нажмите кнопку своего приложения или добавьте адрес ниже как источник.</span><div class="get-btns"><a class="btn primary" href="altstore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">Добавить в AltStore</a><a class="btn secondary" href="sidestore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">Добавить в SideStore</a></div><code class="get-url">https://github.com/exzos28/reel/<wbr>releases/<wbr>latest/<wbr>download/<wbr>altstore.json</code></li>
+        <li><b>Установите reel</b><span>Откройте reel в источнике и установите. Обновления тоже приходят оттуда.</span></li>
+      </ol>
+    </div>
+    <div class="get-panel" id="get-windows" role="tabpanel" data-p="windows">
+      <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-windows.zip">Скачать для Windows</a><span class="get-note">x64: распакуйте и запустите reel.exe</span>
+    </div>
+    <div class="get-panel" id="get-linux" role="tabpanel" data-p="linux">
+      <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-linux.tar.gz">Скачать для Linux</a><span class="get-note">ARM64, GTK 4.14 или новее</span>
+    </div>
+    <div class="get-panel" id="get-android" role="tabpanel" data-p="android">
+      <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-android.apk">Скачать APK</a><span class="get-note">Телефон, планшет, ТВ</span>
+    </div>
+    <div class="get-panel tizen" id="get-tizen" role="tabpanel" data-p="tizen">
+      <ol class="get-steps">
+        <li><b>Включите режим разработчика</b><span>На телевизоре откройте «Приложения» и наберите на пульте 1 2 3 4 5. Включите режим разработчика и введите IP-адрес своего компьютера.</span></li>
+        <li><b>Откройте Apps2Samsung</b><span>Установите <a href="https://github.com/Apps2Samsung/Apps2Samsung">Apps2Samsung</a> на компьютер, откройте его и выберите свой телевизор.</span></li>
+        <li><b>Установите reel</b><span>Скачайте пакет и установите его на телевизор через Apps2Samsung.</span><a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-samsung-tv.wgt">Скачать для Samsung TV</a></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section id="how" aria-labelledby="how-title">
+  <div class="wrap">
+    <h2 id="how-title">Как это работает</h2>
+    <p class="section-lead">Три шага, и первый — только один раз.</p>
+    <ol class="steps">
+      <li class="step">
+        <div class="mock mock-source" aria-hidden="true">
+          <div class="m-label">Источник поиска</div>
+          <div class="m-field">http://192.168.1.10:9117/…/torznab/api</div>
+          <div class="m-field dim">API-ключ</div>
+          <div class="m-ok"><svg viewBox="0 0 24 24" class="i"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Подключено. Ищет по IMDb id.</div>
+        </div>
+        <h3>Добавьте источник поиска</h3>
+        <p>Вставьте адрес Torznab и ключ в настройках или отсканируйте QR-код на телевизоре.</p>
+      </li>
+      <li class="step">
+        <div class="mock mock-release" aria-hidden="true">
+          <div class="m-row sel"><span class="q">1080p</span><span class="m-sz">4.2 GB</span><span class="bars"><i></i><i></i><i></i><i class="off"></i></span><span class="m-n">37</span><span class="m-check" aria-hidden="true"><svg viewBox="0 0 24 24" class="i"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></div>
+          <div class="m-row"><span class="q">4K</span><span class="m-sz">18.9 GB</span><span class="bars"><i></i><i></i><i class="off"></i><i class="off"></i></span><span class="m-n">12</span><span class="m-check"></span></div>
+          <div class="m-row"><span class="q">720p</span><span class="m-sz">1.6 GB</span><span class="bars"><i></i><i class="off"></i><i class="off"></i><i class="off"></i></span><span class="m-n">3</span><span class="m-check"></span></div>
+        </div>
+        <h3>Выберите, что смотреть</h3>
+        <p>Листайте каталог или ищите. reel найдёт раздачи, которые ваше устройство сможет воспроизвести.</p>
+      </li>
+      <li class="step">
+        <div class="mock mock-player" aria-hidden="true">
+          <div class="m-line"><b>В запасе 6 мин</b> · поток 3.4 MB/s от 37 чел.</div>
+          <div class="scrub"><span class="w"></span><span class="r"></span></div>
+          <div class="m-times"><span>41:12</span><span>2:33:00</span></div>
+        </div>
+        <h3>Смотрите</h3>
+        <p>Фильм запускается за секунды, и несколько минут всегда в запасе.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- Platforms -->
+<!-- Source and privacy -->
+<section id="privacy" class="band" aria-labelledby="privacy-title">
+  <div class="wrap split">
+    <div>
+      <h2 id="privacy-title">Открытый код, без аккаунтов</h2>
+      <p class="section-lead">Всё приложение — <a href="https://github.com/exzos28/reel">на GitHub</a>: ядро на Rust с торрент-движком и один интерфейс для всех платформ. Код можно читать, менять и распространять для любых некоммерческих целей по лицензии <a href="https://polyformproject.org/licenses/noncommercial/1.0.0">PolyForm Noncommercial License 1.0.0</a>; коммерческое использование запрещено.</p>
+      <ul class="ticks">
+        <li>Без аккаунта reel и без входа.</li>
+        <li>Без аналитики и кода слежения.</li>
+        <li>Настройки и прогресс просмотра хранятся на вашем устройстве.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>С кем связывается reel</h3>
+      <ul class="plain">
+        <li>Ваш источник поиска — по адресу, который вы указали.</li>
+        <li>TMDB, AniList и Jikan — для названий, постеров и описаний.</li>
+        <li>Публичный список ID аниме на GitHub — чтобы сопоставлять аниме между каталогами.</li>
+        <li>Другие люди, которые раздают фильм. Как и в любом торрент-приложении, они видят ваш IP-адрес.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="wordmark">reel</div>
+    <p class="foot-links"><a href="https://github.com/exzos28/reel">Исходный код на GitHub</a> · <a href="https://github.com/exzos28/reel/releases/latest">Релизы</a></p>
+    <!-- The funny part: reel's own little dinosaur runs and hops the cacti by itself. -->
+    <canvas id="runner" class="runner" height="150" aria-hidden="true"></canvas>
+  </div>
+</footer>
+<script src="../install.js?v=20261117" defer></script>
+<script src="../runner.js?v=20261115c" defer></script>
+</body>
+</html>

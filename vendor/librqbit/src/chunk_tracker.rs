@@ -353,6 +353,19 @@ impl ChunkTracker {
         self.chunk_status.get(i).map(|b| *b).unwrap_or(false)
     }
 
+    /// reel: the bytes of `piece` in: all of it once it is "have", else its chunks written so
+    /// far (not verified yet).
+    pub(crate) fn piece_bytes_in(&self, piece: ValidPieceIndex) -> u64 {
+        if self.is_piece_have(piece) {
+            return self.lengths.piece_length(piece) as u64;
+        }
+        self.lengths
+            .iter_chunk_infos(piece)
+            .filter(|c| self.is_chunk_downloaded(piece, c.chunk_index))
+            .map(|c| c.size as u64)
+            .sum()
+    }
+
     pub fn mark_chunk_downloaded(
         &mut self,
         piece: &Piece<ByteBuf<'_>>,
@@ -841,5 +854,39 @@ mod tests {
         assert!(!ct.queue_pieces[1]);
         assert_eq!(ct.get_hns().needed_bytes, 0);
         assert_eq!(ct.get_hns().have_bytes, piece_len as u64 * 2);
+    }
+
+    #[test]
+    fn test_piece_bytes_in() {
+        // Three pieces of two chunks and a last one of half a chunk.
+        let piece_len = CHUNK_SIZE * 2;
+        let half = CHUNK_SIZE as u64 / 2;
+        let l = Lengths::new(piece_len as u64 * 3 + half, piece_len).unwrap();
+        let files = vec![FileInfo {
+            relative_filename: "0".into(),
+            offset_in_torrent: 0,
+            piece_range: 0..4,
+            len: l.total_length(),
+            attrs: Default::default(),
+        }];
+        let bf_len = l.piece_bitfield_bytes();
+        let mut have = BF::from_boxed_slice(vec![0u8; bf_len].into_boxed_slice());
+        have.set(0, true);
+        let selected = BF::from_boxed_slice(vec![0u8; bf_len].into_boxed_slice());
+        let mut ct = ChunkTracker::new(have.into_dyn(), selected, l, &files).unwrap();
+        let p = |i| l.validate_piece_index(i).unwrap();
+
+        // Verified: all of it.
+        assert_eq!(ct.piece_bytes_in(p(0)), piece_len as u64);
+        // Nothing written yet.
+        assert_eq!(ct.piece_bytes_in(p(1)), 0);
+        // One chunk of two written, not verified yet.
+        let first = l.chunk_range(p(1)).start;
+        ct.chunk_status.set(first, true);
+        assert_eq!(ct.piece_bytes_in(p(1)), CHUNK_SIZE as u64);
+        // The short last piece, written: its own length.
+        let last = l.chunk_range(p(3)).start;
+        ct.chunk_status.set(last, true);
+        assert_eq!(ct.piece_bytes_in(p(3)), half);
     }
 }

@@ -181,14 +181,14 @@ test("nothing matching says so", async () => {
   expect(app.shows("id:filter-panel")).toBe(true);
 });
 
-/** A long grid the core has more of (`moreState` as given): the pages the UI
+/** A long grid (`cards` of them) the core has more of (`moreState` as given): the pages the UI
  * asks for go to `asked`. */
-function longGrid(moreState = "idle", more = true) {
+function longGrid(moreState = "idle", more = true, cards = 40) {
   const asked: string[] = [];
   const native = {
     ...NATIVE,
     "Catalog.browse": JSON.stringify({
-      trending: BROWSE_TRENDING, all: browseCards(40), filters: browseFilters(), allState: "done", more, moreState,
+      trending: BROWSE_TRENDING, all: browseCards(cards), filters: browseFilters(), allState: "done", more, moreState,
     }),
     "Catalog.browseMore": (p: string) => {
       asked.push(p);
@@ -242,17 +242,61 @@ test("remote: Down on the grid's last row asks for the next page again; the focu
   expect(app.shows(`id:grid-focused >> text:${last}`)).toBe(true);
 });
 
-test("grey cards end the grid while its next page comes; a line when it failed; nothing past the end", async () => {
-  const loading = await movies(longGrid("loading").native);
-  expect(loading.shows("id:grid-skeleton")).toBe(true);
-  const failed = await movies(longGrid("failed").native);
-  expect(failed.shows("id:grid-skeleton")).toBe(false);
+/** The remote from Trending down to the grid's row holding card `at` (from 0). */
+async function toRowOf(app: Awaited<ReturnType<typeof movies>>, at: number) {
+  await app.keyboard.press("down"); // the pills
+  for (let r = 0; r <= Math.floor(at / COLUMNS); r++) await app.keyboard.press("down");
+}
+
+test("grey cards end the grid while its next page comes: a row of them under full rows", async () => {
+  const app = await movies(longGrid("loading").native);
+  await toRowOf(app, 39);
+  expect(app.shows("id:grid-row-35 >> text:Film 40")).toBe(true);
+  expect(app.count("id:grid-row-40 >> id:grid-skeleton")).toBe(COLUMNS);
+  expect(app.count("id:grid-skeleton")).toBe(COLUMNS);
+});
+
+test("grey cards fill the last row's empty cells first, then one row more; the page's cards take those cells", async () => {
+  // 42 cards, five a row: the last row has two.
+  const loading = await movies(longGrid("loading", true, 42).native);
+  await toRowOf(loading, 41);
+  expect(loading.shows("id:grid-row-40 >> text:Film 41")).toBe(true);
+  expect(loading.shows("id:grid-row-40 >> text:Film 42")).toBe(true);
+  expect(loading.count("id:grid-row-40 >> id:grid-skeleton")).toBe(COLUMNS - 2);
+  expect(loading.count("id:grid-row-45 >> id:grid-skeleton")).toBe(COLUMNS);
+  expect(loading.count("id:grid-skeleton")).toBe(2 * COLUMNS - 2); // no more than a row past the cards
+  expect(loading.shows("id:grid-row-50")).toBe(false);
+  // The page lands (five more, the source's last): its cards are where the grey ones were.
+  const landed = await movies(longGrid("idle", false, 47).native);
+  await toRowOf(landed, 46);
+  for (const n of [41, 42, 43, 44, 45]) expect(landed.shows(`id:grid-row-40 >> text:Film ${n}`)).toBe(true);
+  expect(landed.shows("id:grid-row-45 >> text:Film 47")).toBe(true);
+  expect(landed.count("id:grid-skeleton")).toBe(0);
+});
+
+test("a line instead of grey cards when the next page failed; nothing past the end", async () => {
+  const failed = await movies(longGrid("failed", true, 42).native);
+  await toRowOf(failed, 41);
+  expect(failed.count("id:grid-skeleton")).toBe(0);
   expect(failed.texts()).toContain("Could not load more titles. Move down to try again.");
-  const { native, asked } = longGrid("idle", false);
+  const { native, asked } = longGrid("idle", false, 42);
   const end = await movies(native);
   for (let i = 0; i < 12; i++) await end.keyboard.press("down");
   expect(asked).toEqual([]);
-  expect(end.shows("id:grid-skeleton")).toBe(false);
+  expect(end.count("id:grid-skeleton")).toBe(0);
+  expect(end.texts()).not.toContain("Could not load more titles. Move down to try again.");
+});
+
+test("desktop: ten cards in rows of four, the next page coming: the last row's two empty cells are grey, then a row", async () => {
+  const { native, asked } = longGrid("loading", true, 10);
+  const app = await movies(native, { platform: "macos", width: 1200, height: 900 });
+  await app.scroll("Film 1", 4000);
+  await app.wait(100);
+  expect(app.shows("id:grid-row-8 >> text:Film 10")).toBe(true); // four a row
+  expect(app.count("id:grid-row-8 >> id:grid-skeleton")).toBe(2);
+  expect(app.count("id:grid-row-12 >> id:grid-skeleton")).toBe(4);
+  expect(app.count("id:grid-skeleton")).toBe(6);
+  expect(asked).toEqual([]); // one is on its way already
 });
 
 test("desktop: resting the pointer on a card for 0.6 s opens a preview with the details", async () => {

@@ -47,6 +47,8 @@ h1, h2, h3 { margin: 0; line-height: 1.15; font-weight: 600; }
 h1 { font-size: clamp(2.25rem, 5vw, 3.75rem); letter-spacing: -0.03em; }
 h2 { font-size: clamp(1.75rem, 3.2vw, 2.5rem); letter-spacing: -0.02em; }
 h3 { font-size: 1.125rem; letter-spacing: -0.005em; }
+/* Japanese wraps between phrases, not inside a word (where the browser can tell). */
+:lang(ja) { word-break: auto-phrase; }
 p { margin: 0; }
 a { color: var(--snow); text-underline-offset: 0.2em; text-decoration-color: rgba(245, 245, 245, 0.4); }
 a:hover { text-decoration-color: var(--snow); }
@@ -309,7 +311,7 @@ svg.i { width: 1.5rem; height: 1.5rem; stroke: currentColor; fill: none; stroke-
 .plain { margin-top: 1rem; }
 .plain li { padding: 0.75rem 1rem; background: var(--card); border-radius: var(--radius); color: var(--soft); }
 
-.tizen { background: var(--ink); border: 1px solid var(--line); border-radius: 0.875rem; padding: 1.5rem; }
+.tizen, .ios { background: var(--ink); border: 1px solid var(--line); border-radius: 0.875rem; padding: 1.5rem; }
 .tizen > p { margin-top: 0.6rem; color: var(--soft); }
 .numbered { margin: 1.25rem 0 0; padding-left: 1.4rem; display: grid; gap: 0.75rem; color: var(--soft); }
 .numbered li::marker { color: var(--ash); }
@@ -384,7 +386,7 @@ details p { padding: 0 0 1.25rem; color: var(--soft); max-width: 42rem; }
 /* One row: the device picked in data-dev (set in <head> before the first paint). */
 [data-dev] .get-panel { display: none; }
 [data-dev=tizen] #get-tizen, [data-dev=android] #get-android, [data-dev=mac] #get-mac, [data-dev=ios] #get-ios, [data-dev=windows] #get-windows, [data-dev=linux] #get-linux { display: flex; }
-[data-dev=tizen] #get-tizen { display: block; }
+[data-dev=tizen] #get-tizen, [data-dev=ios] #get-ios { display: block; }
 .get-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; counter-reset: step; max-width: 62rem; }
 @media (min-width: 760px) { .get-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; } }
 .get-steps li { counter-increment: step; display: grid; align-content: start; gap: 0.35rem; }
@@ -392,6 +394,12 @@ details p { padding: 0 0 1.25rem; color: var(--soft); max-width: 42rem; }
 .get-steps b { color: var(--snow); }
 .get-steps span { color: var(--soft); font-size: 0.95rem; }
 .get-steps .btn { justify-self: start; margin-top: 0.5rem; }
+/* A step's column can be narrower than a long label (three columns from 760px): it wraps. */
+.get-steps .btn { white-space: normal; text-align: center; padding-block: 0.6rem; }
+/* iPhone and iPad: a button for each app, then the source's address to copy (one tap selects it). */
+.get-btns { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; margin-top: 0.5rem; }
+.get-btns .btn { margin-top: 0; }
+.get-url { justify-self: start; max-width: 100%; margin-top: 0.4rem; padding: 0.3rem 0.55rem; color: var(--soft); font-size: 0.875rem; font-weight: 400; overflow-wrap: anywhere; -webkit-user-select: all; user-select: all; }
 .foot .wrap { display: grid; gap: 1.5rem; }
 .runner { display: block; width: 100%; height: 150px; }
 .tv-screen .ui-shelf.second, .win-body .ui-shelf.second { display: none; }
