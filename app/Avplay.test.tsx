@@ -285,5 +285,7 @@ test("AVPlay's error shows on the stage, and Back stops AVPlay", async () => {
   expect(app.texts()).toContain("Could not play: PLAYER_ERROR_NOT_SUPPORTED_FILE");
   await app.keyboard.press("escape"); // the remote's Back
   expect(app.texts()).toContain("Trending movies");
-  expect(ops().at(-1)).toEqual({ op: "stop" });
+  // The stop names the stream it opened: the shell leaves a newer one alone.
+  const opened = ops().find((o) => o.op === "open") as { url: string } | undefined;
+  expect(ops().at(-1)).toEqual({ op: "stop", url: opened?.url });
 });

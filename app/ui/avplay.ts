@@ -15,7 +15,8 @@ export type AvplayOp =
   | { op: "pause" }
   | { op: "seek"; position: number }
   | { op: "track"; trackType: "AUDIO" | "TEXT"; index: number }
-  | { op: "stop" };
+  /** `url`: the stream this view opened; the shell leaves a newer one alone. */
+  | { op: "stop"; url?: string };
 
 /** A track as the shell reports it: AVPlay's `index`, `type` and `extra_info`. */
 export interface AvplayTrack {

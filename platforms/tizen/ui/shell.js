@@ -117,23 +117,34 @@
     },
 
     // `hold`: prepared, AVPlay waits for the page's `play` (it picks the audio track first).
+    // The stream AVPlay has open (null: none): a late `stop` or a callback of an older one
+    // must not touch the next.
+    current: null,
+
     open: function (url, emit, hold) {
       if (typeof webapis === 'undefined' || !webapis.avplay) throw new Error('webapis.avplay is not available');
       var p = webapis.avplay;
       try { p.stop(); p.close(); } catch (e) { /* nothing was open */ }
       av.resetSeek();
+      av.current = url;
+      // What AVPlay says about this stream, only while it is still the one open.
+      var mine = function (event) { if (av.current === url) emit(event); };
       emit({ type: 'step', step: 'open ' + url });
       p.open(url);
       p.setDisplayRect(0, 0, 1920, 1080);
       p.setDisplayMethod('PLAYER_DISPLAY_MODE_LETTER_BOX');
-      p.setListener(av.listener(emit));
+      p.setListener(av.listener(mine));
       emit({ type: 'step', step: 'prepareAsync, state ' + p.getState() });
       p.prepareAsync(function () {
-        emit({ type: 'loaded', duration: p.getDuration() / 1000, tracks: av.tracks() });
+        if (av.current !== url) return;
+        mine({ type: 'loaded', duration: p.getDuration() / 1000, tracks: av.tracks() });
         if (hold) return;
         p.play();
-        emit({ type: 'step', step: 'play, state ' + p.getState() });
-      }, function (e) { emit({ type: 'error', message: 'prepare: ' + (e && (e.name + ' ' + e.message)) }); });
+        mine({ type: 'step', step: 'play, state ' + p.getState() });
+      }, function (e) {
+        if (av.current !== url) return note('avplay prepare of an older stream: ' + (e && (e.name || e)));
+        mine({ type: 'error', message: 'prepare: ' + (e && (e.name + ' ' + e.message)) });
+      });
     },
 
     tracks: function () {
@@ -191,16 +202,42 @@
       });
     },
 
+    // Each op only in the states AVPlay takes it in (an op in another state throws
+    // InvalidStateError): one that comes too early or too late — a pause before the prepared
+    // stream plays, a play after it was closed — is skipped and logged, never an error.
+    allowed: {
+      play: ['READY', 'PAUSED'],
+      pause: ['PLAYING'],
+      seek: ['READY', 'PLAYING', 'PAUSED'],
+      track: ['READY', 'PLAYING', 'PAUSED']
+    },
+
     handle: function (msg, emit) {
       var p = webapis.avplay;
-      switch (msg.op) {
-        case 'open': av.open(msg.url, emit, !!msg.hold); break;
-        case 'play': p.play(); break;
-        case 'pause': p.pause(); break;
-        case 'seek': av.seek(Math.round(msg.position * 1000), emit); break;
-        case 'track': p.setSelectTrack(msg.trackType, msg.index); break;
-        case 'stop': av.resetSeek(); try { p.stop(); p.close(); } catch (e) { /* already closed */ } break;
-        default: emit({ type: 'error', message: 'unknown op ' + msg.op });
+      if (msg.op === 'open') return av.open(msg.url, emit, !!msg.hold);
+      if (msg.op === 'stop') {
+        // A stop of the stream that was open before this one (a view that left after the next
+        // one opened) leaves the next alone.
+        if (msg.url && msg.url !== av.current) return note('avplay stop of an older stream, skipped');
+        av.resetSeek();
+        av.current = null;
+        try { p.stop(); p.close(); } catch (e) { /* already closed */ }
+        return;
+      }
+      var states = av.allowed[msg.op];
+      if (!states) return emit({ type: 'error', message: 'unknown op ' + msg.op });
+      var state = p.getState();
+      if (states.indexOf(state) < 0) return note('avplay ' + msg.op + ' skipped in ' + state);
+      try {
+        switch (msg.op) {
+          case 'play': p.play(); break;
+          case 'pause': p.pause(); break;
+          case 'seek': av.seek(Math.round(msg.position * 1000), emit); break;
+          case 'track': p.setSelectTrack(msg.trackType, msg.index); break;
+        }
+      } catch (e) {
+        // AVPlay moved on between the check and the call: logged, the stream plays on.
+        note('avplay ' + msg.op + ' failed in ' + state + ': ' + (e && (e.name || e)));
       }
     }
   };
