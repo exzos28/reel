@@ -51,12 +51,20 @@ export interface VideoSurfaceProps {
   /** mpv's subtitle track id, "no" for none; null leaves it to the player. */
   subtitleTrack?: number | "no" | null;
   progressUpdateInterval?: number;
-  /** The share of the view's height the player's controls cover now: subtitles the player draws
-   * itself (mpv's, embedded in the film) rise above them. */
+  /** How far from the view's bottom the subtitles the player draws itself (mpv's, embedded in
+   * the film) stay, as a share of the picture's height: above the controls while they show
+   * (0: the player's own margin). */
   subtitleLift?: number;
+  /** The room at each side of those subtitles, as a share of the picture's height (as our
+   * overlay's: `subtitleFit`). */
+  subtitleSides?: number;
+  /** How much larger those subtitles are than the player's own size for the picture (1: as
+   * it is): a small picture's would be too small to read. */
+  subtitleScale?: number;
   style?: ViewStyle;
   surfaceRef?: (r: SurfaceRef) => void;
-  onLoad?: (e: { duration: number }) => void;
+  /** Loaded: how long the film is, and its picture's size as shown (pixels) where the view says. */
+  onLoad?: (e: { duration: number; width?: number; height?: number }) => void;
   onProgress?: (e: { currentTime: number; duration: number; cached?: number; readAt?: number; readTime?: number }) => void;
   onBuffer?: (e: { isBuffering: boolean }) => void;
   onEnd?: () => void;
@@ -81,10 +89,12 @@ interface MpvProps {
   subtitleTrack: number | string | null;
   progressUpdateInterval: number;
   subtitleLift: number;
+  subtitleSides: number;
+  subtitleScale: number;
 }
 
 interface MpvEvents {
-  load: { duration: number };
+  load: { duration: number; width?: number; height?: number };
   /** `cached`: seconds of the film the view holds ahead of `currentTime` (mpv's cache). */
   progress: { currentTime: number; duration: number; cached?: number; readAt?: number; readTime?: number };
   buffer: { isBuffering: boolean };
@@ -95,7 +105,7 @@ interface MpvEvents {
 
 const MpvView = nativeComponent<MpvProps, MpvEvents>("reel/mpv", {
   // The languages before `src`: mpv starts in them.
-  props: ["audioLanguages", "src", "paused", "volume", "audioTrack", "subtitleTrack", "progressUpdateInterval", "subtitleLift"],
+  props: ["audioLanguages", "src", "paused", "volume", "audioTrack", "subtitleTrack", "progressUpdateInterval", "subtitleLift", "subtitleSides", "subtitleScale"],
   events: ["load", "progress", "buffer", "end", "error", "tracks"],
 });
 
@@ -177,25 +187,40 @@ export function VideoSurface(props: VideoSurfaceProps) {
 function PlayerView(props: VideoSurfaceProps) {
   return (
     <If when={videoKind() === "mpv"} else={<OtherSurface {...props} />}>
-      <MpvView
-        ref={(r: NativeComponentRef) => props.surfaceRef?.({ seek: (seconds) => r.command("seek", { seconds }) })}
-        src={props.src}
-        paused={props.paused}
-        volume={props.volume ?? 1}
-        subtitleLift={props.subtitleLift ?? 0}
-        audioLanguages={props.audioLanguages ?? ""}
-        audioTrack={props.audioTrack ?? null}
-        subtitleTrack={props.subtitleTrack ?? null}
-        progressUpdateInterval={props.progressUpdateInterval ?? 250}
-        onLoad={(e) => props.onLoad?.(e)}
-        onProgress={(e) => props.onProgress?.(e)}
-        onBuffer={(e) => props.onBuffer?.(e)}
-        onEnd={() => props.onEnd?.()}
-        onError={(e) => props.onError?.(e)}
-        onTracks={(e) => props.onTracks?.(JSON.stringify(e))}
-        style={props.style}
-      />
+      <MpvSurface {...props} />
     </If>
+  );
+}
+
+/** reel's mpv view. Unmounted, it is told to close: NSH lets go of a native view only once its
+ * node is released, seconds later, and mpv would play on until then. */
+function MpvSurface(props: VideoSurfaceProps) {
+  let native: NativeComponentRef | undefined;
+  cleanup(() => native?.command("close", {}));
+  return (
+    <MpvView
+      ref={(r: NativeComponentRef) => {
+        native = r;
+        props.surfaceRef?.({ seek: (seconds) => r.command("seek", { seconds }) });
+      }}
+      src={props.src}
+      paused={props.paused}
+      volume={props.volume ?? 1}
+      subtitleLift={props.subtitleLift ?? 0}
+      subtitleSides={props.subtitleSides ?? 0}
+      subtitleScale={props.subtitleScale ?? 1}
+      audioLanguages={props.audioLanguages ?? ""}
+      audioTrack={props.audioTrack ?? null}
+      subtitleTrack={props.subtitleTrack ?? null}
+      progressUpdateInterval={props.progressUpdateInterval ?? 250}
+      onLoad={(e) => props.onLoad?.(e)}
+      onProgress={(e) => props.onProgress?.(e)}
+      onBuffer={(e) => props.onBuffer?.(e)}
+      onEnd={() => props.onEnd?.()}
+      onError={(e) => props.onError?.(e)}
+      onTracks={(e) => props.onTracks?.(JSON.stringify(e))}
+      style={props.style}
+    />
   );
 }
 
@@ -234,11 +259,11 @@ function NativeSurface(props: VideoSurfaceProps) {
   );
 }
 
-/** Headless tests: loads at once and plays its first frame, then stands still. */
+/** Headless tests: loads at once (a 1920×1080 picture) and plays its first frame, then stands still. */
 function StillSurface(props: VideoSurfaceProps) {
   const timer = setTimeout(() => {
     props.surfaceRef?.({ seek: () => {} });
-    props.onLoad?.({ duration: 0 });
+    props.onLoad?.({ duration: 0, width: 1920, height: 1080 });
     props.onProgress?.({ currentTime: 0, duration: 0 });
   }, 0);
   cleanup(() => clearTimeout(timer));

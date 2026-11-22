@@ -24,8 +24,9 @@ test("a film shows its scores, age rating, crew, cast, details and More like thi
   for (const s of ["Cast", "Leonardo DiCaprio", "Cobb", "JG", "Arthur"]) expect(texts).toContain(s);
   for (const s of ["Details", "Tagline", "Your mind is the scene of the crime.", "Release date", "Jul 15, 2010"])
     expect(texts).toContain(s);
-  for (const s of ["Runtime", "Country", "United Kingdom, United States", "Studio", "Legendary Pictures, Syncopy"])
+  for (const s of ["Country", "United Kingdom, United States", "Studio", "Legendary Pictures, Syncopy"])
     expect(texts).toContain(s);
+  expect(texts).not.toContain("Runtime"); // the hero's line says it
   expect(texts).toContain("More like this");
   expect(texts).toContain("Dune");
   // In that order, under the hero.
@@ -63,6 +64,7 @@ test("⌄ in Play opens the releases in a panel; OK picks one and closes it; Bac
   await app.keyboard.press("right"); // ⌄, the other releases: the stop after Play
   await app.keyboard.press("enter");
   for (const s of ["Releases", "3 found, the best of each quality first"]) expect(app.texts()).toContain(s);
+  expect(app.texts()).toContain("English, Russian MVO · H.264 · 8 GB"); // on a TV the details under the source
   for (const s of ["Starts fast", "Needs 58 Mbit/s internet"]) expect(app.texts()).not.toContain(s); // no note column
   await app.keyboard.press("escape"); // closes the panel, stays on the film
   expect(app.texts()).not.toContain("3 found, the best of each quality first");
@@ -80,10 +82,11 @@ const withTrailer = { ...NATIVE, "Catalog.title": JSON.stringify({ ...JSON.parse
 test("Trailer shows only when the title has one", async () => {
   expect((await inception()).texts()).not.toContain("Trailer");
   const app = await inception(withTrailer);
+  await app.keyboard.press("down"); // off the row: the focused control draws last, over its neighbours
   const texts = app.texts();
   expect(texts.indexOf("Resume 41:12")).toBeLessThan(texts.indexOf("Trailer")); // in the row after Play
-  // The Watchlist is the page's header action, not one of the hero's.
-  expect(texts).toContain("Watchlist");
+  // Add to list is the page's header action, not one of the hero's.
+  expect(texts).toContain("Add to list");
 });
 
 test("Left and Right walk one line: Play, ⌄, Trailer; Down from any of them goes on to the cast", async () => {
@@ -140,7 +143,10 @@ test("the remote goes from the actions to the cast, then More like this, which o
   });
   await app.keyboard.press("down"); // the cast
   await app.keyboard.press("right");
-  await app.keyboard.press("enter"); // nothing opens on a person
+  await app.keyboard.press("enter"); // the person's page
+  expect(app.texts()).toContain("Films and series");
+  await app.keyboard.press("escape"); // back on the cast, on that person
+  expect(app.texts()).toContain("More like this");
   expect(chosen).toEqual([]);
   await app.keyboard.press("down"); // More like this, on Dune
   await app.keyboard.press("enter"); // opens it (the stand-in answers every title with Inception)
@@ -179,8 +185,54 @@ test("while the release is not known, Play says it is searched under its label; 
   await app.keyboard.press("enter"); // Inception
   expect(app.shows("release-row-skeleton")).toBe(true);
   await app.keyboard.press("down"); // the cast
-  await app.keyboard.press("enter"); // nothing opens on a person
+  await app.keyboard.press("enter"); // the person's page, not the releases
   expect(app.texts()).not.toContain("Releases");
+  expect(app.texts()).toContain("Films and series");
+});
+
+test("OK on a person of the cast opens their titles; OK opens one; Back comes back to the cast", async () => {
+  const app = await inception();
+  await app.keyboard.press("down"); // the cast: Leonardo DiCaprio
+  await app.keyboard.press("enter");
+  for (const s of ["Leonardo DiCaprio", "Films and series", "Inception", "Shutter Island", "Dune"]) expect(app.texts()).toContain(s);
+  expect(app.texts()).not.toContain("More like this");
+  await app.keyboard.press("right"); // Shutter Island
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("More like this"); // a title's page (the stand-in answers Inception's)
+  expect(app.texts()).not.toContain("Films and series");
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("Films and series");
+  await app.keyboard.press("escape");
+  expect(app.texts()).toContain("More like this");
+  expect(app.texts()).not.toContain("Films and series");
+});
+
+test("a person reel has no page for is shown, not pressable", async () => {
+  const app = await app_({ ...ENGINE, ...SHOW });
+  await app.keyboard.press("right"); // Attack on Titan
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("Yuki Kaji");
+  for (const _ of ["tabs", "S3:E2", "S3:E3", "S3:E4", "the cast"]) await app.keyboard.press("down");
+  await app.keyboard.press("enter"); // on Yuki Kaji: nothing opens
+  expect(app.texts()).not.toContain("Films and series");
+  expect(app.texts()).toContain("Yuki Kaji");
+});
+
+test("phone: a tap on a person opens their page; a tap on the description shows it whole, another folds it", async () => {
+  const about = "One. Two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen.";
+  const native = titleWith({ about, aboutShort: "One." });
+  const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  expect(app.texts()).toContain("One.");
+  expect(app.texts()).not.toContain(about);
+  await app.press("label:Show the whole description");
+  expect(app.texts()).toContain(about);
+  await app.press("label:Show less");
+  expect(app.texts()).not.toContain(about);
+  await app.press("label:Leonardo DiCaprio");
+  expect(app.texts()).toContain("Films and series");
+  expect(app.texts()).toContain("Shutter Island");
 });
 
 test("with no release at all, Play is plain and a line under it says why", async () => {
@@ -192,28 +244,62 @@ test("with no release at all, Play is plain and a line under it says why", async
 });
 
 test("touch, with no search source: Play opens the drawer that adds one, not the player", async () => {
-  const native = titleWith({ release: null, playable: false, releases: [], releasesState: "no_source" });
+  const native = { ...titleWith({ release: null, playable: false, releases: [], releasesState: "no_source" }), "Catalog.onPlay": "no_source" };
   const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
   await app.press("label:Resume 41:12");
   expect(app.shows("source-panel")).toBe(true);
   expect(app.texts()).toContain("Add a search source");
-  expect(app.shows("label:Save and check")).toBe(true);
+  expect(app.shows("label:Check")).toBe(true);
 });
 
-test("with a source, Play waits for the source's answer: while it searches, a press opens neither the player nor the drawer", async () => {
-  const native = titleWith({ release: null, playable: true, releases: [], releasesState: "searching" });
+test("with a source, Play answers at once: while it searches, the player opens and looks for the release, even when the core answers late", async () => {
+  // A core that answers 3 s late: the player is on screen before it answers.
+  let app: Awaited<ReturnType<typeof openApp>>;
+  let upBeforeTheAnswer: boolean | null = null;
+  const native = {
+    ...titleWith({ release: null, playable: true, releases: [], releasesState: "searching" }),
+    "Engine.open": () => new Promise((done) => setTimeout(() => ((upBeforeTheAnswer = app.shows("player-host")), done(1)), 3000)),
+    "Engine.status": '{"phase":"resolving","stage":"searching"}',
+  };
+  app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  await app.press("label:Resume 41:12");
+  expect(upBeforeTheAnswer).toBe(true);
+  expect(app.shows("source-panel")).toBe(false);
+  await app.waitFor("text:Looking for a release");
+});
+
+test("the source does not answer while the player waits for it: the drawer to fix it opens over the player, and the player goes with it", async () => {
+  const native = { ...titleWith({ release: null, playable: true, releases: [], releasesState: "searching" }), "Engine.status": '{"phase":"source_failed"}' };
+  const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  await app.press("label:Resume 41:12");
+  expect(app.shows("source-panel")).toBe(true);
+  expect(app.texts()).toContain("Your search source did not answer");
+  await app.keyboard.press("escape");
+  await app.wait(600); // the drawer slides away
+  expect(app.shows("source-panel")).toBe(false);
+  expect(app.shows("player-host")).toBe(false);
+  expect(app.texts()).toContain("Dune");
+});
+
+test("the source found nothing this device plays: the player says so", async () => {
+  const native = { ...titleWith({ release: null, playable: true, releases: [], releasesState: "searching" }), "Engine.status": '{"phase":"not_found"}' };
   const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
   await app.press("label:Resume 41:12");
   expect(app.shows("source-panel")).toBe(false);
-  expect(app.texts()).toContain("Searching your source…");
+  expect(app.texts()).toContain("No release to play.");
+  expect(app.texts()).toContain("Your search source found none that plays on this device.");
 });
 
 test("with a source that did not answer, Play opens the drawer to fix it", async () => {
-  const native = titleWith({ release: null, playable: true, releases: [], releasesState: "failed" });
+  const native = { ...titleWith({ release: null, playable: true, releases: [], releasesState: "failed" }), "Catalog.onPlay": "failed" };
   const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
@@ -233,6 +319,13 @@ test("phone: the release sits in Play as one short line (the people sharing a nu
   expect(app.shows("label:Trailer")).toBe(true);
   await app.press("label:Other releases");
   expect(app.texts()).toContain("3 found, the best of each quality first");
+  // A release row: its audio, picture, size and the people sharing (the number kept with its icon),
+  // how it starts, then its own name; said whole.
+  expect(app.texts()).toContain("English, Russian MVO · H.264 · 8 GB ·");
+  expect(app.texts()).toContain("412");
+  expect(app.texts()).toContain("Starts fast");
+  expect(app.texts()).toContain("Inception.2010.1080p.BluRay.x264");
+  expect(app.shows("label:1080p BluRay, English, Russian MVO, H.264, 8 GB, 412 people sharing, Starts fast")).toBe(true);
 });
 
 test("Save names the film's size; when it does not fit it asks, and saves the smaller release the core names", async () => {

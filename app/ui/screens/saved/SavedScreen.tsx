@@ -2,10 +2,11 @@
 // design/concept/mac-saved.html): what is saved on this device and plays without the
 // internet. Over the rows, the space saved and free, the folder and Open folder; then what is
 // saving, what is ready to watch, and what could not be saved, each grouped by title: a film is
-// one row, a show one row whose episodes open under it. A saved film or episode plays when
+// one row, a show one row whose episodes open under it. On a tablet what is ready to watch is a
+// grid of cards (SavedCard): a film plays, a show opens its page; Remove is in a card's menu. A saved film or episode plays when
 // pressed (its Play button too); one still saving has Pause / Resume. Remove asks first. Up
 // and Down move through the rows (Up from the first: the nav), Left and Right to a row's
-// buttons; OK acts.
+// buttons; OK acts. With nothing saved, no space: a line and Browse films, which goes Home.
 import { computed, keymap, signal, Text, View, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { byKeys } from "../../focus/keys";
@@ -17,29 +18,35 @@ import { NAV } from "../../layout/navItems";
 import { showNav } from "../../layout/navState";
 import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
-import { goFromNav, openTitle } from "../../nav";
+import { go, goFromNav, openTitle } from "../../nav";
 import { episodeCode, title as catalogTitle } from "../../catalog";
 import { play } from "../../playback";
-import { metaText, sectionTitle } from "../../kit/text";
+import { bodyText, metaText, sectionTitle } from "../../kit/text";
 import { Fmt } from "../../native";
-import { openSavedFolder, pauseSaved, removeSaved, savedList, titleOf, watchSaved, type SavedGroup, type SavedItem } from "../../library";
+import { openSavedFolder, pauseSaved, removeSaved, savedList, savingOverall, titleOf, watchSaved, type SavedGroup, type SavedItem } from "../../library";
 import { Button } from "../../kit/Button";
 import { rounded, row } from "../../kit/shape";
 import { alpha, colors, cs, safe, u } from "../../theme";
 import { SavedGroupRow } from "./SavedGroupRow";
 import { SavedRow } from "./SavedRow";
+import { SavedCard } from "./SavedCard";
+import { cellWidth, GRID_GAP, GRID_ROW_GAP, gridRows } from "../../layout/Grid";
+import { cardColumns, savedCards } from "../../layout/wide";
 
 const pageStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(24), gap: u(12) });
 const sectionStyle = (): ViewStyle => ({ marginTop: u(28), marginBottom: u(4) });
 const spaceTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", flexDirection: "row", marginTop: u(8), maxWidth: cs(520) });
+const emptyStyle = (): ViewStyle => ({ marginTop: u(16), gap: u(24), alignItems: "flex-start" });
 const SAVED_AT = NAV.findIndex((n) => n.id === "saved");
 
 type Section = "saving" | "ready" | "failed";
 const SECTIONS: Section[] = ["saving", "ready", "failed"];
 
-/** A row the focus walks: a show's row, or a film or an episode. */
+/** A row the focus walks: a show's row, or a film or an episode; on a tablet a ready film's or
+ * show's card. */
 type Entry =
   | { kind: "group"; section: Section; group: SavedGroup; key: string }
+  | { kind: "card"; section: Section; group: SavedGroup; key: string }
   | { kind: "item"; section: Section; item: SavedItem; nested: boolean; key: string };
 
 /** "21.6 GB saved · 212 GB free · ~/Movies/reel" (the folder only where it can be opened: a
@@ -71,7 +78,9 @@ export function SavedScreen() {
     toggled.set(next);
   };
   const entriesOf = (section: Section): Entry[] =>
-    list()[section].flatMap((g): Entry[] =>
+    section === "ready" && savedCards()
+      ? list().ready.map((g): Entry => ({ kind: "card", section, group: g, key: `c:${g.id}` }))
+      : list()[section].flatMap((g): Entry[] =>
       g.show
         ? [
             { kind: "group", section, group: g, key: `g:${section}:${g.id}` },
@@ -93,6 +102,11 @@ export function SavedScreen() {
     onNav.set(true);
   };
   const at = () => (onNav() ? -1 : clamp(focus(), rows().length - 1));
+  /** Nothing saved, saving or being found: the screen invites to find a film. */
+  const empty = () => rows().length === 0 && !savingOverall().saving;
+  /** Something is on the device or coming to it: the space it takes shows. */
+  const anySaved = () => list().saving.length > 0 || list().ready.length > 0;
+  const browse = () => go("home");
 
   /** The question before files go. */
   const ask = signal<Confirm | null>(null);
@@ -127,6 +141,11 @@ export function SavedScreen() {
   const hasMiddle = (e: Entry | undefined) =>
     e?.kind === "item" ? ["saving", "paused", "saved"].includes(e.item.state) : e?.kind === "group" && pausable(e.group).length > 0;
   const act = (e: Entry, p: number) => {
+    if (e.kind === "card") {
+      const first = e.group.items[0];
+      if (p === 2) return e.group.show ? removeGroup(e.group) : removeItem(first);
+      return e.group.show ? open(first) : playItem(first);
+    }
     if (e.kind === "group") return p === 2 ? removeGroup(e.group) : p === 1 ? pauseGroup(e.group) : toggle(e.section, e.group);
     const i = e.item;
     if (p === 2) return removeItem(i);
@@ -140,14 +159,16 @@ export function SavedScreen() {
       up: () => (onNav() ? undefined : at() <= 0 ? toNav() : (focus.set(at() - 1), part.set(0))),
       down: () => (onNav() ? onNav.set(false) : (focus.set(clamp(at() + 1, rows().length - 1)), part.set(0))),
       left: () => (onNav() ? navAt.set(clamp(navAt() - 1, NAV.length - 1)) : part.set(part() === 2 && !hasMiddle(rows()[at()]) ? 0 : Math.max(part() - 1, 0))),
+      // A card has no buttons to move to (Remove is in its menu).
       right: () =>
-        onNav() ? navAt.set(clamp(navAt() + 1, NAV.length - 1)) : part.set(part() === 0 && !hasMiddle(rows()[at()]) ? 2 : Math.min(part() + 1, 2)),
+        onNav() ? navAt.set(clamp(navAt() + 1, NAV.length - 1)) : rows()[at()]?.kind === "card" ? undefined : part.set(part() === 0 && !hasMiddle(rows()[at()]) ? 2 : Math.min(part() + 1, 2)),
     }),
     { repeat: true },
   );
   keymap.bind({
     enter: () => {
       if (onNav()) return goFromNav(NAV[navAt()].id);
+      if (empty()) return browse();
       const e = rows()[at()];
       if (e) act(e, part());
     },
@@ -194,25 +215,58 @@ export function SavedScreen() {
     </Each>
   );
 
+  /** A tablet's ready films and shows: cards, `cardColumns()` across. */
+  const cardRows = () => gridRows(entriesOf("ready"), cardColumns());
+  const readyCards = () => (
+    <View style={{ gap: u(GRID_ROW_GAP) }}>
+      <Each of={cardRows()} key={(r) => r.at}>
+        {(r) => (
+          <View style={{ flexDirection: "row", gap: u(GRID_GAP) }}>
+            <Each of={r().items} key={(e) => e.key}>
+              {(e, c) => {
+                const here = () => at() === offset("ready") + r().at + c();
+                return (
+                  <SavedCard
+                    group={() => (e() as Extract<Entry, { kind: "card" }>).group}
+                    width={() => cellWidth(cardColumns(), GRID_GAP)}
+                    focused={here}
+                    viewRef={page.follow(here)}
+                    onPress={() => act(e(), 0)}
+                    onRemove={() => act(e(), 2)}
+                  />
+                );
+              }}
+            </Each>
+          </View>
+        )}
+      </Each>
+    </View>
+  );
+
   const used = () => list().space.saved;
   const free = () => list().space.free;
   const share = () => (free() != null && used() + free()! > 0 ? used() / (used() + free()!) : 0);
   return (
     <View style={{ flex: 1 }}>
-      <PageFrame ctl={page} kind={caps.touch && !caps.settingsTab ? "deep" : "root"} title={() => t("saved.title")}>
+      <PageFrame ctl={page} kind="root" title={() => t("saved.title")}>
         <View style={pageStyle()}>
-          <View style={row(u(20))}>
-            <Text style={{ ...metaText(), flexShrink: 1 }}>{spaceLine(used(), free(), caps.touch ? null : list().space.folder)}</Text>
-            {/* The folder in Finder / File Explorer: a desktop has a file manager. */}
-            <If when={!caps.touch && !caps.remote}>
-              <Button kind="secondary" height={44} label={() => t("saved.open_folder")} focused={() => false} onPress={openSavedFolder} />
-            </If>
-          </View>
-          <View style={spaceTrack()}>
-            <View style={{ width: `${Math.max(1, Math.round(share() * 100))}%`, height: "100%", backgroundColor: colors.snow() }} />
-          </View>
-          <If when={rows().length === 0}>
-            <Text style={{ ...metaText(colors.soft()), marginTop: u(32) }}>{t("saved.empty")}</Text>
+          <If when={anySaved()}>
+            <View style={row(u(20))}>
+              <Text style={{ ...metaText(), flexShrink: 1 }}>{spaceLine(used(), free(), caps.touch ? null : list().space.folder)}</Text>
+              {/* The folder in Finder / File Explorer: a desktop has a file manager. */}
+              <If when={!caps.touch && !caps.remote}>
+                <Button kind="secondary" height={44} label={() => t("saved.open_folder")} focused={() => false} onPress={openSavedFolder} />
+              </If>
+            </View>
+            <View style={spaceTrack()}>
+              <View style={{ width: `${Math.max(1, Math.round(share() * 100))}%`, height: "100%", backgroundColor: colors.snow() }} />
+            </View>
+          </If>
+          <If when={empty()}>
+            <View style={emptyStyle()}>
+              <Text style={bodyText(colors.soft())}>{t("saved.empty")}</Text>
+              <Button kind="primary" height={48} label={() => t("saved.browse")} focused={() => !onNav()} onPress={browse} />
+            </View>
           </If>
           <If when={list().saving.length > 0}>
             <View style={sectionStyle()}>
@@ -225,7 +279,7 @@ export function SavedScreen() {
             <View style={sectionStyle()}>
               <Text style={sectionTitle()}>{t("saved.ready")}</Text>
             </View>
-            {sectionRows("ready")}
+            {savedCards() ? readyCards() : sectionRows("ready")}
           </If>
           <If when={list().failed.length > 0}>
             <View style={sectionStyle()}>

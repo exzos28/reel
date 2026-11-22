@@ -1,5 +1,5 @@
 import { expect, test } from "nsh/test";
-import { AOT_S3, ENGINE, episode, INCEPTION_NO_SOURCE, NATIVE, release, SHOW, openApp } from "./testEngine";
+import { AOT_S3, DUNE_FIRST, ENGINE, episode, INCEPTION_NO_SOURCE, NATIVE, release, SHOW, openApp } from "./testEngine";
 
 type Native = Record<string, {} | null>;
 const app_ = (native: Native = NATIVE, options: Record<string, unknown> = {}) =>
@@ -18,12 +18,12 @@ test("home starts on Continue watching; the hero stays on the title watched last
   expect(app.texts()).not.toContain("2013–2023");
 });
 
-test("when the engine has no source to play from, the drawer that adds one opens instead of the player", async () => {
+test("when the engine has no source to play from, the drawer that adds one opens over the player; Back closes both", async () => {
   const app = await app_({ ...NATIVE, "Engine.status": JSON.stringify({ phase: "no_source" }) });
   await app.keyboard.press("up"); // the hero's Resume
   await app.keyboard.press("enter");
   expect(app.shows("source-panel")).toBe(true);
-  expect(app.texts()).not.toContain("No release to play.");
+  expect(app.texts()).toContain("Add a search source");
   await app.keyboard.press("escape");
   expect(app.shows("source-panel")).toBe(false);
   expect(app.texts()).toContain("Continue watching");
@@ -60,7 +60,7 @@ test("Settings: from the nav, the buffer row opens the sizes in a drawer; pick o
   await app.keyboard.press("down"); // to the buffer row
   await app.keyboard.press("enter"); // its sizes in a drawer
   expect(app.shows("id:choice-panel")).toBe(true);
-  expect(app.texts()).toContain("How much of the film reel keeps while it plays. Bigger copes better with slow peers and long jumps.");
+  expect(app.texts()).toContain("How much space reel uses while a film plays. A bigger buffer copes better with slow peers and long jumps.");
   await app.keyboard.press("down");
   await app.keyboard.press("enter"); // picks one and closes
   expect(app.shows("id:choice-panel")).toBe(false);
@@ -112,8 +112,9 @@ test("without a TMDB key home shows anime and says what is missing", async () =>
     yearEnd: null, minutes: 0, rating: "", votes: "", badges: [], genres: [], still: null, card: null, poster: null,
     ink: "#F5F5F5", paper: "#1A1A1A", stoppedAt: null, progress: 0, left: null, resume: null, seasons: 0, airs: null,
     tag: null, playable: false, inList: false, release: null, play: { id: "reel:notice:no_tmdb", start: 0 },
+    playAs: { verb: "play", season: null, episode: null, at: null },
   };
-  const app = await app_({ ...NATIVE, "Catalog.home": JSON.stringify([{ id: "no_tmdb", items: [notice] }]) });
+  const app = await app_({ ...NATIVE, "Catalog.home": JSON.stringify({ hero: notice, shelves: [{ id: "no_tmdb", items: [notice] }] }) });
   expect(app.texts()).toContain("Movies and shows need a TMDB key");
   expect(app.texts()).toContain("Movies and shows");
 });
@@ -133,11 +134,12 @@ async function series(native: Native = { ...ENGINE, ...SHOW }) {
 
 test("a series opens on the season the viewer is in", async () => {
   const app = await series();
-  expect(app.texts()).toContain("Resume S3:E2");
+  expect(app.texts()).toContain("Resume S3:E2 · 10:00");
   expect(app.texts()).toContain("22 episodes · Season 3");
   expect(app.texts()).toContain("Pain");
   expect(app.texts()).toContain("Old Story");
-  expect(app.texts()).toContain("24 min · Jul 30, 2018 · 14 min left");
+  expect(app.texts()).toContain("24 min · 14 min left"); // started: the time left instead of its date
+  expect(app.texts()).toContain("24 min · Aug 6, 2018");
   expect(app.texts()).toContain("Watched");
 });
 
@@ -180,7 +182,8 @@ test("in a Mac window the screens lay out with all their columns", async () => {
   expect(app.shows("label:1080p BluRay · 8 GB · 412 people sharing")).toBe(true);
   await app.keyboard.press("right"); // ⌄ in Play, the other releases
   await app.keyboard.press("enter"); // the releases panel, with all its columns
-  expect(app.texts()).toContain("60 GB");
+  expect(app.texts().some((x) => x.endsWith("60 GB ·"))).toBe(true); // its size
+  expect(app.texts()).toContain("38"); // and the people sharing, kept with their icon
   await app.keyboard.press("escape");
   await app.keyboard.press("escape");
   await app.press("label:Series");
@@ -213,7 +216,7 @@ test("Mac: Back in the window bar is disabled on a root, goes back from a title;
   await app.press("label:Movies");
   await app.press("label:Dune >> nth=0");
   expect(app.shows("label:1080p BluRay · 8 GB · 412 people sharing")).toBe(true);
-  expect(app.shows("label:Add to Watchlist")).toBe(true); // the page's action, in the bar
+  expect(app.shows("label:Add to list")).toBe(true); // the page's action, in the bar
   await app.press("label:Back to Movies");
   expect(app.texts()).toContain("All movies");
   await app.press("label:Dune >> nth=0");
@@ -243,12 +246,12 @@ test("the nav opens Anime after Series and Cartoons: its trending row and all an
   await app.keyboard.press("up");
   for (let i = 0; i < 4; i++) await app.keyboard.press("right"); // Movies, Series, Cartoons, Anime
   await app.keyboard.press("enter");
-  expect(app.texts()).toContain("Seasonal hits and all-time favourites");
+  expect(app.texts()).toContain("Seasonal hits and all-time favorites");
   expect(app.texts()).toContain("Trending this season");
   expect(app.texts()).toContain("All anime");
   await app.keyboard.press("down"); // from the nav into the row
   await app.keyboard.press("enter"); // the first in the row
-  expect(app.texts()).toContain("Watchlist");
+  expect(app.texts()).toContain("Add to list");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("All anime");
   await app.keyboard.press("escape"); // the nav
@@ -270,7 +273,7 @@ test("an episode not in its season's release opens the releases of that episode;
     "Catalog.episodes": JSON.stringify(missing),
     "Catalog.episode": JSON.stringify(missing[2]),
     "Catalog.episodeReleases": JSON.stringify({
-      releases: [release(4, "720p", "WEB", "AoT.S03E03.720p", "400 MB", 40, 3, "starts_fast", 2)],
+      releases: [release(4, "720p", "WEB", "AoT.S03E03.720p", "400 MB", 40, "starts_fast", 2)],
       releasesState: "done",
       seasonRelease: { quality: "1080p", source: "WEB", pack: true, size: "22 GB", peers: 90, fast: false },
     }),
@@ -352,4 +355,20 @@ test("Mac: the releases open in a sheet under the window bar; Esc closes it, the
   expect(app.texts()).not.toContain("3 found, the best of each quality first");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("All movies");
+});
+
+test("Home's hero keeps a line for its release only while the core searches for it", async () => {
+  const home = JSON.parse(DUNE_FIRST["Catalog.home"]);
+  const heroWhile = (releasesState: string) =>
+    app_({ ...NATIVE, "Catalog.home": JSON.stringify({ ...home, hero: { ...home.hero, release: null, releasesState } }) });
+  const searching = await heroWhile("searching");
+  expect(searching.shows("hero-release-pending")).toBe(true);
+  await searching.dispose();
+  // Nothing found (or no source): no empty line over the buttons.
+  for (const state of ["done", "failed", "no_source"]) {
+    const app = await heroWhile(state);
+    expect(app.shows("hero-release-pending")).toBe(false);
+    expect(app.texts()).toContain("Dune");
+    await app.dispose();
+  }
 });

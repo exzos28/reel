@@ -87,8 +87,8 @@ posters with badges. Mockups: `design/concept/*.html`, renders in `design/concep
 | `mist` | `#8B94A9` | secondary text |
 | `lamp` | `#F5B83D` | the one accent: rating, "ready ahead" in the player, "selected" marks, glow |
 
-Health of a release (people sharing): green `#4ADE80`, amber `#F59E0B`, red `#F87171`, as signal
-bars, never as the only cue (always with the count).
+Health of a release (people sharing): the count with a person icon; green `#4ADE80`, amber
+`#F59E0B`, red `#F87171` never as the only cue.
 
 Radius: posters 20 (TV) / 16 (phone, Mac), panels 28, rows 18, buttons and nav fully round.
 
@@ -154,7 +154,7 @@ posters carry all the colour. Red appears only in the logo, the rating star and 
 | `red` | `#E5383B` | logo, rating star, "New season" / "New episode" tag; nothing else |
 
 No glow, no blur, no gradient except the backdrop fading into `ink`. People sharing is shown as
-four monochrome signal bars plus the count, never as colour.
+the count with a person icon, never as colour.
 
 Radius: buttons, rows, cards and posters 10 (TV) / 8 (Mac, phone); badges 4; icon buttons round.
 
@@ -185,7 +185,8 @@ TV: title 76–96, page title 60, section 30, body 26, meta 22–24 (nothing bel
   "★ rating · year · type/seasons" under it, an optional red "New season"/"New episode" tag.
 - **Film**: hero as on home with a back button; the release line sits next to Play and Add to
   List. Below: "Releases, N found, fastest to start first", one row per release (quality badge,
-  source, size, tracks, signal bars + count, a plain note: "Starts fastest", "Plays now", "Needs
+  source, audio languages and voice-over, codec and HDR, size, count + person icon, the release's
+  own name small; a plain note: "Starts fastest", "Plays now", "Needs
   25 Mbit/s", "Few people sharing").
 - **Series**: hero as for a film, meta says "1936–1940 · 3 Seasons", Play says "Resume S3:E4",
   the release line names the season pack. Below: season tabs ("Season 1 1936" …, selected = lighter

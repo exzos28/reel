@@ -67,6 +67,16 @@ impl SubOption {
         }
     }
 
+    /// A track of the lines in another language only (a sign, a phrase): the container's flag,
+    /// or a file whose name says "Forced".
+    fn forced(&self) -> bool {
+        match self {
+            SubOption::Off => false,
+            SubOption::Embedded(t) => t.forced,
+            SubOption::External(f) => f.label.split(|c: char| !c.is_alphanumeric()).any(|w| w.eq_ignore_ascii_case("forced")),
+        }
+    }
+
     /// What is remembered for the title when the viewer picks it.
     fn pref(&self) -> String {
         match self {
@@ -84,17 +94,34 @@ impl SubOption {
             }),
             SubOption::External(f) => json!({
                 "key": self.key(), "kind": "external", "language": f.language, "title": f.label,
-                "format": f.format, "forced": false, "selected": selected,
+                "format": f.format, "forced": self.forced(), "selected": selected,
             }),
         }
     }
 }
 
+/// The languages subtitles are picked for when the viewer picked none in the title: the app's
+/// (`settings::ui_language`), the audio language the viewer set (`settings::audio_language`), and
+/// the language of the audio that plays (None: untagged, unknown, or no tracks yet).
+#[derive(Debug, Clone, Copy)]
+struct Viewer<'a> {
+    ui: &'a str,
+    set_audio: Option<&'a str>,
+    audio: Option<&'a str>,
+}
+
+impl Viewer<'_> {
+    /// The audio plays in a language the viewer is known to read (the app's or the one they set
+    /// for audio); an audio language not known is never taken for a foreign one.
+    fn audio_understood(&self) -> bool {
+        self.audio.is_none_or(|a| a == self.ui || self.set_audio == Some(a))
+    }
+}
+
 /// Which subtitle option is in use: the viewer's pick in this film; else the
 /// one remembered for the title (by language: an embedded track first, then a
-/// file; a forced track only when nothing else has it); else an embedded
-/// track the file marks as default; else off.
-fn pick_subtitle(options: &[SubOption], chosen: Option<&str>, pref: Option<&str>) -> usize {
+/// file; a forced track only when nothing else has it); else `by_default`; else off.
+fn pick_subtitle(options: &[SubOption], chosen: Option<&str>, pref: Option<&str>, viewer: Viewer) -> usize {
     if let Some(i) = chosen.and_then(|k| options.iter().position(|o| o.key() == k)) {
         return i;
     }
@@ -105,15 +132,30 @@ fn pick_subtitle(options: &[SubOption], chosen: Option<&str>, pref: Option<&str>
         let wanted = (pref != "?").then_some(pref);
         let by_language = |forced_ok: bool| {
             options.iter().position(|o| {
-                let forced = matches!(o, SubOption::Embedded(t) if t.forced);
-                !matches!(o, SubOption::Off) && o.language() == wanted && (forced_ok || !forced)
+                !matches!(o, SubOption::Off) && o.language() == wanted && (forced_ok || !o.forced())
             })
         };
         if let Some(i) = by_language(false).or_else(|| by_language(true)) {
             return i;
         }
     }
-    options.iter().position(|o| matches!(o, SubOption::Embedded(t) if t.default)).unwrap_or(0)
+    by_default(options, viewer).unwrap_or(0)
+}
+
+/// The subtitles that come on by themselves, in a language the viewer reads only: audio in a
+/// language they do not read gets full subtitles in the app's language (the one the file marks
+/// default first, an embedded track before a file); audio they read gets a full track in the
+/// app's language only when the file marks it default, else a forced one in the audio's
+/// language (its lines in another language). A track the file marks default in another
+/// language (Russian for an English app) never comes on by itself.
+fn by_default(options: &[SubOption], viewer: Viewer) -> Option<usize> {
+    let find = |f: &dyn Fn(&SubOption) -> bool| options.iter().position(|o| !matches!(o, SubOption::Off) && f(o));
+    let flagged = |o: &SubOption| matches!(o, SubOption::Embedded(t) if t.default);
+    let full_ui = |o: &SubOption| !o.forced() && o.language() == Some(viewer.ui);
+    if !viewer.audio_understood() {
+        return find(&|o| full_ui(o) && flagged(o)).or_else(|| find(&full_ui));
+    }
+    find(&|o| full_ui(o) && flagged(o)).or_else(|| find(&|o| o.forced() && viewer.audio.is_some() && o.language() == viewer.audio))
 }
 
 /// Which audio track is in use: the viewer's pick in this film; else the one
@@ -172,13 +214,20 @@ pub fn menu(job: u32, key: &str, embedded: Option<&Embedded>) -> Value {
     };
     let options = sub_options(embedded, files.as_deref().unwrap_or_default());
     let pref = progress::subtitle_pref(title);
-    let sub = pick_subtitle(&options, chosen_sub.as_deref(), pref.as_deref());
     let audio_pref = progress::audio_pref(title);
     let wanted = settings::wanted_audio_language();
+    let audio_at = embedded.and_then(|e| pick_audio(&e.audio, chosen_audio.as_deref(), audio_pref.as_ref(), &wanted));
+    let (ui, set_audio) = (settings::ui_language(), settings::audio_language());
+    let viewer = Viewer {
+        ui: &ui,
+        set_audio: set_audio.as_deref(),
+        audio: embedded.zip(audio_at).and_then(|(e, i)| audio::language(&e.audio[i])),
+    };
+    let sub = pick_subtitle(&options, chosen_sub.as_deref(), pref.as_deref(), viewer);
 
     let (audio_json, audio_id) = match embedded {
         Some(e) if !e.audio.is_empty() => {
-            let at = pick_audio(&e.audio, chosen_audio.as_deref(), audio_pref.as_ref(), &wanted);
+            let at = audio_at;
             let rows: Vec<Value> = e
                 .audio
                 .iter()
@@ -287,21 +336,73 @@ mod tests {
         ]
     }
 
+    /// An English app, audio set to nothing, the audio in `audio`.
+    fn english(audio: Option<&str>) -> Viewer<'_> {
+        Viewer { ui: "en", set_audio: None, audio }
+    }
+
     #[test]
     fn subtitle_choice_order() {
         let o = opts();
+        let v = english(Some("de"));
         // The pick in this film wins.
-        assert_eq!(pick_subtitle(&o, Some("x:9"), Some("en")), 4);
+        assert_eq!(pick_subtitle(&o, Some("x:9"), Some("en"), v), 4);
         // Remembered by language: a full track before a forced one, an embedded one before a file.
-        assert_eq!(pick_subtitle(&o, None, Some("en")), 2);
-        assert_eq!(pick_subtitle(&o, None, Some("ru")), 4);
-        assert_eq!(pick_subtitle(&o, None, Some("?")), 5);
-        assert_eq!(pick_subtitle(&o, None, Some("off")), 0);
-        // Nothing remembered: the file's default track; nothing marked: off.
-        assert_eq!(pick_subtitle(&o, None, None), 3);
-        assert_eq!(pick_subtitle(&o[..3], None, None), 0);
+        assert_eq!(pick_subtitle(&o, None, Some("en"), v), 2);
+        assert_eq!(pick_subtitle(&o, None, Some("ru"), v), 4);
+        assert_eq!(pick_subtitle(&o, None, Some("?"), v), 5);
+        assert_eq!(pick_subtitle(&o, None, Some("off"), v), 0);
+        // Remembered beats what would come on by itself.
+        assert_eq!(pick_subtitle(&o, None, Some("de"), english(Some("en"))), 3);
+        // Nothing remembered, German audio: the app's language, though the German track is marked default.
+        assert_eq!(pick_subtitle(&o, None, None, v), 2);
         // A remembered language this film does not have: as if nothing was remembered.
-        assert_eq!(pick_subtitle(&o, None, Some("ja")), 3);
+        assert_eq!(pick_subtitle(&o, None, Some("ja"), v), 2);
+    }
+
+    #[test]
+    fn default_flag_only_in_a_language_the_viewer_reads() {
+        let ru_default = || SubOption::Embedded(Track { default: true, ..track(2, Some("ru")) });
+        let en = || SubOption::Embedded(track(3, Some("en")));
+        let en_default = || SubOption::Embedded(Track { default: true, ..track(4, Some("en")) });
+        let en_forced = || SubOption::Embedded(Track { forced: true, ..track(5, Some("en")) });
+        // Metropolis: an English app, English (or untagged) audio, Russian marked default: off.
+        let o = vec![SubOption::Off, ru_default(), en()];
+        assert_eq!(pick_subtitle(&o, None, None, english(Some("en"))), 0);
+        assert_eq!(pick_subtitle(&o, None, None, english(None)), 0, "audio of no known language is not foreign");
+        // German audio: full English subtitles, marked default or not; never the Russian.
+        assert_eq!(pick_subtitle(&o, None, None, english(Some("de"))), 2);
+        assert_eq!(pick_subtitle(&o[..2], None, None, english(Some("de"))), 0);
+        // English marked default comes on with English audio too (the file says so).
+        let o = vec![SubOption::Off, ru_default(), en(), en_default()];
+        assert_eq!(pick_subtitle(&o, None, None, english(Some("en"))), 3);
+        assert_eq!(pick_subtitle(&o, None, None, english(Some("ja"))), 3, "the one marked default first");
+        // Forced lines in the audio's language, for audio the viewer reads; not for foreign audio.
+        let o = vec![SubOption::Off, ru_default(), en_forced()];
+        assert_eq!(pick_subtitle(&o, None, None, english(Some("en"))), 2);
+        assert_eq!(pick_subtitle(&o, None, None, english(Some("de"))), 0);
+        let o = vec![SubOption::Off, SubOption::Embedded(Track { forced: true, ..track(6, Some("de")) })];
+        assert_eq!(pick_subtitle(&o, None, None, english(Some("de"))), 0, "forced German for German audio: not read");
+        // The audio language the viewer set reads too: a Russian app, English audio set, English playing.
+        let o = vec![SubOption::Off, SubOption::External(file(9, Some("ru"))), en_forced()];
+        let v = Viewer { ui: "ru", set_audio: Some("en"), audio: Some("en") };
+        assert_eq!(pick_subtitle(&o, None, None, v), 2);
+        // Without that setting the English audio is foreign: the Russian file.
+        assert_eq!(pick_subtitle(&o, None, None, Viewer { set_audio: None, ..v }), 1);
+    }
+
+    #[test]
+    fn a_file_named_forced_is_forced() {
+        let forced = SubFile { label: "Forced".into(), ..file(9, Some("en")) };
+        let full = SubFile { label: "SDH".into(), ..file(10, Some("en")) };
+        let o = vec![SubOption::Off, SubOption::External(forced), SubOption::External(full)];
+        assert!(o[1].forced() && !o[2].forced());
+        assert_eq!(o[1].json(false)["forced"], true);
+        // Japanese audio: the full English file, not the forced one before it.
+        assert_eq!(pick_subtitle(&o, None, None, english(Some("ja"))), 2);
+        assert_eq!(pick_subtitle(&o, None, Some("en"), english(Some("ja"))), 2);
+        // English audio: the forced one.
+        assert_eq!(pick_subtitle(&o, None, None, english(Some("en"))), 1);
     }
 
     fn audio(id: i64, language: Option<&str>, title: &str) -> Track {

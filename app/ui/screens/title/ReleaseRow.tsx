@@ -1,48 +1,59 @@
 import { Text, View, type TextStyle, type ViewRef, type ViewStyle } from "nsh";
-import { t } from "nsh/i18n";
-import { tracksText, type Release } from "../../catalog";
+import { releaseDetails, releaseSpoken, type Release } from "../../catalog";
 import { Badge } from "../../kit/Badge";
 import { Icon } from "../../kit/Icon";
 import { rowStyle } from "../../kit/Row";
 import { row } from "../../kit/shape";
-import { SignalBars } from "../../kit/SignalBars";
 import { fontText, oneLine } from "../../kit/text";
 import { colors, cs, density, ts, u } from "../../theme";
+import { t } from "nsh/i18n";
 import checkIcon from "../../icons/check.svg";
+import personIcon from "../../icons/person.svg";
 import { Pressable } from "../../kit/Pressable";
 
 /** Columns on a TV and a Mac; a phone keeps what decides the choice. */
-const wide = density !== "compact";
-const column = (width: number): ViewStyle => ({ width: wide ? u(width) : undefined });
+const wide = () => density() !== "compact";
+const column = (width: number): ViewStyle => ({ width: wide() ? u(width) : undefined });
 
 const releaseRowStyle = (selected: boolean, focused: boolean): ViewStyle => ({
-  ...rowStyle(selected, focused, wide ? u(24) : u(14)),
+  ...rowStyle(selected, focused, wide() ? u(24) : u(14)),
   minHeight: cs(76),
   paddingHorizontal: cs(28),
   paddingVertical: u(12),
 });
-const sourceStyle = (): TextStyle => ({ ...oneLine, flex: 1, minWidth: u(120), ...fontText(23, colors.snow(), 600) });
-const groupStyle = (): TextStyle => ({ fontWeight: 400, fontSize: ts(22), color: colors.ash() });
-const cellText = (width: number): TextStyle => ({ width: cs(width), ...fontText(23, colors.ash()) });
+const sourceStyle = (): TextStyle => ({ ...oneLine, ...fontText(23, colors.snow(), 600) });
+const nameStyle = (lines: number): TextStyle => ({ numberOfLines: lines, ...fontText(19, colors.dim()) } as TextStyle);
+const detailsStyle = (): TextStyle => ({ ...oneLine, ...fontText(22, colors.ash()) });
 const checkStyle = (): ViewStyle => ({ width: cs(28), ...row(0), justifyContent: "flex-end" });
 
-/** A release: quality, source and group, size, tracks and people sharing; the one Play
- * uses is selected (lighter, with a check). */
+/** The people sharing: the number and a person icon, as on Play's release line. */
+function Sharing(props: { peers: () => number; size: number }) {
+  return (
+    <View style={row(u(6))}>
+      <Text style={fontText(props.size, colors.ash())}>{`${props.peers()}`}</Text>
+      <Icon src={() => personIcon} size={props.size * 0.9} color={() => colors.ash()} />
+    </View>
+  );
+}
+
+/** A release: quality; where it comes from, its audio, picture and size, and its own name (one
+ * line each, so the rows keep one height on a TV); the people sharing; the one Play uses is
+ * selected (lighter, with a check). */
 export function ReleaseRow(props: {
   release: () => Release;
   focused: () => boolean;
   viewRef: (r: ViewRef) => void;
   onPress: () => void;
-  /** Narrower (the side panel): no audio tracks column. */
+  /** Narrower (the side panel): the details under the name. */
   narrow?: boolean;
 }) {
   const r = props.release;
-  if (props.narrow && density !== "ten-foot") return <NarrowRow {...props} />;
+  if (props.narrow && density() !== "ten-foot") return <NarrowRow {...props} />;
   return (
     <Pressable feedback="row"
       ref={props.viewRef}
       role="button"
-      accessibilityLabel={`${r().quality} ${r().source}`}
+      accessibilityLabel={releaseSpoken(r())}
       accessibilityState={{ selected: r().selected }}
       onPress={props.onPress}
       hoverStyle={{ backgroundColor: colors.raise() }}
@@ -51,19 +62,13 @@ export function ReleaseRow(props: {
       <View style={{ ...column(110), alignItems: "flex-start" }}>
         <Badge text={r().quality} size={19} />
       </View>
-      <Text style={sourceStyle()}>
-        {r().source}
-        <Text style={groupStyle()}>{r().group ? `   ${r().group}` : ""}</Text>
-      </Text>
-      <If when={wide}>
-        <Text style={cellText(140)}>{r().size}</Text>
-        <If when={!props.narrow}>
-          <Text style={{ ...oneLine, ...cellText(380) }}>{tracksText(r())}</Text>
-        </If>
-      </If>
-      <View style={{ ...column(250), ...row(u(12)) }}>
-        <SignalBars bars={r().bars} />
-        <Text style={fontText(23, colors.ash())}>{t("release.sharing_short", { count: r().peers })}</Text>
+      <View style={{ flex: 1, minWidth: u(120), gap: u(4) }}>
+        <Text style={sourceStyle()}>{r().origin}</Text>
+        <Text style={detailsStyle()}>{releaseDetails(r())}</Text>
+        <Text style={nameStyle(1)}>{r().group}</Text>
+      </View>
+      <View style={{ ...column(120), alignItems: "flex-end" }}>
+        <Sharing peers={() => r().peers} size={23} />
       </View>
       <View style={checkStyle()}>
         <If when={r().selected}>
@@ -82,16 +87,22 @@ const narrowStyle = (selected: boolean, focused: boolean): ViewStyle => ({
   paddingVertical: u(14),
 });
 
-/** A release in a narrow panel (desktop, touch): two lines and its name.
- * Quality and source (a check when it is the one Play uses); size and people
- * sharing; the release's own name, one line. */
+/** How it starts, in plain words ("Starts fast", "Needs 21 Mbit/s internet"): the core's note. */
+export const noteText = (r: Release) => (r.note ? t(`release.note.${r.note}`, { mbit: r.mbit }) : "");
+const noteStyle = (): TextStyle => ({ ...fontText(20, colors.ash()) });
+
+/** A release in a narrow panel (desktop, touch): quality and where it comes from (a check when
+ * it is the one Play uses); its audio, picture, size and people sharing ("English, Russian MVO ·
+ * H.264 · 700 MB · 3 👤", the icon kept with the number when the line wraps); how it starts ("Starts
+ * fast"); the release's own name, small, up to two lines. */
 function NarrowRow(props: { release: () => Release; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
   const r = props.release;
+  const details = () => releaseDetails(r());
   return (
     <Pressable feedback="row"
       ref={props.viewRef}
       role="button"
-      accessibilityLabel={`${r().quality} ${r().source}`}
+      accessibilityLabel={releaseSpoken(r())}
       accessibilityState={{ selected: r().selected }}
       onPress={props.onPress}
       hoverStyle={{ backgroundColor: colors.raise() }}
@@ -99,20 +110,25 @@ function NarrowRow(props: { release: () => Release; focused: () => boolean; view
     >
       <View style={row(u(14))}>
         <Badge text={r().quality} size={19} />
-        <Text style={{ ...oneLine, flex: 1, ...fontText(24, colors.snow(), 600) }}>{r().source}</Text>
+        <Text style={{ ...oneLine, flex: 1, ...fontText(24, colors.snow(), 600) }}>{r().origin}</Text>
         <If when={r().selected}>
           <Icon src={() => checkIcon} size={22} />
         </If>
       </View>
-      <View style={{ ...row(u(14)), flexWrap: "wrap" }}>
-        <Text style={fontText(22, colors.ash())}>{r().size}</Text>
-        <View style={row(u(8))}>
-          <SignalBars bars={r().bars} />
-          <Text style={fontText(22, colors.ash())}>{t("release.sharing_short", { count: r().peers })}</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: u(6), minWidth: 0 }}>
+        <If when={details()}>
+          <Text style={{ ...fontText(22, colors.ash()), flexShrink: 1 }}>{`${details()} ·`}</Text>
+        </If>
+        <View style={{ ...row(u(6)), flexShrink: 0 }}>
+          <Text style={fontText(22, colors.ash())}>{`${r().peers}`}</Text>
+          <Icon src={() => personIcon} size={20} color={() => colors.ash()} />
         </View>
       </View>
+      <If when={noteText(r())}>
+        <Text style={noteStyle()}>{noteText(r())}</Text>
+      </If>
       <If when={r().group}>
-        <Text style={{ ...oneLine, ...fontText(20, colors.dim()) }}>{r().group}</Text>
+        <Text style={nameStyle(2)}>{r().group}</Text>
       </If>
     </Pressable>
   );

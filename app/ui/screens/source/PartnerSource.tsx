@@ -2,15 +2,16 @@
 // Telegram bot rents a source and sends it back. Where this device serves its settings page (a
 // TV), the bot's QR code: the phone scans it, pays there, and the source comes back here for a
 // yes on the screen. Elsewhere, a button that opens the bot (its link fills the source's fields
-// in this app), and beside it on a bigger screen the same link's QR code, for Telegram on a
-// phone. Nothing in a build without a partner.
+// in this app): on a phone or a tablet first, Telegram is on the device; beside it on a computer
+// the same link's QR code, for Telegram on a phone. Nothing in a build without a partner.
 import { Image, openUrl, Text, View, type JSX, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { Button } from "../../kit/Button";
 import { rounded, row } from "../../kit/shape";
 import { bodyText, labelText } from "../../kit/text";
 import { partner } from "../../hosted";
-import { colors, cs, density, u } from "../../theme";
+import { colors, cs, u } from "../../theme";
+import { caps } from "../../platform";
 
 const qrRow = (): ViewStyle => ({ ...row(u(28)), alignItems: "center" });
 const qrStyle = () => ({ width: cs(200), height: cs(200), ...rounded() });
@@ -34,13 +35,23 @@ function Qr(props: { src: string; title: string | null; text: string; children?:
   );
 }
 
+/** Opens the partner's bot (its link fills the source's fields in this app). */
+export function openPartnerApp() {
+  const link = partner()?.app?.url;
+  if (link) openUrl(link).catch((e) => console.warn(`reel: the partner's bot did not open: ${e}`));
+}
+
+/** The bot's button shows (a remote's stop): a partner with an app link, where this device does not
+ * serve the page its QR code brings the source back to. */
+export function partnerButtonShown() {
+  const p = partner();
+  return !!p && !p.tv?.qr && !!p.app;
+}
+
 /** `titled`: false where the place gives it its own heading (the setup's "Or get a ready one"). */
 export function PartnerSource(props: { focused?: () => boolean; titled?: boolean }) {
   const title = () => ((props.titled ?? true) ? t("settings.source.partner_tv_title") : null);
-  const open = () => {
-    const link = partner()?.app?.url;
-    if (link) openUrl(link).catch((e) => console.warn(`reel: the partner's bot did not open: ${e}`));
-  };
+  const open = openPartnerApp;
   const button = () => (
     <View style={row(u(16))}>
       <Button kind="secondary" label={() => t("settings.source.partner_app")} focused={props.focused ?? (() => false)} onPress={open} />
@@ -55,7 +66,7 @@ export function PartnerSource(props: { focused?: () => boolean; titled?: boolean
             <If when={p().app}>
               {(app) => (
                 <If
-                  when={density === "compact" ? null : app().qr}
+                  when={caps.touch ? null : app().qr}
                   else={
                     <View style={{ gap: u(10) }}>
                       {button()}

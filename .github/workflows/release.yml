@@ -1,4 +1,5 @@
-# Publishes a version when main gets one: a merged version PR (build/release.sh) changes
+# Publishes a version when main gets one (main holds releases only; work merges into develop): a
+# merged version PR (build/release.sh, develop into main) changes
 # app/nsh.json's version, and if the release v<version> does not exist yet, this checks the commit,
 # builds every platform and the Samsung TV package and publishes them as the release v<version>
 # (the tag made on this commit) under the names the site and the README link to
@@ -81,3 +82,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REEL_RELEASES_REPO: ${{ github.repository }}
           REEL_RELEASE_TARGET: ${{ github.sha }}
+
+  # main back into develop: the version commit (and anything merged into main directly) is on
+  # develop too, so the next version starts from it.
+  develop:
+    needs: [version, release]
+    if: always() && needs.version.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: develop
+          fetch-depth: 0
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git merge --no-edit origin/main
+          git push origin HEAD:develop

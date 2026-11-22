@@ -4,7 +4,7 @@
 // only asks it twice a second, reports the position every 10 s and on stop,
 // and keeps the answers in signals for the screens.
 import { signal } from "nsh";
-import { Catalog, Engine } from "./native";
+import { Catalog, Engine, VideoEngine } from "./native";
 import type { PlayTarget, Summary } from "./catalog";
 
 /** What plays: a film, or an episode of a show (`title` is the show). */
@@ -15,7 +15,12 @@ export interface Playing extends PlayTarget {
 /** What the core says about the film being played (see `engine::status`). */
 export type Status =
   | { phase: "idle" }
+  /** No search source is set. */
   | { phase: "no_source" }
+  /** The search source did not answer while the player waited for it. */
+  | { phase: "source_failed" }
+  /** The search found no release this device plays. */
+  | { phase: "not_found" }
   /** The episode is not in its season's release: the viewer picks one for it. */
   | { phase: "not_in_release" }
   /** The chosen file will not play on this device (`compat.<reason>`). */
@@ -85,13 +90,20 @@ let generation = 0;
 
 // Engine calls are awaited: the native module answers at once, a test's
 // stand-in (`open`'s `modules`) with a promise.
+// Another film or episode while one plays (Up next, the Episodes panel) goes straight from the
+// one to the other: `playing` and `status` never pass through "nothing plays" on the way, which
+// closed the player's screen (iOS: its dialog) and opened it again over the one still leaving.
 export async function play(what: Playing) {
-  stop();
+  end();
   const gen = generation;
   playing.set(what);
   status.set({ phase: "resolving" });
   savedAt = Date.now();
   startAt.set(Number(await Catalog.startAt(what.id)) || 0);
+  if (gen !== generation) return;
+  // The last film ends first: its job is closed (`end`) and its view goes with the status above,
+  // and the core says when its player has ended. Only then this job, its stream and its player.
+  await VideoEngine.ended();
   if (gen !== generation) return;
   const opened = await Engine.open(what.id);
   if (gen !== generation) return;
@@ -133,17 +145,23 @@ export function firstFrame() {
   if (job) Engine.firstFrame(job);
 }
 
-export function stop() {
+/** What plays now ends: its place saved, its job closed, its answers dropped. */
+function end() {
   saveProgress();
   generation++;
   clearInterval(poll);
   poll = undefined;
   if (job) Engine.close(job);
   job = 0;
-  playing.set(null);
-  status.set({ phase: "idle" });
   timeline.set({ ranges: [], ahead: 0 });
   position.set(0);
   duration.set(0);
   startAt.set(0);
+}
+
+/** Nothing plays: the player goes. */
+export function stop() {
+  end();
+  playing.set(null);
+  status.set({ phase: "idle" });
 }

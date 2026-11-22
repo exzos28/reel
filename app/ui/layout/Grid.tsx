@@ -35,8 +35,8 @@ export const cellWidth = (columns: number, gap: number) => (windowSize().width -
  * rows. More room on a desktop, where the cards are seen closer and the pointer's ring and preview
  * need space round a card. */
 export const GRID_CELL = 326;
-export const GRID_GAP = density === "ten-foot" ? 24 : 30;
-export const GRID_ROW_GAP = density === "ten-foot" ? 28 : 38;
+export const GRID_GAP = density() === "ten-foot" ? 24 : 30;
+export const GRID_ROW_GAP = density() === "ten-foot" ? 28 : 38;
 /** Columns of the grid now. */
 export const gridColumnsNow = () => gridColumns(GRID_CELL, GRID_GAP);
 /** A grid card's width, points: what a desktop's shelves of 16:9 cards use too (Home), so a shelf

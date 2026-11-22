@@ -1,7 +1,6 @@
 // The lines under a hero's logotype: the scores with their sources, year,
 // length, the age rating and badges; the release Play uses.
 import { Text, View, type TextStyle } from "nsh";
-import { source } from "../preferences";
 import { badgeText, lengthText, releaseLine, scoreSource, votesText, yearsText, type Score, type Summary } from "../catalog";
 import { Badge } from "../kit/Badge";
 import { Icon } from "../kit/Icon";
@@ -10,6 +9,10 @@ import { row } from "../kit/shape";
 import { caps } from "../platform";
 import { colors, iconPt, ts, type, u } from "../theme";
 import personIcon from "../icons/person.svg";
+
+/** The hero's grey words (score sources, votes, genres, the release's details): over a still
+ * they need more than the page's `ash`, at least 70 % of snow. */
+export const heroMeta = () => colors.quiet();
 
 /** 24, a step under the about's 26: the two do not compete. */
 const metaLabel = (color: string, fontWeight?: number): TextStyle => ({
@@ -27,10 +30,10 @@ function ScoreText(props: { score: () => Score; first: () => boolean }) {
       <If when={props.first()}>
         <Text style={metaLabel(colors.red())}>★</Text>
       </If>
-      <Text style={metaLabel(colors.ash(), 400)}>{scoreSource(sc())}</Text>
+      <Text style={metaLabel(heroMeta(), 400)}>{scoreSource(sc())}</Text>
       <Text style={metaLabel(colors.snow(), 500)}>{sc().value}</Text>
       <If when={sc().votes}>
-        <Text style={metaLabel(colors.ash(), 400)}>{votesText(sc())}</Text>
+        <Text style={metaLabel(heroMeta(), 400)}>{votesText(sc())}</Text>
       </If>
     </View>
   );
@@ -78,12 +81,22 @@ export function ShortRelease(props: { line: () => ReturnType<typeof releaseLine>
  * `ShortRelease`, so it keeps to one line). */
 export function ReleaseText(props: { item: () => Summary; withStart?: boolean; size?: number }) {
   const line = () => releaseLine(props.item().release!, props.withStart ?? true);
-  const style = () => ({ ...type.meta(), fontSize: ts(props.size ?? 22), color: colors.ash() });
+  const style = () => ({ ...type.meta(), fontSize: ts(props.size ?? 22), color: heroMeta() });
   const name: TextStyle = { fontWeight: 500, color: colors.snow() };
   return (
-    // With a source its line is kept while the release is still searched, so the buttons under it
-    // do not move when it comes in.
-    <If when={props.item().release} else={<If when={source().url !== ""}><Text style={style()}>{" "}</Text></If>}>
+    // Its line is kept while the release is still searched (the core says so: Home's hero), so the
+    // buttons under it do not move when it comes in: an empty line a screen reader does not stop
+    // at. Nothing found, a failed search or no source: no line to wait for.
+    <If
+      when={props.item().release}
+      else={
+        <If when={props.item().releasesState === "searching"}>
+          <View testID="hero-release-pending" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <Text style={style()}>{" "}</Text>
+          </View>
+        </If>
+      }
+    >
       <If
         when={caps.touch}
         else={

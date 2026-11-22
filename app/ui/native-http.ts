@@ -152,11 +152,13 @@ export const Catalog: CatalogModule = {
   title: s("Catalog", "title"),
   episodes: s("Catalog", "episodes"),
   episode: s("Catalog", "episode"),
+  person: s("Catalog", "person"),
   upNext: s("Catalog", "upNext"),
   tracks: s("Catalog", "tracks"),
   toggleList: s("Catalog", "toggleList"),
   chooseRelease: s("Catalog", "chooseRelease"),
   episodeReleases: s("Catalog", "episodeReleases"),
+  onPlay: s("Catalog", "onPlay"),
   startAt: s("Catalog", "startAt"),
   saveProgress: s("Catalog", "saveProgress"),
   search: s("Catalog", "search"),
@@ -168,9 +170,12 @@ export const Catalog: CatalogModule = {
 export const Settings: SettingsModule = {
   load: s("Settings", "load"),
   device: s("Settings", "device"),
+  project: s("Settings", "project"),
   // The core serving the web build knows its device already (a TV's profile, a development
   // host's stand-in): the family the page lays itself out for adds nothing.
   setFamily: () => true,
+  // A browser's page is no iPad window.
+  windowed: () => false,
   setBufferMb: s("Settings", "setBufferMb"),
   setStreamDetails: s("Settings", "setStreamDetails"),
   setNavPosition: s("Settings", "setNavPosition"),
@@ -210,7 +215,13 @@ export const VideoEngine: VideoEngineModule = {
   // A TV's web view has no native views of reel's.
   views: () => false,
   fullscreen: () => {},
-  turn: () => {},
+  // A browser turns no screen and draws no player sideways.
+  held: () => JSON.stringify({ turn: null, turns: 0 }),
+  immersive: () => {},
+  turnScale: () => 1,
+  sideways: () => false,
+  // A TV's player is the shell's AVPlay: the core has none to wait for.
+  ended: async () => true,
 };
 
 export const Hosted: HostedModule = {
@@ -240,6 +251,8 @@ export const Library: LibraryModule = {
   setFolder: () => "",
   openFolder: () => false,
   revision: () => 0,
+  overall: () => '{"saving":false,"progress":0}',
+  opening: () => "home",
 };
 
 // Fmt is pure and also registered in the wasm32 build, which `ui/native.ts` uses. Over HTTP
@@ -247,6 +260,7 @@ export const Library: LibraryModule = {
 export const Fmt: FmtModule = {
   position: s("Fmt", "position"),
   size: s("Fmt", "size"),
+  sizeOf: s("Fmt", "sizeOf"),
   speed: s("Fmt", "speed"),
   hoursMinutes: s("Fmt", "hoursMinutes"),
 };

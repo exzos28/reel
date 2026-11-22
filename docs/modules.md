@@ -26,8 +26,8 @@ The catalog the UI shows: TMDB and AniList titles through `Meta`, releases from 
 
 Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 
-- `browse(page: String) -> String`: `"movies"`, `"shows"` or `"anime"`: `{"trending":[summary…],"all":[summary…], "filters":[group…],"allState"}` (see `catalog::browse`).
-  JSON: `{"trending":[summary…],"all":[summary…], "filters":[group…],"allState"}`
+- `browse(page: String) -> String`: `"movies"`, `"shows"` or `"anime"`: `{"trending":[summary…],"all":[summary…], "filters":[group…],"allState","facet","filtered"}` (see `catalog::browse`).
+  JSON: `{"trending":[summary…],"all":[summary…], "filters":[group…],"allState","facet","filtered"}`
   Called from: `ui/catalog.ts`.
 - `browseMore(page: String) -> bool` (`browse_more`): The next page of a browse page's grid (`"movies"`, `"shows"`, `"anime"`): whether one is on its way now (`browse`'s `moreState` says when it is in).
   Called from: `ui/catalog.ts`.
@@ -35,7 +35,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/catalog.ts`.
 - `chooseFilter(page: String, group: String, id: String) -> bool` (`choose_filter`): One choice in a browse page's filter panel (see `catalog::choose_filter`): `group` "genres" | "years" | "countries" | "sort", `id` an option's id, empty to clear the group. Whether the filter changed.
   Called from: `ui/catalog.ts`.
-- `chooseRelease(id: String, index: u32) -> bool` (`choose_release`): Makes release `index` the one Play uses for `id`.
+- `chooseRelease(id: String, index: u32) -> bool` (`choose_release`): Makes release `index` the one Play uses for `id`, kept after a restart (as the release something was watched in is: Resume plays on in it).
   Called from: `ui/catalog.ts`.
 - `episode(show: String, season: u32, number: u32) -> String`: Episode `number` of `season` of `show`, or null while it is not known.
   Called from: `ui/catalog.ts`.
@@ -46,8 +46,13 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/catalog.ts`.
 - `forgetSearches()` (`forget_searches`): Forgets all the recent searches (the history's Clear).
   Called from: `ui/catalog.ts`.
-- `home() -> String`: The home shelves: `[{"id","items":[summary…]}]` (see `catalog::summary`).
-  JSON: `[{"id","items":[summary…]}]`
+- `home() -> String`: Home: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`, the hero not repeated on the shelves (see `catalog::home`, `catalog::summary`).
+  JSON: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`
+  Called from: `ui/catalog.ts`.
+- `onPlay(key: String) -> String` (`on_play`): What Play pressed on `key` (what plays) does at once: "play" (the player opens; a release not known yet is found inside it), "no_source" (the drawer that adds a search source) or "failed" (the source did not answer: the drawer to fix it). See `catalog::on_play`.
+  Called from: `ui/catalog.ts`.
+- `person(id: String) -> String`: A person's page ("tmdb:person:6384"): `{"id","name","photo","initials","items":[summary…], "state"}` (see `catalog::person`).
+  JSON: `{"id","name","photo","initials","items":[summary…], "state"}`
   Called from: `ui/catalog.ts`.
 - `rememberSearch(query: String)` (`remember_search`): Keeps `query` among the recent searches (submitted, or a title opened from it).
   Called from: `ui/catalog.ts`.
@@ -116,7 +121,9 @@ Formatting shared by every platform.
 - `position(seconds: u32) -> String`: Playback position in seconds as "1:12:40" / "4:05".
   Called from: `ui/Player.tsx`, `ui/catalog.ts`.
 - `size(bytes: f64) -> String`: A size in bytes as "256 MB", "1 GB", "1.4 GB".
-  Called from: `ui/Player.tsx`, `ui/layout/HeroActions.tsx`, `ui/screens/saved/SavedGroupRow.tsx`, `ui/screens/saved/SavedRow.tsx`, `ui/screens/saved/SavedScreen.tsx`, `ui/screens/settings/SettingsScreen.tsx`, `ui/screens/settings/choices.ts`, `ui/screens/title/SaveDrawer.tsx`, `ui/screens/title/TitleScreen.tsx`.
+  Called from: `ui/Player.tsx`, `ui/layout/HeroActions.tsx`, `ui/screens/saved/SavedCard.tsx`, `ui/screens/saved/SavedGroupRow.tsx`, `ui/screens/saved/SavedRow.tsx`, `ui/screens/saved/SavedScreen.tsx`, `ui/screens/settings/SettingsScreen.tsx`, `ui/screens/settings/choices.ts`, `ui/screens/title/SaveDrawer.tsx`, `ui/screens/title/TitleScreen.tsx`.
+- `sizeOf(have: f64, size: f64) -> Vec<String>` (`size_of`): Bytes saved of a size, `[have, size]`, as "35 of 700 MB" says them: the first without its unit when both have the same (`["35", "700 MB"]`), else both whole (`["700 MB", "1.4 GB"]`).
+  Called from: `ui/screens/saved/SavedRow.tsx`.
 - `speed(mib_per_s: f64) -> String`: A download speed in MiB/s as "3.4 MB/s" (one decimal under 10, whole above).
   Called from: `ui/Player.tsx`, `ui/kit/SpeedLine.tsx`.
 
@@ -158,13 +165,18 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `item(key: String) -> String`: One key's state for its button: `{"state","progress","id","message"}` (see `library::item`).
   JSON: `{"state","progress","id","message"}`
   Called from: `ui/library.ts`.
-- `list() -> String`: The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, each item `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`.
-  JSON: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","message","folder"}`
+- `list() -> String`: The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, each item `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","left","message","folder"}`; `left` (an item's and a group's): minutes it still takes, rounded, null when not known.
+  JSON: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free", "folder"}}`, `{"id","key","title","label","image","season","number","state", "size","have","progress","speed","peers","left","message","folder"}`
   Called from: `ui/library.ts`.
 - `offer(key: String) -> String`: Save on a film's page: `{"size","free","fits","smaller":{"id","quality","source","size"}}` (see `library::offer`): the size for its button, and whether it fits the free space.
   JSON: `{"size","free","fits","smaller":{"id","quality","source","size"}}`
   Called from: `ui/library.ts`.
 - `openFolder() -> bool` (`open_folder`): Opens the folder saved films go into in the system's file manager (desktops); false where there is none or it did not open.
+  Called from: `ui/library.ts`.
+- `opening() -> String`: Where the app opens: `"saved"` when Home's catalog is out of reach (no network) and something is saved to watch, `"home"` otherwise, `"wait"` while Home's first answers are on their way (ask again as `Catalog.revision` goes up).
+  Called from: `ui/library.ts`.
+- `overall() -> String`: The Saved tab's mark: `{"saving","progress"}` (see `library::overall`).
+  JSON: `{"saving","progress"}`
   Called from: `ui/library.ts`.
 - `pause(id: u32)`: Pauses saving the item (its whole torrent: episodes of one pack pause together).
   Called from: `ui/library.ts`.
@@ -176,7 +188,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `resume(id: u32)`: Goes on saving a paused item.
   Called from: `ui/library.ts`.
 - `revision() -> f64`: Goes up when anything the Saved screen and the Save buttons show changed.
-  Called from: nothing in the UI.
+  Called from: `ui/library.ts`.
 - `save(keys: String) -> bool`: Saves the catalog keys in `keys` (a JSON array: a film, or episodes) once their release is known; what is saved already stays. False when this device saves nothing.
   Called from: `ui/library.ts`.
 - `saveRelease(key: String, release: String) -> bool` (`save_release`): Saves film `key` from release `release` (the id `offer`'s `smaller` gives) instead of the one Play uses, which stays as it is.
@@ -237,6 +249,9 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `load(data_dir: String, languages: String) -> String`: Loads the settings from `data_dir` (the app's data directory, empty when the host has none) and configures the engine from them; JSON `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`. `languages`: the system's preferred languages, a JSON array of BCP 47 tags; a new install starts with the first one reel has titles in (`contentLanguage`), else English.
   JSON: `{"language","bufferMB","bufferChoices":[{"mb","default"}]}`
   Called from: `ui/preferences.ts`.
+- `project() -> String`: What About says of reel itself: `{"license","repository"}` (the license's name, the source code's address).
+  JSON: `{"license","repository"}`
+  Called from: `ui/screens/about/AboutScreen.tsx`.
 - `revision() -> f64`: Goes up when the settings change (here or on the hosted page) and when the hosted page's pairing code appears or goes: read `current` and `Hosted.pairing` again.
   Called from: `ui/hosted.ts`.
 - `setAudioLanguage(code: String) -> String` (`set_audio_language`): Saves the audio language tracks are looked for in (ISO 639-1, one of `audioLanguages` from `load`; empty: the app's language); the setting in effect ("" for the app's). A pick in the tracks panel sets it too (`Engine.chooseTrack`).
@@ -245,11 +260,11 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/preferences.ts`.
 - `setContentLanguage(tag: String) -> String` (`set_content_language`): Saves the content language (titles, descriptions, episode names; one of `contentLanguages` from `load`) and drops what was asked in the old one; the language in effect.
   Called from: `ui/preferences.ts`.
-- `setFamily(name: String) -> bool` (`set_family`): Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows", "linux", "tablet", "phone"), once at start: what Play and Save pick by themselves follows from it (a phone keeps to 1080p and a size per hour, `fit::limits`). False for an unknown name.
+- `setFamily(name: String) -> bool` (`set_family`): Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows", "linux", "tablet", "phone"), once at start, before `Settings.load` and `Library.supported`: what Play and Save pick by themselves follows from it (a phone keeps to 1080p and a size per hour, `fit::limits`), and whether it saves films (not a TV, `fit::saves`). False for an unknown name. The screen's own facts are read here too where the system tells them (Android: its tallest mode, HDR10, Dolby Vision): Play does not pick by itself what the screen cannot show (`compat::Display`).
   Called from: `ui/platform/index.ts`.
 - `setLanguage(tag: String)` (`set_language`): Saves the UI language (a BCP 47 tag).
   Called from: nothing in the UI.
-- `setLoader(loader: String) -> String` (`set_loader`): Saves the loading animation ("logo" or "dinosaur"; another value is refused); the one in effect.
+- `setLoader(loader: String) -> String` (`set_loader`): Saves the loading animation ("none" or "dinosaur"; another value is refused); the one in effect.
   Called from: `ui/preferences.ts`.
 - `setNavPosition(position: String) -> String` (`set_nav_position`): Saves where the top nav sits on a TV and a desktop ("left", "center" or "right"; another value is refused); the position in effect.
   Called from: `ui/preferences.ts`.
@@ -258,6 +273,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
   Called from: `ui/preferences.ts`.
 - `setStreamDetails(on: bool) -> bool` (`set_stream_details`): Saves whether the player shows the stream's speed, people and what is ready ahead (off by default); the value in effect.
   Called from: `ui/preferences.ts`.
+- `windowed(width: f64, height: f64) -> bool`: Whether a window `width` x `height` points does not fill the screen: an iPad's window in windowed mode or Split View, where the system's window controls sit at its top left. False elsewhere (only iOS knows its screen here).
+  Called from: `ui/layout/chrome.ts`.
 
 ## Sources
 
@@ -267,8 +284,8 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 
 - `check() -> u32`: Checks the saved source (`t=caps`); a job id for `result`, 0 when none is set.
   Called from: `ui/preferences.ts`.
-- `result(id: u32) -> String`: `{"state":"pending"}`, `{"state":"done","releases":[…]}` (ranked: each `{"id","title","source","infohash","size","seeders","peers","indexer", "info":{resolution,hdr,dolby_vision,codec,source,season,episodes,season_pack}, "seasonPack"}`), `{"state":"done","caps":{…}}` for a check, or `{"state":"failed","message"}`.
-  JSON: `{"state":"pending"}`, `{"state":"done","releases":[…]}`, `{"id","title","source","infohash","size","seeders","peers","indexer", "info":{resolution,hdr,dolby_vision,codec,source,season,episodes,season_pack}, "seasonPack"}`, `{"state":"done","caps":{…}}`, `{"state":"failed","message"}`
+- `result(id: u32) -> String`: `{"state":"pending"}`, `{"state":"done","releases":[…]}` (ranked: each `{"id","title","source","infohash","size","seeders","peers","indexer", "info":{resolution,hdr,dolby_vision,languages,codec,source,season,episodes,season_pack}, "seasonPack"}`), `{"state":"done","caps":{…}}` for a check, or `{"state":"failed","message"}`.
+  JSON: `{"state":"pending"}`, `{"state":"done","releases":[…]}`, `{"id","title","source","infohash","size","seeders","peers","indexer", "info":{resolution,hdr,dolby_vision,languages,codec,source,season,episodes,season_pack}, "seasonPack"}`, `{"state":"done","caps":{…}}`, `{"state":"failed","message"}`
   Called from: `ui/preferences.ts`.
 - `search(request: String) -> u32`: Searches for a film or an episode. `request` is JSON `{"imdb","title","year","season","episode"}` (imdb, year, season and episode optional). A search id for `result`; 0 when no source is set.
   Called from: nothing in the UI.
@@ -281,11 +298,20 @@ Which video view plays on this device.
 
 Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 
+- `async ended() -> bool`: Waits until the last film's player has ended (its view went: mpv stopped, its playback ended, then it is destroyed on its own thread), so the next job, its stream and its player start after it, never beside it. True then; false when one still played after a few seconds (logged), and the next film starts anyway. At once where no player plays.
+  Called from: `ui/playback.ts`.
 - `fullscreen(on: bool)`: The player's full screen (Android: the system bars hide while it plays; elsewhere nothing: the desktops have their own full screen, a TV is always full).
   Called from: `ui/platform/window.ts`.
+- `held() -> String`: How the device is held, for a phone's player, which draws itself sideways inside the upright window: JSON `{"turn","turns"}`. `turn`: the quarter turn the player gives its picture for it: 90 (clockwise: the device turned counter-clockwise, its top at the left, the common way), -90 (the other way), 0 (upright), null (flat, upside down, not known). `turns`: how many times the device has turned since the app started; the player follows a new one. With the rotation lock on (iOS) or auto-rotate off (Android), no turn is reported (only Rotate turns the player); elsewhere always `{"turn":null,"turns":0}`.
+  JSON: `{"turn","turns"}`, `{"turn":null,"turns":0}`
+  Called from: `ui/Player.tsx`.
+- `immersive(on: bool)`: The phone's player is drawn sideways (`true`): the home indicator, along the picture's side then, fades after a moment of no touches (iOS); the system bars stay hidden (Android); elsewhere nothing.
+  Called from: `ui/Player.tsx`.
 - `kind() -> String`: `"mpv"` where reel's mpv view (`reel/mpv`) can play (macOS with libmpv found: MKV, every codec, track selection), else `"native"` (NSH's `<Video>`, the platform's player). Choosing mpv also sets the search profile to it, so releases only mpv plays are offered. On a Samsung TV (the `tizen` profile its host sets) `"avplay"`: the TV shell's AVPlay draws under the web UI.
   Called from: `ui/VideoSurface.tsx`.
-- `turn(landscape: bool)`: Turns the screen to landscape (`true`) or portrait, whatever the device's rotation lock says: the player's Rotate button (iOS; elsewhere nothing). The device turning it back (rotation unlocked) still turns it.
+- `sideways(width: f64, height: f64) -> bool`: Whether a phone's player plays sideways for a film of this size (the video view's `width` and `height` once loaded): it opened sideways, and only a picture taller than wide stands it back upright (`reel_domain::play::starts_sideways`).
   Called from: `ui/Player.tsx`.
-- `views() -> bool`: Whether reel's own native views are registered on this device (Android: the Java ones `build/android-views.sh` adds to the APK; registered on the first call).
-  Called from: nothing in the UI.
+- `turnScale(from: i32, to: i32, width: f64, height: f64, aspect: f64) -> f64` (`turn_scale`): The scale a phone's player turn starts at, from `from` to `to` degrees (0, 90, -90), in a window `width` x `height` points, for a picture of `aspect` (its width over its height; 0: not known, 16:9): the new layout starts drawn as large as the old one showed the picture, and grows or shrinks to 1 as it turns (`reel_domain::play::turn_start_scale`).
+  Called from: `ui/layout/TurnedBox.tsx`.
+- `views() -> bool`: Whether reel's own native views are registered on this device (Android: the Java ones `build/android-views.sh` adds to the APK; registered on the first call, and on every activity made after it). With them a phone's window stays upright, and its player draws itself sideways (`held`).
+  Called from: `ui/platform/index.ts`.

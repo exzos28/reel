@@ -5,7 +5,12 @@
 import { cleanup, signal } from "nsh";
 
 export type Destination = "home" | "movies" | "shows" | "cartoons" | "anime" | "search" | "settings" | "saved";
-export type Route = { name: Destination } | { name: "title"; id: string } | { name: "about" } | { name: "interface" };
+export type Route =
+  | { name: Destination }
+  | { name: "title"; id: string }
+  | { name: "person"; id: string }
+  | { name: "about" }
+  | { name: "interface" };
 
 /** The nav's destinations: a page with nothing under it. */
 export const ROOTS: Destination[] = ["home", "movies", "shows", "cartoons", "anime", "search", "settings", "saved"];
@@ -18,33 +23,58 @@ export const isCategory = (name: string) => CATEGORIES.includes(name as Destinat
 /** The category open last: where a phone's Home tab goes back to. */
 export const lastCategory = signal<Destination>("home");
 
-/** A phone's Home tab holds the categories (and Back from another tab goes to it). Set once at startup. */
-let homeTab = false;
-export function useHomeTab(on: boolean) {
+/** A phone's Home tab holds the categories (and Back from another tab goes to it): a phone's
+ * layout, a tablet's narrow window's too. Asked as it is needed (a tablet's window is resized
+ * across a phone's width). Set once at startup. */
+let homeTab: () => boolean = () => false;
+export function useHomeTab(on: () => boolean) {
   homeTab = on;
 }
 
+/** Saved and Settings are sections of their own beside the tabs (a tablet's top row): each its
+ * own stack, opened from wherever the viewer is, and Back from its root goes back there. Asked as
+ * it is needed, like `useHomeTab`. Set once at startup. */
+let ownSections: () => boolean = () => false;
+export function useOwnSections(on: () => boolean) {
+  ownSections = on;
+  from.clear();
+}
+const OWN: Destination[] = ["saved", "settings"];
+/** Where Saved and Settings were opened from: Back from their root goes there (once). */
+const from = new Map<Destination, Destination>();
+
 export const stack = signal<Route[]>([{ name: "home" }]);
 export const route = () => stack()[stack().length - 1];
+
+/** Settings' pages: Settings, and Interface and About on it. */
+const isSettingsPage = (name: string) => name === "settings" || name === "about" || name === "interface";
 
 /** The destination the page belongs to (the nav shows it selected): the first
  * route of its stack; About belongs to Settings. */
 export function section(): Destination {
   const first = stack()[0].name;
-  return first === "about" || first === "interface" ? "settings" : first === "title" ? "home" : first;
+  return isSettingsPage(first) ? "settings" : first === "title" || first === "person" ? "home" : first;
 }
 
 /** Whether there is a page under this one. */
 export const canGoBack = () => stack().length > 1;
 
-/** One stack per tab (phone, tablet): switching tabs keeps each tab's place,
- * and Settings opens on top of the current tab. Off on a TV and a desktop,
- * where a destination starts the stack over. Set once at startup. */
+/** One stack per tab (phone, tablet): switching tabs keeps each tab's place;
+ * on a phone Settings opens on top of the current tab, on a tablet as its own section. Off on
+ * a TV and a desktop, where a destination starts the stack over. Set once at startup. */
 let tabStacks = false;
 const kept = new Map<Destination, Route[]>();
 export function useTabStacks(on: boolean) {
   tabStacks = on;
   kept.clear();
+  from.clear();
+}
+
+/** A tab's stack changed while another tab is shown (its native stack reported a pop late):
+ * kept for when it is shown again. */
+export function keepTab(tab: Destination, routes: Route[]) {
+  if (section() === tab) stack.set(routes);
+  else kept.set(tab, routes);
 }
 
 /** Bumped when the current destination is chosen again: its page scrolls to
@@ -81,10 +111,36 @@ export function takeChosenInNav(name: Destination): boolean {
 export function go(name: Destination) {
   if (isCategory(name)) lastCategory.set(name);
   if (section() === name) return reselect(name);
+  if (OWN.includes(name)) from.set(name, section());
+  switchTo(name);
+}
+
+/** Shows a destination's stack (a tab's kept one, or a new one). */
+function switchTo(name: Destination) {
   if (tabStacks) {
     kept.set(section(), stack());
     stack.set(kept.get(name) ?? [{ name }]);
   } else stack.set([{ name }]);
+}
+
+/** A tablet's window widened past a phone's: Settings pages a tab holds (opened on it while the
+ * layout was a phone's) leave it for Settings' own section, which Back leaves for that tab. */
+export function liftSettings() {
+  if (!tabStacks) return;
+  const cut = (routes: Route[]) => {
+    const at = routes.findIndex((r, i) => i > 0 && isSettingsPage(r.name));
+    return at < 0 ? null : { keep: routes.slice(0, at), lifted: routes.slice(at) };
+  };
+  for (const [tab, routes] of kept) {
+    const c = cut(routes);
+    if (c) kept.set(tab, c.keep);
+  }
+  const c = cut(stack());
+  if (!c) return;
+  const tab = section();
+  kept.set(tab, c.keep);
+  from.set("settings", tab);
+  stack.set(c.lifted[0].name === "settings" ? c.lifted : [{ name: "settings" }, ...c.lifted]);
 }
 
 /** A category picked in the tabs at the top of a phone's Home: its page, from its top (a filter
@@ -102,23 +158,47 @@ export function goHomeTab() {
 
 const push = (r: Route) => stack.set([...stack(), r]);
 export const openTitle = (id: string) => push({ name: "title", id });
+/** A person of a title's cast: the titles they are in. */
+export const openPerson = (id: string) => push({ name: "person", id });
 /** About reel and its data sources, over Settings. */
 export const openAbout = () => push({ name: "about" });
 /** How the app looks (Menu position, Loading animation), over Settings. */
 export const openInterface = () => push({ name: "interface" });
-/** Settings: a destination of its own, or (with tab stacks) on top of the current tab. */
+/** Settings: a destination of its own; on a tablet its own section (on its root); on a phone's
+ * layout (with tab stacks) on top of the current tab. */
 export function openSettings() {
-  if (!tabStacks) return go("settings");
+  if (!tabStacks || ownSections()) {
+    if (section() !== "settings") go("settings");
+    if (canGoBack()) reselect("settings");
+    return;
+  }
   if (route().name !== "settings") push({ name: "settings" });
 }
 
-/** One level up; from a destination other than Home, to Home. On a phone, from Search, Saved or
+/** Where Back goes from the root of Saved or Settings, sections of their own (a tablet's): where
+ * it was opened from, else Home. Null on a page with one under it, and without such sections. */
+export function sectionBackTo(): Destination | null {
+  const s = stack();
+  const root = s[0].name as Destination;
+  if (s.length > 1 || !ownSections() || !OWN.includes(root)) return null;
+  const opener = from.get(root);
+  return opener && opener !== root ? opener : "home";
+}
+
+/** One level up. From a destination other than Home, to Home; on a tablet, from Saved's or
+ * Settings' root to where it was opened from. On a phone's layout, from Search, Saved or
  * Settings to the Home tab (the category open last), and from a category to All. */
 export function back() {
   const s = stack();
+  const root = s[0].name as Destination;
+  const opener = ownSections() && OWN.includes(root) ? from.get(root) : undefined;
   if (s.length > 1) stack.set(s.slice(0, -1));
-  else if (homeTab && !isCategory(s[0].name)) go(lastCategory());
-  else if (s[0].name !== "home") go("home");
+  else if (homeTab() && !isCategory(root)) go(lastCategory());
+  else if (opener && opener !== root) {
+    // Once: from there Back goes on by its own rule (Saved and Settings never bounce).
+    from.delete(root);
+    switchTo(opener);
+  } else if (root !== "home") go("home");
 }
 
 /** What Back closes before it leaves the page, newest first: a closer returns

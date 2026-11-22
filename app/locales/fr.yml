@@ -64,10 +64,14 @@ empty:
 title:
   play: "Lecture"
   resume: "Reprendre à %{at}"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  play_episode: "Lire %{episode}"
+  resume_episode: "Reprendre %{episode} à %{at}"
+  about_more: "Afficher toute la description"
+  about_less: "Afficher moins"
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: "Ma liste"
-  add_to_list: "Ma liste"
+  my_list: "Ajouter à ma liste"
+  add_to_list: "Ajouter à ma liste"
   in_list: "Dans ma liste"
   add_to_list_spoken: "Ajouter à ma liste"
   remove_from_list_spoken: "Retirer de ma liste"
@@ -137,6 +141,12 @@ release:
   sharing: "Partagé par %{count}"
   sharing_short: "Partages : %{count}"
   pack: "saison complète, %{size}"
+  voiced: "%{language} (%{voice})"
+  voice:
+    dub: "doublage"
+    mvo: "MVO"
+    dvo: "DVO"
+    avo: "AVO"
   fast: "démarre en quelques secondes"
   note:
     starts_fast: "Démarre vite"
@@ -172,6 +182,13 @@ about:
   details: "Détails"
   similar: "Titres similaires"
 
+person:
+  titles: "Films et séries"
+  state:
+    loading: "Chargement…"
+    unavailable: "Impossible de charger ses titres. Réessayez plus tard."
+    none: "Aucun film ni série."
+
 crew:
   director:
     one: "Réalisation"
@@ -194,7 +211,6 @@ detail:
   original_title: "Titre original"
   release_date: "Date de sortie"
   first_aired: "Première diffusion"
-  runtime: "Durée"
   status: "Statut"
   countries: "Pays"
   studios: "Studio"
@@ -283,6 +299,7 @@ browse:
     countries: "Pays"
     sort: "Trier par"
     picked: "%{filter} : %{picked}"
+    format: "Format"
   sort: "Trier par :"
   option:
     decade: "Années %{n}"
@@ -291,11 +308,15 @@ browse:
     top_rated: "Les mieux notés"
     newest: "Les plus récents"
     any: "Tous"
+    format_tv: "Séries"
+    format_movie: "Films"
+    format_special: "OVA et spéciaux"
   state:
     loading: "Chargement…"
     empty: "Aucun titre ne correspond à ces filtres."
     offline: "Impossible de charger cette liste. Vérifiez la connexion."
     more_failed: "Impossible de charger plus de titres. Descendez pour réessayer."
+  clear: "Effacer"
 
 search:
   title: "Recherche"
@@ -304,19 +325,23 @@ search:
   recent: "Recherches récentes"
   clear: "Effacer l'historique"
   searching: "Recherche…"
-  none: "Rien trouvé pour « %{query} »."
+  none: "Rien trouvé pour « %{query} ». Essayez le titre original ou moins de mots."
   failed: "TMDB et AniList ne répondent pas. Vérifiez la connexion et réessayez."
   no_tmdb: "Cette version n'a pas de clé TMDB : la recherche porte uniquement sur les anime."
   section:
     movies: "Films"
     shows: "Séries"
     anime: "Anime"
+    trending: "Tendances"
   try_again: "Réessayer"
   # A row of results whose source did not answer.
   row_failed:
     movies: "Impossible de charger les films."
     shows: "Impossible de charger les séries."
     anime: "Impossible de charger les anime."
+  clear_query: "Effacer la recherche"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "Tout afficher (%{count})"
 
 compat:
   audio_dts: "Cette version n'a que de l'audio DTS, que cet appareil ne peut pas lire. Choisissez une autre version."
@@ -327,6 +352,8 @@ compat:
 player:
   back: "Retour"
   close: "Fermer"
+  expand_sheet: "Afficher plus"
+  collapse_sheet: "Afficher moins"
   close_tracks: "Fermer audio et sous-titres"
   episodes: "Épisodes"
   close_episodes: "Fermer les épisodes"
@@ -349,9 +376,7 @@ player:
       other: "%{count} personnes trouvées, connexion"
     fetching: "Chargement du début, %{percent} %"
     starting: "Démarrage"
-  buffering: "Chargement"
-  ahead_seconds: "%{seconds} s d'avance"
-  rate_from: "%{speed} · partages : %{count}"
+  waiting: "En attente du flux"
   ready_ahead: "%{minutes} min d'avance"
   ready_ahead_short: "Moins d'une minute d'avance"
   streaming: "flux à %{speed}"
@@ -372,6 +397,7 @@ player:
   watch_credits: "Voir le générique"
   no_source: "Aucune version à lire."
   no_source_hint: "Ajoutez une source de recherche dans Paramètres, ou choisissez une autre version."
+  not_found_hint: "Votre source de recherche n'a trouvé aucune version lisible sur cet appareil."
   not_in_release: "Cet épisode n'est pas dans la version."
   not_in_release_hint: "Revenez en arrière pour choisir une version pour cet épisode."
   failed: "Lecture impossible : %{message}"
@@ -403,7 +429,7 @@ settings:
     key: "Clé API (facultative)"
     key_placeholder: "Seulement si votre source en a une"
     key_saved: "Clé enregistrée. Saisissez-en une nouvelle pour la remplacer"
-    save: "Enregistrer et vérifier"
+    save: "Vérifier"
     remove: "Supprimer la source"
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: "Obtenir une source prête"
@@ -432,20 +458,20 @@ settings:
   # What shows while a film loads or waits for more of the stream.
   loader:
     title: "Animation de chargement"
-    about: "Ce qui s'affiche pendant qu'un film attend la suite du flux."
+    about: "Ce qui s'affiche pendant qu'un film démarre."
+    none: "Aucune"
     dinosaur: "Dinosaure"
-    logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not
   # answer (failed), from Settings (edit).
   source_drawer:
     missing_title: "Ajoutez une source de recherche"
     missing_about: "reel lit les versions qu'il trouve dans votre propre source de recherche, et vous n'en avez pas encore. Saisissez une adresse Torznab et sa clé API ; Lecture fonctionnera une fois la source connectée."
     failed_title: "Votre source de recherche n'a pas répondu"
-    failed_about: "reel n'a pas pu y chercher de versions. Vérifiez son adresse et sa clé API, puis choisissez Enregistrer et vérifier ; Lecture fonctionnera une fois la source connectée."
+    failed_about: "reel n'a pas pu y chercher de versions. Vérifiez son adresse et sa clé API, puis choisissez Vérifier ; Lecture fonctionnera une fois la source connectée."
     edit_title: "Source de recherche"
     edit_about: "Une adresse Torznab et sa clé API."
     link_title: "Utiliser cette source ?"
-    link_about: "Un lien a rempli cette source. Choisissez Enregistrer et vérifier pour l'utiliser, ou Retour pour garder la vôtre."
+    link_about: "Un lien a rempli cette source. Choisissez Vérifier pour l'utiliser, ou Retour pour garder la vôtre."
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: "Connectée"
@@ -454,7 +480,7 @@ settings:
   # The card beside Settings on a device that serves its settings page (a TV).
   phone:
     title: "Modifiez-les depuis votre téléphone"
-    text: "Scannez le code, ou ouvrez %{url}."
+    text: "Scannez le code, ou ouvrez l'adresse ci-dessous."
   interface:
     title: "Interface"
   about:
@@ -463,13 +489,15 @@ settings:
     data: "Sources de données"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "Version %{version} (%{build})"
+    license: "Code source disponible · %{license}"
+    repository: "Code source de reel"
   details:
     title: "Détails du flux"
     about: "Pendant la lecture ou l'attente d'un film, afficher la vitesse, le nombre de personnes qui partagent et l'avance chargée."
     show: "Afficher les détails du flux"
   buffer:
     title: "Mémoire tampon"
-    about: "Quelle part du film reel garde pendant la lecture. Plus elle est grande, mieux elle résiste aux partages lents et aux longs sauts."
+    about: "L'espace que reel utilise pendant la lecture d'un film. Plus elle est grande, mieux elle résiste aux partages lents et aux longs sauts."
     free: "%{free} libres sur cet appareil"
     default: "(par défaut)"
 
@@ -483,21 +511,22 @@ setup:
     help: "reel s'en sert aussi pour chercher les versions."
     more: "Autres langues"
   buffer:
-    title: "Combien d'espace reel peut-il utiliser pendant la lecture ?"
-    help: "Une mémoire tampon plus grande résiste mieux aux partages lents et aux longs sauts."
+    title: "Mémoire tampon"
+    help: "L'espace que reel peut utiliser pendant la lecture d'un film. Une mémoire tampon plus grande résiste mieux aux partages lents et aux longs sauts."
     recommended: "Recommandé"
   source:
     title: "Où reel doit-il trouver les films ?"
-    help: "Saisissez la vôtre, ou obtenez-en une prête."
-    own_title: "Votre propre source"
-    rent_title: "Ou une source prête"
+    help: "reel ne cherche pas lui-même. Donnez-lui une source de recherche (Torznab) : votre propre Jackett ou Prowlarr, ou obtenez-en une sur Telegram."
+    help_own: "reel ne cherche pas lui-même. Donnez-lui une source de recherche (Torznab) : votre propre Jackett ou Prowlarr."
+    own_title: "Ou utilisez la vôtre"
+    rent_title: "Obtenez-en une prête"
     check: "Vérifier"
+    checking: "Vérification…"
     finish: "Terminer"
     skip: "Passer"
-    footnote: "Torznab est un format courant par lequel les services de recherche listent des versions torrent. reel ne cherche pas de vidéos lui-même : c'est un catalogue et un lecteur, et il ne trouve quoi lire qu'à travers la source que vous lui donnez."
   phone:
     title: "Ou configurez-le sur votre téléphone"
-    text: "Scannez le code avec l'appareil photo du téléphone, ou ouvrez %{url} dans son navigateur. Cet écran suit automatiquement."
+    text: "Scannez le code avec l'appareil photo du téléphone, ou ouvrez l'adresse ci-dessous dans son navigateur. Cet écran suit automatiquement."
     source_title: "Plus simple sur votre téléphone"
     source_text: "Saisir une adresse avec une télécommande est lent. Scannez le code, ou ouvrez %{url}, et collez-la là-bas. Cet écran termine la configuration tout seul."
 
@@ -511,7 +540,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: "Enregistrés"
-  empty: "Rien d'enregistré pour l'instant. Enregistrez un film ou une saison depuis sa page pour le regarder sans Internet."
+  empty: "Enregistrez un film pour le regarder hors ligne"
+  browse: "Parcourir les films"
   saving: "Enregistrement"
   while_open: "tant que reel est ouvert"
   ready: "Prêt à regarder"
@@ -536,9 +566,10 @@ saved:
     checking: "Vérification de ce qui est enregistré…"
     resolving: "Recherche de personnes qui partagent…"
     saving: "%{percent} % · %{have} sur %{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent} % · %{have} sur %{size} · reste environ %{time}"
     paused: "En pause · %{have} sur %{size}"
     waiting: "Démarre quand la lecture en cours s'arrête"
-    saved: "Enregistré · %{size}"
     unavailable: "Son disque n'est pas connecté"
   failed:
     no_source: "Aucune version trouvée à enregistrer"

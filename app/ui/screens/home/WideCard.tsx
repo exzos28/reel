@@ -1,8 +1,8 @@
 import { Text, View, type ViewRef } from "nsh";
-import { cardMeta, leftText, titleText, type Summary } from "../../catalog";
+import { facetText, leftText, titleText, type Facet, type Summary } from "../../catalog";
 import { Card, cardBox } from "../../kit/Card";
 import { Picture, WatchedBar, watchedClip } from "../../kit/Picture";
-import { CardMeta } from "../../kit/Rating";
+import { CardLine } from "../../kit/Rating";
 import { cardRadius, rounded } from "../../kit/shape";
 import { labelText, metaText, oneLine } from "../../kit/text";
 import { GRID_GAP, gridCardWidth } from "../../layout/Grid";
@@ -13,20 +13,22 @@ export const wideCardHeight = (width: number) => (width * 198) / 352;
 
 /** A shelf of these cards (Home, Search's rows, More like this): on a desktop the cards of the Films
  * and Series grid, as big and as far apart; a TV and touch keep 352 TV pixels, 24 apart. */
-const desktop = density === "regular";
-export const shelfCardWidth = () => (desktop ? gridCardWidth() : u(352));
+const desktop = () => density() === "regular";
+export const shelfCardWidth = () => (desktop() ? gridCardWidth() : u(352));
 /** Between a shelf's cards, TV pixels. */
-export const SHELF_GAP = desktop ? GRID_GAP : 24;
+export const SHELF_GAP = () => (desktop() ? GRID_GAP : 24);
 /** From one card's start to the next one's, points (a row's arrows move by it). */
-export const shelfStep = () => shelfCardWidth() + u(SHELF_GAP);
+export const shelfStep = () => shelfCardWidth() + u(SHELF_GAP());
 
 const titleStyle = () => ({ ...oneLine, ...labelText(), fontWeight: 600, marginTop: u(10) });
 
-/** A 16:9 card: the still with a watched bar, the title, what is left (or
- * its rating, year and kind). */
+/** A 16:9 card: the still with a watched bar, the title, what is left (or the list's `facet` and
+ * the rating). */
 export function WideCard(props: {
   item: () => Summary;
   continuing: boolean;
+  /** What the card shows under its name ("kind" unless the list says). */
+  facet?: () => Facet;
   focused: () => boolean;
   follow: (when: () => boolean) => (r: ViewRef) => void;
   onPress: () => void;
@@ -53,7 +55,7 @@ export function WideCard(props: {
       ]}
     >
       <Text style={titleStyle()}>{titleText(s())}</Text>
-      <If when={props.continuing} else={<CardMeta text={() => cardMeta(s())} rated={() => !!s().rating} />}>
+      <If when={props.continuing && leftText(s())} else={<CardLine text={() => facetText(s(), props.facet?.() ?? "kind")} rating={() => s().rating} />}>
         <Text style={{ ...oneLine, ...metaText() }}>{leftText(s())}</Text>
       </If>
     </Card>

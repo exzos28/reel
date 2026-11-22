@@ -13,7 +13,10 @@ function page(picked: string[] = []) {
   const all = picked.length ? [SEVERANCE] : BROWSE_ALL;
   const native = {
     ...NATIVE,
-    "Catalog.browse": JSON.stringify({ trending: BROWSE_TRENDING, all, filters: browseFilters(picked), allState: "done" }),
+    "Catalog.browse": JSON.stringify({
+      trending: BROWSE_TRENDING, all, filters: browseFilters(picked), allState: "done", facet: "year",
+      filtered: picked.some((id) => !["popular", "top_rated", "newest"].includes(id)),
+    }),
     "Catalog.chooseFilter": (p: string, group: string, id: string) => {
       calls.push([p, group, id]);
       return true;
@@ -81,6 +84,32 @@ test("the pills say what is picked; the panel marks it and focuses it first", as
   await app.keyboard.press("up"); // Clear
   await app.keyboard.press("enter");
   expect(calls[1]).toEqual(["movies", "genres", ""]);
+});
+
+test("a filter on: ✕ Clear comes first; the remote reaches it left of Genres, OK clears them all", async () => {
+  expect((await movies(page().native)).texts()).not.toContain("✕ Clear");
+  const { native, calls } = page(["18", "top_rated"]);
+  const app = await movies(native);
+  expect(app.texts()).toContain("✕ Clear");
+  await app.keyboard.press("down"); // Genres
+  await app.keyboard.press("left"); // Clear
+  await app.keyboard.press("enter");
+  expect(calls).toEqual([["movies", "all", ""]]);
+  expect(app.shows("id:filter-panel")).toBe(false);
+});
+
+test("phone: a pick closes the sheet at once, genres too; Clear is a tap", async () => {
+  const { native, calls } = page(["18"]);
+  const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": native } });
+  await app.press("label:Movies");
+  await app.press("id:filter-genres");
+  expect(app.shows("id:filter-panel")).toBe(true);
+  await app.press("label:Crime");
+  expect(calls).toEqual([["movies", "genres", "80"]]);
+  await app.wait(600); // the sheet slides away
+  expect(app.shows("id:filter-panel")).toBe(false);
+  await app.press("id:filter-clear");
+  expect(calls[1]).toEqual(["movies", "all", ""]);
 });
 
 test("a single choice closes its panel; Up from the grid comes back to the pills", async () => {
@@ -169,7 +198,7 @@ function longGrid(moreState = "idle", more = true) {
   return { native, asked };
 }
 
-test("remote: moving down the grid asks for the next page two rows before its end; the focus stays", async () => {
+test("remote: moving down the grid asks for the next page a page (four rows) before its end; the focus stays", async () => {
   const { native, asked } = longGrid();
   const app = await movies(native);
   await app.keyboard.press("down"); // the pills
@@ -181,8 +210,8 @@ test("remote: moving down the grid asks for the next page two rows before its en
     rows++;
   }
   expect(asked).toEqual(["movies"]);
-  // 40 cards, COLUMNS a row: the last row is row 7 (from 0), so row 5 asks.
-  expect(rows).toBe(Math.ceil(40 / COLUMNS) - 3);
+  // 40 cards, COLUMNS a row: the last row is row 7 (from 0), so row 3 asks.
+  expect(rows).toBe(Math.ceil(40 / COLUMNS) - 5);
   // Asking does not move the focus: it is on the first card of that row.
   const focused = `Film ${rows * COLUMNS + 1}`;
   expect(app.shows(`id:grid-focused >> text:${focused}`)).toBe(true);
@@ -198,6 +227,19 @@ test("mouse: scrolling near the grid's end asks for the next page", async () => 
   await app.wait(100);
   expect(asked.length).toBeGreaterThan(0);
   expect(asked[0]).toBe("movies");
+});
+
+test("remote: Down on the grid's last row asks for the next page again; the focus stays on the row", async () => {
+  const { native, asked } = longGrid("failed");
+  const app = await movies(native);
+  await app.keyboard.press("down"); // the pills
+  for (let r = 0; r < Math.ceil(40 / COLUMNS); r++) await app.keyboard.press("down"); // to the last row
+  const last = `Film ${40 - COLUMNS + 1}`;
+  expect(app.shows(`id:grid-focused >> text:${last}`)).toBe(true);
+  const before = asked.length;
+  await app.keyboard.press("down"); // nothing under it yet: asked again, the focus stays
+  expect(asked.length).toBe(before + 1);
+  expect(app.shows(`id:grid-focused >> text:${last}`)).toBe(true);
 });
 
 test("grey cards end the grid while its next page comes; a line when it failed; nothing past the end", async () => {

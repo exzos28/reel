@@ -119,6 +119,31 @@ pub fn family() -> Option<&'static str> {
     device().or_else(|| *FAMILY.lock().unwrap())
 }
 
+/// What the screen shows, as the host reads it from the system once at start (Android: the
+/// display's modes and HDR types). A fact, not a policy: what follows from it (`fit::limits`) is
+/// decided there. `None` where the host does not say (every field unknown: nothing is held back).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Display {
+    /// The tallest picture it shows, in lines (1080 on a Full HD screen, 2160 on a 4K one).
+    pub lines: Option<u32>,
+    /// It shows HDR10 (or HDR10+).
+    pub hdr: Option<bool>,
+    /// It shows Dolby Vision.
+    pub dolby_vision: Option<bool>,
+}
+
+static DISPLAY: Mutex<Display> = Mutex::new(Display { lines: None, hdr: None, dolby_vision: None });
+
+/// The screen's facts, as the host found them. One per process, as `set_family`.
+pub fn set_display(d: Display) {
+    *DISPLAY.lock().unwrap() = d;
+}
+
+/// What the screen shows (unknown until the host says).
+pub fn display() -> Display {
+    *DISPLAY.lock().unwrap()
+}
+
 /// Why a release or file will not play here. The UI words it (`compat.<key>`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -129,10 +154,20 @@ pub enum Reason {
     Container,
 }
 
+/// Whether mpv shows Dolby Vision alone (profile 5: no HDR10 base layer) in the right colours
+/// where this core runs. Android's draws with `vo=gpu` and MediaCodec
+/// (`app/src/adapters/mpv/android.rs`), which shows it in the wrong colours whatever the screen.
+const MPV_SHOWS_DOLBY_VISION_ONLY: bool = !cfg!(target_os = "android");
+
+/// A release that is Dolby Vision alone, on a player that does not show it (`shown`), is refused.
+fn dolby_vision_ok(info: &ReleaseInfo, shown: bool) -> Result<(), Reason> {
+    if info.dolby_vision && !info.hdr10 && !shown { Err(Reason::DolbyVisionOnly) } else { Ok(()) }
+}
+
 /// Whether a release, as its name describes it, plays on `profile`.
 pub fn release_ok(info: &ReleaseInfo, profile: Profile) -> Result<(), Reason> {
     if profile == Profile::Mpv {
-        return Ok(());
+        return dolby_vision_ok(info, MPV_SHOWS_DOLBY_VISION_ONLY);
     }
     // A release naming several audio formats usually carries several tracks;
     // refuse it only when every named format is unsupported.
@@ -140,11 +175,7 @@ pub fn release_ok(info: &ReleaseInfo, profile: Profile) -> Result<(), Reason> {
     if !info.audio.is_empty() && info.audio.iter().filter(|a| **a != "atmos").all(unsupported) {
         return Err(if info.audio.contains(&"dts") { Reason::AudioDts } else { Reason::AudioTruehd });
     }
-    let dv_ok = profile == Profile::AppleAvPlayer;
-    if info.dolby_vision && !info.hdr10 && !dv_ok {
-        return Err(Reason::DolbyVisionOnly);
-    }
-    Ok(())
+    dolby_vision_ok(info, profile == Profile::AppleAvPlayer)
 }
 
 /// Whether the chosen file's container plays on `profile`.
@@ -169,6 +200,17 @@ mod tests {
         assert_eq!(set_device("watch"), None);
         assert_eq!(set_device(""), None);
         assert!(DEVICES.contains(&"mac") && DEVICES.contains(&"phone") && DEVICES.contains(&"tv"));
+    }
+
+    #[test]
+    fn dolby_vision_alone_plays_only_where_the_player_shows_it() {
+        let alone = parse("Film 2160p WEB-DL DV HEVC DDP5.1");
+        let with_hdr10 = parse("Film 2160p WEB-DL DV HDR10 HEVC DDP5.1");
+        assert_eq!(dolby_vision_ok(&alone, false), Err(Reason::DolbyVisionOnly));
+        assert_eq!(dolby_vision_ok(&alone, true), Ok(()));
+        assert_eq!(dolby_vision_ok(&with_hdr10, false), Ok(()), "its HDR10 base plays");
+        // mpv everywhere but Android (this test's host is not one).
+        assert_eq!(release_ok(&alone, Profile::Mpv), Ok(()));
     }
 
     #[test]

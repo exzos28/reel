@@ -1,12 +1,14 @@
 // Search, a nav destination: the nav, the page's title and the query field,
-// then the results as rows of 16:9 cards (Movies, Shows, Anime), or the
-// recent searches while nothing is typed. The core searches once the query
+// then the results as rows of 16:9 cards (Movies, Shows, Anime; on a tablet a grid of them with
+// Show all), or the
+// recent searches while nothing is typed (before any, what is trending now, the core's row). The core searches once the query
 // rests and answers through the catalog's revision. Remote: the screen opens
-// on the field (with its keyboard up where one types at once); OK on the
+// on the field (with its keyboard up where one types at once; on touch only once the field is
+// tapped); OK on the
 // field brings the keyboard (a TV's on-screen one), Up goes to the nav, Down
 // into the recent searches or the results; OK on a card opens its title.
 // Back closes the keyboard, then takes the focus to the nav, then Home.
-import { computed, keymap, signal, Text, View, type InputRef, type ViewStyle } from "nsh";
+import { computed, effect, keymap, signal, Text, untracked, View, type InputRef, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { forgetSearches, rememberSearch, retrySearch, search, type SearchAnswer } from "../../catalog";
 import { byKeys } from "../../focus/keys";
@@ -26,6 +28,8 @@ import { FailedRow } from "./FailedRow";
 import { cols, navAt, query, recentAt, row, zone } from "./focus";
 import { RecentSearches } from "./RecentSearches";
 import { SearchField } from "./SearchField";
+import { SearchGrid } from "./SearchGrid";
+import { searchGrid } from "../../layout/wide";
 
 /** The field under the page's title (the frame's). */
 const topStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(28), gap: u(28) });
@@ -44,10 +48,16 @@ function statusText(a: SearchAnswer): string {
 
 /** Where a keyboard can type at once (not a TV remote): coming back up to
  * the field gives it the input's focus too. */
-const typesAtOnce = density !== "ten-foot";
+const typesAtOnce = density() !== "ten-foot";
 
 export function SearchScreen() {
   const answer = computed(() => search(query()));
+  /** A tablet's rows opened whole (Show all), by id: for this query only. */
+  const opened = signal<Set<string>>(new Set());
+  effect(() => {
+    query();
+    untracked(() => opened().size > 0 && opened.set(new Set()));
+  });
   const sections = () => answer().sections;
   const recent = () => (answer().state === "recent" ? answer().recent : []);
   const rowAt = () => clamp(row(), sections().length - 1);
@@ -95,11 +105,20 @@ export function SearchScreen() {
     rememberSearch(query());
     openTitle(item.id);
   };
+  /** A recent search searches at once (a tap with the keyboard up too: the page keeps it for the
+   * tap), the keyboard down so its results show. */
   const pickRecent = (i: number) => {
     const q = recent()[i];
     rememberSearch(q);
     query.set(q);
+    input?.blur();
+    typing.set(false);
     toField(false);
+  };
+  /** The field's ✕: an empty query (the recent searches again), still typing. */
+  const clearQuery = () => {
+    query.set("");
+    type();
   };
   const clearRecent = () => {
     forgetSearches();
@@ -152,7 +171,7 @@ export function SearchScreen() {
   onBack(() => typing() && (input?.blur(), typing.set(false), true));
 
   /** The page puts the focused row in its upper third. */
-  const page = scroller({ anchor: (viewport) => viewport / 3, memory: "search" });
+  const page = scroller({ anchor: (viewport) => viewport / 3, memory: "search", keepsKeyboard: true });
   showNav(() => (zone() === "nav" ? navAt() : null));
   useRootBack({ ctl: page, onNav: () => zone() === "nav", toNav });
 
@@ -164,6 +183,7 @@ export function SearchScreen() {
             value={query}
             focused={() => zone() === "field"}
             onChange={(text) => query.set(text)}
+            onClear={clearQuery}
             onSubmit={submit}
             onFocus={() => {
               zone.set("field");
@@ -172,7 +192,9 @@ export function SearchScreen() {
             onBlur={() => typing.set(false)}
             onRef={(r) => {
               input = r;
-              if (zone() === "field") r.focus();
+              // A keyboard types at once; on touch the on-screen one waits for a tap on the field,
+              // so it does not cover what is trending.
+              if (zone() === "field" && !caps.touch) r.focus();
             }}
           />
         </View>
@@ -202,15 +224,31 @@ export function SearchScreen() {
                 />
               }
             >
-            <HomeShelf
-              shelf={section}
-              title={() => t(`search.section.${section().id}`)}
-              focusedAt={() => (zone() === "results" && rowAt() === r() ? col(r()) : null)}
-              blockRef={page.follow(() => zone() === "results" && rowAt() === r(), "anchor")}
-              onOpen={(c) => open(r(), c)}
-              page={page}
-              eager={r() < 2}
-            />
+            <If
+              when={searchGrid()}
+              else={
+                <HomeShelf
+                  shelf={section}
+                  title={() => t(`search.section.${section().id}`)}
+                  focusedAt={() => (zone() === "results" && rowAt() === r() ? col(r()) : null)}
+                  blockRef={page.follow(() => zone() === "results" && rowAt() === r(), "anchor")}
+                  onOpen={(c) => open(r(), c)}
+                  page={page}
+                  eager={r() < 2}
+                />
+              }
+            >
+              <SearchGrid
+                title={() => t(`search.section.${section().id}`)}
+                items={() => section().items}
+                facet={() => section().facet}
+                focusedAt={() => (zone() === "results" && rowAt() === r() ? col(r()) : null)}
+                blockRef={page.follow(() => zone() === "results" && rowAt() === r(), "anchor")}
+                all={() => opened().has(section().id)}
+                onAll={() => opened.set(new Set([...opened(), section().id]))}
+                onOpen={(c) => open(r(), c)}
+              />
+            </If>
             </If>
           )}
         </Each>

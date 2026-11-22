@@ -10,6 +10,7 @@ build/build.sh test-crates    # cargo test of reel-domain and reel-engine (no ns
 build/build.sh typecheck      # nsh check: cargo check of app/ + TypeScript
 build/build.sh no-engine      # app/ without the torrent engine
 build/build.sh test-app       # nsh test: cargo test of app/ + *.test.tsx headless (JUnit in app/.nsh/dist/test/)
+build/build.sh test-tizen-core  # cargo test of platforms/tizen's core: its RPC table against app/'s declarations
 build/build.sh check          # typecheck + no-engine
 build/build.sh test           # test-crates + test-app
 build/build.sh macos          # or linux, windows, android, ios-simulator, ios, web
@@ -22,14 +23,17 @@ The version and build come from `app/nsh.json` only (`docs/releasing.md`). `REEL
 
 ## Workflows
 
-- `ci.yml`: on PRs and on main. Calls `checks.yml`, which main's branch protection requires before
+- `ci.yml`: on PRs, on develop and on main. Calls `checks.yml`, which main's branch protection requires before
   a PR merges (merged by hand, `gh pr merge --merge`; never auto-merge). The platform builds
   (`build.yml` and `tizen.yml`) run only on a PR with the `build` label, on a version PR (branch
   `release/*`) and by hand (`workflow_dispatch`, input `build`). A newer push to a PR cancels its
-  older run; on main every commit keeps its run.
+  older run; on develop and main every commit keeps its run. A PR into develop does not wait for it (develop has
+  no required checks); main requires it (`docs/releasing.md`, "Branches").
 - `checks.yml`: `ui-rules`, `changeset` (a PR that changes the app adds an entry to `.changes/`,
   `build/changes.py check`; the `no-changeset` label skips it), `test-crates`, `app` (the steps
-  `typecheck`, `no-engine`, `test-rust` and the first third of the `*.test.tsx`) and `ui 2`, `ui 3`
+  `typecheck`, `test-tizen-core`, `no-engine`, `test-rust` and the first third of the `*.test.tsx`;
+  `test-tizen-core` reads the declarations `typecheck` writes, and its `matches_the_declarations`
+  fails on CI without them instead of skipping) and `ui 2`, `ui 3`
   (the rest), all on Ubuntu with one Cargo cache (a failed step does not skip the next). Macs are
   left for the platform builds. Nothing of it has to run locally before a push: the pre-push hook
   (`.githooks/pre-push`) runs only `dev/ui-rules.sh`; `dev/checks.sh` runs every check here.

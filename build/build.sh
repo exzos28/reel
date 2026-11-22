@@ -12,6 +12,8 @@
 #   test-app       nsh test (cargo test of app/, then the *.test.tsx files, headless)
 #   test-rust      cargo test of app/ only (test-app's first half)
 #   test-ui <n>    the *.test.tsx files of part n of 3 (test-app's second half, split for CI)
+#   test-tizen-core  cargo test of platforms/tizen's core: its RPC table against app/'s
+#                  #[module]s (after typecheck, which writes the declarations it reads)
 #   ui-rules       dev/ui-rules.sh (what screens must not do)
 #   macos          .app, zipped                       (macOS)
 #   linux          directory + .tar.gz                (Linux, GTK 4.14+)
@@ -115,7 +117,9 @@ export CARGO_BUILD_RUSTFLAGS="${CARGO_BUILD_RUSTFLAGS:-} --remap-path-prefix=$HO
 # C and C++ built by crates (QuickJS, ring…) write their source paths too (assert messages).
 export CFLAGS="${CFLAGS:-} -ffile-prefix-map=$HOME=/home -ffile-prefix-map=$repo=/reel"
 export CXXFLAGS="${CXXFLAGS:-} -ffile-prefix-map=$HOME=/home -ffile-prefix-map=$repo=/reel"
-package_check() { python3 -I "$repo/build/package-check.py" "$@" || die "the package depends on the build machine (above)"; }
+# The project's own public repository is no one's personal data: About names it (app/src/lib.rs,
+# Settings.project), and its account may be the builder's user name.
+package_check() { python3 -I "$repo/build/package-check.py" --allow "github.com/exzos28/reel" "$@" || die "the package depends on the build machine (above)"; }
 
 case "$target" in
   check)
@@ -146,6 +150,12 @@ case "$target" in
 
   test-rust)
     cargo test --locked -p reel-app
+    ;;
+
+  test-tizen-core)
+    # matches_the_declarations reads app/.nsh/types/app/native.d.ts (nsh check writes it): it is
+    # skipped without it on a developer's machine and fails without it on CI.
+    (cd "$repo/platforms/tizen" && cargo test --locked -p reel-tizen-core)
     ;;
 
   test-ui)

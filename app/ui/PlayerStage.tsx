@@ -1,17 +1,17 @@
 // The player's waiting states. From Play until the first frame plays (and
 // when the film cannot play) the stage fills the screen: the title's still,
-// darkened (not blurred: the direction refuses blur), its logotype in the middle breathing slowly, one
-// calm line from the core and a thin bar of the film's start coming in; an
-// error takes the same place, still. Once the film plays, a stall only
-// shows a small breathing note over the picture (`BufferingNote`).
+// darkened (not blurred: the direction refuses blur), its logotype in the middle, the release
+// under it, one calm line from the core and a thin bar of the film's start coming in (the
+// dinosaur over the line when Settings asks for it); an error takes the same place, still.
+// Once the film plays, a stall only shows a line over the picture (`BufferingNote`; a phone's is
+// in the controls' bottom row, `WaitingLine`), with no loader.
 import { Image, reduceMotion, Text, View, type TextStyle, type ViewStyle } from "nsh";
-import { t } from "nsh/i18n";
 import { titleText, type Summary } from "./catalog";
 import { Loader } from "./kit/Loader";
 import { cover, rounded } from "./kit/shape";
 import { alpha, colors, density, font, safe, ts, type, u } from "./theme";
 
-/** One breath of the logotype and the buffering note, ms. */
+/** One breath of the buffering note, ms. */
 export const BREATH_MS = 1600;
 
 /** The stage's line under the title: what the engine does, or what went wrong. */
@@ -37,13 +37,14 @@ const veilStyle = (): ViewStyle => ({
 const centreStyle = (): ViewStyle => ({
   ...cover(), alignItems: "center", justifyContent: "center", paddingHorizontal: safe().x,
 });
-const logotypeSize = () => (density === "compact" ? 64 : 88);
+const logotypeSize = () => (density() === "compact" ? 64 : 88);
 const logotypeStyle = (title: string): TextStyle => ({
   numberOfLines: 2, ...type.logotype(logotypeSize(), title.length), color: colors.snow(), textAlign: "center", maxWidth: u(1400),
 });
 const subtitleStyle = (): TextStyle => ({ ...type.meta(), color: colors.ash(), textAlign: "center", marginTop: u(14) });
+const loaderStyle = (): ViewStyle => ({ marginTop: u(40) });
 const lineStyle = (error: boolean): TextStyle => ({
-  ...type.body(), color: error ? colors.snow() : colors.soft(), textAlign: "center", maxWidth: u(960), marginTop: u(48),
+  ...type.body(), color: error ? colors.snow() : colors.soft(), textAlign: "center", maxWidth: u(960), marginTop: u(error ? 48 : 28),
 });
 const hintStyle = (): TextStyle => ({ ...type.meta(), color: colors.ash(), textAlign: "center", maxWidth: u(900), marginTop: u(12) });
 const BAR = 360;
@@ -76,12 +77,16 @@ export function PlayerStage(props: {
       </If>
       <View style={veilStyle()} />
       <View style={centreStyle()}>
-        <View style={{ alignItems: "center", ...breathe(!error()) }}>
+        <View style={{ alignItems: "center" }}>
           <Text style={logotypeStyle(titleText(s()))}>{titleText(s())}</Text>
           <If when={props.subtitle() !== ""}>
             <Text style={subtitleStyle()}>{props.subtitle()}</Text>
           </If>
         </View>
+        {/* The dinosaur, when Settings picks it, while it waits; by default nothing. */}
+        <If when={!error()}>
+          <Loader label={props.line().text} style={loaderStyle()} />
+        </If>
         <Text testID="stage-line" style={lineStyle(error())}>{props.line().text}</Text>
         <If when={props.line().hint}>
           <Text style={hintStyle()}>{props.line().hint!}</Text>
@@ -100,23 +105,34 @@ export function PlayerStage(props: {
 }
 
 const noteStyle = (): ViewStyle => ({
-  flexDirection: "row", alignItems: "center", gap: u(16),
-  paddingHorizontal: u(28), paddingVertical: u(18), ...rounded(999), backgroundColor: alpha(colors.ink(), 0.72),
+  paddingHorizontal: u(28), paddingVertical: u(16), ...rounded(999), backgroundColor: alpha(colors.ink(), 0.72),
 });
-/** A stall or a seek while the film plays: the picture darkened, the loader (Settings) in the
- * middle breathing as the title does on the stage; with the stream's details on (Settings), how
- * much is ready and how fast. */
+/** The note's words as the stage's line has them. */
+const noteTextStyle = (): TextStyle => ({ ...type.body(), color: colors.soft(), textAlign: "center" });
+/** A stall or a seek while the film plays: one calm line at the picture's middle, as the stage
+ * words its own; the picture stays as it is, and what is ready ahead shows on the scrubber. The
+ * loader (Settings) is the stage's only. */
 export function BufferingNote(props: { text: () => string }) {
   return (
-    <View testID="buffering" style={{ ...cover(), pointerEvents: "none", alignItems: "center", justifyContent: "center", gap: u(20), backgroundColor: alpha(colors.ink(), 0.6) }}>
-      <View style={breathe(true)}>
-        <Loader label={t("player.buffering")} steady />
+    <View testID="buffering" style={{ ...cover(), pointerEvents: "none", alignItems: "center", justifyContent: "center", paddingHorizontal: safe().x }}>
+      <View style={{ ...noteStyle(), ...breathe(true) }}>
+        <Text testID="buffering-line" style={noteTextStyle()}>{props.text()}</Text>
       </View>
-      <If when={props.text() !== ""}>
-        <View style={noteStyle()}>
-          <Text style={{ ...type.label(), fontWeight: 400, color: colors.soft() }}>{props.text()}</Text>
-        </View>
-      </If>
     </View>
   );
 }
+
+/** A phone's `BufferingNote`: its middle has Play, so the line is in the controls' bottom row,
+ * at its middle between the times and in their size (`style`), `side` points kept clear at each
+ * end (the wider time's room), one line cut with an ellipsis when long. */
+export function WaitingLine(props: { text: () => string; side: () => number; style: () => TextStyle }) {
+  return (
+    <View testID="buffering" style={{ ...waitingRowStyle(props.side()), ...breathe(true) }}>
+      <Text testID="buffering-line" style={{ ...props.style(), ...waitingTextStyle }}>{props.text()}</Text>
+    </View>
+  );
+}
+const waitingRowStyle = (side: number): ViewStyle => ({
+  position: "absolute", top: 0, bottom: 0, left: side, right: side, pointerEvents: "none", alignItems: "center", justifyContent: "center",
+});
+const waitingTextStyle: TextStyle = { numberOfLines: 1, textOverflow: "ellipsis", textAlign: "center" };

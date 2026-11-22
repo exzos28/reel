@@ -61,13 +61,13 @@ GET /health  X-Reel-Token: <token>   → {"ok":true,"info":{"core","dataDir","ca
 GET /ui/…    the web build (no token), precompressed .br/.gz served as is
 ```
 
-- **Names and arguments.** Method names are the camelCase ones NSH generates in `.nsh/types/app/native.d.ts`, and arguments are positional. `platforms/tizen/core/src/table.rs` maps them to `reel_app::Engine::open` and so on. Its test `matches_the_declarations` fails when the table and the declarations drift apart; any app/ change to a `#[module]` needs a line there.
+- **Names and arguments.** Method names are the camelCase ones NSH generates in `.nsh/types/app/native.d.ts`, and arguments are positional. `platforms/tizen/core/src/table.rs` maps them to `reel_app::Engine::open` and so on. Its test `matches_the_declarations` fails when the table and the declarations drift apart (CI runs it after `nsh check`: `build/build.sh test-tizen-core`); any app/ change to a `#[module]` needs a line there.
 - **Threads.** Sync methods run on blocking threads, because the engine calls `block_on` on its own runtime. `async` methods (`Meta.*`) run on the server's runtime.
 - **Token.** The shell generates a token on every launch and passes it to the service in the AppControl. A service that is already running gets the new token. Other apps and web pages on the TV can reach 127.0.0.1 as well, but without the token they get 401. The UI receives the token in its URL (`/ui/index.html?reelToken=…`).
 - **Data dir.** `Settings.load(dataDir)` and `Meta.init(dataDir)` accept only the core's own data dir (`info.dataDir`) or `""`. Any other path is a path on a different machine, so the call fails with 400 instead of the core silently swapping in its own dir.
 - **Player profile.** The service starts the core with profile `tizen` (`TIZEN_PROFILE`, applied through `Sources::set_profile` before the server starts). That means no DTS, no TrueHD, no Dolby-Vision-only releases; MKV and MP4 are fine. `info.profile` shows the active profile. The UI must not call `Sources.setProfile` on the TV. The desktop binary takes `--profile tizen` to filter releases the same way.
 - **Cache.** The engine puts its cache under `temp_dir()`. On the TV that may be a small RAM disk, so the core sets `TMPDIR` to the app's `cache/` before the engine starts. Item 7 of [app/ on the web](#app-on-the-web) would replace this with a parameter.
-- **Desktop.** `cargo run -p reel-tizen-core --bin reel-core -- --ui-dir out/web --profile tizen` serves the same API and UI on a Mac (from `platforms/tizen`), for testing in a browser.
+- **Desktop.** `cargo run -p reel-tizen-core --bin reel-core -- --ui-dir ../../out/web --profile tizen` serves the same API and UI on a Mac (from `platforms/tizen`), for testing in a browser. `--lan 127.0.0.1` adds what the TV serves on the local network (`/logs`, the settings page for a phone), so the UI shows that page's QR code as on the TV; `--lan 0.0.0.0` lets a phone reach it (macOS then asks to allow incoming connections).
 
 ## app/ on the web
 
@@ -88,12 +88,15 @@ NSH's web target compiles app/'s crate to wasm32. The TV's UI is that web build,
 6. **Startup.** When `ui/native.ts` loads on the web, it reads `GET /health` synchronously, with the token from `?reelToken=` found up the frame chain. That way the modules work before the first call, and a missing token or a core that is down fails at startup with a clear message. `Settings.load` gets `dataDir()` from `ui/native.ts`: the core's `info.dataDir` on the web, `process.dataDir` elsewhere. The UI never calls `Sources.setProfile`; the core already runs with the `tizen` profile.
 7. *(Optional, cleaner)* Add `engine::set_cache_dir(path)` (or a `Settings` method) so the host passes the cache dir explicitly instead of the core setting `TMPDIR`.
 
-To try the web build on a Mac against the desktop core (from `platforms/tizen`, after the web build above):
+To try the TV's UI on a Mac against the desktop core (from the repo root; the first web build takes about 3 min, later ones seconds):
 ```sh
-cargo run -p reel-tizen-core --bin reel-core -- --port 47491 --token <16+ chars> --ui-dir ../../app/.nsh/out/reel --profile tizen
-# open http://127.0.0.1:47491/ui/index.html?reelToken=<token>
+set -a; . ./.env; set +a                  # REEL_TMDB_TOKEN goes into the core when it is built
+build/tizen.sh web out/web
+(cd platforms/tizen && cargo build -p reel-tizen-core --bin reel-core)
+platforms/tizen/target/debug/reel-core --ui-dir out/web --profile tizen --lan 127.0.0.1 --token <16+ chars>
+# open http://127.0.0.1:47391/ui/index.html?reelToken=<token> in a 1920×1080 window
 ```
-Home then loads its shelves over `/rpc`. A core built without `REEL_TMDB_TOKEN` shows only the AniList shelves.
+Home then loads its shelves over `/rpc`. A core built without `REEL_TMDB_TOKEN` shows only the AniList shelves. The keyboard is the remote: arrows, Enter for OK, Escape for Back. Without the TV shell around the page there is no AVPlay (the player says so once the stream is ready), and Exit does nothing.
 
 ## Player
 

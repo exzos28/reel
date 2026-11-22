@@ -12,7 +12,7 @@ import type { SavedGroup } from "../../library";
 import { alpha, colors, cs, targetSlop, u } from "../../theme";
 import chevronIcon from "../../icons/chevron.svg";
 import { SpeedLine } from "../../kit/SpeedLine";
-import { actionsBlock, compact, stateColumn } from "./SavedRow";
+import { actionsBlock, BUTTON, compact, savingText, stateColumn } from "./SavedRow";
 import pauseIcon from "../../icons/pause.svg";
 import playIcon from "../../icons/play.svg";
 import trashIcon from "../../icons/trash.svg";
@@ -20,13 +20,13 @@ import { Pressable } from "../../kit/Pressable";
 
 const groupStyle = (focused: boolean): ViewStyle => ({
   ...rowStyle(false, focused, u(24)),
-  ...(compact ? { minHeight: cs(108), paddingVertical: cs(12) } : { height: cs(108) }),
+  ...(compact() ? { minHeight: cs(108), paddingVertical: cs(12) } : { height: cs(108) }),
   paddingLeft: cs(10),
   paddingRight: cs(22),
 });
-const thumbStyle = (): ViewStyle => ({ width: cs(compact ? 96 : 160), height: cs(compact ? 54 : 90), ...rounded(u(8)), overflow: "hidden", backgroundColor: colors.raise() });
+const thumbStyle = (): ViewStyle => ({ width: cs(compact() ? 96 : 160), height: cs(compact() ? 54 : 90), ...rounded(u(8)), overflow: "hidden", backgroundColor: colors.raise() });
 const imageStyle = () => ({ ...cover(), objectFit: "cover" }) as ViewStyle;
-const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", marginTop: u(8), width: compact ? "100%" : cs(300) });
+const progressTrack = (): ViewStyle => ({ height: cs(4), ...rounded(999), backgroundColor: colors.raise(), overflow: "hidden", marginTop: u(8), width: compact() ? "100%" : cs(300) });
 const progressFill = (p: number): ViewStyle => ({ height: "100%", width: `${Math.round(p * 100)}%`, backgroundColor: alpha(colors.snow(), 0.45) });
 
 export function SavedGroupRow(props: {
@@ -49,7 +49,7 @@ export function SavedGroupRow(props: {
     <If when={props.saving}>
       <View>
         <Text style={metaText()}>
-          {g().checking ? t("saved.state.checking") : t("saved.state.saving", { percent: Math.floor(g().progress * 100), have: Fmt.size(g().have), size: Fmt.size(g().size) })}
+          {g().checking ? t("saved.state.checking") : savingText(g().progress, g().have, g().size, g().left)}
         </Text>
         <If when={!g().checking}>
           <View style={progressTrack()}>
@@ -82,15 +82,15 @@ export function SavedGroupRow(props: {
       <View style={{ flex: 1, gap: u(4) }}>
         <Text style={{ ...labelText(), ...oneLine }}>{g().title}</Text>
         <Text style={{ ...metaText(), ...oneLine }}>{line()}</Text>
-        <If when={compact}>{state()}</If>
+        <If when={compact()}>{state()}</If>
       </View>
-      <If when={!compact}>
+      <If when={!compact()}>
         <View style={stateColumn()}>{state()}</View>
       </If>
       <View style={actionsBlock()}>
         <If when={props.onPause}>
           <IconButton
-            size={44}
+            size={BUTTON}
             icon={() => (props.paused() ? playIcon : pauseIcon)}
             label={() => t(props.paused() ? "saved.resume_all" : "saved.pause_all")}
             focused={() => props.focusedPart() === 1}
@@ -101,7 +101,7 @@ export function SavedGroupRow(props: {
         <View style={{ transform: [{ rotate: props.open() ? "180deg" : "0deg" }] }}>
           <Icon src={() => chevronIcon} size={22} color={() => colors.snow()} />
         </View>
-        <IconButton size={44} icon={() => trashIcon} label={() => t("saved.remove_all")} focused={() => props.focusedPart() === 2} background={() => colors.raise()} onPress={props.onRemove} />
+        <IconButton size={BUTTON} icon={() => trashIcon} label={() => t("saved.remove_all")} focused={() => props.focusedPart() === 2} background={() => colors.raise()} onPress={props.onRemove} />
       </View>
     </Pressable>
   );

@@ -5,14 +5,15 @@
 import { safeArea, windowSize } from "nsh";
 import { look } from "../platform/look";
 import { u } from "../theme";
-import { centering, frame, sideInset } from "./chrome";
-import { canGoBack, isCategory, section } from "../nav";
+import { centering, frame, sideInset, sideSafeArea } from "./chrome";
+import { isCategory, section } from "../nav";
 
 /** A root page (a destination: the nav over it), a title (its hero runs under what is
  * over it) or a deep page (Settings on touch, About: Back over it). */
 /** "bare": a page of its own with nothing over it but the system's bars (the first-run setup). */
 export type PageKind = "root" | "title" | "deep" | "bare";
-export type NavPlace = typeof frame.nav;
+export type { NavPlace } from "./chrome";
+import type { NavPlace } from "./chrome";
 
 /** A TV's nav in the page: its top and its row, TV pixels. */
 export const NAV_TOP = 50;
@@ -27,8 +28,10 @@ export const PHONE_HEAD = 44;
 export const CATEGORY_ROW = 44;
 /** What the page leaves under them before its own content (a hero's title), points. */
 const CATEGORY_GAP = 28;
-/** A phone's discs over a title's hero: 4 under the status bar, 40 across. */
-export const PHONE_DISCS = 44;
+/** A phone's bar over a scrolled title (Back, the title, Add to list) under the status bar,
+ * points: iOS's navigation bar 44, Material's top app bar 64. The discs over the hero sit
+ * centred in it. */
+export const PHONE_TITLE_BAR = look.system === "material" ? 64 : 44;
 /** A phone's head on a deep page (Back), points. */
 export const PHONE_BACK_HEAD = 52;
 /** A page's title under what is over it, and a hero's text under it, TV pixels. */
@@ -75,7 +78,7 @@ export function computeMetrics(i: MetricsInput): Metrics {
         return i.safeTop + TOP_ROW;
       case "tab-bar":
         // A root page: no logo over it on a phone; a category's has Home's tabs.
-        return i.safeTop + (i.kind === "deep" ? PHONE_BACK_HEAD : i.kind === "title" ? PHONE_DISCS : i.category ? CATEGORY_ROW + CATEGORY_GAP : 0);
+        return i.safeTop + (i.kind === "deep" ? PHONE_BACK_HEAD : i.kind === "title" ? PHONE_TITLE_BAR : i.category ? CATEGORY_ROW + CATEGORY_GAP : 0);
     }
   };
   const headBottom = head();
@@ -90,22 +93,23 @@ export function computeMetrics(i: MetricsInput): Metrics {
 export const TAB_ROW = look.system === "material" ? 80 : 49;
 
 /** A phone held sideways (little height): its tabs are a rail at the left. */
-export const phoneRail = () => frame.nav === "tab-bar" && windowSize().height < 500;
+export const phoneRail = () => frame().nav === "tab-bar" && windowSize().height < 500;
 /** The rail's width, points (with the system's area at the left: a notch). */
 export const RAIL = 76;
-export const railWidth = () => (phoneRail() ? RAIL + safeArea().left : 0);
+export const railWidth = () => (phoneRail() ? RAIL + sideSafeArea().left : 0);
 
-/** Where a hero's still starts, points from the page's top: under a phone's Home tabs (a fixed bar
- * over a category's root page), else at the top (it runs under what is over the page). */
-export function stillTop(): number {
-  return frame.nav === "tab-bar" && isCategory(section()) && !canGoBack() ? safeArea().top + CATEGORY_ROW : 0;
+/** Where a hero's still starts, points from the page's top: under a phone's Home tabs (the bar at
+ * the top of a category's root page: `category`), else at the top (it runs under what is over the
+ * page). */
+export function stillTop(category: boolean): number {
+  return frame().nav === "tab-bar" && category ? safeArea().top + CATEGORY_ROW : 0;
 }
 
 /** This device's metrics for a page of `kind`. */
 export function metrics(kind: PageKind): Metrics {
   const a = safeArea();
   const category = kind === "root" && isCategory(section());
-  return computeMetrics({ nav: frame.nav, kind, safeTop: a.top, safeBottom: a.bottom, unit: u(1), tabRow: TAB_ROW, rail: phoneRail(), category });
+  return computeMetrics({ nav: frame().nav, kind, safeTop: a.top, safeBottom: a.bottom, unit: u(1), tabRow: TAB_ROW, rail: phoneRail(), category });
 }
 
 /** Where a hero's text starts, points: its design's place (`design`, TV pixels), or lower
@@ -175,7 +179,7 @@ const STILL_PAST = 240;
 const STILL_FADE_IN = 360;
 
 /** A desktop's hero follows its window; a TV's and touch's keep their design. */
-export const heroFollowsWindow = frame.nav === "window-bar";
+export const heroFollowsWindow = frame().nav === "window-bar";
 
 /** This window's hero box for a design `height` and backdrop `left`, TV pixels. */
 export function heroBoxNow(height: number, left = 0): HeroBox {

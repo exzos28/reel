@@ -51,6 +51,8 @@ export interface Summary {
   notice: string | null;
   anime: boolean;
   year: number | null;
+  /** On a person's page: the part they played there (null: not named). */
+  role?: string | null;
   yearEnd: number | null;
   minutes: number;
   rating: string;
@@ -81,7 +83,13 @@ export interface Summary {
   playable: boolean;
   inList: boolean;
   release: ReleaseLine | null;
+  /** Home's hero only: where the search for its release line is (the line is kept for it only
+   * while it is "searching"). */
+  releasesState?: ReleasesState;
   play: PlayTarget;
+  /** What Play says, as the core decides it: "resume" at `at` seconds, or "play" from the start
+   * (`at` null); a show's names the episode (`season`, `episode`), a film's does not. */
+  playAs: { verb: "play" | "resume"; season: number | null; episode: number | null; at: number | null };
 }
 
 export interface Release {
@@ -89,12 +97,14 @@ export interface Release {
   quality: string;
   source: string;
   group: string;
+  /** Where it comes from without HDR ("BluRay"): the releases sheet's first line. */
+  origin: string;
   size: string;
-  /** Keys under `tracks.*`. */
-  tracks: string[];
+  /** The second line ("English, Russian MVO · H.264 · 700 MB"), as the core orders it. */
+  line: ReleasePart[];
+  /** All of the row for a screen reader. */
+  spoken: ReleasePart[];
   peers: number;
-  /** Signal bars, 1..4. */
-  bars: number;
   /** Key under `release.note.*`. */
   note: string;
   mbit: number;
@@ -106,6 +116,16 @@ export interface Release {
   top: boolean;
 }
 
+/** An audio language a release's name says: `language` ISO 639-1 (null when only the voice is
+ * told), `voice` a key under `release.voice.*` (a dub, a voice-over) or null. */
+export interface AudioLanguage {
+  language: string | null;
+  voice: string | null;
+}
+
+/** A part of a release's line: text as it is, its audio languages, or a key with its values. */
+export type ReleasePart = { text: string } | { audio: AudioLanguage[] } | ({ key: string } & Record<string, string | number>);
+
 /** Where the search for releases is (key under `releases.state.*` except "done"). */
 export type ReleasesState = "no_source" | "searching" | "failed" | "done" | "none";
 
@@ -115,6 +135,21 @@ export interface CastMember {
   /** A w185 photo, null when there is none (the initials show). */
   photo: string | null;
   initials: string;
+  /** Their page's id (`person`), null when reel has none for them (not pressable). */
+  person: string | null;
+}
+
+/** A person's page: the titles they are in, best known first. `state` "loading": not known yet
+ * (no name, no titles); "unavailable": the source did not answer. */
+export interface PersonPage {
+  id: string;
+  name: string;
+  photo: string | null;
+  initials: string;
+  items: Summary[];
+  /** What its cards say under their names ("role"). */
+  facet: Facet;
+  state: "done" | "loading" | "unavailable";
 }
 
 /** A crew group: `job` a key under `crew.*` ("director", "writer", "novel",
@@ -160,8 +195,10 @@ export interface Episode {
   date: [number, number, number] | null;
   rating: string;
   thumb: string | null;
+  /** The thumbnail's watched bar, 0..1 (the core shows a little of what is started). */
   progress: number;
-  left: number | null;
+  /** What follows the runtime in its row: the minutes left once started, else its air date. */
+  note: { left: number } | { date: [number, number, number] } | null;
   watched: boolean;
   /** Where the viewer stopped, seconds (0: from the start). */
   start: number;
@@ -183,9 +220,16 @@ export interface EpisodeReleases {
   seasonRelease: ReleaseLine | null;
 }
 
+/** What a list's cards show under their names (the core's): the year (a list of films only),
+ * or the kind ("Movie", "3 seasons"). */
+/** What a card says under its name: its year, its kind, or (a person's page) its year and the
+ * part they played there ("1999 · Neo"). */
+export type Facet = "year" | "kind" | "role";
+
 export interface Shelf {
   /** Also the translation key `shelf.<id>`. */
   id: string;
+  facet: Facet;
   items: Summary[];
 }
 
@@ -228,7 +272,20 @@ const read = <T>(key: string, json: () => string): T => {
   return value;
 };
 
-export const home = () => read<Shelf[]>("home", () => Catalog.home());
+/** Home: the hero (the title watched last, else the first card) and the shelves, which do not
+ * show the hero again (the core's). */
+export interface Home {
+  hero: Summary;
+  shelves: Shelf[];
+}
+
+export const home = () => read<Home>("home", () => Catalog.home());
+
+/** What Play pressed on `key` (what plays) does now, as the core decides it: "play" (the player
+ * opens; a release not known yet is found inside it), "no_source" (the drawer that adds a search
+ * source), "failed" (the source did not answer: the drawer to fix it). */
+export const onPlay = (key: string) => Catalog.onPlay(key) as "play" | "no_source" | "failed";
+
 /** A row of a filter panel: `name` when the source names it (a genre, a
  * country), else `key` under `browse.option.*` with its number `n`. */
 export interface FilterOption {
@@ -242,7 +299,7 @@ export interface FilterOption {
 /** A filter of a browse page and its panel; `id` is also the key under
  * `browse.filter.*`. `multi`: OK toggles; `clear`: the panel has a Clear row. */
 export interface FilterGroup {
-  id: "genres" | "years" | "countries" | "sort";
+  id: "genres" | "years" | "countries" | "format" | "sort";
   multi: boolean;
   clear: boolean;
   options: FilterOption[];
@@ -259,6 +316,9 @@ export interface Browse {
   more: boolean;
   /** The next page: "loading" on its way, "failed" (asking again retries). */
   moreState: "idle" | "loading" | "failed";
+  facet: Facet;
+  /** A filter narrows the grid (not the order): the bar offers Clear. */
+  filtered: boolean;
 }
 
 export type BrowsePage = "movies" | "shows" | "cartoons" | "anime";
@@ -267,6 +327,8 @@ export const browse = (page: BrowsePage) => read<Browse>(`browse:${page}`, () =>
 export const title = (id: string) => read<Title | null>(`title:${id}`, () => Catalog.title(id));
 export const episodes = (show: string, season: number) =>
   read<Episode[]>(`episodes:${show}:${season}`, () => Catalog.episodes(show, season));
+
+export const person = (id: string) => read<PersonPage>(`person:${id}`, () => Catalog.person(id));
 
 export const episodeReleases = (key: string) =>
   read<EpisodeReleases>(`episodeReleases:${key}`, () => Catalog.episodeReleases(key));
@@ -284,7 +346,7 @@ export interface SearchAnswer {
   recent: string[];
   /** `id` is also the translation key `search.section.<id>`. `state` "failed":
    * the row's source did not answer (no items); `retrySearch` asks again. */
-  sections: { id: "movies" | "shows" | "anime"; state: "done" | "failed"; items: Summary[] }[];
+  sections: { id: "movies" | "shows" | "anime" | "trending"; state: "done" | "failed"; facet: Facet; items: Summary[] }[];
 }
 
 export const search = (query: string) => read<SearchAnswer>("search", () => Catalog.search(query));
@@ -307,6 +369,8 @@ export function browseMore(page: BrowsePage) {
 export function chooseFilter(page: BrowsePage, group: string, id: string) {
   if (Catalog.chooseFilter(page, group, id)) version.set(version() + 1);
 }
+/** The bar's Clear: every filter of the page, not its order. */
+export const clearFilters = (page: BrowsePage) => chooseFilter(page, "all", "");
 export function chooseRelease(id: string, index: number) {
   Catalog.chooseRelease(id, index);
   version.set(version() + 1);
@@ -338,7 +402,7 @@ export const episodeCode = (season: number, episode: number) => t("fmt.episode",
 export const yearsText = (s: Summary) =>
   s.year == null ? "" : s.yearEnd ? t("fmt.years", { from: s.year, to: s.yearEnd }) : String(s.year);
 
-/** "Movie", "Short", "3 Seasons" ("Show" while the seasons are not known). */
+/** "Movie", "Short", "3 seasons" ("Series" while the seasons are not known). */
 export function kindText(s: Summary) {
   if (s.kind !== "show") return t(`kind.${s.kind}`);
   if (!s.seasons) return t("kind.show");
@@ -348,27 +412,37 @@ export function kindText(s: Summary) {
 /** Runtime of a film, seasons of a show. */
 export const lengthText = (s: Summary) => (s.kind === "show" ? kindText(s) : s.minutes ? runtime(s.minutes) : "");
 
-/** Under a card: "★ 7.9 · 1963 · Movie" without the star (drawn red, `CardMeta`), what is not
- * known left out ("1963 · Movie"). */
-export const cardMeta = (s: Summary) => [s.rating, s.year == null ? "" : String(s.year), kindText(s)].filter((x) => x).join(" · ");
+/** Under a card's name, beside its rating: the one value its list says matters (`Facet`), "1963"
+ * or "Movie" / "3 seasons"; a film without a year says its kind; a notice card nothing. */
+export function facetText(s: Summary, facet: Facet) {
+  if (s.notice) return "";
+  if (facet === "role") return [s.year != null ? String(s.year) : "", s.role ?? ""].filter(Boolean).join(" · ") || kindText(s);
+  return facet === "year" && s.year != null ? String(s.year) : kindText(s);
+}
 
-/** Under a Continue watching card: "1 h 12 min left", "S3:E4 · 7 min left". */
+/** Under a Continue watching card: "1 h 12 min left", "S3:E4 · 7 min left" (null: not begun). */
 export function leftText(s: Summary) {
-  if (s.left == null) return cardMeta(s);
+  if (s.left == null) return null;
   const left = t("card.left", { time: runtime(s.left) });
   return s.resume ? `${episodeCode(s.resume.season, s.resume.episode)} · ${left}` : left;
 }
 
-/** Under a show's poster: "S3:E5 · Nov 20". */
+/** Under a show's poster: "S3:E5 · Nov 20" (null: no episode is coming). */
 export const airsText = (s: Summary) =>
-  s.airs ? `${episodeCode(s.airs.season, s.airs.episode)} · ${t("fmt.day", { month: t(`month.${s.airs.month}`), day: s.airs.day })}` : cardMeta(s);
+  s.airs ? `${episodeCode(s.airs.season, s.airs.episode)} · ${t("fmt.day", { month: t(`month.${s.airs.month}`), day: s.airs.day })}` : null;
 
-/** What Play says: "Play", "Resume 41:12", "Resume S3:E4". */
+/** What Play says (the core's `playAs`): "Play", "Resume 41:12", "Play S1:E1", "Resume S2:E3 · 14:30". */
 export function playLabel(s: Summary) {
-  if (s.resume) return t("title.resume", { at: episodeCode(s.resume.season, s.resume.episode) });
-  if (s.stoppedAt != null) return t("title.resume", { at: Fmt.position(s.stoppedAt) });
-  return t("title.play");
+  const p = s.playAs;
+  const episode = p.season != null && p.episode != null ? episodeCode(p.season, p.episode) : null;
+  const at = p.at != null ? Fmt.position(p.at) : null;
+  if (at != null) return episode ? t("title.resume_episode", { episode, at }) : t("title.resume", { at });
+  return episode ? t("title.play_episode", { episode }) : t("title.play");
 }
+
+/** What an episode's row says after its runtime: "23 min left", else its air date. */
+export const episodeNote = (e: Episode) =>
+  !e.note ? "" : "left" in e.note ? t("card.left", { time: runtime(e.note.left) }) : dateText(e.note.date);
 
 export const dateText = (date: [number, number, number] | null) =>
   date ? t("fmt.date", { month: t(`month.${date[1]}`), day: date[2], year: date[0] }) : "";
@@ -420,7 +494,25 @@ export const namesText = (names: string[]) => names.join(", ");
 
 export const statusText = (status: string) => t(`status.${status}`);
 
-export const tracksText = (r: Release) => r.tracks.map((k) => t(`tracks.${k}`)).join(", ");
+/** "Russian MVO", "English", "MVO". */
+function audioText(a: AudioLanguage) {
+  const voice = a.voice ? t(`release.voice.${a.voice}`) : "";
+  if (!a.language) return voice;
+  const language = t(`languages.${a.language}`);
+  return voice ? t("release.voiced", { language, voice }) : language;
+}
+
+function partText(p: ReleasePart): string {
+  if ("audio" in p) return (p.audio as AudioLanguage[]).map(audioText).join(", ");
+  if ("text" in p) return p.text as string;
+  return t(p.key as string, p);
+}
+
+/** A release row's second line: "English, Russian MVO · H.264 · 700 MB". */
+export const releaseDetails = (r: Release) => r.line.map(partText).join(" · ");
+
+/** A release row as a screen reader says it. */
+export const releaseSpoken = (r: Release) => r.spoken.map(partText).join(", ");
 
 /** An episode's name or overview, from the core (empty while its season is not known). */
 export function episodeText(show: string, season: number, episode: number, field: "title" | "about") {

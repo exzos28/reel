@@ -7,7 +7,7 @@
 //! `/settings/api/*` (docs/hosted-settings.md); app/'s `hosted` module does the work.
 
 use std::{
-    net::{Ipv4Addr, SocketAddr},
+    net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
     sync::{Mutex, Once},
 };
@@ -31,7 +31,8 @@ const APP_LOG_LINES: usize = 2000;
 static STARTED: Once = Once::new();
 
 /// Serves the logs on a thread of its own, once per process; a busy port is logged, not fatal.
-pub fn serve_once(data_dir: PathBuf) {
+/// `ip`: the TV's every address; a development host's own choice (reel-core --lan).
+pub fn serve_once(data_dir: PathBuf, ip: IpAddr) {
     STARTED.call_once(|| {
         let spawned = std::thread::Builder::new().name("reel-logs".into()).spawn(move || {
             let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
@@ -39,7 +40,7 @@ pub fn serve_once(data_dir: PathBuf) {
                 Err(e) => return eprintln!("reel logs: {e}"),
             };
             runtime.block_on(async move {
-                let addr = SocketAddr::from((Ipv4Addr::UNSPECIFIED, LOGS_PORT));
+                let addr = SocketAddr::from((ip, LOGS_PORT));
                 match tokio::net::TcpListener::bind(addr).await {
                     Ok(l) => {
                         eprintln!("reel logs: GET http://<this TV>:{LOGS_PORT}/logs, settings page at /settings");

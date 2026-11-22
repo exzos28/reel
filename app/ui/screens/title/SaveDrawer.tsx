@@ -11,17 +11,23 @@ import { Icon } from "../../kit/Icon";
 import { rowStyle } from "../../kit/Row";
 import { rounded, row } from "../../kit/shape";
 import { labelText, metaText, oneLine } from "../../kit/text";
-import { Drawer } from "../../layout/Drawer";
+import { Drawer, drawerPad } from "../../layout/Drawer";
 import { scroller, Scroller } from "../../layout/Scroller";
 import { Fmt } from "../../native";
 import type { PlanEpisode, SeasonPlan } from "../../library";
-import { alpha, colors, cs, targetSlop, u } from "../../theme";
+import { alpha, colors, cs, MIN_TARGET, targetSlop, u } from "../../theme";
 import checkIcon from "../../icons/check.svg";
 import { SaveMark } from "../../kit/SaveMark";
 import { Pressable } from "../../kit/Pressable";
 
 const tabStyle = (selected: boolean): ViewStyle => ({ paddingHorizontal: cs(14), paddingVertical: cs(8), ...rounded(u(8)), backgroundColor: selected ? colors.raise() : "transparent" });
-const rowBox = (focused: boolean): ViewStyle => ({ ...rowStyle(false, focused, u(14)), height: cs(56), paddingHorizontal: cs(14) });
+/** A row: a finger's 44 / 48 points high on touch. */
+const rowHeight = () => Math.max(cs(56), MIN_TARGET);
+const rowBox = (focused: boolean): ViewStyle => ({ ...rowStyle(false, focused, u(14)), height: rowHeight(), paddingHorizontal: cs(14) });
+/** The seasons run out to the drawer's edges (its padding inside them): the one cut there shows
+ * the row scrolls on. */
+const tabsBleed = (): ViewStyle => ({ marginHorizontal: -drawerPad() });
+const tabsRow = (): ViewStyle => ({ ...row(u(6)), paddingHorizontal: drawerPad() });
 const boxStyle = (on: boolean, locked: boolean): ViewStyle => ({
   width: cs(24),
   height: cs(24),
@@ -49,7 +55,7 @@ function Box(props: { on: () => boolean; locked: () => boolean; some?: () => boo
 
 /** A row in the place of an episode while the season's episodes are coming. */
 const skeletonRow = (): ViewStyle => ({
-  height: cs(56),
+  height: rowHeight(),
   ...rounded(u(10)),
   backgroundColor: alpha(colors.snow(), 0.05),
   animationName: "pulse",
@@ -61,7 +67,7 @@ const skeletonRow = (): ViewStyle => ({
 function EpisodeLine(props: { e: () => PlanEpisode; picked: () => boolean; focused: () => boolean; viewRef: (r: ViewRef) => void; onPress: () => void }) {
   const e = props.e;
   return (
-    <Pressable feedback="row" haptic={!e().locked} ref={props.viewRef} role="checkbox" accessibilityLabel={e().title} accessibilityState={{ checked: e().locked || props.picked() }} hitSlop={targetSlop(cs(56))} onPress={props.onPress} hoverStyle={{ backgroundColor: colors.raise() }} style={rowBox(props.focused())}>
+    <Pressable feedback="row" haptic={!e().locked} ref={props.viewRef} role="checkbox" accessibilityLabel={e().title} accessibilityState={{ checked: e().locked || props.picked() }} hitSlop={targetSlop(rowHeight())} onPress={props.onPress} hoverStyle={{ backgroundColor: colors.raise() }} style={rowBox(props.focused())}>
       <Box on={() => e().locked || props.picked()} locked={() => e().locked} />
       <Text style={{ ...metaText(colors.faint()), width: cs(30), textAlign: "right" }}>{String(e().number)}</Text>
       <Text style={{ ...labelText(), ...oneLine, flex: 1 }}>{e().title}</Text>
@@ -131,8 +137,8 @@ export function SaveDrawer(props: {
     >
       {(list) => (
         <View style={{ gap: u(10) }}>
-          <Scroller ctl={tabs}>
-          <View style={row(u(6))}>
+          <Scroller ctl={tabs} style={tabsBleed()}>
+          <View style={tabsRow()}>
             <Each of={props.seasons()} key={(s) => String(s.number)}>
               {(s) => (
                 <Pressable haptic={s().number !== props.season()} ref={tabs.follow(() => s().number === props.season(), "nearest")} role="tab" accessibilityState={{ selected: s().number === props.season() }} onPress={() => props.onSeason(s().number)} style={tabStyle(s().number === props.season())}>

@@ -38,7 +38,7 @@ hosted:
 
 shelf:
   continue: Continue watching
-  watchlist: Watchlist
+  watchlist: "My list"
   trending_movies: Trending movies
   trending_shows: Trending series
   popular: Popular
@@ -64,13 +64,17 @@ empty:
 title:
   play: Play
   resume: "Resume %{at}"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  play_episode: "Play %{episode}"
+  resume_episode: "Resume %{episode} · %{at}"
+  about_more: "Show the whole description"
+  about_less: "Show less"
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: Watchlist
-  add_to_list: Watchlist
-  in_list: In Watchlist
-  add_to_list_spoken: Add to Watchlist
-  remove_from_list_spoken: Remove from Watchlist
+  my_list: "Add to list"
+  add_to_list: "Add to list"
+  in_list: "In list"
+  add_to_list_spoken: "Add to list"
+  remove_from_list_spoken: "Remove from list"
   trailer: Trailer
   other_releases: Other releases
   save: Save
@@ -93,8 +97,8 @@ kind:
   movie: Movie
   short: Short
   show: Series
-  season_one: 1 Season
-  seasons: "%{count} Seasons"
+  season_one: "1 season"
+  seasons: "%{count} seasons"
 
 fmt:
   minutes: "%{m} min"
@@ -137,6 +141,14 @@ release:
   sharing: "%{count} people sharing"
   sharing_short: "%{count} sharing"
   pack: "season pack %{size}"
+  # A voiced audio language: "Russian MVO", "English dub".
+  voiced: "%{language} %{voice}"
+  # How an audio language is voiced: a dub, a voice-over by several, two or one voices.
+  voice:
+    dub: "dub"
+    mvo: "MVO"
+    dvo: "DVO"
+    avo: "AVO"
   fast: starts in seconds
   note:
     starts_fast: Starts fast
@@ -172,6 +184,13 @@ about:
   details: Details
   similar: More like this
 
+person:
+  titles: "Films and series"
+  state:
+    loading: "Loading…"
+    unavailable: "Their titles could not be loaded. Try again later."
+    none: "No films or series to show."
+
 crew:
   director:
     one: Director
@@ -194,7 +213,6 @@ detail:
   original_title: Original title
   release_date: Release date
   first_aired: First aired
-  runtime: Runtime
   status: Status
   countries: Country
   studios: Studio
@@ -274,7 +292,7 @@ browse:
     all: All cartoons
   anime:
     title: Anime
-    lead: Seasonal hits and all-time favourites
+    lead: Seasonal hits and all-time favorites
     trending: Trending this season
     all: All anime
   filter:
@@ -283,6 +301,7 @@ browse:
     countries: Countries
     sort: Sort by
     picked: "%{filter}: %{picked}"
+    format: "Format"
   sort: "Sort by:"
   option:
     decade: "%{n}s"
@@ -291,11 +310,15 @@ browse:
     top_rated: Top rated
     newest: Newest
     any: Any
+    format_tv: "Series"
+    format_movie: "Movies"
+    format_special: "OVA and specials"
   state:
     loading: Loading…
     empty: Nothing matches these filters.
     offline: Could not load this list. Check the connection.
     more_failed: Could not load more titles. Move down to try again.
+  clear: "Clear"
 
 search:
   title: Search
@@ -304,29 +327,35 @@ search:
   recent: Recent searches
   clear: Clear history
   searching: Searching…
-  none: "Nothing found for “%{query}”."
+  none: "Nothing found for “%{query}”. Try the original title or fewer words."
   failed: TMDB and AniList did not answer. Check the connection and try again.
   no_tmdb: This build has no TMDB key, so only anime is searched.
   section:
     movies: Movies
     shows: Series
     anime: Anime
+    trending: "Trending now"
   try_again: Try again
   # A row of results whose source did not answer.
   row_failed:
     movies: Could not load films.
     shows: Could not load series.
     anime: Could not load anime.
+  clear_query: "Clear search"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "Show all %{count}"
 
 compat:
   audio_dts: This release has only DTS audio, which this device cannot play. Choose another release.
   audio_truehd: This release has only TrueHD audio, which this device cannot play. Choose another release.
-  dolby_vision_only: This release is Dolby Vision without an HDR10 layer; this device would show wrong colours. Choose another release.
+  dolby_vision_only: This release is Dolby Vision without an HDR10 layer; this device would show wrong colors. Choose another release.
   container: This file's format does not play on this device. Choose another release.
 
 player:
   back: Back
   close: Close
+  expand_sheet: Show more
+  collapse_sheet: Show less
   close_tracks: Close audio and subtitles
   episodes: Episodes
   close_episodes: Close the episodes
@@ -349,9 +378,7 @@ player:
       other: "Found %{count} people, connecting"
     fetching: "Fetching the start, %{percent}%"
     starting: Starting
-  buffering: Buffering
-  ahead_seconds: "%{seconds} s ready ahead"
-  rate_from: "%{speed} from %{count} people"
+  waiting: "Waiting for the stream"
   ready_ahead: "%{minutes} min ready ahead"
   ready_ahead_short: Less than a minute ready ahead
   streaming: "streaming at %{speed}"
@@ -372,6 +399,7 @@ player:
   watch_credits: Watch credits
   no_source: No release to play.
   no_source_hint: Add a search source in Settings, or pick another release.
+  not_found_hint: Your search source found none that plays on this device.
   not_in_release: This episode is not in the release.
   not_in_release_hint: Go back to pick a release for it.
   failed: "Could not play: %{message}"
@@ -404,7 +432,7 @@ settings:
     key: API key (optional)
     key_placeholder: Only if your source has one
     key_saved: Key saved. Type a new one to replace it
-    save: Save and check
+    save: "Check"
     remove: Remove source
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: Get a ready source
@@ -433,20 +461,20 @@ settings:
   # What shows while a film loads or waits for more of the stream.
   loader:
     title: Loading animation
-    about: What shows while a film waits for more of the stream.
+    about: "What shows while a film starts."
+    none: None
     dinosaur: Dinosaur
-    logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not
   # answer (failed), from Settings (edit).
   source_drawer:
     missing_title: Add a search source
     missing_about: reel plays from releases it finds on your own search source, and there is none yet. Enter a Torznab address and its API key; Play works once it connects.
     failed_title: Your search source did not answer
-    failed_about: reel could not search it for releases. Check its address and API key, then Save and check; Play works once it connects.
+    failed_about: "reel could not search it for releases. Check its address and API key, then press Check; Play works once it connects."
     edit_title: Search source
     edit_about: A Torznab address and its API key.
     link_title: Use this source?
-    link_about: A link filled in this source. Save and check to use it, or Back to leave yours as it is.
+    link_about: "A link filled in this source. Press Check to use it, or Back to leave yours as it is."
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: Connected
@@ -455,7 +483,7 @@ settings:
   # The card beside Settings on a device that serves its settings page (a TV).
   phone:
     title: Change these on your phone
-    text: "Scan the code, or open %{url}."
+    text: "Scan the code, or open the address below."
   interface:
     title: Interface
   about:
@@ -464,13 +492,15 @@ settings:
     data: Data sources
     tmdb_logo: The Movie Database (TMDB)
     version: "Version %{version} (%{build})"
+    license: "Source-available · %{license}"
+    repository: "reel's source code"
   details:
     title: Stream details
     about: While a film plays or waits, show how fast it comes, from how many people, and how much is ready ahead.
     show: Show stream details
   buffer:
     title: Playback buffer
-    about: How much of the film reel keeps while it plays. Bigger copes better with slow peers and long jumps.
+    about: "How much space reel uses while a film plays. A bigger buffer copes better with slow peers and long jumps."
     free: "%{free} free on this device"
     default: (default)
 
@@ -484,21 +514,22 @@ setup:
     help: reel also searches releases by this title.
     more: More languages
   buffer:
-    title: How much space can reel use while playing?
-    help: A bigger buffer copes better with slow peers and long jumps.
+    title: "Playback buffer"
+    help: "How much space reel may use while a film plays. A bigger buffer copes better with slow peers and long jumps."
     recommended: Recommended
   source:
     title: Where should reel find films?
-    help: Enter your own, or get a ready one.
-    own_title: Your own source
-    rent_title: Or get a ready one
+    help: "reel doesn't search by itself. Give it a search source (Torznab): your own Jackett or Prowlarr, or get one in Telegram."
+    help_own: "reel doesn't search by itself. Give it a search source (Torznab): your own Jackett or Prowlarr."
+    own_title: "Or use your own"
+    rent_title: "Get a ready one"
     check: Check
+    checking: "Checking…"
     finish: Finish
     skip: Skip
-    footnote: "Torznab is a common way for search services to list torrent releases. reel does not search for video itself: it is a catalogue and a player, and finds what to play only through the source you give it."
   phone:
     title: Or set it up on your phone
-    text: "Scan the code with the phone's camera, or open %{url} in its browser. This screen follows along."
+    text: "Scan the code with the phone's camera, or open the address below in its browser. This screen follows along."
     source_title: Easier on your phone
     source_text: "Typing an address with a remote is slow. Scan the code, or open %{url}, and paste it there. This screen finishes by itself."
 
@@ -512,7 +543,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: Saved
-  empty: Nothing saved yet. Save a film or a season from its page to watch it without the internet.
+  empty: "Save a film to watch it offline"
+  browse: "Browse films"
   saving: Saving
   while_open: while reel is open
   ready: Ready to watch
@@ -537,9 +569,10 @@ saved:
     checking: Checking what is saved…
     resolving: Finding people who share it…
     saving: "%{percent}% · %{have} of %{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent}% · %{have} of %{size} · about %{time} left"
     paused: "Paused · %{have} of %{size}"
     waiting: Starts when the film you watch stops
-    saved: "Saved · %{size}"
     unavailable: Its disk is not connected
   failed:
     no_source: No release found to save

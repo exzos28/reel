@@ -14,10 +14,10 @@ export function useRootBack(page: { ctl: ScrollCtl; onNav: () => boolean; toNav:
   // Chosen in the nav with the keys: the focus stays there, on this page's item.
   if (takeChosenInNav(section())) page.toNav();
   onPageBack(() => {
-    if (frame.nav === "window-bar") return true;
-    if (frame.nav !== "page") return false;
+    if (frame().nav === "window-bar") return true;
+    if (frame().nav !== "page") return false;
     if (!page.onNav()) {
-      page.ctl.scroll()?.scrollTo({ y: 0, animated: true });
+      page.ctl.toStart();
       page.toNav();
     } else if (section() !== "home") {
       homeZone.set("nav");

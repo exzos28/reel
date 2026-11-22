@@ -7,12 +7,12 @@ import chevronIcon from "../icons/chevron.svg";
 import { Icon } from "../kit/Icon";
 import { row } from "../kit/shape";
 import { colors, iconPt, targetSlop, u } from "../theme";
-import { chrome } from "./chrome";
+import { family } from "../platform";
 import type { ScrollCtl } from "./Scroller";
 import { Pressable } from "../kit/Pressable";
 
 /** Rows get arrows on the desktops only. */
-export const railArrows = chrome === "mac" || chrome === "windows" || chrome === "linux";
+export const railArrows = family === "mac" || family === "windows" || family === "linux";
 
 const arrowStyle = (off: boolean): ViewStyle => ({
   width: u(56),

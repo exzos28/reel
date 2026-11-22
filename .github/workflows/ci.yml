@@ -1,11 +1,13 @@
-# PRs and main: the checks (checks.yml), which main's branch protection requires before a merge.
+# PRs, develop and main: the checks (checks.yml). main's branch protection requires them before a
+# merge (a version PR from develop); a PR into develop merges without waiting, and the run on
+# develop after it says what broke.
 # The platform builds (build.yml, tizen.yml) are not run on every change: on a PR with the
 # `build` label, on a version PR (branch release/*), by hand, and on a release (release.yml).
 name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
   workflow_dispatch:

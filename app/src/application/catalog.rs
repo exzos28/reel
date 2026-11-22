@@ -29,6 +29,7 @@ use super::{progress, settings};
 use crate::wiring::{metadata, playback};
 use reel_domain::discover::{DiscoverKind, Filter};
 use reel_domain::numbering::{self, Holds, Numbering, Through};
+use reel_domain::play::Pick;
 use reel_domain::{compat, episode, fit, release, typo};
 
 mod details;
@@ -53,6 +54,8 @@ enum Call {
     Discover(DiscoverKind, Filter, u32),
     /// What the filters of a catalog offer (genre names, country names).
     FilterOptions(DiscoverKind),
+    /// A person and their titles ("tmdb:person:6384").
+    Person(String),
 }
 
 impl Call {
@@ -64,6 +67,7 @@ impl Call {
             Call::Discover(kind, f, 1) => format!("discover/{}/{}", kind.as_str(), f.key()),
             Call::Discover(kind, f, n) => format!("discover/{}/{}/p{n}", kind.as_str(), f.key()),
             Call::FilterOptions(kind) => format!("filterOptions/{}", kind.as_str()),
+            Call::Person(id) => format!("person/{id}"),
         }
     }
 }
@@ -79,6 +83,8 @@ struct Slot {
     meta_rev: u64,
     /// When the last answer had no data: retried after a while.
     failed_at: Option<Instant>,
+    /// The last answer failed for want of a network (`ProviderError::Network`).
+    no_network: bool,
 }
 
 /// Waiting for a first answer on the UI thread, at most: long enough for the local cache
@@ -143,11 +149,11 @@ fn record_search(key: &str, started_in: u64, search: Search) {
 }
 
 /// The search source changed: what the old one found (or failed to find) is dropped, so the
-/// screens search the new one at once.
+/// screens search the new one at once. The releases kept per title stay: they are found again
+/// by what they are (`Pick`), in the new source's answers or not at all.
 pub fn source_changed() {
     SEARCH_GEN.fetch_add(1, Ordering::Relaxed);
     SEARCHES.lock().unwrap().clear();
-    CHOSEN.lock().unwrap().clear();
     bump();
 }
 
@@ -258,6 +264,7 @@ fn ask(call: Call, rev: u64) {
             Call::Season(id, n) => metadata().season(id.clone(), *n, lang).await,
             Call::Discover(kind, f, n) => metadata().discover(*kind, f.clone(), lang, *n).await,
             Call::FilterOptions(kind) => metadata().filter_options(*kind, lang).await,
+            Call::Person(id) => metadata().person(id.clone(), lang).await,
         };
         let envelope: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
         if !envelope["error"].is_null() {
@@ -284,6 +291,7 @@ fn land(call: &Call, envelope: &Value, rev: u64) {
             || (data.is_some() && slot.data != data)
             || (data.is_none() && slot.data.is_none() && slot.failed_at.is_none());
         slot.failed_at = if data.is_none() { Some(Instant::now()) } else { None };
+        slot.no_network = data.is_none() && envelope["error"]["kind"] == "network";
         if data.is_some() {
             slot.data = data;
         }
@@ -581,8 +589,29 @@ struct Search {
 const RETRY_FAILED_AFTER: Duration = Duration::from_secs(30);
 
 static SEARCHES: LazyLock<Mutex<HashMap<String, Search>>> = LazyLock::new(Default::default);
-/// The user's choice of release per what plays: an index into its releases.
-static CHOSEN: LazyLock<Mutex<HashMap<String, usize>>> = LazyLock::new(Default::default);
+
+/// The release kept for what `key`'s releases are searched for (the viewer's choice, or the one
+/// it was watched in), kept with the watch progress so it outlives a restart.
+fn kept(key: &str) -> Option<Pick> {
+    progress::release(key)
+}
+
+/// What a release of a search's answer is, to find it again in another (`Pick`).
+fn pick_of(r: &Value) -> Pick {
+    Pick {
+        infohash: text(&r["infohash"]),
+        title: text(&r["title"]).unwrap_or_default(),
+        size: r["size"].as_f64().filter(|b| *b > 0.0).map(|b| b as u64),
+    }
+}
+
+/// Where release `pick` is in `releases`.
+fn find_pick(pick: &Pick, releases: &[Value]) -> Option<usize> {
+    releases.iter().position(|r| {
+        let size = r["size"].as_f64().filter(|b| *b > 0.0).map(|b| b as u64);
+        pick.is(r["infohash"].as_str(), r["title"].as_str().unwrap_or_default(), size)
+    })
+}
 
 fn has_source() -> bool {
     #[cfg(test)]
@@ -711,25 +740,72 @@ fn quality_rank(r: &Value) -> u64 {
     r["info"]["resolution"].as_u64().unwrap_or(0)
 }
 
-/// The release's own words for where it comes from: "BluRay", "WEB HDR".
-fn source_label(r: &Value) -> String {
-    let info = &r["info"];
-    let mut parts: Vec<&str> = Vec::new();
-    parts.push(match info["source"].as_str() {
+/// Where the release comes from: "BluRay", "WEB" ("" when its name does not say).
+fn source_name(r: &Value) -> &'static str {
+    match r["info"]["source"].as_str() {
         Some("remux") => "Remux",
         Some("bluray") => "BluRay",
         Some("web") => "WEB",
         Some("hdtv") => "HDTV",
         Some("dvd") => "DVD",
         _ => "",
-    });
-    if info["dolby_vision"] == true {
-        parts.push("DV");
-    } else if info["hdr"] == true {
-        parts.push("HDR");
     }
-    parts.retain(|p| !p.is_empty());
-    parts.join(" ")
+}
+
+/// The release's own words for where it comes from: "BluRay", "WEB HDR".
+fn source_label(r: &Value) -> String {
+    let info = &r["info"];
+    let hdr = if info["dolby_vision"] == true {
+        "DV"
+    } else if info["hdr"] == true {
+        "HDR"
+    } else {
+        ""
+    };
+    [source_name(r), hdr].into_iter().filter(|p| !p.is_empty()).collect::<Vec<_>>().join(" ")
+}
+
+/// The picture in a release row's second line: codec, then Dolby Vision and HDR, "H.265 · DV ·
+/// HDR" (no words to translate); "" when the name says none of them.
+fn video_label(r: &Value) -> String {
+    let info = &r["info"];
+    let codec = match info["codec"].as_str() {
+        Some("x264") => "H.264",
+        Some("x265") => "H.265",
+        Some("av1") => "AV1",
+        _ => "",
+    };
+    let dv = if info["dolby_vision"] == true { "DV" } else { "" };
+    // A Dolby Vision release's HDR10 layer, or HDR alone.
+    let hdr = if info["hdr10"] == true || (info["hdr"] == true && info["dolby_vision"] != true) { "HDR" } else { "" };
+    [codec, dv, hdr].into_iter().filter(|p| !p.is_empty()).collect::<Vec<_>>().join(" · ")
+}
+
+/// A release row's second line and its spoken label, as parts the UI words and joins: `{"text"}`
+/// as it is, `{"audio":[{"language","voice"}…]}` the audio languages (`language` ISO 639-1 or
+/// null, `voice` "dub", "mvo", "dvo", "avo" or null), `{"key",…}` a key with its values.
+/// The line: audio first (what the choice turns on), the picture, the size. Spoken: the name,
+/// the line, the people sharing and how it starts; the release's own name is left out (long
+/// and noisy read aloud).
+fn release_parts(r: &Value, peers: u64, mbit: u64) -> (Vec<Value>, Vec<Value>) {
+    let mut line = Vec::new();
+    if let Some(a) = r["info"]["languages"].as_array().filter(|a| !a.is_empty()) {
+        line.push(json!({ "audio": a }));
+    }
+    let video = video_label(r);
+    if !video.is_empty() {
+        line.push(json!({ "text": video }));
+    }
+    let size = size(r);
+    if !size.is_empty() {
+        line.push(if r["seasonPack"] == true { json!({ "key": "release.pack", "size": size }) } else { json!({ "text": size }) });
+    }
+    let name = [quality(r), source_name(r).to_owned()].into_iter().filter(|p| !p.is_empty()).collect::<Vec<_>>().join(" ");
+    let mut spoken = vec![json!({ "text": name })];
+    spoken.extend(line.iter().cloned());
+    spoken.push(json!({ "key": "release.sharing", "count": peers }));
+    spoken.push(json!({ "key": format!("release.note.{}", start_note(peers, mbit)), "mbit": mbit }));
+    (line, spoken)
 }
 
 fn peers(r: &Value) -> u64 {
@@ -767,16 +843,21 @@ fn plays_now(peers: u64, mbit: u64) -> bool {
     peers >= 50 && mbit <= PLAYS_NOW_MBIT
 }
 
-/// The release Play uses: the user's choice, else the best quality that plays now; on a device
-/// with limits (`fit::limits`: a phone, a tablet) the best that plays now within them, else the
-/// most shared one within them, before any other. An index into `releases`.
+/// The release Play uses: the one kept for `key` (the viewer's choice, or the one it was watched
+/// in) while the search still finds it, else the best quality that plays now; on a device with
+/// limits (`fit::limits`: a phone, a tablet, a screen that shows less than 4K HDR) the best that
+/// plays now within them, else the most shared one within them, before any other. An index into
+/// `releases`.
 fn chosen(key: &str, releases: &[Value], minutes: u32, episodes: u32) -> Option<usize> {
-    if let Some(&i) = CHOSEN.lock().unwrap().get(key)
-        && i < releases.len()
-    {
+    if let Some(i) = kept(key).and_then(|p| find_pick(&p, releases)) {
         return Some(i);
     }
-    picked_within(fit::limits(compat::family()), key, releases, minutes, episodes, |_| true)
+    picked_within(device_limits(), key, releases, minutes, episodes, |_| true)
+}
+
+/// What this device picks by itself: its kind (`compat::family`) on its screen (`compat::display`).
+fn device_limits() -> fit::Limits {
+    fit::limits(compat::family(), compat::display())
 }
 
 /// How long one runs when the catalog does not say, minutes: a film's or an episode's usual
@@ -784,20 +865,30 @@ fn chosen(key: &str, releases: &[Value], minutes: u32, episodes: u32) -> Option<
 const FILM_MINUTES: u32 = 120;
 const EPISODE_MINUTES: u32 = 45;
 
+/// A release's picture as its name says it.
+fn picture(r: &Value) -> fit::Picture {
+    let info = &r["info"];
+    let dv = info["dolby_vision"] == true;
+    fit::Picture {
+        lines: info["resolution"].as_u64().map(|h| h as u32),
+        hdr: info["hdr"] == true || dv,
+        dolby_vision_only: dv && info["hdr10"] != true,
+    }
+}
+
 /// Whether release `r` of `key` keeps to `limits`: its picture and its bytes per hour (a pack's
 /// share per episode; a pack of a season whose episode count is not known is judged by its
 /// picture alone).
 fn release_within(limits: fit::Limits, key: &str, r: &Value, minutes: u32, episodes: u32) -> bool {
-    let lines = r["info"]["resolution"].as_u64().map(|h| h as u32);
     let pack = r["seasonPack"] == true;
     let bytes = r["size"].as_f64().unwrap_or(0.0);
     if pack && episodes <= 1 {
-        return fit::within(limits, lines, 0.0, 0);
+        return fit::within(limits, picture(r), 0.0, 0);
     }
     let share = if pack { episodes as f64 } else { 1.0 };
     let episode = parse_key(key).1.is_some() || parse_season_key(key).is_some();
     let minutes = if minutes > 0 { minutes } else if episode { EPISODE_MINUTES } else { FILM_MINUTES };
-    fit::within(limits, lines, bytes / share, minutes)
+    fit::within(limits, picture(r), bytes / share, minutes)
 }
 
 /// The release Play picks by itself among those `allowed` lets through (Save's smaller one: those
@@ -823,11 +914,6 @@ fn picked_within(limits: fit::Limits, key: &str, releases: &[Value], minutes: u3
         None
     };
     first.or_else(|| now.max_by_key(best)).or_else(|| rs.max_by_key(shared)).map(|(i, _)| i)
-}
-
-/// Four signal bars for the people sharing.
-fn bars(peers: u64) -> u8 {
-    reel_domain::release::swarm_tier(peers)
 }
 
 /// How long one of `key` runs and how many episodes a pack of its season holds.
@@ -860,16 +946,19 @@ fn releases_json(key: &str, info: &Info) -> Vec<Value> {
         .map(|&(i, top)| {
             let r = &releases[i];
             let (p, m) = (peers(r), mbit(r, minutes, episodes));
+            let (line, spoken) = release_parts(r, p, m);
             json!({
                 "index": i,
                 "quality": quality(r),
                 "source": source_label(r),
+                // In the releases sheet, without HDR: its second line says it (`line`).
+                "origin": source_name(r),
                 // The release's full name.
                 "group": r["title"],
                 "size": size(r),
-                "tracks": [],
+                "line": line,
+                "spoken": spoken,
                 "peers": p,
-                "bars": bars(p),
                 "note": start_note(p, m),
                 "mbit": m,
                 "selected": Some(i) == pick,
@@ -1026,7 +1115,9 @@ fn season_done(show: &str, s: u32) -> bool {
     search_of(&season_key(show, s)).is_some_and(|x| x.releases.is_some() || x.failed.is_some())
 }
 
-/// The release `key` plays, starting what is needed to know it.
+/// The release `key` plays, starting what is needed to know it: `Failed` when the search source
+/// did not answer (an episode's own search, after its season's found nothing or failed),
+/// `NotFound` when it found nothing to play or the title is not known.
 pub fn play_source(key: &str) -> PlaySource {
     if !has_source() {
         return PlaySource::None;
@@ -1034,11 +1125,11 @@ pub fn play_source(key: &str) -> PlaySource {
     let (title, ep) = parse_key(key);
     let call = Call::Title(title.to_owned());
     let Some(t) = meta(&call) else {
-        return if answered(&call) { PlaySource::None } else { PlaySource::Searching };
+        return if answered(&call) { PlaySource::NotFound } else { PlaySource::Searching };
     };
     let info = from_title(&t);
     if let Some((s, e)) = ep
-        && !CHOSEN.lock().unwrap().contains_key(key)
+        && kept(key).is_none()
     {
         match season_has(title, &info, s, e) {
             Some((source, Has::Yes | Has::Unknown)) => {
@@ -1046,7 +1137,7 @@ pub fn play_source(key: &str) -> PlaySource {
             }
             Some((_, Has::No)) => return PlaySource::NotInRelease,
             None if !season_done(title, s) => return PlaySource::Searching,
-            // The season has no release at all: look for this episode alone.
+            // The season has no release at all (or its search failed): look for this episode alone.
             None => {}
         }
     }
@@ -1060,11 +1151,28 @@ pub fn play_source(key: &str) -> PlaySource {
                     ep.map(|(s, e)| (s as u16, e as u16)),
                     ep.and_then(|(s, _)| numbering(&info).through_of(s as u16)),
                 ),
-                None => PlaySource::None,
+                None => PlaySource::NotFound,
             }
         }
-        Some(Search { failed: Some(_), .. }) | None => PlaySource::None,
-        Some(_) => PlaySource::Searching,
+        Some(Search { failed: Some(_), .. }) => PlaySource::Failed,
+        // Running, or dropped this moment for another source's (`source_changed`).
+        Some(_) | None => PlaySource::Searching,
+    }
+}
+
+/// What Play pressed on `key` (what plays: a film, an episode) does at once: "play" (the player
+/// opens, and a release not known yet is found inside it), "no_source" (no search source: the
+/// drawer that adds one) or "failed" (the source did not answer: the drawer to fix it; a failure
+/// a while ago is searched again instead, `ensure_search`). What is saved on the device plays
+/// from its file whatever the source.
+pub fn on_play(key: &str) -> &'static str {
+    if crate::wiring::keep().local_file(key).is_some() {
+        return "play";
+    }
+    match play_source(key) {
+        PlaySource::None => "no_source",
+        PlaySource::Failed => "failed",
+        _ => "play",
     }
 }
 
@@ -1093,7 +1201,7 @@ pub fn save_request(key: &str, pick: Option<&str>) -> SaveAsk {
         _ => match play_source(key) {
             PlaySource::Ready(source, episode, through) => (source, episode, through),
             PlaySource::Searching => return SaveAsk::Searching,
-            PlaySource::None => return SaveAsk::No("no_source"),
+            PlaySource::None | PlaySource::Failed | PlaySource::NotFound => return SaveAsk::No("no_source"),
             PlaySource::NotInRelease => return SaveAsk::No("not_in_release"),
         },
     };
@@ -1165,7 +1273,7 @@ pub fn smaller_release(key: &str, fits: impl Fn(u64) -> bool) -> Option<Value> {
     let releases = releases_of(key);
     let (minutes, episodes) = length_of(key, &info);
     let size = |r: &Value| r["size"].as_f64().filter(|b| *b > 0.0).map(|b| b as u64);
-    let i = picked_within(fit::limits(compat::family()), key, &releases, minutes, episodes, |r| size(r).is_some_and(&fits))?;
+    let i = picked_within(device_limits(), key, &releases, minutes, episodes, |r| size(r).is_some_and(&fits))?;
     let r = &releases[i];
     Some(json!({ "id": r["id"], "quality": quality(r), "source": source_label(r), "size": size(r) }))
 }
@@ -1225,6 +1333,18 @@ fn next_episode(show: &str, info: &Info, season: u32, episode: u32) -> Option<(u
     info.seasons.iter().find(|s| s.0 > season && s.2 > 0).map(|s| (s.0, 1))
 }
 
+/// The least a thumbnail's watched bar shows of something started: a minute into an hour is
+/// still a mark the viewer sees.
+const BAR_MIN: f64 = 0.04;
+
+/// The watched bar of an episode: its watched part, at least `BAR_MIN` once started (0: not started).
+fn bar(seen: Option<&progress::Entry>) -> f64 {
+    match seen.map(progress::Entry::fraction) {
+        Some(f) if f > 0.0 => f.max(BAR_MIN),
+        _ => 0.0,
+    }
+}
+
 fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
     let season = ep["season"].as_u64().unwrap_or(0) as u32;
     let number = ep["number"].as_u64().unwrap_or(0) as u32;
@@ -1233,7 +1353,7 @@ fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
     let seen = progress::get(&key);
     let watched = seen.as_ref().is_some_and(|e| e.watched);
     // Where it plays from: a release picked for it, else its season's (if it holds it).
-    let own = CHOSEN.lock().unwrap().contains_key(&key);
+    let own = kept(&key).is_some();
     let from = plays_from(&key);
     let pick = search_of(&from).and_then(|s| s.releases).and_then(|rs| {
         let i = chosen(&from, &rs, minutes, 1)?;
@@ -1252,6 +1372,7 @@ fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
     let airs = upcoming(ymd(&ep["airDate"]), today());
     let in_release = if airs { None } else { in_release };
     let quality = pick.as_ref().filter(|_| in_release != Some("no")).map(quality);
+    let left = seen.as_ref().filter(|e| !e.watched && e.position > 0.0).map(|e| e.minutes_left());
     json!({
         "id": key,
         "show": show,
@@ -1263,8 +1384,12 @@ fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
         "date": ymd(&ep["airDate"]),
         "rating": rating(&ep["ratings"]).0,
         "thumb": image_url(&ep["still"], THUMB_W),
-        "progress": seen.as_ref().map_or(0.0, |e| e.fraction()),
-        "left": seen.as_ref().filter(|e| !e.watched && e.position > 0.0).map(|e| e.minutes_left()),
+        "progress": bar(seen.as_ref()),
+        // What the row says after the runtime: the time left once started, else the air date.
+        "note": match left {
+            Some(m) => json!({ "left": m }),
+            None => ymd(&ep["airDate"]).map_or(Value::Null, |d| json!({ "date": d })),
+        },
         "watched": watched,
         "start": seen.as_ref().filter(|e| !e.watched).map_or(0.0, |e| e.position),
         "quality": quality,
@@ -1278,8 +1403,10 @@ fn episode_json(show: &str, ep: &Value, fallback_minutes: u32) -> Value {
 }
 
 /// The episodes of a season: `[{"id","show","season","number","title","about",
-/// "minutes","date":[y,m,d]|null,"rating","thumb","progress","left","watched",
-/// "start","quality","playable"}]`; empty until the season is known.
+/// "minutes","date":[y,m,d]|null,"rating","thumb","progress","note","watched",
+/// "start","quality","playable"}]`; empty until the season is known. `progress` is the
+/// thumbnail's watched bar (see `bar`); `note` what follows the runtime: `{"left":minutes}`
+/// once started, else `{"date":[y,m,d]}`, or null.
 pub fn episodes(show: &str, season: u32) -> Value {
     let got = meta_all(&[Call::Season(show.to_owned(), season), Call::Title(show.to_owned())]);
     let Some(s) = &got[0] else { return json!([]) };
@@ -1376,8 +1503,15 @@ fn where_in(info: &Info) -> Where {
     }
 }
 
-/// The most characters of a hero's short description (about three lines on a TV).
+/// The most characters of a hero's short description (about three lines on a desktop).
 const ABOUT_SHORT: usize = 220;
+/// A TV's: two lines of its larger text (32 px over the hero's 980) hold about 120.
+const ABOUT_SHORT_TV: usize = 120;
+
+/// How long a hero's short description may be on this device (`compat::family`).
+fn about_short_most(family: Option<&str>) -> usize {
+    if family == Some("tv") { ABOUT_SHORT_TV } else { ABOUT_SHORT }
+}
 
 /// What a card, a shelf and a hero show of a title.
 fn summary(info: &Info) -> Value {
@@ -1393,7 +1527,7 @@ fn summary(info: &Info) -> Value {
         "title": typo::tidy(&info.title, &lang),
         "about": typo::tidy(&info.about, &lang),
         // A hero's few lines: whole sentences, so its cut never lands mid-thought.
-        "aboutShort": typo::tidy(&typo::short_about(&info.about, ABOUT_SHORT), &lang),
+        "aboutShort": typo::tidy(&typo::short_about(&info.about, about_short_most(compat::family())), &lang),
         "notice": null,
         "anime": info.anime,
         "year": info.year,
@@ -1424,7 +1558,24 @@ fn summary(info: &Info) -> Value {
         "inList": in_list(&info.id),
         "release": release_line(&release_key(info, &w), info),
         "play": play,
+        "playAs": play_as(info, &w),
     })
+}
+
+/// What Play says (the UI words it): `{"verb","season","episode","at"}`. "resume" with `at`
+/// (seconds) where the viewer stopped in what it plays, else "play" from the start; a show's
+/// names the episode ("Play S1:E1", "Resume S2:E3 · 14:30") once its seasons are known, a
+/// film's none.
+fn play_as(info: &Info, w: &Where) -> Value {
+    let at = (w.start > 0.0).then_some(w.start as u32);
+    let (season, episode) = w.episode.filter(|_| !info.seasons.is_empty()).unzip();
+    json!({ "verb": if at.is_some() { "resume" } else { "play" }, "season": season, "episode": episode, "at": at })
+}
+
+/// What a list's cards show under their names (`facet`): "year" where every card is the same
+/// kind (films: the kind would say nothing), else "kind" ("Movie", "3 seasons").
+fn facet(films_only: bool) -> &'static str {
+    if films_only { "year" } else { "kind" }
 }
 
 /// A stand-in card that says something instead of a title (`notice`, a key
@@ -1515,13 +1666,76 @@ fn continuing() -> Vec<Value> {
     out
 }
 
-/// The home shelves: `[{"id","items":[summary…]}]`, ids are keys under
-/// `shelf.*`. Never empty: a shelf with one notice card (`notice` set) says
-/// why when there is nothing to show.
+/// Home: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`, the hero's summary with
+/// `releasesState` (its release line's search, `hero_releases`). The hero is the
+/// first card of the first shelf (Continue watching comes first: the title watched last);
+/// Continue watching and the catalog's shelves do not show it again (a shelf left empty
+/// drops out), unless nothing would be left under it (one title, a notice card); the
+/// Watchlist keeps it: it is the viewer's own list, whole.
 pub fn home() -> Value {
+    let shelves = home_shelves();
+    let all = list_of(&shelves);
+    let mut hero = all.first().map(|s| s["items"][0].clone()).unwrap_or(Value::Null);
+    if let Some(id) = hero["id"].as_str().filter(|_| hero["notice"].is_null()).map(str::to_owned) {
+        hero["releasesState"] = json!(hero_releases(&id));
+    }
+    let rest: Vec<Value> = all
+        .iter()
+        .filter_map(|s| {
+            let mine = s["id"] == "watchlist";
+            let items: Vec<Value> =
+                list_of(&s["items"]).iter().filter(|i| mine || i["id"] != hero["id"]).cloned().collect();
+            (!items.is_empty()).then(|| json!({ "id": s["id"], "facet": s["facet"], "items": items }))
+        })
+        .collect();
+    let shelves = if rest.is_empty() { shelves } else { json!(rest) };
+    json!({ "hero": hero, "shelves": shelves })
+}
+
+/// Starts the search for what Home's hero plays, as a title screen does, so its release line
+/// comes in without the title being opened; where that search is (`releases_state`'s words:
+/// "searching" while its full title is still on its way too).
+fn hero_releases(id: &str) -> &'static str {
+    if !has_source() {
+        return "no_source";
+    }
+    let Some(t) = meta(&Call::Title(id.to_owned())) else {
+        return if answered(&Call::Title(id.to_owned())) { "failed" } else { "searching" };
+    };
+    let info = Info { id: id.to_owned(), ..from_title(&t) };
+    let key = release_key(&info, &where_in(&info));
+    ensure_search(&key, &info);
+    releases_state(&key)
+}
+
+/// The trending lists Home's shelves come from (only AniList's without TMDB).
+fn home_kinds(tmdb: bool) -> &'static [&'static str] {
+    if tmdb { &["movie", "tv", "movie-popular", "tv-popular", "anime"] } else { &["anime"] }
+}
+
+/// Whether Home's catalog is out of reach: every list it shows failed for want of a network,
+/// with nothing kept from before (a refused key or a busy server is not that). None while one
+/// has not been answered yet (Home asks for them as it opens).
+pub fn home_unreachable() -> Option<bool> {
+    let calls: Vec<Call> = home_kinds(tmdb_on()).iter().map(|k| Call::Trending(k)).collect();
+    let slots = SLOTS.0.lock().unwrap();
+    let mut offline = true;
+    for c in &calls {
+        let slot = slots.get(&c.key())?;
+        if !slot.loaded {
+            return None;
+        }
+        offline &= slot.data.is_none() && slot.no_network;
+    }
+    Some(offline)
+}
+
+/// The home shelves: `[{"id","facet","items":[summary…]}]`, ids are keys under
+/// `shelf.*`, `facet` what the cards show under their names (see `facet`). Never empty: a
+/// shelf with one notice card (`notice` set) says why when there is nothing to show.
+fn home_shelves() -> Value {
     let tmdb = tmdb_on();
-    let kinds: &[&'static str] =
-        if tmdb { &["movie", "tv", "movie-popular", "tv-popular", "anime"] } else { &["anime"] };
+    let kinds = home_kinds(tmdb);
     let calls: Vec<Call> = kinds.iter().map(|k| Call::Trending(k)).collect();
     let got = meta_all(&calls);
     let by = |k: &str| kinds.iter().position(|x| *x == k).map(|i| cards(&got[i])).unwrap_or_default();
@@ -1533,13 +1747,17 @@ pub fn home() -> Value {
     }
     shelves.push(("anime", shelf_items(&by("anime"))));
     let mut out: Vec<Value> =
-        shelves.into_iter().filter(|(_, items)| !items.is_empty()).map(|(id, items)| json!({ "id": id, "items": items })).collect();
+        shelves
+            .into_iter()
+            .filter(|(_, items)| !items.is_empty())
+            .map(|(id, items)| json!({ "id": id, "facet": facet(id == "trending_movies"), "items": items }))
+            .collect();
     let pending = calls.iter().any(|c| !answered(c));
     if !tmdb {
-        out.push(json!({ "id": "no_tmdb", "items": [notice("no_tmdb")] }));
+        out.push(json!({ "id": "no_tmdb", "facet": "kind", "items": [notice("no_tmdb")] }));
     } else if out.is_empty() {
         let key = if pending { "loading" } else { "offline" };
-        out.push(json!({ "id": key, "items": [notice(key)] }));
+        out.push(json!({ "id": key, "facet": "kind", "items": [notice(key)] }));
     }
     json!(out)
 }
@@ -1550,7 +1768,8 @@ static SHOWN: LazyLock<Mutex<HashMap<DiscoverKind, Filter>>> = LazyLock::new(Def
 
 /// A browse page (`"movies"`, `"shows"` (Series), `"cartoons"`, `"anime"`):
 /// `{"trending":[summary…],"all":[summary…],"filters":[group…],"allState",
-/// "more","moreState"}`.
+/// "more","moreState","facet","filtered"}` (`facet`: what its cards show under their names, see
+/// `facet`; `filtered`: a filter narrows the grid, the bar offers to clear them).
 /// `all` is the catalog through the page's filters (see `filters::groups`
 /// for `filters`), the pages asked for so far (see `paging`); `allState` is
 /// "done", "loading" (a new filter's answer is on its way: `all` is still the
@@ -1560,7 +1779,7 @@ static SHOWN: LazyLock<Mutex<HashMap<DiscoverKind, Filter>>> = LazyLock::new(Def
 /// again retries). Without TMDB, Shows lists anime and Movies a notice card.
 pub fn browse(page: &str) -> Value {
     let Some(kind) = filters::page_kind(page, tmdb_on()) else {
-        return json!({ "trending": [notice("no_tmdb")], "all": [], "filters": [], "allState": "done", "more": false, "moreState": "idle" });
+        return json!({ "trending": [notice("no_tmdb")], "all": [], "filters": [], "allState": "done", "more": false, "moreState": "idle", "facet": "kind", "filtered": false });
     };
     let trending = Call::Trending(match kind {
         DiscoverKind::Movie => "movie",
@@ -1609,9 +1828,11 @@ pub fn browse(page: &str) -> Value {
     let groups = filters::groups(kind, &filter, got[1].as_ref());
     if t.is_empty() && a.is_empty() && filter.is_default() {
         let key = if answered(&trending) { "offline" } else { "loading" };
-        return json!({ "trending": [notice(key)], "all": [], "filters": groups, "allState": state, "more": false, "moreState": "idle" });
+        return json!({ "trending": [notice(key)], "all": [], "filters": groups, "allState": state, "more": false, "moreState": "idle", "facet": "kind", "filtered": false });
     }
-    json!({ "trending": t, "all": a, "filters": groups, "allState": state, "more": more, "moreState": more_state })
+    let facet = facet(kind == DiscoverKind::Movie);
+    let filtered = filter.is_filtered();
+    json!({ "trending": t, "all": a, "filters": groups, "allState": state, "more": more, "moreState": more_state, "facet": facet, "filtered": filtered })
 }
 
 /// Asks for the next page of a browse page's grid (see `paging::more`):
@@ -1622,9 +1843,9 @@ pub fn browse_more(page: &str) -> bool {
 }
 
 /// One choice in a browse page's filter panel: `group` "genres" toggles
-/// genre `id`, "years" and "countries" pick `id` or drop it when it was
-/// picked, "sort" sets the order; an empty `id` clears the group. Whether
-/// the filter changed.
+/// genre `id`, "years", "countries" and "format" pick `id` or drop it when it was
+/// picked, "sort" sets the order; an empty `id` clears the group, and group "all"
+/// every filter but the order (the bar's Clear). Whether the filter changed.
 pub fn choose_filter(page: &str, group: &str, id: &str) -> bool {
     let Some(kind) = filters::page_kind(page, tmdb_on()) else { return false };
     let changed = filters::choose(kind, group, id);
@@ -1692,6 +1913,48 @@ pub fn title(id: &str) -> Value {
     v
 }
 
+/// How many titles a person's page shows.
+const PERSON_TITLES: usize = 60;
+
+/// A person's page: `{"id","name","photo","initials","items":[summary…],"facet","state"}`, the
+/// titles they are in, the best known first (the most votes on TMDB), each with `role`: the part
+/// they played there (null when the source names none); `facet` "role": a card says its year and
+/// that part. `state`: "done", "loading" (not known yet: `name` empty, no titles) or
+/// "unavailable" (the source did not answer).
+pub fn person(id: &str) -> Value {
+    let call = Call::Person(id.to_owned());
+    let Some(p) = meta_all(std::slice::from_ref(&call)).remove(0) else {
+        let state = if answered(&call) { "unavailable" } else { "loading" };
+        return json!({ "id": id, "name": "", "photo": null, "initials": "", "items": [], "facet": "role", "state": state });
+    };
+    let name = text(&p["name"]).unwrap_or_default();
+    let mut cards: Vec<&Value> = list_of(&p["credits"]).iter().collect();
+    // Stable: equally known titles keep the source's order.
+    cards.sort_by_key(|c| std::cmp::Reverse(tmdb_votes(c)));
+    json!({
+        "id": id,
+        "photo": image_url(&p["profile"], details::PHOTO_W * 2),
+        "initials": details::initials(&name),
+        "name": name,
+        "items": cards
+            .into_iter()
+            .take(PERSON_TITLES)
+            .map(|c| {
+                let mut s = summary(&card_info(c));
+                s["role"] = p["parts"].get(c["id"].as_str().unwrap_or_default()).cloned().unwrap_or(Value::Null);
+                s
+            })
+            .collect::<Vec<_>>(),
+        "facet": "role",
+        "state": "done",
+    })
+}
+
+/// A card's TMDB vote count (0 without one).
+fn tmdb_votes(card: &Value) -> u64 {
+    list_of(&card["ratings"]).iter().find(|r| r["source"] == "tmdb").and_then(|r| r["votes"].as_u64()).unwrap_or(0)
+}
+
 /// The year a season's first episode aired, from its episodes when the catalog has them (never
 /// asking the network): TMDB leaves some seasons without a date of their own (Naruto's 2–4).
 fn first_aired(show: &str, season: u32) -> Option<u16> {
@@ -1703,7 +1966,7 @@ fn first_aired(show: &str, season: u32) -> Option<u16> {
 /// one for it, else its season's; a film itself.
 fn plays_from(key: &str) -> String {
     match parse_key(key) {
-        (show, Some((s, _))) if !CHOSEN.lock().unwrap().contains_key(key) => season_key(show, s),
+        (show, Some((s, _))) if kept(key).is_none() => season_key(show, s),
         _ => key.to_owned(),
     }
 }
@@ -1759,7 +2022,8 @@ fn watching() -> Vec<Value> {
 }
 
 /// Makes release `index` (of `title(id).releases[].index`) the one Play
-/// uses for what `id` plays (a title: its Play target; or an episode key).
+/// uses for what `id` plays (a title: its Play target; or an episode key), from now on and
+/// after a restart (kept with the watch progress, found again by what it is: `Pick`).
 pub fn choose_release(id: &str, index: usize) -> bool {
     let (title, ep) = parse_key(id);
     let key = match (ep, peek(&Call::Title(title.to_owned()))) {
@@ -1769,15 +2033,14 @@ pub fn choose_release(id: &str, index: usize) -> bool {
         }
         _ => id.to_owned(),
     };
-    let ok = index < releases_of(&key).len();
-    if ok {
-        CHOSEN.lock().unwrap().insert(key, index);
-        bump();
-    }
-    ok
+    let Some(r) = releases_of(&key).get(index).map(pick_of) else { return false };
+    progress::set_release(&key, r);
+    bump();
+    true
 }
 
-/// Records where the player is in `key`; whether it now counts as watched.
+/// Records where the player is in `key`; whether it now counts as watched. The release it plays
+/// is kept for it from then on (`keep_release`).
 pub fn save_progress(key: &str, position: f64, duration: f64) -> bool {
     let (title, ep) = parse_key(key);
     if title.starts_with("reel:") {
@@ -1785,8 +2048,25 @@ pub fn save_progress(key: &str, position: f64, duration: f64) -> bool {
     }
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64);
     let watched = progress::save(key, title, ep, position, duration, now);
+    if progress::get(key).is_some() {
+        keep_release(key);
+    }
     bump();
     watched
+}
+
+/// Resume plays on in the release `key` was watched in: the one Play uses for it now is kept
+/// (with its season's, for an episode of a pack), so neither a restart nor a later search that
+/// ranks another release first moves the viewer to it.
+fn keep_release(key: &str) {
+    let from = plays_from(key);
+    let (show, _) = parse_key(key);
+    let (Some(t), Some(releases)) = (peek(&Call::Title(show.to_owned())), search_of(&from).and_then(|s| s.releases)) else { return };
+    let info = Info { id: show.to_owned(), ..from_title(&t) };
+    let (minutes, episodes) = length_of(&from, &info);
+    if let Some(i) = chosen(&from, &releases, minutes, episodes) {
+        progress::set_release(&from, pick_of(&releases[i]));
+    }
 }
 
 /// The catalog's and progress's stores are process-wide: tests that use

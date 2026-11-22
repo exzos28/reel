@@ -64,10 +64,14 @@ empty:
 title:
   play: "Oynat"
   resume: "Devam et · %{at}"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  play_episode: "%{episode} oynat"
+  resume_episode: "%{episode} devam et · %{at}"
+  about_more: "Açıklamanın tamamını göster"
+  about_less: "Daha az göster"
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: "Listem"
-  add_to_list: "Listem"
+  my_list: "Listeye ekle"
+  add_to_list: "Listeye ekle"
   in_list: "Listemde"
   add_to_list_spoken: "Listeme ekle"
   remove_from_list_spoken: "Listemden kaldır"
@@ -137,6 +141,12 @@ release:
   sharing: "%{count} kişi paylaşıyor"
   sharing_short: "%{count} kişi"
   pack: "tüm sezon, %{size}"
+  voiced: "%{language} (%{voice})"
+  voice:
+    dub: "dublaj"
+    mvo: "MVO"
+    dvo: "DVO"
+    avo: "AVO"
   fast: "saniyeler içinde başlar"
   note:
     starts_fast: "Hızlı başlar"
@@ -172,6 +182,13 @@ about:
   details: "Ayrıntılar"
   similar: "Benzerleri"
 
+person:
+  titles: "Filmler ve diziler"
+  state:
+    loading: "Yükleniyor…"
+    unavailable: "Yapımları yüklenemedi. Daha sonra tekrar deneyin."
+    none: "Gösterilecek film ya da dizi yok."
+
 crew:
   director:
     one: "Yönetmen"
@@ -194,7 +211,6 @@ detail:
   original_title: "Orijinal adı"
   release_date: "Çıkış tarihi"
   first_aired: "İlk yayın"
-  runtime: "Süre"
   status: "Durum"
   countries: "Ülke"
   studios: "Stüdyo"
@@ -283,6 +299,7 @@ browse:
     countries: "Ülkeler"
     sort: "Sırala"
     picked: "%{filter}: %{picked}"
+    format: "Biçim"
   sort: "Sırala:"
   option:
     decade: "%{n} yılları"
@@ -291,11 +308,15 @@ browse:
     top_rated: "En yüksek puanlı"
     newest: "En yeni"
     any: "Tümü"
+    format_tv: "Diziler"
+    format_movie: "Filmler"
+    format_special: "OVA ve özel bölümler"
   state:
     loading: "Yükleniyor…"
     empty: "Bu filtrelere uyan bir şey yok."
     offline: "Bu liste yüklenemedi. Bağlantını kontrol et."
     more_failed: "Daha fazla başlık yüklenemedi. Yeniden denemek için aşağı in."
+  clear: "Temizle"
 
 search:
   title: "Ara"
@@ -304,19 +325,23 @@ search:
   recent: "Son aramalar"
   clear: "Geçmişi temizle"
   searching: "Aranıyor…"
-  none: "“%{query}” için hiçbir şey bulunamadı."
+  none: "“%{query}” için hiçbir şey bulunamadı. Orijinal adı ya da daha az kelime dene."
   failed: "TMDB ve AniList yanıt vermedi. Bağlantını kontrol edip yeniden dene."
   no_tmdb: "Bu sürümde TMDB anahtarı yok, bu yüzden yalnızca anime aranıyor."
   section:
     movies: "Filmler"
     shows: "Diziler"
     anime: "Anime"
+    trending: "Şu an trend"
   try_again: "Yeniden dene"
   # A row of results whose source did not answer.
   row_failed:
     movies: "Filmler yüklenemedi."
     shows: "Diziler yüklenemedi."
     anime: "Animeler yüklenemedi."
+  clear_query: "Aramayı temizle"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "Tümünü göster (%{count})"
 
 compat:
   audio_dts: "Bu sürümde yalnızca DTS ses var ve bu cihaz onu oynatamıyor. Başka bir sürüm seç."
@@ -327,6 +352,8 @@ compat:
 player:
   back: "Geri"
   close: "Kapat"
+  expand_sheet: "Daha fazla göster"
+  collapse_sheet: "Daha az göster"
   close_tracks: "Ses ve altyazıyı kapat"
   episodes: "Bölümler"
   close_episodes: "Bölümleri kapat"
@@ -349,9 +376,7 @@ player:
       other: "%{count} kişi bulundu, bağlanılıyor"
     fetching: "Başlangıç yükleniyor, %{percent}%"
     starting: "Başlatılıyor"
-  buffering: "Yükleniyor"
-  ahead_seconds: "%{seconds} sn hazır"
-  rate_from: "%{count} kişiden %{speed}"
+  waiting: "Akış bekleniyor"
   ready_ahead: "%{minutes} dk hazır"
   ready_ahead_short: "1 dakikadan az hazır"
   streaming: "akış hızı %{speed}"
@@ -372,6 +397,7 @@ player:
   watch_credits: "Jeneriği izle"
   no_source: "Oynatılacak sürüm yok."
   no_source_hint: "Ayarlar'dan bir arama kaynağı ekle veya başka bir sürüm seç."
+  not_found_hint: "Arama kaynağın bu cihazda oynatılabilen bir sürüm bulamadı."
   not_in_release: "Bu bölüm sürümde yok."
   not_in_release_hint: "Geri dön ve bu bölüm için bir sürüm seç."
   failed: "Oynatılamadı: %{message}"
@@ -403,7 +429,7 @@ settings:
     key: "API anahtarı (isteğe bağlı)"
     key_placeholder: "Yalnızca kaynağının anahtarı varsa"
     key_saved: "Anahtar kaydedildi. Değiştirmek için yenisini yaz"
-    save: "Kaydet ve kontrol et"
+    save: "Kontrol et"
     remove: "Kaynağı kaldır"
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: "Hazır kaynak al"
@@ -432,20 +458,20 @@ settings:
   # What shows while a film loads or waits for more of the stream.
   loader:
     title: "Yükleme animasyonu"
-    about: "Film akışın devamını beklerken görünen şey."
+    about: "Film başlarken görünen şey."
+    none: "Yok"
     dinosaur: "Dinozor"
-    logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not
   # answer (failed), from Settings (edit).
   source_drawer:
     missing_title: "Arama kaynağı ekle"
     missing_about: "reel, kendi arama kaynağında bulduğu sürümleri oynatır ve henüz bir kaynak yok. Bir Torznab adresi ve API anahtarını gir; bağlandıktan sonra Oynat çalışır."
     failed_title: "Arama kaynağın yanıt vermedi"
-    failed_about: "reel bu kaynakta sürüm arayamadı. Adresi ve API anahtarını kontrol et, sonra Kaydet ve kontrol et'e bas; bağlandıktan sonra Oynat çalışır."
+    failed_about: "reel bu kaynakta sürüm arayamadı. Adresi ve API anahtarını kontrol et, sonra Kontrol et'e bas; bağlandıktan sonra Oynat çalışır."
     edit_title: "Arama kaynağı"
     edit_about: "Bir Torznab adresi ve API anahtarı."
     link_title: "Bu kaynak kullanılsın mı?"
-    link_about: "Bu kaynak bir bağlantıyla dolduruldu. Kullanmak için Kaydet ve kontrol et'e, kendi kaynağını korumak için Geri'ye bas."
+    link_about: "Bu kaynak bir bağlantıyla dolduruldu. Kullanmak için Kontrol et'e, kendi kaynağını korumak için Geri'ye bas."
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: "Bağlı"
@@ -454,7 +480,7 @@ settings:
   # The card beside Settings on a device that serves its settings page (a TV).
   phone:
     title: "Bunları telefonundan değiştir"
-    text: "Kodu tara veya %{url} adresini aç."
+    text: "Kodu tara veya aşağıdaki adresi aç."
   interface:
     title: "Arayüz"
   about:
@@ -463,13 +489,15 @@ settings:
     data: "Veri kaynakları"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "Sürüm %{version} (%{build})"
+    license: "Kaynağı açık · %{license}"
+    repository: "reel'in kaynak kodu"
   details:
     title: "Akış ayrıntıları"
     about: "Film oynarken veya beklerken akışın hızını, kaç kişiden geldiğini ve ne kadarının hazır olduğunu göster."
     show: "Akış ayrıntılarını göster"
   buffer:
     title: "Oynatma arabelleği"
-    about: "reel'in oynatırken filmin ne kadarını tuttuğu. Büyük olması yavaş kaynaklarda ve uzun atlamalarda daha iyidir."
+    about: "reel'in bir film oynarken kullandığı yer. Büyük olması yavaş kaynaklarda ve uzun atlamalarda daha iyidir."
     free: "Bu cihazda %{free} boş"
     default: "(varsayılan)"
 
@@ -483,21 +511,22 @@ setup:
     help: "reel sürümleri de bu adlarla arar."
     more: "Diğer diller"
   buffer:
-    title: "reel oynatırken ne kadar yer kullanabilir?"
-    help: "Büyük bir arabellek yavaş kaynaklarda ve uzun atlamalarda daha iyidir."
+    title: "Oynatma arabelleği"
+    help: "reel'in bir film oynarken ne kadar yer kullanabileceği. Büyük bir arabellek yavaş kaynaklarda ve uzun atlamalarda daha iyidir."
     recommended: "Önerilen"
   source:
     title: "reel filmleri nerede bulsun?"
-    help: "Kendi kaynağını gir veya hazır bir tane al."
-    own_title: "Kendi kaynağın"
-    rent_title: "Veya hazır bir kaynak"
+    help: "reel kendi başına arama yapmaz. Ona bir arama kaynağı (Torznab) ver: kendi Jackett veya Prowlarr'ın ya da Telegram'dan hazır bir tane."
+    help_own: "reel kendi başına arama yapmaz. Ona bir arama kaynağı (Torznab) ver: kendi Jackett veya Prowlarr'ın."
+    own_title: "Ya da kendininkini kullan"
+    rent_title: "Hazır bir tane al"
     check: "Kontrol et"
+    checking: "Kontrol ediliyor…"
     finish: "Bitir"
     skip: "Atla"
-    footnote: "Torznab, arama hizmetlerinin torrent sürümlerini listelemek için kullandığı yaygın bir yöntemdir. reel kendisi video aramaz: bir katalog ve oynatıcıdır, neyin oynatılacağını yalnızca senin verdiğin kaynak üzerinden bulur."
   phone:
     title: "Veya telefonundan kur"
-    text: "Kodu telefonunun kamerasıyla tara veya telefonun tarayıcısında %{url} adresini aç. Bu ekran kendiliğinden güncellenir."
+    text: "Kodu telefonunun kamerasıyla tara veya telefonun tarayıcısında aşağıdaki adresi aç. Bu ekran kendiliğinden güncellenir."
     source_title: "Telefondan daha kolay"
     source_text: "Kumandayla adres yazmak yavaştır. Kodu tara veya %{url} adresini aç ve adresi oraya yapıştır. Bu ekran kurulumu kendisi tamamlar."
 
@@ -511,7 +540,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: "Kaydedilenler"
-  empty: "Henüz kaydedilen bir şey yok. İnternetsiz izlemek için bir filmi veya sezonu kendi sayfasından kaydet."
+  empty: "Çevrimdışı izlemek için bir film kaydet"
+  browse: "Filmlere göz at"
   saving: "Kaydediliyor"
   while_open: "reel açıkken"
   ready: "İzlemeye hazır"
@@ -536,9 +566,10 @@ saved:
     checking: "Kaydedilenler kontrol ediliyor…"
     resolving: "Paylaşanlar aranıyor…"
     saving: "%{percent}% · %{have}/%{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent}% · %{have}/%{size} · yaklaşık %{time} kaldı"
     paused: "Duraklatıldı · %{have}/%{size}"
     waiting: "İzlediğin film durunca başlar"
-    saved: "Kaydedildi · %{size}"
     unavailable: "Diski bağlı değil"
   failed:
     no_source: "Kaydedilecek sürüm bulunamadı"

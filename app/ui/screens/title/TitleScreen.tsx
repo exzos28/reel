@@ -8,35 +8,41 @@
 // left); Down goes to the season tabs; on them Left and Right switch the
 // season; OK on a release makes it the one Play uses, on an episode plays it;
 // Down past the list walks the cast row, then More like this, where OK opens
-// the title. Back closes the release panel, then goes one level up.
-import { computed, effect, keymap, openUrl, signal, View } from "nsh";
+// the title; OK on a person of the cast opens their page. Back closes the release panel, then
+// goes one level up.
+import { computed, effect, keymap, openUrl, signal, View, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
-import { chooseRelease, episodeCode, episodeReleases, episodes, releaseLine, releasesText, title as titleOf, toggleList, type Episode, type Title } from "../../catalog";
+import { chooseRelease, episodeCode, episodeReleases, episodes, releaseLine, releasesText, title as titleOf, titleText, toggleList, type Episode, type Title } from "../../catalog";
 import { clamp } from "../../focus/memory";
 import { useZones } from "../../focus/zones";
 import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { caps } from "../../platform";
 import { ListToggle } from "../../layout/ListToggle";
-import { go, openTitle } from "../../nav";
+import { go, openPerson, openTitle } from "../../nav";
 import { isSaved, NO_PLAN, save as saveKeys, saveOffer, saveRelease, seasonPlan, titleSaveState, watchSaved, type SaveOffer } from "../../library";
 import { ConfirmDialog, type Confirm } from "../../layout/ConfirmDialog";
 import { Fmt } from "../../native";
 import { SaveDrawer } from "./SaveDrawer";
-import { openSourceDrawer } from "../source/SourceDrawer";
-import { playGate } from "../source/playGate";
+import { openSourceDrawer, sourceDrawerOpen } from "../source/SourceDrawer";
+import { pressPlay } from "../source/pressPlay";
 import { pickReleaseFor, play as startPlay, playing } from "../../playback";
-import { u } from "../../theme";
+import { safe, u } from "../../theme";
+import { aboutBesideDetails, TEXT_MAX } from "../../layout/wide";
 import { AboutBlock, hasAbout } from "./AboutBlock";
 import { LazyBlock } from "../../layout/LazyBlock";
 import { CastRow } from "./CastRow";
 import { DetailsBlock, hasDetails } from "./DetailsBlock";
-import { action, castAt, focusTitle, item, releaseAt, season, similarAt, zone, type HeroAction, type Zone } from "./focus";
+import { action, castAt, focusTitle, item, releaseAt, season, similarAt, titleScroll, zone, type HeroAction, type Zone } from "./focus";
 import { ReleasePanel } from "./ReleasePanel";
 import { SeriesEpisodes } from "./SeriesEpisodes";
 import { shelfCardWidth, wideCardHeight } from "../home/WideCard";
 import { SimilarShelf } from "./SimilarShelf";
 import { heroActions, TitleHero } from "./TitleHero";
+
+/** About and Details side by side: at the inset, each a column no longer than `TEXT_MAX`. */
+const besideStyle = (): ViewStyle => ({ flexDirection: "row", alignItems: "flex-start", gap: u(72), paddingHorizontal: safe().x });
+const besideColumn = (): ViewStyle => ({ flex: 1, minWidth: 0, maxWidth: TEXT_MAX });
 
 
 export function TitleScreen(props: { id: string }) {
@@ -68,7 +74,6 @@ export function TitleScreen(props: { id: string }) {
     releaseAt.set(Math.max(0, shownReleases().findIndex((r) => r.selected)));
     zone.set("releases");
   };
-  const gate = playGate(data, () => startPlay({ ...data().play, title: data() }));
   // ---- Save (design/offline-downloads.md): a film saves at once; a show opens the drawer.
   watchSaved();
   /** The drawer's season, the episodes ticked in it (keys) and its focused row. */
@@ -191,9 +196,10 @@ export function TitleScreen(props: { id: string }) {
     if (url) openUrl(url).catch((e) => console.warn(`reel: the trailer did not open: ${e}`));
   };
   const run: Record<HeroAction, () => void> = {
-    // Play waits for the source's answer: the release plays once known, the drawer opens if there is none.
-    // A saved film plays at once, offline too; else Play waits for the source's answer.
-    play: () => (isSaved(data().play.id) ? startPlay({ ...data().play, title: data() }) : gate.press()),
+    // Play answers at once (`pressPlay`): the player opens and finds the release inside it, or the
+    // drawer opens when there is no source or it did not answer. A saved film plays from its file,
+    // offline too (the core's call).
+    play: () => pressPlay(data(), () => startPlay({ ...data().play, title: data() })),
     releases: () => openPanel(),
     save: openSave,
     trailer: openTrailer,
@@ -209,8 +215,9 @@ export function TitleScreen(props: { id: string }) {
     const row = heroRow();
     action.set(row[clamp(actionAt() + by, row.length - 1)]);
   };
-  /** The focused action as the hero shows it (Play when the row lost it). */
-  const focusedAction = () => (zone() === "actions" ? heroRow()[actionAt()] : null);
+  /** The focused action as the hero shows it (Play when the row lost it; none under the source
+   * drawer, which has the focus while it is open). */
+  const focusedAction = () => (zone() === "actions" && !sourceDrawerOpen() ? heroRow()[actionAt()] : null);
   /** Where the focus lands in a season's episodes: where the viewer is, else the first. */
   const firstItem = () => {
     const r = data().resume;
@@ -240,6 +247,13 @@ export function TitleScreen(props: { id: string }) {
     else if (listLength() > 0) enterList(clamp(item(), listLength() - 1));
     else zone.set(isShow() ? "tabs" : "actions");
   };
+  /** A person of the cast: their page (one reel has none for stays where it is). */
+  const openCast = (i: number) => {
+    zone.set("cast");
+    castAt.set(i);
+    const id = cast()[i]?.person;
+    if (id) openPerson(id);
+  };
   const openSimilar = (i: number) => {
     zone.set("similar");
     similarAt.set(i);
@@ -247,7 +261,7 @@ export function TitleScreen(props: { id: string }) {
   };
 
   /** The page puts the focused row (or the season tabs) in its upper third. */
-  const page = scroller({ anchor: (viewport) => viewport / 3 });
+  const page = scroller({ anchor: (viewport) => viewport / 3, memory: titleScroll(props.id) });
 
   useZones(
     zone,
@@ -293,6 +307,7 @@ export function TitleScreen(props: { id: string }) {
         right: () => castAt.set(clamp(castAt() + 1, cast().length - 1)),
         up: () => above("cast"),
         down: () => below("cast"),
+        enter: () => openCast(clamp(castAt(), cast().length - 1)),
       },
       similar: {
         left: () => similarAt.set(clamp(similarAt() - 1, similar().length - 1)),
@@ -315,7 +330,9 @@ export function TitleScreen(props: { id: string }) {
       bottom={40}
       hero={isShow() ? 640 : 700}
       // Add to list: the frame puts it (a desktop's window bar and a tablet's top row carry their own).
-      action={<ListToggle inList={() => data().inList} focused={() => zone() === "header"} onPress={toggle} />}
+      action={(plain) => <ListToggle inList={() => data().inList} focused={() => zone() === "header"} onPress={toggle} plain={plain} />}
+      // A phone's bar shows the name once the page has scrolled past the hero.
+      barTitle={() => titleText(data())}
     >
       <View ref={page.follow(() => zone() === "header" || zone() === "actions", "start")}>
         <TitleHero
@@ -348,27 +365,43 @@ export function TitleScreen(props: { id: string }) {
           }}
         />
       </If>
-      {/* About and the cast come into view together as the remote reaches the cast. */}
+      {/* About and the cast come into view together as the remote reaches the cast. A tablet held
+          wide sets About and Details side by side (lines of text not 1100 points long). */}
       <View ref={page.follow(() => zone() === "cast")} style={{ gap: u(48), marginTop: u(56) }}>
-        <If when={hasAbout(data())}>
-          <AboutBlock data={data} />
+        <If
+          when={aboutBesideDetails() && (hasAbout(data()) || hasDetails(data()))}
+          else={
+            <If when={hasAbout(data())}>
+              <AboutBlock data={data} />
+            </If>
+          }
+        >
+          <View style={besideStyle()}>
+            <If when={hasAbout(data())}>
+              <View style={besideColumn()}>
+                <AboutBlock data={data} bare />
+              </View>
+            </If>
+            <If when={hasDetails(data())}>
+              <View style={besideColumn()}>
+                <DetailsBlock data={data} bare />
+              </View>
+            </If>
+          </View>
         </If>
         <If when={cast().length > 0}>
           <LazyBlock page={page} height={() => u(300)}>
           <CastRow
             cast={cast}
             focusedAt={() => (zone() === "cast" ? castAt() : null)}
-            onFocus={(i) => {
-              zone.set("cast");
-              castAt.set(i);
-            }}
+            onOpen={openCast}
           />
           </LazyBlock>
         </If>
       </View>
       {/* So do the details and More like this. */}
       <View ref={page.follow(() => zone() === "similar")} style={{ gap: u(48), marginTop: u(48) }}>
-        <If when={hasDetails(data())}>
+        <If when={hasDetails(data()) && !aboutBesideDetails()}>
           <DetailsBlock data={data} />
         </If>
         <If when={similar().length > 0}>

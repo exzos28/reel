@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Opens the version PR: the entries in .changes/ on origin/main become the next version
-# (build/changes.py apply: app/nsh.json's version and build, a CHANGELOG.md section), committed as
-# "Version X.Y.Z" on branch release/vX.Y.Z and pushed. Merge it by hand once its checks and
-# platform builds pass; the merge into main publishes the release (.github/workflows/release.yml).
+# Opens the version PR from develop into main: the entries in .changes/ on origin/develop become
+# the next version (build/changes.py apply: app/nsh.json's version and build, a CHANGELOG.md
+# section), committed as "Version X.Y.Z" on branch release/vX.Y.Z (from develop) and pushed. Merge
+# it once its checks and platform builds pass; the merge into main publishes the release and
+# brings main back into develop (.github/workflows/release.yml).
 #
 #   build/release.sh [--dry-run]     --dry-run: show the version and the section, change nothing
 #
@@ -21,11 +22,11 @@ esac
 log() { printf '==> %s\n' "$*" >&2; }
 die() { printf 'release.sh: %s\n' "$*" >&2; exit 1; }
 
-git -C "$repo" fetch -q origin main
+git -C "$repo" fetch -q origin develop
 tree="$(mktemp -d "${TMPDIR:-/tmp}/reel-release.XXXXXX")"
 cleanup() { git -C "$repo" worktree remove --force "$tree" > /dev/null 2>&1 || rm -rf "$tree"; }
 trap cleanup EXIT
-git -C "$repo" worktree add -q --detach "$tree" origin/main
+git -C "$repo" worktree add -q --detach "$tree" origin/develop
 
 python3 -I "$tree/build/changes.py" status >&2
 version="$(python3 -I "$tree/build/changes.py" apply)" || die "nothing to release"

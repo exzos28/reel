@@ -4,6 +4,7 @@
 import { computed, token, windowSize, type TextStyle, type ViewStyle } from "nsh";
 import geist from "../fonts/Geist.ttf";
 import { centering, chrome, sideInset } from "./layout/chrome";
+import { family } from "./platform";
 import { keysInUse } from "./focus/keys";
 import { look } from "./platform/look";
 
@@ -49,31 +50,45 @@ export function alpha(color: string, opacity: number) {
  * - regular (desktop, tablet) and compact (phone): fixed, so resizing a window
  *   reflows the layout (shelves scroll) instead of zooming it. */
 export type Density = "ten-foot" | "regular" | "compact";
-export const density: Density = chrome === "tv" ? "ten-foot" : chrome === "phone" ? "compact" : "regular";
+const densityNow = computed<Density>(() => (chrome() === "tv" ? "ten-foot" : chrome() === "phone" ? "compact" : "regular"));
+/** This layout's density, reactive: a tablet's window narrower than a phone's is compact. */
+export const density = (): Density => densityNow();
 
 const FIXED = { regular: 0.66, compact: 0.45 } as const;
-const scale = computed(() => (density === "ten-foot" ? windowSize().width / 1920 : FIXED[density]));
+const scale = computed(() => (density() === "ten-foot" ? windowSize().width / 1920 : FIXED[density() as keyof typeof FIXED]));
 export const u = (px: number) => px * scale();
 /** Type sizes (font size, line height). The same as `u` but on a phone, where the layout's
  * 0.45 made body text 12 pt and meta 10 pt: there text scales by 0.6 (body 15.6 pt). */
 const TEXT_COMPACT = 0.6;
-export const ts = (px: number) => (density === "compact" ? px * TEXT_COMPACT : u(px));
+/** A TV's text, read from across a room: the 10-foot rule (.claude/skills/ui-design) wants
+ * nothing read under 28 px at 1080p and body text at 32–36, and the scale's sizes are a desk's
+ * (body 26, meta 22). On a TV they grow by `TEN_FOOT_TEXT` up to 36 (body 26 → 32, its line 36 →
+ * 44), never under 28, and by less and less above it, none from 60 (titles are big enough). */
+const TEN_FOOT_TEXT = 32 / 26;
+const TEN_FOOT_MIN = 28;
+const TEN_FOOT_FROM = 36;
+const TEN_FOOT_UNTIL = 60;
+export const tenFootText = (px: number) =>
+  px <= TEN_FOOT_FROM
+    ? Math.max(TEN_FOOT_MIN, px * TEN_FOOT_TEXT)
+    : px + TEN_FOOT_FROM * (TEN_FOOT_TEXT - 1) * Math.max(0, (TEN_FOOT_UNTIL - px) / (TEN_FOOT_UNTIL - TEN_FOOT_FROM));
+export const ts = (px: number) => (density() === "compact" ? px * TEXT_COMPACT : density() === "ten-foot" ? u(tenFootText(px)) : u(px));
 /** Control sizes (buttons, pills, fields, rows, icons): the same as `u` but on a phone, where
  * the layout's 0.45 made a 60 px button 27 pt, under a finger's 44: there they scale by 0.75. */
 const CONTROL_COMPACT = 0.75;
-export const cs = (px: number) => (density === "compact" ? px * CONTROL_COMPACT : u(px));
+export const cs = (px: number) => (density() === "compact" ? px * CONTROL_COMPACT : u(px));
 /** An `Icon`'s size for a size in points (`Icon` scales its size by `cs`). */
 export const iconPt = (points: number) => points / cs(1);
 
 /** The smallest a touch target may be, points: Material's 48, iOS's 44; a remote and a mouse
  * need none. Controls keep their look and reach the rest with `hitSlop` (`targetSlop`). */
-export const MIN_TARGET = chrome === "phone" || chrome === "tablet" ? (look.system === "material" ? 48 : 44) : 0;
+export const MIN_TARGET = family === "phone" || family === "tablet" ? (look.system === "material" ? 48 : 44) : 0;
 /** The `hitSlop` a control `size` points across (its smaller side) needs to be a touch target. */
 export const targetSlop = (size: number) => Math.max(0, Math.ceil((MIN_TARGET - size) / 2));
 
 /** Where content starts from the screen's edges: a TV picture's title-safe
  * 5%; elsewhere the system's safe area plus the family's margin (`chrome`). */
-export const safe = () => ({ x: chrome === "tv" ? u(96) : sideInset(), y: u(54) });
+export const safe = () => ({ x: family === "tv" ? u(96) : sideInset(), y: u(54) });
 
 /** The max width (`px`, TV pixels) of a block padded by `safe().x` on both sides (the hero's
  * text, a title's about): on a wide desktop window the larger inset moves the block to the
@@ -81,7 +96,7 @@ export const safe = () => ({ x: chrome === "tv" ? u(96) : sideInset(), y: u(54) 
 export const insetMaxWidth = (px: number) => u(px) + 2 * centering();
 
 /** Radius of buttons, rows, cards and posters: 10 on a TV, 8 elsewhere. */
-export const radius = () => (density === "ten-foot" ? u(10) : u(14));
+export const radius = () => (density() === "ten-foot" ? u(10) : u(14));
 
 const text = (size: number, weight: number, extra: TextStyle = {}): TextStyle => ({
   fontFamily: font,
@@ -90,7 +105,7 @@ const text = (size: number, weight: number, extra: TextStyle = {}): TextStyle =>
   ...extra,
 });
 
-/** The type scale (TV pixels; nothing below 20 on a TV). */
+/** The type scale (TV pixels, as a desk reads them; a TV's grow to its rule: `ts`). */
 export const type = {
   /** The film's title as a light, tracked logotype. `chars`: the title's length: a long one is
    * tracked tighter (0.14em for 12 characters or fewer, down to 0.06em from 28), so its words
@@ -116,7 +131,7 @@ export const ringRoom = () => u(8 + 5 + 4) + Math.max(2, u(3));
 
 /** Whether the focus shows: always on a TV (the remote is all there is), elsewhere only while
  * the keys drive (not after a tap or a click, where a ring on what was pressed is noise). */
-export const showFocus = () => chrome === "tv" || keysInUse();
+export const showFocus = () => family === "tv" || keysInUse();
 
 export function focusRing(shownFocus: boolean, lift: "card" | "row" | "button" = "button"): ViewStyle {
   const focused = shownFocus && showFocus();

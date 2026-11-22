@@ -2,7 +2,9 @@
 # reel's own native views on Android (app/android/java: the mpv video view and others), added to
 # an APK that `nsh package android` built: NSH packages its own Java only, so this compiles
 # reel's, adds it as the next classesN.dex, adds libmpv and what it needs for the APK's ABIs
-# (build/libmpv.sh: the reel-libmpv release), aligns and signs the APK again with the
+# (build/libmpv.sh: the reel-libmpv release), adds what reel needs in the manifest and its
+# resources (app/android/res: Android TV's launcher entry and banner, the configuration changes
+# the activity takes; build/android-manifest.py), aligns and signs the APK again with the
 # key build/build.sh signs with (REEL_ANDROID_KEYSTORE, else the debug key).
 #
 #   build/android-views.sh <app.apk>
@@ -44,6 +46,9 @@ for dir in "$libs"/*/; do
   (cd "$work" && zip -q -0 in.apk lib/"$abi"/*.so)
   echo "reel views: libmpv for $abi ($(ls "$dir" | wc -l | tr -d ' ') libraries)"
 done
+
+# The manifest's entries NSH does not write, and reel's resources linked with the APK's.
+python3 -I "$(dirname "$0")/android-manifest.py" "$work/in.apk" "$src/res" "$bt/aapt2" "$jar"
 
 # No metadata of this machine in the package (owners, file times): entries rewritten as they
 # are, compression kept (build/pack.py); then aligned and signed.

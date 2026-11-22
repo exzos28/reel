@@ -5,11 +5,14 @@
 // rows and columns (Up from its first row: the pills). OK on a pill opens its
 // panel on the right (Up/Down, OK picks, Back closes); OK on a card opens the
 // title. Back closes the panel, then takes the focus to the nav, then Home. A new grid puts the grid's focus on its first card.
-// The grid has no end: within two rows of its last (or when the page scrolls near it) the
-// core is asked for its next page, which lands under the rows shown; the focus stays.
-import { computed, effect, Text, untracked, View } from "nsh";
+// The grid has no end: within a page of its last row (or when the page scrolls near it) the
+// core is asked for its next page, which lands under the rows shown; the focus stays. Down on
+// the last row while that page comes goes on down once it lands (a held Down keeps going).
+import { computed, effect, Text, untracked, View, type ViewRef } from "nsh";
 import { t } from "nsh/i18n";
-import { browse, browseMore, chooseFilter, type Summary } from "../../catalog";
+import { browse, browseMore, chooseFilter, clearFilters, type Summary } from "../../catalog";
+import { caps } from "../../platform";
+import { keyed } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
 import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
@@ -29,11 +32,14 @@ import { GridCard } from "./GridCard";
 import { GridTail } from "./GridTail";
 import { Trending } from "./Trending";
 
-/** The next page is asked for when the focus is this many rows from the grid's last. */
-const NEAR_ROWS = 2;
+/** The next page is asked for when the focus is this many rows from the grid's last: about a
+ * page of the core's (20 titles) ahead, so a held Down rarely waits for one. */
+const NEAR_ROWS = 4;
 
 export function BrowseScreen(props: { page: Page }) {
   const data = computed(() => browse(props.page));
+  /** The filter pills' views by index: a tablet's panel opens beside the pill. */
+  const pills = new Map<number, ViewRef>();
   const { zone, nav, trend, pill, row, cell, gridIds } = focusOf[props.page];
   /** Cards per grid row: as many as fit at about 330 TV pixels each. */
   const columns = computed(() => gridColumnsNow());
@@ -77,9 +83,19 @@ export function BrowseScreen(props: { page: Page }) {
     const o = panelRows(g)[at];
     if (!o) return;
     chooseFilter(props.page, g.id, o.id);
-    // A single choice is made: back to the pills; genres stay open to toggle more.
-    if (!g.multi) closePanel();
+    // A choice is made: the sheet closes at once. A remote's panel keeps genres open to toggle
+    // several (each is a walk back to the pill there).
+    if (!g.multi || !caps.remote) closePanel();
   };
+  /** The bar's Clear (the focus on it: -1); the focus goes on to the first pill, as Clear goes. */
+  const clearAll = () => {
+    clearFilters(props.page);
+    pill.set(0);
+  };
+  // Clear goes once nothing is filtered: the focus stays on the bar.
+  effect(() => {
+    if (!data().filtered && untracked(pill) < 0) pill.set(0);
+  });
   /** The core's next page, unless one is on its way or there is none. */
   const askMore = () =>
     untracked(() => {
@@ -92,6 +108,20 @@ export function BrowseScreen(props: { page: Page }) {
     if (Math.floor(cell() / columns()) >= rows().length - 1 - NEAR_ROWS) askMore();
   });
 
+  /** Down was pressed on this card of the grid's last row while more was coming (null: not): the
+   * focus moves on down once the next page lands, if it is still there and the keys still drive
+   * (a held Down; not one press long ago). */
+  let downFrom: number | null = null;
+  effect(() => {
+    count();
+    untracked(() => {
+      const from = downFrom;
+      if (from === null || cell() + columns() >= count()) return;
+      downFrom = null;
+      if (zone() === "grid" && cell() === from && keyed()) cell.set(from + columns());
+    });
+  });
+
   const toGrid = () => {
     if (count() === 0) return;
     zone.set("grid");
@@ -102,14 +132,12 @@ export function BrowseScreen(props: { page: Page }) {
   const page = scroller({ anchor: (viewport) => viewport / 3, memory: `browse:${props.page}` });
 
   showNav(() => (zone() === "nav" ? nav() : null));
-  useRootBack({
-    ctl: page,
-    onNav: () => zone() === "nav",
-    toNav: () => {
-      zone.set("nav");
-      nav.set(NAV.findIndex((n) => n.id === props.page));
-    },
-  });
+  /** The focus to the nav, on this page's item (wherever the nav was left). */
+  const toNav = () => {
+    zone.set("nav");
+    nav.set(NAV.findIndex((n) => n.id === props.page));
+  };
+  useRootBack({ ctl: page, onNav: () => zone() === "nav", toNav });
   useZones(
     zone,
     {
@@ -122,16 +150,17 @@ export function BrowseScreen(props: { page: Page }) {
       trending: {
         left: () => trend.set(clamp(trend() - 1, data().trending.length - 1)),
         right: () => trend.set(clamp(trend() + 1, data().trending.length - 1)),
-        up: () => zone.set("nav"),
+        up: toNav,
         down: () => (groups().length > 0 ? zone.set("filters") : toGrid()),
         enter: () => openTitle(data().trending[trend()].id),
       },
       filters: {
-        left: () => pill.set(clamp(pill() - 1, groups().length - 1)),
+        // Left of the first pill: Clear, while a filter is on.
+        left: () => pill.set(Math.max(pill() - 1, data().filtered ? -1 : 0)),
         right: () => pill.set(clamp(pill() + 1, groups().length - 1)),
         up: () => zone.set("trending"),
         down: toGrid,
-        enter: () => openPanel(clamp(pill(), groups().length - 1)),
+        enter: () => (pill() < 0 ? clearAll() : openPanel(clamp(pill(), groups().length - 1))),
       },
       panel: {
         up: () => row.set(clamp(row() - 1, panelCount() - 1)),
@@ -151,6 +180,10 @@ export function BrowseScreen(props: { page: Page }) {
         },
         down: () => {
           if (cell() + columns() < count()) cell.set(cell() + columns());
+          else if (data().more) {
+            downFrom = cell();
+            askMore();
+          }
         },
         enter: () => openTitle(data().all[cell()].id),
       },
@@ -183,6 +216,7 @@ export function BrowseScreen(props: { page: Page }) {
         <Trending
           title={() => t(`browse.${props.page}.trending`)}
           items={() => data().trending}
+          facet={() => data().facet}
           airs={props.page !== "movies"}
           focusedAt={() => (zone() === "trending" ? trend() : null)}
           blockRef={page.follow(() => zone() === "trending", "nearest")}
@@ -191,10 +225,13 @@ export function BrowseScreen(props: { page: Page }) {
         <FilterBar
           title={() => t(`browse.${props.page}.all`)}
           groups={groups}
+          filtered={() => data().filtered}
+          onClear={clearAll}
           focusedAt={() => (zone() === "filters" ? pill() : null)}
           openAt={() => (panelOpen() ? pill() : null)}
           blockRef={page.follow(() => zone() === "filters" || zone() === "panel", "nearest")}
           onOpen={openPanel}
+          pillRef={(i, r) => pills.set(i, r)}
         />
         <If when={stateText()}>
           <Text style={{ ...metaText(), paddingHorizontal: safe().x, marginTop: u(24) }}>{stateText()}</Text>
@@ -211,6 +248,7 @@ export function BrowseScreen(props: { page: Page }) {
           cell={(item, at) => (
             <GridCard
               item={item}
+              facet={() => data().facet}
               width={() => cellWidth(columns(), GRID_GAP)}
               focused={() => zone() === "grid" && cell() === at()}
               onPress={() => openCell(at())}
@@ -228,7 +266,7 @@ export function BrowseScreen(props: { page: Page }) {
         />
       </PageFrame>
       <If when={panelOpen()}>
-        <FilterPanel group={() => panelGroup()!} focusedAt={row} onPress={pick} onClose={closePanel} />
+        <FilterPanel group={() => panelGroup()!} focusedAt={row} onPress={pick} onClose={closePanel} anchor={() => pills.get(pill())} />
       </If>
     </View>
   );

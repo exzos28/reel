@@ -38,7 +38,7 @@ hosted:
 
 shelf:
   continue: "Продовжити перегляд"
-  watchlist: "Буду дивитися"
+  watchlist: "Мій список"
   trending_movies: "Популярні фільми"
   trending_shows: "Популярні серіали"
   popular: "Популярне"
@@ -64,13 +64,17 @@ empty:
 title:
   play: "Дивитися"
   resume: "Продовжити з %{at}"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  play_episode: "Дивитися %{episode}"
+  resume_episode: "Продовжити %{episode} з %{at}"
+  about_more: "Показати весь опис"
+  about_less: "Згорнути"
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: "Буду дивитися"
-  add_to_list: "Буду дивитися"
+  my_list: "До списку"
+  add_to_list: "До списку"
   in_list: "У списку"
-  add_to_list_spoken: "Додати до «Буду дивитися»"
-  remove_from_list_spoken: "Прибрати з «Буду дивитися»"
+  add_to_list_spoken: "Додати до списку"
+  remove_from_list_spoken: "Прибрати зі списку"
   trailer: "Трейлер"
   other_releases: "Інші роздачі"
   save: "Зберегти"
@@ -137,6 +141,12 @@ release:
   sharing: "Роздають %{count} ос."
   sharing_short: "%{count} ос."
   pack: "весь сезон, %{size}"
+  voiced: "%{language} (%{voice})"
+  voice:
+    dub: "дубляж"
+    mvo: "багатоголосий"
+    dvo: "двоголосий"
+    avo: "одноголосий"
   fast: "запуститься за секунди"
   note:
     starts_fast: "Запуститься швидко"
@@ -172,6 +182,13 @@ about:
   details: "Подробиці"
   similar: "Схоже"
 
+person:
+  titles: "Фільми й серіали"
+  state:
+    loading: "Завантаження…"
+    unavailable: "Не вдалося завантажити фільмографію. Спробуйте пізніше."
+    none: "Немає фільмів і серіалів."
+
 crew:
   director:
     one: "Режисер"
@@ -194,7 +211,6 @@ detail:
   original_title: "Оригінальна назва"
   release_date: "Дата виходу"
   first_aired: "Прем’єра"
-  runtime: "Тривалість"
   status: "Статус"
   countries: "Країна"
   studios: "Студія"
@@ -283,6 +299,7 @@ browse:
     countries: "Країни"
     sort: "Сортування"
     picked: "%{filter}: %{picked}"
+    format: "Формат"
   sort: "Сортування:"
   option:
     decade: "%{n}-ті"
@@ -291,11 +308,15 @@ browse:
     top_rated: "Найкращі за оцінками"
     newest: "Нові"
     any: "Будь-які"
+    format_tv: "Серіали"
+    format_movie: "Фільми"
+    format_special: "OVA та спецвипуски"
   state:
     loading: "Завантаження…"
     empty: "Під ці фільтри нічого не підходить."
     offline: "Не вдалося завантажити список. Перевірте підключення."
     more_failed: "Не вдалося завантажити ще. Спустіться нижче, щоб спробувати знову."
+  clear: "Скинути"
 
 search:
   title: "Пошук"
@@ -304,19 +325,23 @@ search:
   recent: "Недавні запити"
   clear: "Очистити історію"
   searching: "Шукаємо…"
-  none: "За запитом «%{query}» нічого не знайшлося."
+  none: "За запитом «%{query}» нічого не знайшлося. Спробуйте оригінальну назву або менше слів."
   failed: "TMDB і AniList не відповідають. Перевірте підключення й спробуйте знову."
   no_tmdb: "У цій збірці немає ключа TMDB, тому шукаємо лише аніме."
   section:
     movies: "Фільми"
     shows: "Серіали"
     anime: "Аніме"
+    trending: "Зараз популярне"
   try_again: "Спробувати знову"
   # A row of results whose source did not answer.
   row_failed:
     movies: "Не вдалося завантажити фільми."
     shows: "Не вдалося завантажити серіали."
     anime: "Не вдалося завантажити аніме."
+  clear_query: "Очистити пошук"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "Показати всі %{count}"
 
 compat:
   audio_dts: "У цій роздачі звук лише в DTS, а цей пристрій його не відтворює. Виберіть іншу роздачу."
@@ -327,6 +352,8 @@ compat:
 player:
   back: "Назад"
   close: "Закрити"
+  expand_sheet: "Показати більше"
+  collapse_sheet: "Показати менше"
   close_tracks: "Закрити звук і субтитри"
   episodes: "Серії"
   close_episodes: "Закрити серії"
@@ -349,9 +376,7 @@ player:
       other: "Знайдено людей: %{count}, підключаємося"
     fetching: "Завантажуємо початок, %{percent}%"
     starting: "Запускаємо"
-  buffering: "Завантаження"
-  ahead_seconds: "У запасі %{seconds} с"
-  rate_from: "%{speed} від %{count} ос."
+  waiting: "Очікування потоку"
   ready_ahead: "У запасі %{minutes} хв"
   ready_ahead_short: "У запасі менше хвилини"
   streaming: "потік %{speed}"
@@ -372,6 +397,7 @@ player:
   watch_credits: "Дивитися титри"
   no_source: "Немає роздачі для перегляду."
   no_source_hint: "Додайте джерело пошуку в налаштуваннях або виберіть іншу роздачу."
+  not_found_hint: "Джерело пошуку не знайшло роздачі, яка грає на цьому пристрої."
   not_in_release: "Цієї серії немає в роздачі."
   not_in_release_hint: "Поверніться й виберіть для неї роздачу."
   failed: "Не вдалося відтворити: %{message}"
@@ -403,7 +429,7 @@ settings:
     key: "API-ключ (необов’язково)"
     key_placeholder: "Лише якщо він є в джерела"
     key_saved: "Ключ збережено. Введіть новий, щоб замінити"
-    save: "Зберегти й перевірити"
+    save: "Перевірити"
     remove: "Видалити джерело"
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: "Готове джерело"
@@ -432,20 +458,20 @@ settings:
   # What shows while a film loads or waits for more of the stream.
   loader:
     title: "Анімація завантаження"
-    about: "Що видно, поки фільм чекає на продовження потоку."
+    about: "Що видно, поки фільм запускається."
+    none: "Немає"
     dinosaur: "Динозавр"
-    logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not
   # answer (failed), from Settings (edit).
   source_drawer:
     missing_title: "Додайте джерело пошуку"
     missing_about: "reel відтворює роздачі, які знаходить у вашому джерелі пошуку, а його поки немає. Введіть адресу Torznab і її API-ключ; «Дивитися» запрацює після підключення."
     failed_title: "Джерело пошуку не відповіло"
-    failed_about: "reel не зміг знайти в ньому роздачі. Перевірте адресу й API-ключ, потім натисніть «Зберегти й перевірити»; «Дивитися» запрацює після підключення."
+    failed_about: "reel не зміг знайти в ньому роздачі. Перевірте адресу й API-ключ, потім натисніть «Перевірити»; «Дивитися» запрацює після підключення."
     edit_title: "Джерело пошуку"
     edit_about: "Адреса Torznab і її API-ключ."
     link_title: "Взяти це джерело?"
-    link_about: "Джерело заповнено за посиланням. Натисніть «Зберегти й перевірити», щоб узяти його, або «Назад», щоб залишити своє."
+    link_about: "Джерело заповнено за посиланням. Натисніть «Перевірити», щоб узяти його, або «Назад», щоб залишити своє."
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: "Підключено"
@@ -454,7 +480,7 @@ settings:
   # The card beside Settings on a device that serves its settings page (a TV).
   phone:
     title: "Це можна змінити з телефона"
-    text: "Відскануйте код або відкрийте %{url}."
+    text: "Відскануйте код або відкрийте адресу нижче."
   interface:
     title: "Інтерфейс"
   about:
@@ -463,13 +489,15 @@ settings:
     data: "Джерела даних"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "Версія %{version} (%{build})"
+    license: "Відкритий вихідний код для перегляду · %{license}"
+    repository: "Вихідний код reel"
   details:
     title: "Відомості про потік"
     about: "Поки фільм іде або чекає, показувати швидкість, скільки людей роздає і скільки завантажено наперед."
     show: "Показувати відомості про потік"
   buffer:
     title: "Буфер відтворення"
-    about: "Скільки фільму reel тримає під час перегляду. Що більший буфер, то краще, коли роздають повільно або ви далеко перемотуєте."
+    about: "Скільки місця reel займає, поки йде фільм. Що більший буфер, то краще, коли роздають повільно або ви далеко перемотуєте."
     free: "Вільно на пристрої: %{free}"
     default: "(за замовчуванням)"
 
@@ -483,21 +511,22 @@ setup:
     help: "За цими назвами reel також шукає роздачі."
     more: "Інші мови"
   buffer:
-    title: "Скільки місця reel може зайняти під час перегляду?"
-    help: "Що більший буфер, то краще, коли роздають повільно або ви далеко перемотуєте."
+    title: "Буфер відтворення"
+    help: "Скільки місця reel може зайняти, поки йде фільм. Що більший буфер, то краще, коли роздають повільно або ви далеко перемотуєте."
     recommended: "Рекомендовано"
   source:
     title: "Де reel шукати фільми?"
-    help: "Вкажіть своє джерело або візьміть готове."
-    own_title: "Своє джерело"
-    rent_title: "Або готове"
+    help: "reel сам не шукає. Вкажіть джерело пошуку (Torznab): свій Jackett або Prowlarr, або отримайте готове в Telegram."
+    help_own: "reel сам не шукає. Вкажіть джерело пошуку (Torznab): свій Jackett або Prowlarr."
+    own_title: "Або вкажіть своє"
+    rent_title: "Візьміть готове"
     check: "Перевірити"
+    checking: "Перевірка…"
     finish: "Готово"
     skip: "Пропустити"
-    footnote: "Torznab — поширений спосіб, у який пошукові сервіси віддають списки торрент-роздач. reel сам відео не шукає: це каталог і плеєр, а що дивитися, він знаходить лише через указане вами джерело."
   phone:
     title: "Або налаштуйте з телефона"
-    text: "Відскануйте код камерою телефона або відкрийте %{url} у його браузері. Цей екран оновиться сам."
+    text: "Відскануйте код камерою телефона або відкрийте адресу нижче у його браузері. Цей екран оновиться сам."
     source_title: "З телефона простіше"
     source_text: "Вводити адресу пультом довго. Відскануйте код або відкрийте %{url} і вставте адресу там. Цей екран завершить налаштування сам."
 
@@ -511,7 +540,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: "Збережене"
-  empty: "Поки нічого не збережено. Збережіть фільм або сезон на його сторінці, щоб дивитися без інтернету."
+  empty: "Збережіть фільм, щоб дивитися без інтернету"
+  browse: "Вибрати фільм"
   saving: "Зберігається"
   while_open: "поки reel відкрито"
   ready: "Можна дивитися"
@@ -536,9 +566,10 @@ saved:
     checking: "Перевіряється збережене…"
     resolving: "Шукаємо, хто роздає…"
     saving: "%{percent}% · %{have} з %{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent}% · %{have} з %{size} · залишилося близько %{time}"
     paused: "На паузі · %{have} з %{size}"
     waiting: "Почнеться, коли закінчиться поточний перегляд"
-    saved: "Збережено · %{size}"
     unavailable: "Його диск не підключено"
   failed:
     no_source: "Не знайшлося роздачі для збереження"

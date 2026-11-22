@@ -51,7 +51,9 @@ fn ios_components(components: &nsh_platform_ios::Components) {
     adapters::ios_awake::watch();
     // reel's dark background under the UI from the first frame (NSH's root is white).
     adapters::ios_awake::paint_root();
-    // A phone is upright but in the player.
+    // The screen's size, to tell a window that does not fill it (`Settings.windowed`).
+    adapters::ios_awake::remember_screen();
+    // A phone's interface stays upright: its player draws itself sideways.
     adapters::ios_awake::upright_on_phones();
 }
 
@@ -183,6 +185,11 @@ fn parse_embedded(json: &str) -> Option<reel_domain::subtitles::tracks::Embedded
 #[module]
 pub struct VideoEngine;
 
+/// How long the next film waits for the last one's player to end (`VideoEngine::ended`): longer
+/// than a player waits for mpv's own end (2 s) before it destroys mpv anyway.
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "linux", windows))]
+const PLAYER_ENDING: std::time::Duration = std::time::Duration::from_secs(3);
+
 #[cfg(not(target_arch = "wasm32"))]
 #[module]
 impl VideoEngine {
@@ -210,6 +217,23 @@ impl VideoEngine {
         "native".into()
     }
 
+    /// Waits until the last film's player has ended (its view went: mpv stopped, its playback
+    /// ended, then it is destroyed on its own thread), so the next job, its stream and its player
+    /// start after it, never beside it. True then; false when one still played after a few
+    /// seconds (logged), and the next film starts anyway. At once where no player plays.
+    pub async fn ended() -> bool {
+        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "linux", windows))]
+        {
+            let ended = mpv::ending::none_playing(PLAYER_ENDING).await;
+            if !ended {
+                tracing::warn!("reel mpv: the last player had not ended {} s after the next film was asked for; it starts anyway", PLAYER_ENDING.as_secs());
+            }
+            ended
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "linux", windows)))]
+        true
+    }
+
     /// The player's full screen (Android: the system bars hide while it plays; elsewhere
     /// nothing: the desktops have their own full screen, a TV is always full).
     pub fn fullscreen(on: bool) {
@@ -219,18 +243,54 @@ impl VideoEngine {
         let _ = on;
     }
 
-    /// Turns the screen to landscape (`true`) or portrait, whatever the device's rotation lock
-    /// says: the player's Rotate button (iOS; elsewhere nothing). The device turning it back
-    /// (rotation unlocked) still turns it.
-    pub fn turn(landscape: bool) {
+    /// How the device is held, for a phone's player, which draws itself sideways inside the
+    /// upright window: JSON `{"turn","turns"}`. `turn`: the quarter turn the player gives its
+    /// picture for it: 90 (clockwise: the device turned counter-clockwise, its top at the left,
+    /// the common way), -90 (the other way), 0 (upright), null (flat, upside down, not known).
+    /// `turns`: how many times the device has turned since the app started; the player follows a
+    /// new one. With the rotation lock on (iOS) or auto-rotate off (Android), no turn is reported
+    /// (only Rotate turns the player); elsewhere always `{"turn":null,"turns":0}`.
+    pub fn held() -> String {
         #[cfg(target_os = "ios")]
-        crate::adapters::ios_awake::turn(landscape);
-        #[cfg(not(target_os = "ios"))]
-        let _ = landscape;
+        let (turn, turns) = crate::adapters::ios_awake::held();
+        #[cfg(target_os = "android")]
+        let (turn, turns) = crate::adapters::android_views::held();
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        let (turn, turns): (Option<i32>, u64) = (None, 0);
+        serde_json::json!({ "turn": turn, "turns": turns }).to_string()
+    }
+
+    /// The scale a phone's player turn starts at, from `from` to `to` degrees (0, 90, -90), in a
+    /// window `width` x `height` points, for a picture of `aspect` (its width over its height; 0:
+    /// not known, 16:9): the new layout starts drawn as large as the old one showed the picture,
+    /// and grows or shrinks to 1 as it turns (`reel_domain::play::turn_start_scale`).
+    pub fn turn_scale(from: i32, to: i32, width: f64, height: f64, aspect: f64) -> f64 {
+        reel_domain::play::turn_start_scale(from, to, width, height, aspect)
+    }
+
+    /// The phone's player is drawn sideways (`true`): the home indicator, along the picture's side
+    /// then, fades after a moment of no touches (iOS); the system bars stay hidden (Android);
+    /// elsewhere nothing.
+    pub fn immersive(on: bool) {
+        #[cfg(target_os = "ios")]
+        crate::adapters::ios_awake::immersive(on);
+        #[cfg(target_os = "android")]
+        crate::adapters::android_views::immersive(on);
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        let _ = on;
+    }
+
+    /// Whether a phone's player plays sideways for a film of this size (the video view's `width`
+    /// and `height` once loaded): it opened sideways, and only a picture taller than wide
+    /// stands it back upright (`reel_domain::play::starts_sideways`).
+    pub fn sideways(width: f64, height: f64) -> bool {
+        reel_domain::play::starts_sideways(width, height)
     }
 
     /// Whether reel's own native views are registered on this device (Android: the Java ones
-    /// `build/android-views.sh` adds to the APK; registered on the first call).
+    /// `build/android-views.sh` adds to the APK; registered on the first call, and on every
+    /// activity made after it). With them a phone's window stays upright, and its player draws
+    /// itself sideways (`held`).
     pub fn views() -> bool {
         #[cfg(target_os = "android")]
         return crate::adapters::android_views::installed();
@@ -247,6 +307,12 @@ pub struct Settings;
 #[cfg(not(target_arch = "wasm32"))]
 #[module]
 impl Settings {
+    /// What About says of reel itself: `{"license","repository"}` (the license's name, the
+    /// source code's address).
+    pub fn project() -> String {
+        serde_json::json!({ "license": "PolyForm Noncommercial 1.0.0", "repository": "https://github.com/exzos28/reel" }).to_string()
+    }
+
     /// The kind of device, when the host knows better than the system ("tv" on a
     /// Samsung TV, whose web view NSH takes for a desktop browser; a development host's stand-in,
     /// `compat::set_device`); empty otherwise.
@@ -254,11 +320,29 @@ impl Settings {
         reel_domain::compat::device().unwrap_or_default().to_owned()
     }
 
+    /// Whether a window `width` x `height` points does not fill the screen: an iPad's window in
+    /// windowed mode or Split View, where the system's window controls sit at its top left.
+    /// False elsewhere (only iOS knows its screen here).
+    pub fn windowed(width: f64, height: f64) -> bool {
+        #[cfg(target_os = "ios")]
+        return crate::adapters::ios_awake::windowed(width, height);
+        #[cfg(not(target_os = "ios"))]
+        {
+            let _ = (width, height);
+            false
+        }
+    }
+
     /// Tells the core the platform family the UI lays itself out for ("tv", "mac", "windows",
-    /// "linux", "tablet", "phone"), once at start: what Play and Save pick by themselves follows
-    /// from it (a phone keeps to 1080p and a size per hour, `fit::limits`). False for an
-    /// unknown name.
+    /// "linux", "tablet", "phone"), once at start, before `Settings.load` and `Library.supported`:
+    /// what Play and Save pick by themselves follows from it (a phone keeps to 1080p and a size
+    /// per hour, `fit::limits`), and whether it saves films (not a TV, `fit::saves`). False for
+    /// an unknown name. The screen's own facts are read here too where the system tells them
+    /// (Android: its tallest mode, HDR10, Dolby Vision): Play does not pick by itself what the
+    /// screen cannot show (`compat::Display`).
     pub fn set_family(name: String) -> bool {
+        #[cfg(target_os = "android")]
+        reel_domain::compat::set_display(crate::adapters::android_display::display());
         reel_domain::compat::set_family(&name).is_some()
     }
 
@@ -274,6 +358,8 @@ impl Settings {
         // Watch progress and the metadata cache live there too, and the saved films' library.
         catalog::init(dir.as_deref());
         library::init(dir.as_deref());
+        // Android TV serves the settings page for a phone from now on (the UI told the family first).
+        hosted::serve_on_lan();
         loaded.to_string()
     }
 
@@ -299,7 +385,7 @@ impl Settings {
         settings::set_nav_position(&position)
     }
 
-    /// Saves the loading animation ("logo" or "dinosaur"; another value is refused); the one in
+    /// Saves the loading animation ("none" or "dinosaur"; another value is refused); the one in
     /// effect.
     pub fn set_loader(loader: String) -> String {
         settings::set_loader(&loader)
@@ -432,13 +518,14 @@ impl Catalog {
         catalog::revision() as f64
     }
 
-    /// The home shelves: `[{"id","items":[summary…]}]` (see `catalog::summary`).
+    /// Home: `{"hero":summary,"shelves":[{"id","items":[summary…]}]}`, the hero not repeated
+    /// on the shelves (see `catalog::home`, `catalog::summary`).
     pub fn home() -> String {
         catalog::home().to_string()
     }
 
     /// `"movies"`, `"shows"` or `"anime"`: `{"trending":[summary…],"all":[summary…],
-    /// "filters":[group…],"allState"}` (see `catalog::browse`).
+    /// "filters":[group…],"allState","facet","filtered"}` (see `catalog::browse`).
     pub fn browse(page: String) -> String {
         catalog::browse(&page).to_string()
     }
@@ -464,6 +551,12 @@ impl Catalog {
     /// The episodes of `season` of `show`.
     pub fn episodes(show: String, season: u32) -> String {
         catalog::episodes(&show, season).to_string()
+    }
+
+    /// A person's page ("tmdb:person:6384"): `{"id","name","photo","initials","items":[summary…],
+    /// "state"}` (see `catalog::person`).
+    pub fn person(id: String) -> String {
+        catalog::person(&id).to_string()
     }
 
     /// Episode `number` of `season` of `show`, or null while it is not known.
@@ -509,7 +602,8 @@ impl Catalog {
         catalog::search::forget()
     }
 
-    /// Makes release `index` the one Play uses for `id`.
+    /// Makes release `index` the one Play uses for `id`, kept after a restart (as the release
+    /// something was watched in is: Resume plays on in it).
     pub fn choose_release(id: String, index: u32) -> bool {
         catalog::choose_release(&id, index as usize)
     }
@@ -518,6 +612,13 @@ impl Catalog {
     /// in its season's: `{"releases","releasesState","seasonRelease"}`.
     pub fn episode_releases(key: String) -> String {
         catalog::episode_releases(&key).to_string()
+    }
+
+    /// What Play pressed on `key` (what plays) does at once: "play" (the player opens; a release
+    /// not known yet is found inside it), "no_source" (the drawer that adds a search source) or
+    /// "failed" (the source did not answer: the drawer to fix it). See `catalog::on_play`.
+    pub fn on_play(key: String) -> String {
+        catalog::on_play(&key).to_owned()
     }
 
     /// Where the player should start `id` (what plays), seconds: where the
@@ -656,7 +757,7 @@ impl Sources {
 
     /// `{"state":"pending"}`, `{"state":"done","releases":[…]}` (ranked: each
     /// `{"id","title","source","infohash","size","seeders","peers","indexer",
-    /// "info":{resolution,hdr,dolby_vision,codec,source,season,episodes,season_pack},
+    /// "info":{resolution,hdr,dolby_vision,languages,codec,source,season,episodes,season_pack},
     /// "seasonPack"}`), `{"state":"done","caps":{…}}` for a check, or
     /// `{"state":"failed","message"}`.
     pub fn result(id: u32) -> String {
@@ -719,7 +820,8 @@ impl Library {
 
     /// The Saved screen: `{"saving":[…],"ready":[…],"failed":[…],"space":{"saved","free",
     /// "folder"}}`, each item `{"id","key","title","label","image","season","number","state",
-    /// "size","have","progress","speed","peers","message","folder"}`.
+    /// "size","have","progress","speed","peers","left","message","folder"}`; `left` (an item's
+    /// and a group's): minutes it still takes, rounded, null when not known.
     pub fn list() -> String {
         library::list().to_string()
     }
@@ -754,6 +856,18 @@ impl Library {
     pub fn revision() -> f64 {
         library::revision() as f64
     }
+
+    /// The Saved tab's mark: `{"saving","progress"}` (see `library::overall`).
+    pub fn overall() -> String {
+        library::overall().to_string()
+    }
+
+    /// Where the app opens: `"saved"` when Home's catalog is out of reach (no network) and
+    /// something is saved to watch, `"home"` otherwise, `"wait"` while Home's first answers are
+    /// on their way (ask again as `Catalog.revision` goes up).
+    pub fn opening() -> String {
+        library::opening().to_owned()
+    }
 }
 
 /// Formatting shared by every platform.
@@ -783,6 +897,17 @@ impl Fmt {
             format!("{} GB", gb.round() as u64)
         } else {
             format!("{gb:.1} GB")
+        }
+    }
+
+    /// Bytes saved of a size, `[have, size]`, as "35 of 700 MB" says them: the first without
+    /// its unit when both have the same (`["35", "700 MB"]`), else both whole
+    /// (`["700 MB", "1.4 GB"]`).
+    pub fn size_of(have: f64, size: f64) -> Vec<String> {
+        let (h, s) = (Self::size(have), Self::size(size));
+        match (h.rsplit_once(' '), s.rsplit_once(' ')) {
+            (Some((n, a)), Some((_, b))) if a == b => vec![n.to_owned(), s],
+            _ => vec![h, s],
         }
     }
 
@@ -819,6 +944,14 @@ mod tests {
         assert_eq!(Fmt::size(1024.0 * 1024.0 * 1024.0), "1 GB");
         assert_eq!(Fmt::size(1.4 * 1024.0 * 1024.0 * 1024.0), "1.4 GB");
         assert_eq!(Fmt::size(12.3 * 1024.0 * 1024.0 * 1024.0), "12 GB");
+    }
+
+    #[test]
+    fn size_of() {
+        let mb = 1024.0 * 1024.0;
+        assert_eq!(Fmt::size_of(35.0 * mb, 700.0 * mb), ["35", "700 MB"]);
+        assert_eq!(Fmt::size_of(700.0 * mb, 1.4 * 1024.0 * mb), ["700 MB", "1.4 GB"]);
+        assert_eq!(Fmt::size_of(1.2 * 1024.0 * mb, 3.4 * 1024.0 * mb), ["1.2", "3.4 GB"]);
     }
 
     #[test]

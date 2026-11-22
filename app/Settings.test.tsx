@@ -2,7 +2,7 @@ import { expect, test } from "nsh/test";
 import { ENGINE, NATIVE, openApp } from "./testEngine";
 
 /** The core's settings with the menu and the loader where a test puts them. */
-const appearance = (navPosition: string, loader = "logo") => ({
+const appearance = (navPosition: string, loader = "none") => ({
   "Settings.load": JSON.stringify({
     language: "en", bufferMB: 256, bufferChoices: [{ mb: 256, default: true }], streamDetails: false, navPosition, loader,
   }),
@@ -43,15 +43,17 @@ test("Settings: on a desktop the window bar's nav sits where the settings say", 
   expect(app.shows("window-nav-right")).toBe(false);
 });
 
-test("Settings: a phone's Interface has no Menu position (its tab bar stays), but has Loading animation", async () => {
+test("Settings: on a phone Loading animation is a row of Settings (no Interface page: its tab bar has no Menu position)", async () => {
   const app = await openApp({ platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 }, modules: { "app/native": NATIVE } });
   await app.press("label:Settings");
-  await app.press("label:Interface");
-  expect(app.texts()).toContain("Loading animation");
+  expect(app.shows("label:Interface")).toBe(false);
   expect(app.texts()).not.toContain("Menu position");
+  await app.press("label:Loading animation");
+  expect(app.shows("choice-panel")).toBe(true);
+  expect(app.texts()).toContain("Dinosaur");
 });
 
-test("Settings: Loading animation offers reel (the default) and the dinosaur; picking the dinosaur asks the core", async () => {
+test("Settings: Loading animation offers None (the default) and the dinosaur; picking the dinosaur asks the core", async () => {
   const chosen: string[] = [];
   const app = await openApp({
     modules: { "app/native": { ...NATIVE, "Settings.setLoader": (l: string) => (chosen.push(l), l) } },
@@ -60,8 +62,9 @@ test("Settings: Loading animation offers reel (the default) and the dinosaur; pi
   await app.press("label:Interface");
   await app.press("label:Loading animation");
   expect(app.shows("choice-panel")).toBe(true);
+  expect(app.texts()).toContain("None");
   expect(app.texts()).toContain("Dinosaur");
-  await app.keyboard.press("down"); // from reel to Dinosaur
+  await app.keyboard.press("down"); // from None to Dinosaur
   await app.keyboard.press("enter");
   expect(chosen).toEqual(["dinosaur"]);
   expect(app.texts()).toContain("Dinosaur"); // the row's value
@@ -79,7 +82,7 @@ test("Settings: the source row opens its drawer; saving checks it and says how i
   await app.press("label:Settings");
   await app.press("label:Search source");
   expect(app.shows("source-panel")).toBe(true);
-  await app.press("Save and check");
+  await app.press("Check");
   await app.wait(400);
   expect(app.texts()).toContain("Connected. It searches by title.");
 });
@@ -90,7 +93,7 @@ test("Settings: a bad address is refused with the core's message", async () => {
   });
   await app.press("label:Settings");
   await app.press("label:Search source");
-  await app.press("Save and check");
+  await app.press("Check");
   await app.waitFor("text:not an address"); // the core's answer comes a moment after the press
 });
 
@@ -105,6 +108,10 @@ test("Settings: About reel, past the buffer sizes, shows the TMDB logo and notic
     "This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.",
   );
   for (const s of ["AniList", "Jikan (MyAnimeList)", "Fribb/anime-lists"]) expect(app.texts()).toContain(s);
+  // reel itself: its license and its source code (a TV shows the address, it opens no links).
+  expect(app.texts()).toContain("Source-available · PolyForm Noncommercial 1.0.0");
+  expect(app.texts()).toContain("reel's source code");
+  expect(app.texts()).toContain("https://github.com/exzos28/reel");
   await app.keyboard.press("escape");
   expect(app.texts()).toContain("Playback buffer");
   await app.keyboard.press("enter"); // the focus is back on About
@@ -193,7 +200,7 @@ const firstRun = (result: object) => ({
   }),
 });
 
-test("setup, source step: one button, Check until the source answers, then Finish; an edit makes it Check again", async () => {
+test("setup, source step: one button, Check (Checking… and disabled while it checks) until the source answers, then Finish alone; an edit makes it Check again", async () => {
   let finished = 0;
   const failing = await openApp({ clock: {}, modules: { "app/native": { ...firstRun({ state: "failed", message: "can't reach it" }), "Settings.finishSetup": () => (finished++, null) } } });
   for (const _ of [0, 1]) await failing.press("label:Next");
@@ -208,10 +215,14 @@ test("setup, source step: one button, Check until the source answers, then Finis
   const working = await openApp({ clock: {}, modules: { "app/native": { ...firstRun({ state: "done", caps: { movieImdb: true } }), "Settings.finishSetup": () => (finished++, null) } } });
   for (const _ of [0, 1]) await working.press("label:Next");
   await working.type("source-url", "https://source.example/api");
+  expect(working.shows("source-result")).toBe(true); // its room is there before it says anything
   await working.press("label:Check");
+  expect(working.texts()).toContain("Checking…");
+  expect(working.enabled("label:Checking…")).toBe(false);
   await working.wait(400);
   expect(working.texts()).toContain("Connected. It searches by IMDb id.");
   expect(working.texts()).toContain("Finish");
+  expect(working.texts()).not.toContain("Skip"); // one thing left to press
   await working.type("source-url", "/other"); // an edit: Check again
   expect(working.texts()).toContain("Check");
   await working.press("label:Check");
@@ -220,7 +231,36 @@ test("setup, source step: one button, Check until the source answers, then Finis
   expect(finished).toBe(1);
 });
 
-test("setup, language step: More languages opens them all, and the remote moves in the drawer and picks", async () => {
+test("setup: each step's focus starts on the choice in effect (the recommended buffer, not the first size)", async () => {
+  const languages: string[] = [];
+  const buffers: number[] = [];
+  const app = await openApp({
+    modules: {
+      "app/native": {
+        ...firstRun({ state: "done" }),
+        "Settings.load": JSON.stringify({
+          language: "en", contentLanguage: "en-GB", setupDone: false, bufferMB: 2048, streamDetails: false,
+          contentLanguages: [{ tag: "en-US", name: "English (US)" }, { tag: "en-GB", name: "English (UK)" }], source: { url: "", hasKey: false },
+          bufferChoices: [128, 256, 512, 1024, 2048].map((mb) => ({ mb, default: mb === 2048 })),
+        }),
+        "Settings.setContentLanguage": (tag: string) => (languages.push(tag), tag),
+        "Settings.setBufferMb": (mb: number) => (buffers.push(mb), mb),
+      },
+    },
+  });
+  await app.waitFor("label:Next");
+  await app.keyboard.press("enter"); // OK where the focus starts: the language in effect, the second
+  expect(languages).toEqual(["en-GB"]);
+  await app.press("label:Next");
+  expect(app.texts()).toContain("Playback buffer");
+  await app.keyboard.press("enter"); // 2 GB, the last, not 128 MB
+  expect(buffers).toEqual([2048]);
+  await app.keyboard.press("down"); // under it: Next
+  await app.keyboard.press("enter");
+  expect(app.texts()).toContain("Where should reel find films?");
+});
+
+test("setup, language step: More languages opens the ones the step does not show, and the remote moves in the drawer and picks", async () => {
   const chosen: string[] = [];
   const tags = ["en-US", "ru-RU", "de-DE", "fr-FR", "es-ES", "it-IT", "ja-JP", "pt-BR"];
   const names = ["English", "Русский", "Deutsch", "Français", "Español", "Italiano", "日本語", "Português"];
@@ -240,7 +280,10 @@ test("setup, language step: More languages opens them all, and the remote moves 
   await app.waitFor("label:More languages  ›");
   await app.press("label:More languages  ›");
   expect(app.shows("choice-panel")).toBe(true);
-  for (let i = 0; i < 7; i++) await app.keyboard.press("down"); // from English to the last
+  // The five shown on the step are not repeated: Italiano, 日本語, Português.
+  expect(app.texts().filter((x) => x === "English")).toHaveLength(1);
+  expect(app.texts()).toContain("Italiano");
+  for (let i = 0; i < 4; i++) await app.keyboard.press("down"); // to the last (and past it: it stays)
   await app.keyboard.press("enter");
   expect(chosen).toEqual(["pt-BR"]);
   expect(app.shows("choice-panel")).toBe(false);

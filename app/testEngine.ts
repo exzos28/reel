@@ -12,6 +12,9 @@ export const ENGINE = {
   "Engine.seek": async () => JSON.stringify({ state: "ready" }),
   "Engine.checkSpace": JSON.stringify({ ok: true, free: 10 * 1024 ** 3, needed: 306 * 1024 ** 2, buffer: 256 }),
   "Engine.timeline": JSON.stringify({ ranges: [], ahead: 0 }),
+  // The last film's player has ended: the next one opens.
+  "VideoEngine.ended": true,
+  "Settings.project": JSON.stringify({ license: "PolyForm Noncommercial 1.0.0", repository: "https://github.com/exzos28/reel" }),
   /** The sources About names, as the core lists them. */
   "Meta.attribution": JSON.stringify([
     { provider: "tmdb", name: "TMDB", url: "https://www.themoviedb.org", logoRequired: true, license: null,
@@ -35,6 +38,7 @@ function summary(over: Record<string, unknown>) {
     ink: "#F5F5F5", paper: "#1A1A1A", stoppedAt: null, progress: 0, left: null, resume: null,
     seasons: 0, airs: null, tag: null, playable: true, inList: false, release: null,
     play: { id, start: 0 },
+    playAs: { verb: "play", season: null, episode: null, at: null },
     aboutShort: (over.aboutShort ?? over.about ?? "") as string,
     ...over,
   };
@@ -45,6 +49,7 @@ export const INCEPTION = summary({
   id: "tmdb:movie:27205", title: "Inception", year: 2010, minutes: 148, rating: "8.4", votes: "38K",
   genres: ["Action", "Science Fiction"], about: "A thief who steals secrets through dreams is offered a way home.",
   stoppedAt: 2472, progress: 0.28, left: 107, play: { id: "tmdb:movie:27205", start: 2472 },
+  playAs: { verb: "resume", season: null, episode: null, at: 2472 },
   release: { quality: "1080p", source: "BluRay", pack: false, size: "8 GB", peers: 412, fast: true },
 });
 
@@ -53,12 +58,16 @@ export const AOT = summary({
   id: "tmdb:tv:1429", kind: "show", title: "Attack on Titan", year: 2013, yearEnd: 2023, rating: "8.7", votes: "7.1K",
   genres: ["Animation", "Action & Adventure"], anime: true, seasons: 4, progress: 0.4, left: 14,
   resume: { season: 3, episode: 2 }, play: { id: "tmdb:tv:1429:s3e2", season: 3, episode: 2, start: 600 },
+  playAs: { verb: "resume", season: 3, episode: 2, at: 600 },
 });
 
 const ARRIVAL = summary({ id: "tmdb:movie:329865", title: "Arrival", year: 2016, minutes: 116, rating: "7.6" });
 const DUNE = summary({ id: "tmdb:movie:438631", title: "Dune", year: 2021, minutes: 155, rating: "7.8" });
 export const SEVERANCE = summary({ id: "tmdb:tv:95396", kind: "show", title: "Severance", year: 2022, seasons: 2 });
 const FRIEREN = summary({ id: "anilist:154587", kind: "show", title: "Frieren: Beyond Journey's End", anime: true, year: 2023 });
+
+/** Home as the core answers it: the first card is the hero (the stand-in keeps it on its shelf too). */
+export const homeOf = (shelves: { id: string; items: unknown[] }[]) => JSON.stringify({ hero: shelves[0].items[0], shelves });
 
 export const HOME = [
   { id: "continue", items: [INCEPTION, AOT] },
@@ -68,17 +77,28 @@ export const HOME = [
   { id: "anime", items: [FRIEREN, AOT] },
 ];
 
-export const release = (index: number, quality: string, source: string, group: string, size: string, peers: number, bars: number, note: string, mbit: number, selected = false) => ({
-  index, quality, source, group, size, tracks: [], peers, bars, note, mbit, selected, pack: false, indexer: "test", top: true,
-});
+/** Leonardo DiCaprio's page: his titles, best known first. */
+export const DICAPRIO = {
+  id: "tmdb:person:6193", name: "Leonardo DiCaprio", photo: img("w185", "dicaprio"), initials: "LD", state: "done",
+  items: [INCEPTION, summary({ id: "tmdb:movie:11324", title: "Shutter Island", year: 2010, rating: "8.2" }), DUNE],
+};
+
+/** A release as the core gives it; `line` its second line's parts before the size. */
+export const release = (index: number, quality: string, source: string, group: string, size: string, peers: number, note: string, mbit: number, selected = false, line: object[] = []) => {
+  const all = [...line, { text: size }];
+  return {
+    index, quality, source, origin: source, group, size, line: all, peers, note, mbit, selected, pack: false, indexer: "test", top: true,
+    spoken: [{ text: `${quality} ${source}` }, ...all, { key: "release.sharing", count: peers }, { key: `release.note.${note}`, mbit }],
+  };
+};
 
 /** What a title screen shows below the hero (a film's). */
 const BELOW = {
   aboutFull: true,
   cast: [
-    { name: "Leonardo DiCaprio", character: "Cobb", photo: img("w185", "dicaprio"), initials: "LD" },
-    { name: "Joseph Gordon-Levitt", character: "Arthur", photo: null, initials: "JG" },
-    { name: "Elliot Page", character: "Ariadne", photo: img("w185", "page"), initials: "EP" },
+    { name: "Leonardo DiCaprio", character: "Cobb", photo: img("w185", "dicaprio"), initials: "LD", person: "tmdb:person:6193" },
+    { name: "Joseph Gordon-Levitt", character: "Arthur", photo: null, initials: "JG", person: "tmdb:person:24045" },
+    { name: "Elliot Page", character: "Ariadne", photo: img("w185", "page"), initials: "EP", person: "tmdb:person:27578" },
   ],
   crew: [
     { job: "director", names: ["Christopher Nolan"] },
@@ -101,9 +121,12 @@ export const INCEPTION_TITLE = {
   similar: [DUNE, ARRIVAL],
   releasesState: "done",
   releases: [
-    release(2, "4K", "Remux", "Inception.2010.2160p.UHD.BluRay.REMUX", "60 GB", 38, 3, "needs", 58),
-    release(0, "1080p", "BluRay", "Inception.2010.1080p.BluRay.x264", "8 GB", 412, 4, "starts_fast", 8, true),
-    release(1, "720p", "WEB", "Inception.2010.720p.WEB", "2 GB", 655, 4, "starts_fast", 2),
+    release(2, "4K", "Remux", "Inception.2010.2160p.UHD.BluRay.REMUX", "60 GB", 38, "needs", 58),
+    release(0, "1080p", "BluRay", "Inception.2010.1080p.BluRay.x264", "8 GB", 412, "starts_fast", 8, true, [
+      { audio: [{ language: "en", voice: null }, { language: "ru", voice: "mvo" }] },
+      { text: "H.264" },
+    ]),
+    release(1, "720p", "WEB", "Inception.2010.720p.WEB", "2 GB", 655, "starts_fast", 2),
   ],
 };
 
@@ -115,7 +138,7 @@ export const AOT_TITLE = {
   ...BELOW,
   aboutFull: false,
   crew: [{ job: "creator", names: ["Hajime Isayama"] }],
-  cast: [{ name: "Yuki Kaji", character: "Eren Yeager (voice)", photo: null, initials: "YK" }],
+  cast: [{ name: "Yuki Kaji", character: "Eren Yeager (voice)", photo: null, initials: "YK", person: null }],
   tagline: null,
   releaseDate: [2013, 4, 7],
   countries: ["Japan"],
@@ -149,14 +172,14 @@ function airDate(n: number) {
 export function episode(n: number, title: string, over: Record<string, unknown> = {}) {
   return {
     id: `tmdb:tv:1429:s3e${n}`, show: "tmdb:tv:1429", season: 3, number: n, title, about: `${title}, the episode.`,
-    minutes: 24, date: airDate(n), rating: "8.5", thumb: null, progress: 0, left: null, watched: false,
+    minutes: 24, date: airDate(n), rating: "8.5", thumb: null, progress: 0, note: { date: airDate(n) }, watched: false,
     start: 0, quality: null, playable: true, ...over,
   };
 }
 
 export const AOT_S3 = [
   episode(1, "Smoke Signal", { progress: 1, watched: true }),
-  episode(2, "Pain", { progress: 0.4, left: 14, start: 600 }),
+  episode(2, "Pain", { progress: 0.4, note: { left: 14 }, start: 600 }),
   episode(3, "Old Story"),
   episode(4, "Trust"),
 ];
@@ -187,13 +210,14 @@ export const browseCards = (n: number, from = 0) =>
 /** The catalog as most tests see it: Home, Browse, Inception's screen. */
 export const CATALOG = {
   "Catalog.revision": 1,
-  "Catalog.home": JSON.stringify(HOME),
+  "Catalog.home": homeOf(HOME),
   "Catalog.browse": JSON.stringify({ trending: BROWSE_TRENDING, all: BROWSE_ALL, filters: browseFilters(), allState: "done", more: false, moreState: "idle" }),
   "Catalog.browseMore": false,
   "Catalog.chooseFilter": false,
   "Catalog.title": JSON.stringify(INCEPTION_TITLE),
   "Catalog.episodes": JSON.stringify(AOT_S3),
   "Catalog.episode": JSON.stringify(AOT_S3[1]),
+  "Catalog.person": JSON.stringify(DICAPRIO),
   "Catalog.upNext": "null",
   "Catalog.tracks": JSON.stringify({
     audio: [{ key: "original", selected: true }],
@@ -203,6 +227,8 @@ export const CATALOG = {
   "Catalog.toggleList": true,
   "Catalog.chooseRelease": true,
   "Catalog.startAt": 0,
+  /** Play opens the player (the core's answer with a search source that answered). */
+  "Catalog.onPlay": "play",
   "Catalog.saveProgress": false,
 };
 
@@ -217,7 +243,7 @@ export const STILL = { "VideoEngine.kind": "still" };
 export const NATIVE = { ...ENGINE, ...CATALOG };
 
 /** Home with nothing begun: the first card, and so the hero, is Dune (Trending movies). */
-export const DUNE_FIRST = { "Catalog.home": JSON.stringify(HOME.filter((s) => s.id !== "continue" && s.id !== "watchlist")) };
+export const DUNE_FIRST = { "Catalog.home": homeOf(HOME.filter((s) => s.id !== "continue" && s.id !== "watchlist")) };
 
 /** Search as the core answers it: nothing typed (two recent searches), and "dune" found. */
 export const SEARCH_RECENT = { query: "", state: "recent", tmdb: true, recent: ["dune", "frieren"], sections: [] };

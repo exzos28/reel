@@ -7,8 +7,8 @@ import { SectionTitle } from "../../layout/Section";
 import { colors, u } from "../../theme";
 import { Pressable } from "../../kit/Pressable";
 
-/** The last searches as pills: OK (or a click) searches one again; "Clear history" beside the title
- * forgets them all (the focus reaches it after the last pill).
+/** The last searches as pills: OK (or a tap) searches one again; "Clear history" at the title's
+ * row's end forgets them all (the focus reaches it after the last pill).
  * `focusedAt`: the pill the focus is on, `queries().length` for Clear, null while it is elsewhere. */
 export function RecentSearches(props: {
   queries: () => string[];
@@ -21,6 +21,7 @@ export function RecentSearches(props: {
     <View style={{ gap: u(18) }}>
       <View style={row(u(28))}>
         <SectionTitle text={() => t("search.recent")} />
+        <View style={{ flex: 1 }} />
         <Pressable
           testID="search-clear"
           role="button"

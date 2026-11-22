@@ -15,6 +15,13 @@ use std::{
 
 pub use table::registry;
 
+/// The TV's listener on the local network (`/logs`, the settings page for a phone) on
+/// `ip`:47392. The TV serves it on every address; a development host only when told to
+/// (reel-core --lan), so that its UI shows the settings page's QR code as a TV's does.
+pub fn serve_lan(data_dir: PathBuf, ip: std::net::IpAddr) {
+    logs::serve_once(data_dir, ip);
+}
+
 /// The port the web UI calls. Fixed: the UI has no other way to find the core.
 pub const DEFAULT_PORT: u16 = 47_391;
 
@@ -164,7 +171,7 @@ pub unsafe extern "C" fn reel_core_start(
             log_to(&unsafe { string(log_path, "log_path")? })?;
         }
         // Up before the core, so a core that does not start can still say why.
-        logs::serve_once(PathBuf::from(&data_dir));
+        logs::serve_once(PathBuf::from(&data_dir), Ipv4Addr::UNSPECIFIED.into());
         if let Some(running) = RUNNING.get() {
             running.token.set(&token)?;
             return Ok(1);

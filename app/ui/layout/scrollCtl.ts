@@ -34,6 +34,9 @@ export const stopAll = () => running.forEach((stop) => stop());
 
 export interface ScrollCtl {
   horizontal: boolean;
+  /** A tap on its content acts while a keyboard is up (it stays up), instead of only closing the
+   * keyboard: Search's recent searches, its results. */
+  keepsKeyboard: boolean;
   /** A ref for a block that the scroll view brings to its place whenever
    * `when` turns true by a key; the first time (the screen opening, or
    * coming back to it), it only shows it, at once. */
@@ -56,6 +59,10 @@ export interface ScrollCtl {
   /** Moves the view by most of its length, `dir` 1 forward, -1 back (a row's arrows); by
    * whole cards where the row says how far apart they are (`step`). */
   page(dir: 1 | -1): void;
+  /** Glides back to the start (Back on a page, its destination chosen again): through the
+   * platform's driver, as every move; a TV's web build moves the content, not the view's own
+   * offset, so the view's `scrollTo` would leave it where it is. */
+  toStart(): void;
   /** Whether it can move back (`atStart` false) or on (`atEnd` false), from the last measure. */
   atStart: ReturnType<typeof signal<boolean>>;
   atEnd: ReturnType<typeof signal<boolean>>;
@@ -69,7 +76,7 @@ let scrollers = 0;
  * it to its focus, so switching screens does not make it jump. */
 /** `step`: a row's card width plus its gap, points, where its cards are all one width: its arrows
  * then move it by the cards it shows whole, the next one landing at the anchor. */
-export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number) => number; memory?: string; step?: () => number }): ScrollCtl {
+export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number) => number; memory?: string; step?: () => number; keepsKeyboard?: boolean }): ScrollCtl {
   const horizontal = !!opts.horizontal;
   /** The view's and its content's lengths along its axis, points (0: not laid out yet). */
   let lengths = { viewport: 0, content: 0 };
@@ -116,7 +123,7 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
       viewport: s.bounds.size[length],
       content: c.bounds.size[length],
       // On a TV a block is kept clear of the title-safe edge too (the set may crop it).
-      pad: density === "ten-foot" ? Math.max(ringRoom(), safe().y) : ringRoom(),
+      pad: density() === "ten-foot" ? Math.max(ringRoom(), safe().y) : ringRoom(),
     };
     // A TV keeps one focus line: up and down move the page under it, never the focus over
     // a page standing still (only where the page cannot move: its very top and end).
@@ -170,12 +177,17 @@ export function scroller(opts: { horizontal?: boolean; anchor: (viewport: number
     ctl.atEnd.set((ctl.offset() ?? 0) >= lengths.content - lengths.viewport - 1);
   };
   const ctl: ScrollCtl = {
+    keepsKeyboard: !!opts.keepsKeyboard,
     horizontal,
     domId,
     sized,
     nudge,
     page(dir) {
       extent().then((e) => e && nudge(pageDelta(dir, e.viewport)));
+    },
+    toStart() {
+      heading = null;
+      go(0, true);
     },
     atStart: signal(true),
     atEnd: signal(false),

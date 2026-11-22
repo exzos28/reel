@@ -1,11 +1,13 @@
 //! Settings from a phone (docs/hosted-settings.md): a page this device serves on the local
 //! network, where a browser paired with a code from the screen sets the search source, the
 //! content language and the playback buffer. Everything but the listener is here, so every
-//! host that serves the LAN (the Samsung TV's core, later Android TV) shares it: the host
-//! routes `GET /settings` to [`PAGE`] and `/settings/api/*` to [`handle`], and says the port
-//! with [`serving_on`]. `GET /s` is the same page, opened from a partner's link with a source to
-//! offer (`offer.rs`).
+//! host that serves the LAN shares it: the host routes `GET /settings` to [`PAGE`] and
+//! `/settings/api/*` to [`handle`], and says the port with [`serving_on`]. The Samsung TV's core
+//! has a listener of its own; on Android TV the app serves it itself (`lan.rs`). `GET /s` is the
+//! same page, opened from a partner's link with a source to offer (`offer.rs`).
 
+#[cfg(any(target_os = "android", test))]
+pub mod lan;
 mod offer;
 mod pairing;
 
@@ -47,6 +49,13 @@ static CHECKS: LazyLock<Mutex<HashSet<u32>>> = LazyLock::new(Default::default);
 pub fn serving_on(port: u16) {
     SERVING.store(port, Ordering::Relaxed);
     settings::bump();
+}
+
+/// Serves the page on the local network where the app itself is the host: Android TV, once per
+/// process (`lan::start`). Nothing elsewhere.
+pub fn serve_on_lan() {
+    #[cfg(target_os = "android")]
+    lan::start();
 }
 
 fn random(buf: &mut [u8]) {
@@ -92,6 +101,21 @@ pub fn link_source(link: &str) -> Value {
         Some((url, key)) => json!({ "url": url, "key": key }),
         None => json!({ "url": null }),
     }
+}
+
+/// A link that opened the app (`reel://s?t=&u=`) offered as a phone's offer is: the screen asks
+/// (`offered`), a yes saves it. Android's way in: NSH 0.6.1's Android runtime drops the app's
+/// links (it does not read the schemes `app.json` claims), so reel's own activity takes them
+/// (`app/android/java/app/reel/views/Link.java`). False when the link carries no source.
+#[cfg_attr(not(any(target_os = "android", test)), allow(dead_code))]
+pub fn offer_link(link: &str) -> bool {
+    let Some((url, key)) = offer::from_link(link) else { return false };
+    if OFFERS.lock().unwrap().offer(Instant::now(), &url, &key, &mut random).is_err() {
+        return false;
+    }
+    settings::bump();
+    expire_offer_later();
+    true
 }
 
 /// The source a phone offers, waiting for the viewer: `{"host":"jackett.example.com"}`, or

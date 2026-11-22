@@ -2,6 +2,9 @@
 // bare View): it shows the press from the moment a finger is down, as Apple's HIG asks, and a
 // quick tap too (pressFeedback). Buttons, icons, chips and tabs dim; list and settings rows take
 // a lighter fill. The caller's focus ring (in its style) and hoverStyle stay as they are.
+// On a TV nothing pressable is a stop of the platform's own focus: reel's focus (the ring the
+// screens draw) is the only one, so OK never presses a view the system focused unseen (Tab on a
+// keyboard moved it there on Android TV).
 import { split, View, type PressEvent, type ViewProps, type ViewStyle } from "nsh";
 import { Haptics, isAvailable as hasHaptics } from "nsh/mobile";
 import { caps } from "../platform";
@@ -37,6 +40,7 @@ export function Pressable(
   return (
     <View
       {...rest}
+      focusable={rest.focusable ?? (caps.remote ? false : undefined)}
       onPress={
         own.onPress &&
         ((e: PressEvent) => {

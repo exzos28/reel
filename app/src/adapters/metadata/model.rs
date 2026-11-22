@@ -303,6 +303,22 @@ pub struct Title {
     pub trailer: Option<String>,
 }
 
+/// A person of a title's cast or crew with the titles they are in (TMDB).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Person {
+    /// "tmdb:person:6384".
+    pub id: String,
+    pub name: String,
+    pub profile: Option<Image>,
+    /// Their films and series, each once (a part they played, or for someone not known for
+    /// acting a job they did), in the source's order.
+    pub credits: Vec<TitleCard>,
+    /// The part an actor played in each of `credits`, by its id ("Neo"), as the source names it;
+    /// none where it names none or for someone not known for acting (TMDB's jobs are English only).
+    pub parts: std::collections::BTreeMap<String, String>,
+}
+
 /// A title on a shelf or in search results.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

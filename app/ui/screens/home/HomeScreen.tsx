@@ -1,15 +1,15 @@
-// Home: the nav, a hero for the title watched last (the first card: the core puts Continue
-// watching first; with nothing begun, the first of what follows), then shelves of 16:9 cards.
+// Home: the nav, a hero for the title watched last (the core's: Continue watching's first; with
+// nothing begun, the first of what follows), then shelves of 16:9 cards that do not repeat it.
 // Remote: the focus starts on the first card; Up goes to the hero's
 // buttons, then to the nav. OK on a card opens its title; on Play, plays.
 import { computed, View } from "nsh";
-import { home, title, toggleList, type Summary } from "../../catalog";
+import { home, toggleList, type Summary } from "../../catalog";
 import { useRootBack } from "../../focus/rootBack";
 import { useZones } from "../../focus/zones";
 import { NAV } from "../../layout/navItems";
 import { PageFrame } from "../../layout/PageFrame";
-import { openSourceDrawer } from "../source/SourceDrawer";
-import { playGate } from "../source/playGate";
+import { sourceDrawerOpen } from "../source/SourceDrawer";
+import { pressPlay } from "../source/pressPlay";
 import { scroller } from "../../layout/Scroller";
 import { showNav } from "../../layout/navState";
 import { go, goFromNav, openTitle } from "../../nav";
@@ -20,25 +20,19 @@ import { HOME_HERO, HomeHero } from "./HomeHero";
 import { HomeShelf } from "./HomeShelf";
 
 export function HomeScreen() {
-  const shelves = computed(() => home());
+  const data = computed(() => home());
+  const shelves = () => data().shelves;
   const col = (r: number) => cols.at(r);
   const setCol = (r: number, c: number) => cols.set(r, c, shelves()[r].items.length - 1);
   const focused = computed<Summary>(() => {
     const s = shelves()[row()];
     return s.items[Math.min(col(row()), s.items.length - 1)];
   });
-  /** The hero stays on the title watched last, wherever the focus goes: the first card of the
-   * first shelf (Continue watching, as the core orders the shelves). */
-  const hero = computed<Summary>(() => shelves()[0].items[0]);
-  /** The hero's title as its page has it: asking for it (once Play is pressed) starts the search for its release. */
-  const heroTitle = () => title(hero().id);
-  /** Play waits for the source's answer (`playGate`); a release the card already knows plays at once. */
-  const gate = playGate(heroTitle, () => play({ ...hero().play, title: hero() }));
-  const playFocused = () => {
-    if (!hero().playable) return openSourceDrawer("missing");
-    if (hero().release) return play({ ...hero().play, title: hero() });
-    gate.press();
-  };
+  /** The hero stays on the title watched last, wherever the focus goes (the core picks it). */
+  const hero = computed<Summary>(() => data().hero);
+  /** Play answers at once (`pressPlay`): the player opens, its release found inside it when the
+   * hero's search still runs. */
+  const playFocused = () => pressPlay(hero(), () => play({ ...hero().play, title: hero() }));
   /** Play, the Watchlist, the title's page (left to right as the remote walks them). */
   const heroActions = [playFocused, () => toggleList(hero().id), () => openTitle(hero().id)];
 
@@ -46,14 +40,12 @@ export function HomeScreen() {
   const page = scroller({ anchor: (viewport) => viewport / 3, memory: "home" });
 
   showNav(() => (zone() === "nav" ? navAt() : null));
-  useRootBack({
-    ctl: page,
-    onNav: () => zone() === "nav",
-    toNav: () => {
-      zone.set("nav");
-      navAt.set(0);
-    },
-  });
+  /** The focus to the nav, on Home's item (the page's section, wherever the nav was left). */
+  const toNav = () => {
+    zone.set("nav");
+    navAt.set(0);
+  };
+  useRootBack({ ctl: page, onNav: () => zone() === "nav", toNav });
   useZones(zone, {
     nav: {
       left: () => navAt.set(Math.max(navAt() - 1, 0)),
@@ -64,7 +56,7 @@ export function HomeScreen() {
     hero: {
       left: () => heroAt.set(Math.max(heroAt() - 1, 0)),
       right: () => heroAt.set(Math.min(heroAt() + 1, heroActions.length - 1)),
-      up: () => zone.set("nav"),
+      up: toNav,
       down: () => zone.set("shelves"),
       enter: () => heroActions[heroAt()](),
     },
@@ -89,7 +81,8 @@ export function HomeScreen() {
       <View ref={page.follow(() => zone() !== "shelves", "start")}>
         <HomeHero
           item={hero}
-          focusedAt={() => (zone() === "hero" ? heroAt() : null)}
+          // Under the source drawer (Play without a source) Play shows no focus: the drawer has it.
+          focusedAt={() => (zone() === "hero" && !sourceDrawerOpen() ? heroAt() : null)}
           onPlay={playFocused}
           onToggle={heroActions[1]}
           onOpen={() => openTitle(hero().id)}

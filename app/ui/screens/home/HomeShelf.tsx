@@ -30,13 +30,14 @@ export function HomeShelf(props: {
     <View ref={props.blockRef} style={{ gap: u(22) }}>
       <SectionTitle text={props.title ?? (() => t(`shelf.${props.shelf().id}`))} inset rail={line} />
       <LazyBlock page={props.page} eager={props.eager} height={() => wideCardHeight(shelfCardWidth()) + u(110)}>
-      <Rail ctl={line} gap={SHELF_GAP} top={0} bottom={24}>
-        <RowGap window={win} step={step} gap={SHELF_GAP} />
+      <Rail ctl={line} gap={SHELF_GAP()} top={0} bottom={24}>
+        <RowGap window={win} step={step} gap={SHELF_GAP()} />
         <Each of={props.shelf().items.slice(win().from, win().to)} key={(f) => f.id}>
           {(item, c) => (
             <WideCard
               item={item}
               continuing={props.shelf().id === "continue"}
+              facet={() => props.shelf().facet}
               focused={() => props.focusedAt() === win().from + c()}
               width={shelfCardWidth}
               follow={line.follow}

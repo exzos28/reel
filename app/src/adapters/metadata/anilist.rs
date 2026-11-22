@@ -49,11 +49,12 @@ const MEDIA_QUERY: &str = "query ($id: Int) {
 
 /// Browsing with filters (`Anilist::discover_request`); the fields are `LIST_QUERY`'s.
 const DISCOVER_QUERY: &str = "query ($page: Int, $sort: [MediaSort], $genres: [String], $from: FuzzyDateInt,
-  $until: FuzzyDateInt, $country: CountryCode, $minPopularity: Int, $statusNot: MediaStatus) {
+  $until: FuzzyDateInt, $country: CountryCode, $formats: [MediaFormat], $minPopularity: Int, $statusNot: MediaStatus) {
   Page(page: $page, perPage: 30) {
     pageInfo { hasNextPage }
     media(type: ANIME, isAdult: false, sort: $sort, genre_in: $genres, startDate_greater: $from,
-      startDate_lesser: $until, countryOfOrigin: $country, popularity_greater: $minPopularity, status_not: $statusNot) {
+      startDate_lesser: $until, countryOfOrigin: $country, format_in: $formats, popularity_greater: $minPopularity,
+      status_not: $statusNot) {
       id idMal format status episodes duration season seasonYear averageScore
       title { romaji english native } synonyms description(asHtml: false)
       coverImage { extraLarge large medium color } bannerImage
@@ -123,6 +124,9 @@ impl Anilist {
         }
         if let Some(c) = &filter.country {
             vars["country"] = json!(c);
+        }
+        if let Some(formats) = filter.format.as_deref().and_then(discover::formats_of) {
+            vars["formats"] = json!(formats);
         }
         match filter.sort {
             // Scores of a handful of viewers say little.

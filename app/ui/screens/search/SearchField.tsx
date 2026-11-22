@@ -1,10 +1,13 @@
 import { Input } from "nsh/base";
-import { View, type InputRef, type TextStyle, type ViewStyle, type InputStyle } from "nsh";
+import { Text, View, type InputRef, type TextStyle, type ViewStyle, type InputStyle } from "nsh";
 import { t } from "nsh/i18n";
 import searchIcon from "../../icons/search.svg";
 import { Icon } from "../../kit/Icon";
 import { rounded, row } from "../../kit/shape";
-import { alpha, colors, cs, focusRing, type, u } from "../../theme";
+import { alpha, colors, cs, focusRing, targetSlop, type, u } from "../../theme";
+import { Pressable } from "../../kit/Pressable";
+import { metaText } from "../../kit/text";
+import { caps } from "../../platform";
 
 const boxStyle = (focused: boolean): ViewStyle => ({
   ...row(u(18)),
@@ -19,13 +22,27 @@ const boxStyle = (focused: boolean): ViewStyle => ({
 // The placeholder in the theme's grey: Android drew it dark on the dark field.
 const inputStyle = (): InputStyle => ({ flex: 1, height: cs(72), color: colors.snow(), placeholderColor: colors.ash(), caretColor: colors.snow(), selectionColor: alpha(colors.snow(), 0.3), ...type.body() });
 
-/** The query field: a magnifier and the text. `focused`: the remote's focus
- * is on it (the ring); typing needs the input's own focus (`onRef`'s
+/** The ✕'s box, points: with its slop a finger's 44 / 48. */
+const CLEAR = 32;
+const clearStyle = (): ViewStyle => ({ width: CLEAR, height: CLEAR, alignItems: "center", justifyContent: "center" });
+
+/** The ✕ at the field's end that empties it (a finger or a pointer; a TV's keyboard deletes). */
+function ClearButton(props: { onPress: () => void }) {
+  return (
+    <Pressable testID="search-field-clear" role="button" accessibilityLabel={t("search.clear_query")} hitSlop={targetSlop(CLEAR)} onPress={props.onPress} style={clearStyle()}>
+      <Text style={metaText(colors.ash())}>✕</Text>
+    </Pressable>
+  );
+}
+
+/** The query field: a magnifier, the text and, while it has some, a ✕ to empty it. `focused`:
+ * the remote's focus is on it (the ring); typing needs the input's own focus (`onRef`'s
  * `focus()`, which opens the on-screen keyboard on a TV). */
 export function SearchField(props: {
   value: () => string;
   focused: () => boolean;
   onChange: (text: string) => void;
+  onClear: () => void;
   onSubmit: () => void;
   onFocus: () => void;
   onBlur: () => void;
@@ -48,6 +65,9 @@ export function SearchField(props: {
         autoCorrect={false}
         style={inputStyle()}
       />
+      <If when={!caps.remote && props.value() !== ""}>
+        <ClearButton onPress={props.onClear} />
+      </If>
     </View>
   );
 }

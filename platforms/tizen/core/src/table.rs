@@ -1,6 +1,7 @@
 //! app/'s modules by the names NSH gives the TSX side (`.nsh/types/app/native.d.ts`). Kept
 //! by hand in step with app/src/lib.rs; the `matches_the_declarations` test compares the two
-//! whenever the declarations exist (after any `nsh run`/`nsh check` in app/).
+//! whenever the declarations exist (after any `nsh run`/`nsh check` in app/), and CI runs it
+//! after its `nsh check` (`build/build.sh test-tizen-core`).
 
 use std::path::PathBuf;
 
@@ -86,6 +87,26 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("VideoEngine", "views", |a| {
         no_args(&a)?;
         ret(VideoEngine::views())
+    })
+    .r#async("VideoEngine", "ended", |a| async move {
+        no_args(&a)?;
+        ret(VideoEngine::ended().await)
+    })
+    .sync("VideoEngine", "held", |a| {
+        no_args(&a)?;
+        ret(VideoEngine::held())
+    })
+    .sync("VideoEngine", "immersive", |a| {
+        let (on,): (bool,) = args(a)?;
+        ret(VideoEngine::immersive(on))
+    })
+    .sync("VideoEngine", "turnScale", |a| {
+        let (from, to, width, height, aspect): (i32, i32, f64, f64, f64) = args(a)?;
+        ret(VideoEngine::turn_scale(from, to, width, height, aspect))
+    })
+    .sync("VideoEngine", "sideways", |a| {
+        let (width, height): (f64, f64) = args(a)?;
+        ret(VideoEngine::sideways(width, height))
     });
 
     let host = data_dir.clone();
@@ -108,6 +129,14 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Settings", "device", |a| {
         no_args(&a)?;
         ret(Settings::device())
+    })
+    .sync("Settings", "windowed", |a| {
+        let (width, height): (f64, f64) = args(a)?;
+        ret(Settings::windowed(width, height))
+    })
+    .sync("Settings", "setFamily", |a| {
+        let (name,): (String,) = args(a)?;
+        ret(Settings::set_family(name))
     })
     .sync("Settings", "setContentLanguage", |a| {
         let (tag,): (String,) = args(a)?;
@@ -236,6 +265,14 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Library", "revision", |a| {
         no_args(&a)?;
         ret(Library::revision())
+    })
+    .sync("Library", "overall", |a| {
+        no_args(&a)?;
+        ret(Library::overall())
+    })
+    .sync("Library", "opening", |a| {
+        no_args(&a)?;
+        ret(Library::opening())
     });
 
     r.sync("Sources", "search", |a| {
@@ -283,6 +320,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         let (show, season): (String, u32) = args(a)?;
         ret(Catalog::episodes(show, season))
     })
+    .sync("Catalog", "person", |a| {
+        let (id,): (String,) = args(a)?;
+        ret(Catalog::person(id))
+    })
     .sync("Catalog", "episode", |a| {
         let (show, season, number): (String, u32, u32) = args(a)?;
         ret(Catalog::episode(show, season, number))
@@ -311,6 +352,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         no_args(&a)?;
         ret(Catalog::forget_searches())
     })
+    .sync("Catalog", "retrySearch", |a| {
+        let (query,): (String,) = args(a)?;
+        ret(Catalog::retry_search(query))
+    })
     .sync("Catalog", "toggleList", |a| {
         let (id,): (String,) = args(a)?;
         ret(Catalog::toggle_list(id))
@@ -318,6 +363,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
     .sync("Catalog", "chooseRelease", |a| {
         let (id, index): (String, u32) = args(a)?;
         ret(Catalog::choose_release(id, index))
+    })
+    .sync("Catalog", "onPlay", |a| {
+        let (key,): (String,) = args(a)?;
+        ret(Catalog::on_play(key))
     })
     .sync("Catalog", "startAt", |a| {
         let (id,): (String,) = args(a)?;
@@ -349,6 +398,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         no_args(&a)?;
         ret(Meta::attribution())
     })
+    .sync("Settings", "project", |a| {
+        no_args(&a)?;
+        ret(Settings::project())
+    })
     .r#async("Catalog", "changed", |a| async move {
         let (after,): (f64,) = args(a)?;
         ret(Catalog::changed(after).await)
@@ -378,6 +431,10 @@ pub fn registry(data_dir: PathBuf) -> Registry {
         let (bytes,): (f64,) = args(a)?;
         ret(Fmt::size(bytes))
     })
+    .sync("Fmt", "sizeOf", |a| {
+        let (have, size): (f64, f64) = args(a)?;
+        ret(Fmt::size_of(have, size))
+    })
     .sync("Fmt", "speed", |a| {
         let (mib_per_s,): (f64,) = args(a)?;
         ret(Fmt::speed(mib_per_s))
@@ -399,6 +456,11 @@ mod tests {
         registry(std::env::temp_dir().join("reel-tizen-core-test"))
     }
 
+    /// A CI run (`CI=true` on GitHub Actions; `1` elsewhere), where nothing may be skipped.
+    fn on_ci() -> bool {
+        matches!(std::env::var("CI").as_deref(), Ok("true" | "1"))
+    }
+
     #[tokio::test]
     async fn calls_app_modules() {
         let r = table();
@@ -415,13 +477,19 @@ mod tests {
         assert!(matches!(wrong, Err(Error::BadArgs(m)) if m.contains("GET /health")));
     }
 
-    /// The table has exactly the methods of app/'s generated declarations, when they exist.
+    /// The table has exactly the methods of app/'s generated declarations. Without them (no
+    /// `nsh check` in app/ yet) it is skipped on a developer's machine; on CI (`CI` set, as
+    /// GitHub Actions sets it) it fails: there it must run (`build/build.sh test-tizen-core`).
     #[test]
     fn matches_the_declarations() {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../app/.nsh/types/app/native.d.ts");
-        let Ok(dts) = std::fs::read_to_string(path) else {
-            eprintln!("skipped: no {path} (run `nsh check` in app/)");
-            return;
+        let dts = match std::fs::read_to_string(path) {
+            Ok(dts) => dts,
+            Err(e) if on_ci() => panic!("no {path} ({e}): run `nsh check` in app/ before this test"),
+            Err(_) => {
+                eprintln!("skipped: no {path} (run `nsh check` in app/)");
+                return;
+            }
         };
         let mut declared = Vec::new();
         let mut module = None;

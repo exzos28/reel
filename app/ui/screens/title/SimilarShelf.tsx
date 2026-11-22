@@ -17,8 +17,8 @@ export function SimilarShelf(props: { items: () => Summary[]; focusedAt: () => n
   return (
     <View style={{ gap: u(22) }}>
       <SectionTitle text={() => t("about.similar")} inset rail={line} />
-      <Rail ctl={line} gap={SHELF_GAP} top={0} bottom={24}>
-        <RowGap window={win} step={step} gap={SHELF_GAP} />
+      <Rail ctl={line} gap={SHELF_GAP()} top={0} bottom={24}>
+        <RowGap window={win} step={step} gap={SHELF_GAP()} />
         <Each of={props.items().slice(win().from, win().to)} key={(s) => s.id}>
           {(item, i) => (
             <WideCard

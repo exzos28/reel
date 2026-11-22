@@ -227,9 +227,12 @@ impl NativeComponent for MpvComponent {
 
 impl Drop for MpvComponent {
     fn drop(&mut self) {
-        // The render context goes before the player it draws.
+        // The render context goes before the player it draws (here: it needs the GL context);
+        // the player then stops without holding the UI thread (`Player::close_in_background`).
         self.state.closed.set(true);
         self.state.free(&self.area);
-        self.player = None;
+        if let Some(p) = self.player.take() {
+            p.close_in_background();
+        }
     }
 }

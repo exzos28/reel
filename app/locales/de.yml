@@ -64,10 +64,14 @@ empty:
 title:
   play: "Abspielen"
   resume: "Weiter ab %{at}"
-  # The Watchlist: titles kept to watch later. The button shows "+ Watchlist" / "✓ In Watchlist";
+  play_episode: "%{episode} abspielen"
+  resume_episode: "%{episode} weiter ab %{at}"
+  about_more: "Ganze Beschreibung zeigen"
+  about_less: "Weniger zeigen"
+  # My list: titles kept to watch later. The button shows "+ Add to list" / "✓ In list";
   # a screen reader says the whole action.
-  my_list: "Merkliste"
-  add_to_list: "Merkliste"
+  my_list: "Zur Merkliste"
+  add_to_list: "Zur Merkliste"
   in_list: "Auf der Merkliste"
   add_to_list_spoken: "Zur Merkliste hinzufügen"
   remove_from_list_spoken: "Von der Merkliste entfernen"
@@ -137,6 +141,12 @@ release:
   sharing: "Geteilt von %{count}"
   sharing_short: "Teilende: %{count}"
   pack: "ganze Staffel, %{size}"
+  voiced: "%{language} (%{voice})"
+  voice:
+    dub: "Synchro"
+    mvo: "MVO"
+    dvo: "DVO"
+    avo: "AVO"
   fast: "startet in Sekunden"
   note:
     starts_fast: "Startet schnell"
@@ -172,6 +182,13 @@ about:
   details: "Details"
   similar: "Ähnliche Titel"
 
+person:
+  titles: "Filme und Serien"
+  state:
+    loading: "Wird geladen…"
+    unavailable: "Die Titel konnten nicht geladen werden. Versuche es später noch einmal."
+    none: "Keine Filme oder Serien."
+
 crew:
   director:
     one: "Regie"
@@ -194,7 +211,6 @@ detail:
   original_title: "Originaltitel"
   release_date: "Erscheinungsdatum"
   first_aired: "Erstausstrahlung"
-  runtime: "Laufzeit"
   status: "Status"
   countries: "Land"
   studios: "Studio"
@@ -283,6 +299,7 @@ browse:
     countries: "Länder"
     sort: "Sortierung"
     picked: "%{filter}: %{picked}"
+    format: "Format"
   sort: "Sortieren nach:"
   option:
     decade: "%{n}er"
@@ -291,11 +308,15 @@ browse:
     top_rated: "Bestbewertet"
     newest: "Neueste"
     any: "Alle"
+    format_tv: "Serien"
+    format_movie: "Filme"
+    format_special: "OVAs und Specials"
   state:
     loading: "Wird geladen…"
     empty: "Nichts passt zu diesen Filtern."
     offline: "Diese Liste konnte nicht geladen werden. Prüfe die Verbindung."
     more_failed: "Weitere Titel konnten nicht geladen werden. Geh nach unten, um es erneut zu versuchen."
+  clear: "Zurücksetzen"
 
 search:
   title: "Suche"
@@ -304,19 +325,23 @@ search:
   recent: "Letzte Suchen"
   clear: "Verlauf löschen"
   searching: "Suche…"
-  none: "Nichts gefunden für „%{query}“."
+  none: "Nichts gefunden für „%{query}“. Versuche den Originaltitel oder weniger Wörter."
   failed: "TMDB und AniList antworten nicht. Prüfe die Verbindung und versuch es noch einmal."
   no_tmdb: "Diese Version hat keinen TMDB-Schlüssel, daher wird nur nach Anime gesucht."
   section:
     movies: "Filme"
     shows: "Serien"
     anime: "Anime"
+    trending: "Gerade angesagt"
   try_again: "Erneut versuchen"
   # A row of results whose source did not answer.
   row_failed:
     movies: "Filme konnten nicht geladen werden."
     shows: "Serien konnten nicht geladen werden."
     anime: "Anime konnten nicht geladen werden."
+  clear_query: "Suche leeren"
+  # A tablet's row of results opened whole: how many it has.
+  show_all: "Alle %{count} zeigen"
 
 compat:
   audio_dts: "Dieses Release hat nur DTS-Ton, den dieses Gerät nicht abspielen kann. Wähle ein anderes Release."
@@ -327,6 +352,8 @@ compat:
 player:
   back: "Zurück"
   close: "Schließen"
+  expand_sheet: "Mehr zeigen"
+  collapse_sheet: "Weniger zeigen"
   close_tracks: "Ton und Untertitel schließen"
   episodes: "Folgen"
   close_episodes: "Folgen schließen"
@@ -349,9 +376,7 @@ player:
       other: "%{count} Personen gefunden, verbinde"
     fetching: "Lade den Anfang, %{percent} %"
     starting: "Startet"
-  buffering: "Lädt"
-  ahead_seconds: "%{seconds} s vorgeladen"
-  rate_from: "%{speed} · Teilende: %{count}"
+  waiting: "Warten auf den Stream"
   ready_ahead: "%{minutes} Min. vorgeladen"
   ready_ahead_short: "Unter einer Minute vorgeladen"
   streaming: "Stream mit %{speed}"
@@ -372,6 +397,7 @@ player:
   watch_credits: "Abspann ansehen"
   no_source: "Kein Release zum Abspielen."
   no_source_hint: "Füge in den Einstellungen eine Suchquelle hinzu oder wähle ein anderes Release."
+  not_found_hint: "Deine Suchquelle hat kein Release gefunden, das auf diesem Gerät läuft."
   not_in_release: "Diese Folge ist nicht im Release."
   not_in_release_hint: "Geh zurück und wähle ein Release dafür."
   failed: "Abspielen fehlgeschlagen: %{message}"
@@ -403,7 +429,7 @@ settings:
     key: "API-Schlüssel (optional)"
     key_placeholder: "Nur falls deine Quelle einen hat"
     key_saved: "Schlüssel gespeichert. Gib einen neuen ein, um ihn zu ersetzen"
-    save: "Speichern und prüfen"
+    save: "Prüfen"
     remove: "Quelle entfernen"
     # The partner's ready source (design/partner-source.md).
     partner_tv_title: "Fertige Quelle holen"
@@ -432,20 +458,20 @@ settings:
   # What shows while a film loads or waits for more of the stream.
   loader:
     title: "Ladeanimation"
-    about: "Was angezeigt wird, während ein Film auf mehr vom Stream wartet."
+    about: "Was angezeigt wird, während ein Film startet."
+    none: "Keine"
     dinosaur: "Dinosaurier"
-    logo: reel
   # The drawer with the search source's fields: on Play with none (missing), when it did not
   # answer (failed), from Settings (edit).
   source_drawer:
     missing_title: "Suchquelle hinzufügen"
     missing_about: "reel spielt Releases ab, die es in deiner eigenen Suchquelle findet, und noch gibt es keine. Gib eine Torznab-Adresse und ihren API-Schlüssel ein; „Abspielen“ funktioniert, sobald die Verbindung steht."
     failed_title: "Deine Suchquelle hat nicht geantwortet"
-    failed_about: "reel konnte darin nicht nach Releases suchen. Prüfe Adresse und API-Schlüssel und wähle dann „Speichern und prüfen“; „Abspielen“ funktioniert, sobald die Verbindung steht."
+    failed_about: "reel konnte darin nicht nach Releases suchen. Prüfe Adresse und API-Schlüssel und wähle dann „Prüfen“; „Abspielen“ funktioniert, sobald die Verbindung steht."
     edit_title: "Suchquelle"
     edit_about: "Eine Torznab-Adresse und ihr API-Schlüssel."
     link_title: "Diese Quelle verwenden?"
-    link_about: "Ein Link hat diese Quelle ausgefüllt. Wähle „Speichern und prüfen“, um sie zu verwenden, oder „Zurück“, um deine zu behalten."
+    link_about: "Ein Link hat diese Quelle ausgefüllt. Wähle „Prüfen“, um sie zu verwenden, oder „Zurück“, um deine zu behalten."
   # The rows of Settings: a name and the value in effect.
   rows:
     connected: "Verbunden"
@@ -454,7 +480,7 @@ settings:
   # The card beside Settings on a device that serves its settings page (a TV).
   phone:
     title: "Am Handy ändern"
-    text: "Scanne den Code oder öffne %{url}."
+    text: "Scanne den Code oder öffne die Adresse unten."
   interface:
     title: "Oberfläche"
   about:
@@ -463,13 +489,15 @@ settings:
     data: "Datenquellen"
     tmdb_logo: "The Movie Database (TMDB)"
     version: "Version %{version} (%{build})"
+    license: "Quelloffen einsehbar · %{license}"
+    repository: "Quellcode von reel"
   details:
     title: "Stream-Details"
     about: "Während ein Film läuft oder wartet, anzeigen, wie schnell er kommt, von wie vielen Leuten und wie viel vorgeladen ist."
     show: "Stream-Details anzeigen"
   buffer:
     title: "Wiedergabepuffer"
-    about: "Wie viel vom Film reel während der Wiedergabe vorhält. Ein größerer Puffer kommt besser mit langsamen Teilenden und weiten Sprüngen zurecht."
+    about: "Wie viel Speicher reel beim Abspielen nutzt. Ein größerer Puffer kommt besser mit langsamen Teilenden und weiten Sprüngen zurecht."
     free: "%{free} frei auf diesem Gerät"
     default: "(Standard)"
 
@@ -483,21 +511,22 @@ setup:
     help: "reel sucht mit diesen Titeln auch nach Releases."
     more: "Weitere Sprachen"
   buffer:
-    title: "Wie viel Speicher darf reel beim Abspielen nutzen?"
-    help: "Ein größerer Puffer kommt besser mit langsamen Teilenden und weiten Sprüngen zurecht."
+    title: "Wiedergabepuffer"
+    help: "Wie viel Speicher reel beim Abspielen nutzen darf. Ein größerer Puffer kommt besser mit langsamen Teilenden und weiten Sprüngen zurecht."
     recommended: "Empfohlen"
   source:
     title: "Wo soll reel Filme finden?"
-    help: "Gib deine eigene Quelle ein oder hol dir eine fertige."
-    own_title: "Eigene Quelle"
-    rent_title: "Oder eine fertige"
+    help: "reel sucht nicht selbst. Gib ihm eine Suchquelle (Torznab): dein eigenes Jackett oder Prowlarr, oder hol dir eine in Telegram."
+    help_own: "reel sucht nicht selbst. Gib ihm eine Suchquelle (Torznab): dein eigenes Jackett oder Prowlarr."
+    own_title: "Oder nutze deine eigene"
+    rent_title: "Hol dir eine fertige"
     check: "Prüfen"
+    checking: "Wird geprüft…"
     finish: "Fertig"
     skip: "Überspringen"
-    footnote: "Torznab ist ein gängiger Weg, über den Suchdienste Torrent-Releases auflisten. reel sucht selbst nicht nach Videos: Es ist ein Katalog und ein Player und findet, was es abspielt, nur über die Quelle, die du angibst."
   phone:
     title: "Oder am Handy einrichten"
-    text: "Scanne den Code mit der Handykamera oder öffne %{url} im Browser. Dieser Bildschirm aktualisiert sich mit."
+    text: "Scanne den Code mit der Handykamera oder öffne die Adresse unten im Browser. Dieser Bildschirm aktualisiert sich mit."
     source_title: "Am Handy geht's leichter"
     source_text: "Eine Adresse mit der Fernbedienung einzutippen dauert. Scanne den Code oder öffne %{url} und füge sie dort ein. Dieser Bildschirm schließt die Einrichtung von selbst ab."
 
@@ -511,7 +540,8 @@ menu:
 # Saved films and episodes (design/offline-downloads.md). The word is Save, never Download.
 saved:
   title: "Gespeichert"
-  empty: "Noch nichts gespeichert. Speichere einen Film oder eine Staffel auf seiner Seite, um ohne Internet zu schauen."
+  empty: "Speichere einen Film, um ihn offline zu schauen"
+  browse: "Filme entdecken"
   saving: "Wird gespeichert"
   while_open: "solange reel geöffnet ist"
   ready: "Bereit zum Ansehen"
@@ -536,9 +566,10 @@ saved:
     checking: "Gespeichertes wird geprüft…"
     resolving: "Suche Leute, die es teilen…"
     saving: "%{percent} % · %{have} von %{size}"
+    # The time it still takes, when the core knows it ("about 1 h 50 min").
+    saving_left: "%{percent} % · %{have} von %{size} · noch etwa %{time}"
     paused: "Pausiert · %{have} von %{size}"
     waiting: "Startet, wenn die aktuelle Wiedergabe endet"
-    saved: "Gespeichert · %{size}"
     unavailable: "Laufwerk nicht verbunden"
   failed:
     no_source: "Kein Release zum Speichern gefunden"

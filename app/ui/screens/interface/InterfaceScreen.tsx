@@ -1,16 +1,15 @@
-// Interface, over Settings (its row): how the app itself looks, not what it plays. Menu position
-// (not on touch, whose tab bar it does not move) and Loading animation, each a row with the value
-// in effect; OK opens its choices in a drawer, as Settings' rows do. Back closes the drawer, then
-// goes back to Settings.
+// Interface, over Settings (its row) on a TV and a computer: how the app itself looks, not what it
+// plays. Menu position and Loading animation, each a row with the value in effect; OK opens its
+// choices in a drawer, as Settings' rows do. Back closes the drawer, then goes back to Settings.
+// Touch has no page of it: its one setting (a tab bar does not move) is a row of Settings.
 import { keymap, signal, View, type ViewStyle } from "nsh";
 import { t } from "nsh/i18n";
 import { byKeys } from "../../focus/keys";
 import { clamp } from "../../focus/memory";
-import { ChoicePanel } from "../../layout/ChoicePanel";
+import { ChoicePanel, selectedAt } from "../../layout/ChoicePanel";
 import { PageFrame } from "../../layout/PageFrame";
 import { scroller } from "../../layout/Scroller";
 import { onBack } from "../../nav";
-import { caps } from "../../platform";
 import { chooseLoader, chooseNavPosition, LOADERS, NAV_POSITIONS } from "../../preferences";
 import { safe, u } from "../../theme";
 import { loaderChoices, loaderName, navPositionChoices, navPositionName } from "../settings/choices";
@@ -18,14 +17,11 @@ import { SettingRow } from "../settings/SettingRow";
 
 const pageStyle = (): ViewStyle => ({ paddingHorizontal: safe().x, paddingTop: u(40), gap: u(12), maxWidth: u(1200) });
 
-/** The menu's position moves a TV's or a desktop's top nav; touch has a tab bar instead. */
-const HAS_NAV_POSITION = !caps.touch;
-
 type Picker = "nav" | "loader";
 const PICKER_TEXT: Record<Picker, string> = { nav: "nav_position", loader: "loader" };
 
 export function InterfaceScreen() {
-  const rows: Picker[] = HAS_NAV_POSITION ? ["nav", "loader"] : ["loader"];
+  const rows: Picker[] = ["nav", "loader"];
   const focus = signal(0);
   const picker = signal<Picker | null>(null);
   const pickAt = signal(0);
@@ -33,7 +29,7 @@ export function InterfaceScreen() {
   const open = (which: Picker) => {
     focus.set(rows.indexOf(which));
     picker.set(which);
-    pickAt.set(Math.max(0, choices().findIndex((c) => c.selected)));
+    pickAt.set(selectedAt(choices()));
   };
   const pick = (i: number) => {
     if (picker() === "nav") {
@@ -62,9 +58,7 @@ export function InterfaceScreen() {
     <View style={{ flex: 1 }}>
       <PageFrame ctl={page} kind="deep" title={() => t("settings.interface.title")}>
         <View style={pageStyle()}>
-          <If when={HAS_NAV_POSITION}>
-            <SettingRow label={t("settings.nav_position.title")} value={navPositionName} focused={at("nav")} viewRef={page.follow(at("nav"))} onPress={() => open("nav")} />
-          </If>
+          <SettingRow label={t("settings.nav_position.title")} value={navPositionName} focused={at("nav")} viewRef={page.follow(at("nav"))} onPress={() => open("nav")} />
           <SettingRow label={t("settings.loader.title")} value={loaderName} focused={at("loader")} viewRef={page.follow(at("loader"))} onPress={() => open("loader")} />
         </View>
       </PageFrame>
