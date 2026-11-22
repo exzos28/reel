@@ -126,6 +126,7 @@
       var p = webapis.avplay;
       try { p.stop(); p.close(); } catch (e) { /* nothing was open */ }
       av.resetSeek();
+      av.pendingTrack = null;
       av.current = url;
       // What AVPlay says about this stream, only while it is still the one open.
       var mine = function (event) { if (av.current === url) emit(event); };
@@ -161,8 +162,10 @@
     seeking: false,
     pendingSeek: null,
     seekTimer: null,
+    seekRunning: null,
     resetSeek: function () {
       av.seeking = false;
+      av.seekRunning = null;
       av.pendingSeek = null;
       if (av.seekTimer) clearTimeout(av.seekTimer);
       av.seekTimer = null;
@@ -174,22 +177,36 @@
       var t0 = Date.now();
       var state = p.getState();
       var finished = false;
+      // A seek is never an error for the viewer: AVPlay answers late on a stream still
+      // downloading (or says it failed while it plays on from where it is), and the player only
+      // waits — the viewer can leave at any moment. Its end (done or failed) ends the wait.
       var done = function (ok, e) {
         if (finished) return;
         finished = true;
         if (av.seekTimer) clearTimeout(av.seekTimer);
         av.seekTimer = null;
-        av.seeking = false;
+        if (av.seekRunning === run) av.seeking = false;
         note('avplay seek ' + ms + ' ms from ' + state + ': ' + (ok ? 'done' : 'failed ' + (e && (e.name || e))) + ' in ' + (Date.now() - t0) + ' ms');
         if (av.pendingSeek != null) {
           var next = av.pendingSeek;
           av.pendingSeek = null;
           av.seek(next, emit);
-        } else if (ok) emit({ type: 'seeked' });
-        else emit({ type: 'error', message: 'seek: ' + (e && (e.name || e)) });
+        } else emit({ type: 'seeked' });
       };
-      // Some firmware never calls back: after 10 s the next seek may go anyway.
-      av.seekTimer = setTimeout(function () { done(false, 'no answer in 10 s'); }, 10000);
+      var run = {};
+      av.seekRunning = run;
+      // Some firmware never calls back: after 10 s the next seek may go anyway (this one's
+      // answer, if it comes, still ends the wait).
+      av.seekTimer = setTimeout(function () {
+        av.seekTimer = null;
+        note('avplay seek ' + ms + ' ms: no answer in 10 s, still waiting');
+        if (av.seekRunning === run) av.seeking = false;
+        if (av.pendingSeek != null) {
+          var next = av.pendingSeek;
+          av.pendingSeek = null;
+          av.seek(next, emit);
+        }
+      }, 10000);
       // seekTo holds this page's thread (and the app's, in the same renderer) until AVPlay has
       // data at the target, seconds on a stream still downloading: two frames first, so the
       // app's loader, asked for with the seek, is on screen while it waits.
@@ -209,8 +226,11 @@
       play: ['READY', 'PAUSED'],
       pause: ['PLAYING'],
       seek: ['READY', 'PLAYING', 'PAUSED'],
+      // Some firmware refuses setSelectTrack while READY (a prepared stream that waits for
+      // `play`): the track waits and is set as it starts playing.
       track: ['READY', 'PLAYING', 'PAUSED']
     },
+    pendingTrack: null,
 
     handle: function (msg, emit) {
       var p = webapis.avplay;
@@ -220,6 +240,7 @@
         // one opened) leaves the next alone.
         if (msg.url && msg.url !== av.current) return note('avplay stop of an older stream, skipped');
         av.resetSeek();
+        av.pendingTrack = null;
         av.current = null;
         try { p.stop(); p.close(); } catch (e) { /* already closed */ }
         return;
@@ -230,10 +251,20 @@
       if (states.indexOf(state) < 0) return note('avplay ' + msg.op + ' skipped in ' + state);
       try {
         switch (msg.op) {
-          case 'play': p.play(); break;
+          case 'play':
+            p.play();
+            if (av.pendingTrack) {
+              var t = av.pendingTrack;
+              av.pendingTrack = null;
+              try { p.setSelectTrack(t.trackType, t.index); } catch (e) { note('avplay track failed as it played: ' + (e && (e.name || e))); }
+            }
+            break;
           case 'pause': p.pause(); break;
           case 'seek': av.seek(Math.round(msg.position * 1000), emit); break;
-          case 'track': p.setSelectTrack(msg.trackType, msg.index); break;
+          case 'track':
+            if (state === 'READY') { av.pendingTrack = { trackType: msg.trackType, index: msg.index }; break; }
+            p.setSelectTrack(msg.trackType, msg.index);
+            break;
         }
       } catch (e) {
         // AVPlay moved on between the check and the call: logged, the stream plays on.
