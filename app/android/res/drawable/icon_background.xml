@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Made by app/android/launcher.swift: the adaptive icon's background. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:scaleY="0.750000">
+        <path android:pathData="M0,0H108V144H0Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="radial"
+                    android:centerX="39.6"
+                    android:centerY="43.2"
+                    android:gradientRadius="86.4">
+                    <item android:offset="0" android:color="#FF26313A" />
+                    <item android:offset="0.55" android:color="#FF161B20" />
+                    <item android:offset="1" android:color="#FF0F0F0F" />
+                </gradient>
+            </aapt:attr>
+        </path>
+    </group>
+</vector>

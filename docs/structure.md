@@ -7,7 +7,8 @@ app/              the app: what runs on the devices
   domain/           pure logic shared by every layer (Rust crate reel-domain)
   engine/           the torrent engine and the search source (Rust crate reel-engine)
   android/          reel's own Android parts NSH does not package: views (the mpv player),
-                    the remote's keys, links (Java), the TV banner (res, banner.swift)
+                    the remote's keys, links (Java), the launcher icon and the TV banner
+                    (res, launcher.swift)
   locales/          the texts, English first
 platforms/tizen/  the Samsung TV app around it: shell, .NET service, the core as a library
 build/            how it is built and shipped; nothing here runs on a device
