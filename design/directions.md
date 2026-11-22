@@ -149,7 +149,7 @@ Up next's "Play now". It is the one action the viewer came for, in the logo's co
 `play`, `red` a little deeper (OKLCH L 0.55 against 0.61, the same hue): `snow` on `red` is 3.9:1,
 under the 4.5:1 a phone's 15 pt label needs; on `play` it is 4.9:1 (4.6:1 under the pointer's
 dim). The label, the icon, ⌄ and the release line are all `snow` (the release line at 0.8 was
-3.5:1, so it is under the label by size and weight, not by opacity); the watched part is `snow`
+3.6:1, so it is under the label by size and weight, not by opacity); the watched part is `snow`
 on a darker track. The white focus ring now stands out around it on a TV. Other buttons keep
 their colours: a step's main action (Next, Browse) stays white, the rest grey.
 

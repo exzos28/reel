@@ -89,7 +89,7 @@ const morePartStyle = (lit: boolean): ViewStyle => ({
 const seamStyle = (bothLit: boolean): ViewStyle => ({ width: 1, backgroundColor: bothLit ? colors.play() : "transparent", paddingVertical: cs(16) });
 const seamLine = (): ViewStyle => ({ flexGrow: 1, backgroundColor: alpha(colors.ink(), 0.3) });
 const playLabelStyle = (): TextStyle => ({ ...labelText(colors.snow()), fontSize: ts(26), fontWeight: 600 });
-/** At least 13 pt, white: on the red part 4.9:1 (white at 0.8 was 3.5:1). Under the label by
+/** At least 13 pt, white: on the red part 4.9:1 (white at 0.8 was 3.6:1). Under the label by
  * its size and weight. */
 const subStyle = (): TextStyle => ({ fontFamily: font, fontSize: Math.max(13, ts(20)), color: colors.snow() });
 /** The watched part along the red part's bottom: white on a darker track. */
