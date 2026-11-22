@@ -60,14 +60,34 @@ wait in `.changes/` until the next version.
    | `reel-samsung-tv.wgt` | Samsung TV (Tizen) |
    | `reel-linux.tar.gz` | Linux x86_64 |
    | `reel-windows.zip` | Windows x64 |
+   | `reel-ios.ipa` | iPhone and iPad, unsigned: AltStore or SideStore signs it with the viewer's Apple ID |
+   | `altstore.json` | The AltStore / SideStore source: lists this release's `reel-ios.ipa` (below) |
 
-5. Nothing else to update: the website, the README and the Apps2Samsung catalog point at
-   `releases/latest/download/<file>`, so they serve the new release at once.
+5. Nothing else to update: the website, the README, the Apps2Samsung catalog and the AltStore
+   source point at `releases/latest/download/<file>`, so they serve the new release at once.
+
+## iPhone and iPad: AltStore and SideStore
+
+A viewer adds one source in AltStore (Classic: AltStore PAL, the EU's, installs only apps Apple
+notarized) or SideStore (Sources, +), once:
+`https://github.com/exzos28/reel/releases/latest/download/altstore.json`. Both fetch it
+following GitHub's redirect to the latest release's file and keep the address they were given as
+the source's identity, so it stays the same source from release to release; each release's
+`altstore.json` lists that release's `reel-ios.ipa`, and AltStore offers it as an update when its
+version or build is new. They install it signed with the viewer's own Apple ID (with a free one,
+again every 7 days, which they do by themselves); the releases carry no signature of ours.
+
+`build/publish-release.sh` writes it with `build/altstore-source.py` from the `.ipa` it publishes:
+what AltStore checks against the app (bundle id, version and build, the lowest iOS, entitlements,
+the Info.plist's privacy texts) is read from the `.ipa`, the notes are the version's
+`CHANGELOG.md` section, and only that version is listed. A release without the `.ipa` carries the
+previous release's `altstore.json` over, so the source keeps working. To look at one:
+`build/altstore-source.py out/ios/reel-ios-unsigned.ipa <version>`.
 
 ## Without CI
 
-The same from a Mac with Docker (about ten minutes: macOS and Android here, Linux, Windows and the
-TV in Docker, side by side):
+The same from a Mac with Docker (macOS, Android and iOS here, Linux, Windows and the TV in
+Docker, side by side):
 
 ```sh
 build/build-all.sh                 # every package into out/<target>/
@@ -92,3 +112,4 @@ Linux comes out for this machine's architecture (ARM64 on Apple silicon).
   outside the repository) and `.env` points at them;
   without them a debug key, which differs on every CI run, so such APKs do not update each other.
 - Samsung TV: the Tizen SDK's default certificate; Apps2Samsung signs it again for each TV.
+- iPhone and iPad: unsigned; AltStore or SideStore signs it with the viewer's Apple ID.

@@ -39,7 +39,8 @@ Every build writes its package to `out/<platform>/` at the repository's root.
 ```sh
 build/build.sh macos          # out/macos/reel-macos-<arch>.zip
 build/build.sh android        # out/android/reel-android-*.apk
-build/build.sh ios            # signed .ipa (needs signing settings)
+build/build.sh ios            # out/ios/reel-ios-unsigned.ipa for AltStore and SideStore
+                              # (REEL_IOS_SIGN_IDENTITY and REEL_IOS_PROFILE: a signed one)
 build/linux-docker.sh build   # out/linux/  (in Docker)
 build/linux-docker.sh windows # out/windows/ (in Docker, cross-compiled)
 build/tizen-docker.sh package # out/tizen/reel-tv-v<version>.wgt (in Docker)
