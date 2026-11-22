@@ -6,7 +6,8 @@
 // panel on the right (Up/Down, OK picks, Back closes); OK on a card opens the
 // title. Back closes the panel, then takes the focus to the nav, then Home. A new grid puts the grid's focus on its first card.
 // The grid has no end: within a page of its last row (or when the page scrolls near it) the
-// core is asked for its next page, which lands under the rows shown; the focus stays. Down on
+// core is asked for its next page, which lands in the grey cards that end the grid (the last
+// row's empty cells, then a row more); the focus stays. Down on
 // the last row while that page comes goes on down once it lands (a held Down keeps going).
 import { computed, effect, Text, untracked, View, type ViewRef } from "nsh";
 import { t } from "nsh/i18n";
@@ -29,7 +30,7 @@ import { FilterBar } from "./FilterBar";
 import { FilterPanel, panelRows } from "./FilterPanel";
 import { focusOf, type Page } from "./focus";
 import { GridCard } from "./GridCard";
-import { GridTail } from "./GridTail";
+import { GridStub, GridTail } from "./GridTail";
 import { Trending } from "./Trending";
 
 /** The next page is asked for when the focus is this many rows from the grid's last: about a
@@ -44,6 +45,11 @@ export function BrowseScreen(props: { page: Page }) {
   /** Cards per grid row: as many as fit at about 330 TV pixels each. */
   const columns = computed(() => gridColumnsNow());
   const rows = computed(() => gridRows<Summary>(data().all, columns()));
+  /** More is on its way, or there to ask for: the grid ends in grey cards where it will land (the
+   * last row's empty cells, a row more), so a page that lands moves nothing. None past the end,
+   * nor when it failed (the tail's line). */
+  const coming = () => data().more && data().moreState !== "failed";
+  const shownRows = computed(() => gridRows<Summary>(data().all, columns(), coming()));
   const count = () => data().all.length;
   const groups = () => data().filters;
   const panelGroup = () => groups()[pill()];
@@ -237,7 +243,7 @@ export function BrowseScreen(props: { page: Page }) {
           <Text style={{ ...metaText(), paddingHorizontal: safe().x, marginTop: u(24) }}>{stateText()}</Text>
         </If>
         <Grid
-          rows={rows}
+          rows={shownRows}
           key={(s) => s.id}
           top={20}
           rowGap={GRID_ROW_GAP}
@@ -254,16 +260,9 @@ export function BrowseScreen(props: { page: Page }) {
               onPress={() => openCell(at())}
             />
           )}
+          stub={() => <GridStub width={() => cellWidth(columns(), GRID_GAP)} />}
         />
-        <GridTail
-          page={page}
-          state={() => (data().more ? data().moreState : "idle")}
-          columns={columns}
-          width={() => cellWidth(columns(), GRID_GAP)}
-          gap={GRID_GAP}
-          grid={data}
-          onNear={askMore}
-        />
+        <GridTail page={page} failed={() => data().more && data().moreState === "failed"} grid={data} onNear={askMore} />
       </PageFrame>
       <If when={panelOpen()}>
         <FilterPanel group={() => panelGroup()!} focusedAt={row} onPress={pick} onClose={closePanel} anchor={() => pills.get(pill())} />
