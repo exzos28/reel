@@ -37,7 +37,7 @@
     document.documentElement.setAttribute("data-dev", d);
   })();
 </script>
-<link rel="stylesheet" href="../style.css?v=20261122">
+<link rel="stylesheet" href="../style.css?v=20261122.2">
 </head>
 <body>
 <a class="skip" href="#main">İçeriğe geç</a>
@@ -362,13 +362,27 @@
     <div class="get-panel" id="get-mac" role="tabpanel" data-p="mac">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-macos.zip">Mac için indir</a><span class="get-note">Apple çipli Mac</span>
     </div>
-    <div class="get-panel ios" id="get-ios" role="tabpanel" data-p="ios">
+    <div class="get-panel paths" id="get-ios" role="tabpanel" data-p="ios">
       <!-- The source (altstore.json) comes with the first release that has the iPhone and iPad app; until then these links lead nowhere. -->
-      <ol class="get-steps">
-        <li><b>AltStore Classic veya SideStore'u kur</b><span>iPhone ya da iPad'ine <a href="https://altstore.io">AltStore Classic</a> veya <a href="https://sidestore.io">SideStore</a> kur; AltStore için ayrıca bir bilgisayarda AltServer gerekir. Ücretsiz bir Apple kimliğiyle uygulamaların 7 günde bir yeniden imzalanması gerekir; iki uygulama da bunu kendisi yapar. AltStore PAL olmaz: yalnızca Apple'ın onayladığı uygulamaları kabul eder.</span></li>
-        <li><b>reel'in kaynağını ekle</b><span>iPhone ya da iPad'de kullandığın uygulamanın düğmesine dokun veya aşağıdaki adresi kaynak olarak ekle.</span><div class="get-btns"><a class="btn primary" href="altstore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">AltStore Classic'a ekle</a><a class="btn secondary" href="sidestore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">SideStore'a ekle</a></div><code class="get-url">https://github.com/exzos28/reel/<wbr>releases/<wbr>latest/<wbr>download/<wbr>altstore.json</code></li>
-        <li><b>reel'i kur</b><span>Kaynakta reel'i aç ve kur. Güncellemeler de bu kaynaktan gelir.</span></li>
-      </ol>
+      <p class="get-lead">reel App Store'da yok. Kendi Apple Kimliğinle uygulama yükleyen ücretsiz bir uygulama olan SideStore ile kurulur.</p>
+      <section class="get-main" aria-labelledby="ios-main">
+        <h3 id="ios-main">SideStore <span class="get-tag">Önerilen</span></h3>
+        <ol class="get-steps">
+          <li><b>SideStore'u kur</b><span>Onların rehberini izle. Bilgisayar yalnızca bir kez, yaklaşık 10 dakika gerekir.</span><a class="btn secondary" href="https://docs.sidestore.io/docs/installation/prerequisites">SideStore rehberi</a></li>
+          <li><b>reel'i ekle</b><span>Bu sayfayı iPhone'da aç ve düğmeye dokun.</span><a class="btn primary" href="sidestore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">reel'i SideStore'a ekle</a></li>
+          <li><b>Kur</b><span>SideStore'da reel'i aç ve Yükle'ye dokun.</span></li>
+        </ol>
+        <p class="get-small">SideStore reel'i her 7 günde bir kendisi yeniler ve güncellemelerini getirir. iOS 15 veya üstü gerekir.</p>
+      </section>
+      <section class="get-alt" aria-labelledby="ios-alt">
+        <h3 id="ios-alt">Zaten AltStore Classic mi kullanıyorsun?</h3>
+        <p>AltServer'ı aynı Wi-Fi ağındaki bir bilgisayarda açık tut, yoksa reel 7 gün sonra açılmaz.</p>
+        <a class="btn secondary small" href="altstore://source?url=https%3A%2F%2Fgithub.com%2Fexzos28%2Freel%2Freleases%2Flatest%2Fdownload%2Faltstore.json">reel'i AltStore Classic'e ekle</a>
+      </section>
+      <div class="get-foot">
+        <p>Kaynağı elle eklemek için: <code class="get-url">https://github.com/exzos28/reel/<wbr>releases/<wbr>latest/<wbr>download/<wbr>altstore.json</code></p>
+        <p>reel henüz AltStore PAL'da yok: oraya yalnızca Apple'ın noter onayından geçen uygulamalar alınıyor.</p>
+      </div>
     </div>
     <div class="get-panel" id="get-windows" role="tabpanel" data-p="windows">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-windows.zip">Windows için indir</a><span class="get-note">x64: arşivi aç ve reel.exe'yi çalıştır</span>
@@ -379,12 +393,22 @@
     <div class="get-panel" id="get-android" role="tabpanel" data-p="android">
       <a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-android.apk">APK'yı indir</a><span class="get-note">Telefon, tablet, TV</span>
     </div>
-    <div class="get-panel tizen" id="get-tizen" role="tabpanel" data-p="tizen">
-      <ol class="get-steps">
-        <li><b>Geliştirici modunu aç</b><span>TV'de Uygulamalar'ı aç ve kumandada 1 2 3 4 5'e bas. Geliştirici modunu aç ve bilgisayarının IP adresini yaz.</span></li>
-        <li><b>Apps2Samsung'u aç</b><span><a href="https://github.com/Apps2Samsung/Apps2Samsung">Apps2Samsung</a>'u bilgisayarına kur, aç ve TV'ni seç.</span></li>
-        <li><b>reel'i kur</b><span>Paketi indir ve Apps2Samsung ile TV'ye kur.</span><a class="btn primary" href="https://github.com/exzos28/reel/releases/latest/download/reel-samsung-tv.wgt">Samsung TV için indir</a></li>
-      </ol>
+    <div class="get-panel paths" id="get-tizen" role="tabpanel" data-p="tizen">
+      <p class="get-lead">reel, Samsung'un uygulama mağazasında yok. TV-&#8288;Store'u bilgisayardan bir kez ayarla, sonra reel'i kumandayla kur ve güncelle.</p>
+      <section class="get-main" aria-labelledby="tizen-main">
+        <h3 id="tizen-main">TV-&#8288;Store <span class="get-tag">Önerilen</span></h3>
+        <ol class="get-steps">
+          <li><b>Geliştirici modunu aç</b><span>TV'de Uygulamalar'ı aç ve kumandada 1 2 3 4 5'e bas. Geliştirici modunu aç ve bilgisayarının IP adresini yaz.</span></li>
+          <li><b>TV-&#8288;Store'u ayarla</b><span>Bilgisayardaki <a href="https://github.com/Apps2Samsung/Apps2Samsung">Apps2Samsung</a> ile TV-&#8288;Store'u TV'ye kur ve TV'nin Toolbox bölümünde Arm TV-&#8288;Store'a bas. Ardından geliştirici modundaki IP'yi 127.0.0.1 yap.</span><a class="btn secondary" href="https://github.com/Apps2Samsung/TV-Store#setting-it-up">TV-&#8288;Store rehberi</a></li>
+          <li><b>reel'i kur</b><span>TV'de TV-&#8288;Store'u aç, reel'i bul ve OK'e bas.</span></li>
+        </ol>
+        <p class="get-small">Bundan sonra bilgisayar gerekmez: reel güncellemeleri TV-&#8288;Store'da görünür. TV-&#8288;Store 2017 ve sonrası TV'lerde çalışır.</p>
+      </section>
+      <section class="get-alt" aria-labelledby="tizen-alt">
+        <h3 id="tizen-alt">TV-&#8288;Store olmadan</h3>
+        <p>2017'den eski TV'ler için de. 1. adımdan sonra paketi indir ve Apps2Samsung ile TV'ye kur; her güncelleme de aynı şekilde kurulur.</p>
+        <a class="btn secondary small" href="https://github.com/exzos28/reel/releases/latest/download/reel-samsung-tv.wgt">Samsung TV için indir</a>
+      </section>
     </div>
   </div>
 </section>

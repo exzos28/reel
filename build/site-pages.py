@@ -124,7 +124,8 @@ def render(template, strings, english, tag, folder):
             raise Fail("%s: %s needs %d link(s) as <a>…</a>, like the English" % (tag, name, len(hrefs)))
         if re.search(r"<(?!/?a>)", value):
             raise Fail("%s: %s has markup other than <a>…</a>" % (tag, name))
-        out = text(value)
+        # A name with a hyphen never breaks at it: a word joiner (zero width) after the hyphen.
+        out = text(value).replace("TV-Store", "TV-&#8288;Store")
         for href in hrefs:
             out = out.replace("&lt;a&gt;", '<a href="%s">' % text(href), 1)
         return out.replace("&lt;/a&gt;", "</a>")
