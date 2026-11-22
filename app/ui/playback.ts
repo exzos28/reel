@@ -27,8 +27,8 @@ export type Status =
   | { phase: "unsupported"; reason: string }
   | { phase: "no_space"; needed: number; free: number | null }
   /** Before the torrent is in: the catalog still `searching` for a release,
-   * or `finding` people who have the torrent's metadata. */
-  | { phase: "resolving"; stage?: "searching" | "finding" }
+   * or `finding` people who have the torrent's metadata. `ready`: as in `ready`. */
+  | { phase: "resolving"; stage?: "searching" | "finding"; ready?: number }
   | { phase: "failed"; message: string }
   | {
       phase: "ready";
@@ -44,6 +44,9 @@ export type Status =
       start?: number;
       /** `connecting` (no one yet), `fetching` (the start comes in), `starting` (it is in). */
       stage?: "connecting" | "fetching" | "starting";
+      /** How far it is from its first frame, 0..100, as the core counts it (its steps, then the
+       * bytes the player reads first); never goes back, 100 only once the first frame shows. */
+      ready?: number;
     };
 
 export interface Timeline {
