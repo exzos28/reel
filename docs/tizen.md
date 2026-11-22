@@ -168,6 +168,18 @@ Missing on this Mac (sizes measured from the download servers):
 
 ## Install on the TV (Apps2Samsung)
 
+From a terminal, onto a TV on this network (its IP: `apps2samsung-cli scan`):
+
+- `apps2samsung-cli install out/tizen/reel-tv-v<version>.wgt --tv <ip> -y`: signs the package for
+  that TV (the certificate Apps2Samsung keeps on this machine) and installs it over the debug
+  connection (Developer Mode, below); `apps2samsung-cli tv <ip>` checks the TV first.
+- Or TV-Store's upload, with TV-Store open on the TV (no Developer Mode needed):
+  `curl -T reel-tv-v<version>.wgt "http://<ip>:8077/upload?name=reel-tv-v<version>.wgt"`; the TV
+  asks the person at it to install it (the same as its page `http://<ip>:8077/upload`).
+- What the TV logs: `http://<ip>:47392/logs` (the core, the shell, the web UI).
+
+With the desktop app:
+
 1. **Developer Mode on the TV.** Open **Apps**, press **1 2 3 4 5** on the remote, switch *Developer mode* on, and enter the IP of the machine running Apps2Samsung as *Host PC IP*. Restart the TV by holding the power button for about 5 s.
 2. **Pick the TV.** Open Apps2Samsung on that machine (same network as the TV) and pick the TV.
 3. **Install.** Install `reel-tv-v<version>.wgt`: either from a GitHub Release of this repo (*Add source* → the repo or a direct link to the asset), or from the local file `out/tizen/reel-tv-v<version>.wgt`. The first install asks you to sign in to Samsung once, to create a certificate for the TV. Apps2Samsung re-signs the package and should pick Public signing, because the package declares no Partner privilege and no `on-boot`.
