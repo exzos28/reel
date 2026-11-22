@@ -20,6 +20,8 @@ const looks: Record<Exclude<Feedback, "none">, () => ViewStyle> = {
   row: () => ({ backgroundColor: colors.control() }),
 };
 
+const pointer: ViewStyle = { cursor: "pointer" };
+
 /** A phone or tablet ticks when a selection changes (not Android TV, which has no touch). */
 const ticks = hasHaptics && caps.touch;
 
@@ -66,7 +68,9 @@ export function Pressable(
       }
       // Held, it shows over the hover (a state style wins over the style); let go, the signal
       // keeps it a moment, so a tap shows.
-      style={[own.style, press.on() && look()]}
+      // With a mouse, a control shows the pointing hand (not over a backdrop, the video or a
+      // slider: `none`, nor while disabled); the caller's style may set another cursor.
+      style={[hears() && !off() && own.feedback !== "none" && pointer, own.style, press.on() && look()]}
       activeStyle={[own.activeStyle, look()]}
     >
       {own.children}
