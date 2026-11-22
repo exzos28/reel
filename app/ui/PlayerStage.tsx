@@ -19,6 +19,9 @@ export interface StageLine {
   text: string;
   /** What to do about an error; null while it is waiting. */
   hint: string | null;
+  /** The engine's progress while all goes well (finding people, fetching the start): not on
+   * screen, the bar says it; a screen reader reads it as the bar's label. */
+  quiet?: boolean;
 }
 
 const breathe = (on: boolean): ViewStyle =>
@@ -87,12 +90,14 @@ export function PlayerStage(props: {
         <If when={!error()}>
           <Loader label={props.line().text} style={loaderStyle()} />
         </If>
-        <Text testID="stage-line" style={lineStyle(error())}>{props.line().text}</Text>
+        <If when={!props.line().quiet}>
+          <Text testID="stage-line" style={lineStyle(error())}>{props.line().text}</Text>
+        </If>
         <If when={props.line().hint}>
           <Text style={hintStyle()}>{props.line().hint!}</Text>
         </If>
         <If when={props.progress() != null}>
-          <View style={trackStyle()}>
+          <View testID="stage-bar" accessible accessibilityLabel={props.line().quiet ? props.line().text : undefined} style={trackStyle()}>
             <View style={fillStyle(props.progress()!)} />
           </View>
         </If>

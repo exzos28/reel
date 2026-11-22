@@ -254,13 +254,14 @@ test("a stall shows the buffering note until AVPlay has enough again", async () 
   expect(note()).toBe(false);
 });
 
-test("the start shows no loader by default: the title, the release, the line and the bar; the dinosaur when Settings picks it", async () => {
+test("the start shows no loader by default: the title, the release and the bar (its progress is the bar's label, no words); the dinosaur when Settings picks it", async () => {
   const plain = await tv();
   expect(plain.app.shows("stage")).toBe(true);
   expect(plain.app.shows("loader-dinosaur")).toBe(false);
   expect(plain.app.texts()).not.toContain("reel"); // no logotype on the stage
   expect(plain.app.texts()).toContain("DUNE");
-  expect(plain.app.shows("stage-line")).toBe(true);
+  expect(plain.app.shows("stage-line")).toBe(false); // all going well: no words
+  expect(plain.app.shows("stage-bar")).toBe(true);
 
   const dino = await tv({
     "Settings.load": JSON.stringify({ language: "en", bufferMB: 256, bufferChoices: [{ mb: 256, default: true }], streamDetails: true, loader: "dinosaur" }),
