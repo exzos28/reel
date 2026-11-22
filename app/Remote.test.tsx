@@ -2,6 +2,7 @@
 // what the focused control shows.
 import { expect, test } from "nsh/test";
 import { NATIVE, openApp } from "./testEngine";
+import { colors } from "./ui/theme";
 
 type Native = Record<string, {} | null>;
 const app_ = (native: Native = NATIVE) => openApp({ modules: { "app/native": native } });
@@ -42,16 +43,17 @@ test("TV: the hero's way to the title's page is a button that says Details", asy
   expect(app.texts()).toContain("Director");
 });
 
-test("TV: the split Play is one focus ring; the part with the focus stays white, the other turns grey", async () => {
+test("TV: the split Play is one focus ring; the part with the focus stays red, the other turns grey", async () => {
   const app = await app_();
   await app.keyboard.press("enter"); // Inception's page, the focus on Play
   expect(app.shows("split-play")).toBe(true);
   const more = () => app.viewStyle("split-play-more")?.backgroundColor;
   const onPlay = more();
+  expect(onPlay).toBe(colors.raise());
   await app.keyboard.press("right"); // ⌄
   const onMore = more();
-  expect(onMore).not.toBe(onPlay);
-  await app.keyboard.press("down"); // off the split: both parts white again
+  expect(onMore).toBe(colors.play());
+  await app.keyboard.press("down"); // off the split: both parts red again
   expect(more()).toBe(onMore);
 });
 
