@@ -3,9 +3,9 @@
 # an APK that `nsh package android` built: NSH packages its own Java only, so this compiles
 # reel's, adds it as the next classesN.dex, adds libmpv and what it needs for the APK's ABIs
 # (build/libmpv.sh: the reel-libmpv release), adds what reel needs in the manifest and its
-# resources (app/android/res: Android TV's launcher entry and banner, the configuration changes
-# the activity takes; build/android-manifest.py), aligns and signs the APK again with the
-# key build/build.sh signs with (REEL_ANDROID_KEYSTORE, else the debug key).
+# resources (app/android/res: the launcher icon, Android TV's launcher entry and banner, the
+# configuration changes the activity takes; build/android-manifest.py), aligns and signs the APK
+# again with the key build/build.sh signs with (REEL_ANDROID_KEYSTORE, else the debug key).
 #
 #   build/android-views.sh <app.apk>
 set -euo pipefail
