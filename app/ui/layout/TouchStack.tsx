@@ -2,7 +2,7 @@
 // swipe back, Android's predictive and system back). `nav.ts` stays where the
 // history lives: the stack follows its routes, and a page the user went back
 // from (a swipe, the system back) goes back into it. Each tab shown gets a
-// native stack of its own, made from that tab's routes.
+// native stack of its own, made at once from that tab's routes.
 import { effect, signal, untracked, View, type JSX } from "nsh";
 import { createNavStack, NavPage, NavStack } from "nsh/base";
 import { keepTab, section, stack, type Destination, type Route } from "../nav";
@@ -35,15 +35,17 @@ interface Shown {
 }
 
 function TabStack(props: { tab: Destination; shown: () => boolean; page: (r: Route) => JSX.Element }) {
-  // Made with the tab's first page only, the rest set once the native stack is up: iOS's swipe
-  // back did not start on a stack made with several pages until a page was pushed or popped.
-  const s = createNavStack<Route>([stack()[0]]);
-  const up = signal(false);
-  setTimeout(() => up.set(true), 0);
-  // The history moved (a push, Back, a tab chosen again): the stack follows.
+  // Made with all the tab's pages at once (the tab shown again, the layout's family changed): its
+  // page shows as it was, with no frame of the tab's root first and no push.
+  const s = createNavStack<Route>([...stack()]);
+  // The history moved (a push, Back, a tab chosen again): the stack follows. The history only: a
+  // page the user went back from natively changes the stack's routes first, and `onChange` takes
+  // that into the history. Read tracked, the routes ran this before `onChange` (it subscribed
+  // first) and pushed the page back: the first swipe back on a stack made with several pages
+  // came to nothing.
   effect(() => {
     const routes = stack();
-    if (up() && section() === props.tab && !same(s.routes(), routes)) s.setRoutes([...routes]);
+    if (section() === props.tab && !same(untracked(() => s.routes()), routes)) s.setRoutes([...routes]);
   });
   return (
     <View style={{ flex: 1, display: props.shown() ? "flex" : "none" }}>

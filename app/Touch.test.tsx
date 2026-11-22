@@ -141,6 +141,8 @@ test("phone: the player's ✕ closes it", async () => {
   expect(app.texts()).toContain("Continue watching");
 });
 
+const PHONE_SCREEN = { platform: "ios", width: 393, height: 852, safeArea: { top: 54, bottom: 34, left: 0, right: 0 } } as const;
+
 /** A phone held sideways, as the player's ✕ test: a headless run draws no turned box, so an
  * upright window's sideways player has its ✕ off the screen. */
 const SIDEWAYS = { width: 852, height: 393, safeArea: { top: 0, bottom: 21, left: 62, right: 62 } };
@@ -177,6 +179,22 @@ test("Android phone: the pages stay hidden while the player is up; the system ba
   expect(app.texts()).toContain("Continue watching");
 });
 
+test("phone: a tab shown again shows its page, its native stack made anew with all its pages; the first swipe back stays back", async () => {
+  const app = await openApp({ ...PHONE_SCREEN, clock: {}, modules: { "app/native": NATIVE } });
+  await app.press("label:Movies");
+  await app.press("label:Dune >> nth=0");
+  await app.press("label:Search");
+  await app.wait(1100); // the Home tab's native stack is gone (`LINGER`): shown again, it is made anew
+  await app.press("label:Home");
+  expect(app.shows("title-discs")).toBe(true);
+  expect(app.texts()).not.toContain("All movies");
+  // The first swipe back on it: the page does not come back (the stack following its own routes
+  // pushed it back before the history heard of the pop).
+  await app.back();
+  expect(app.texts()).toContain("All movies");
+  expect(app.shows("title-discs")).toBe(false);
+});
+
 /** An iPad held sideways: a headless run reports the phone idiom unless NSH's `platform` says
  * otherwise. Films save here: Inception and Dune say "Saving 5%", and Saving opens Saved. */
 const tablet = (native: Record<string, unknown> = {}) =>
@@ -202,6 +220,18 @@ const tablet = (native: Record<string, unknown> = {}) =>
   });
 
 const TABLET_TABS = ["home", "movies", "shows", "cartoons", "anime", "search"];
+
+test("tablet: closing the player opened from a film in Search shows that film's page, Back to Search under it", async () => {
+  const app = await tablet({ "Engine.status": '{"phase":"resolving","stage":"finding"}' });
+  await app.press("label:Search");
+  await app.press("label:Dune >> nth=0");
+  await app.press("Resume 41:12");
+  expect(app.shows("player-host")).toBe(true);
+  await app.press("label:Close");
+  expect(app.shows("player-host")).toBe(false);
+  expect(app.shows("label:Back to Search")).toBe(true);
+  expect(app.shows("top-tab-on-search")).toBe(true);
+});
 
 test("tablet: each tab keeps its own pages, Settings and Saved are in none of them, the tab shown is the one selected", async () => {
   const app = await tablet();
