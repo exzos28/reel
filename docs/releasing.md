@@ -75,7 +75,8 @@ following GitHub's redirect to the latest release's file and keep the address th
 the source's identity, so it stays the same source from release to release; each release's
 `altstore.json` lists that release's `reel-ios.ipa`, and AltStore offers it as an update when its
 version or build is new. They install it signed with the viewer's own Apple ID (with a free one,
-again every 7 days, which they do by themselves); the releases carry no signature of ours.
+again every 7 days: AltStore through AltServer on a computer, SideStore on the device itself);
+the releases carry no signature of ours.
 
 `build/publish-release.sh` writes it with `build/altstore-source.py` from the `.ipa` it publishes:
 what AltStore checks against the app (bundle id, version and build, the lowest iOS, entitlements,

@@ -56,7 +56,9 @@ def die(msg):
 
 def signature_entitlements(binary):
     """The entitlements' keys in a Mach-O's code signature (every slice of a fat binary)."""
-    u32 = lambda fmt, at: struct.unpack_from(fmt, binary, at)  # noqa: E731
+    def u32(fmt, at):
+        return struct.unpack_from(fmt, binary, at)
+
     slices = [0]
     if binary[:4] == b"\xca\xfe\xba\xbe":  # fat: nfat_arch, then (cputype, subtype, offset, size, align)
         (n,) = u32(">I", 4)
