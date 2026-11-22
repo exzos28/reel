@@ -26,10 +26,15 @@
 <table align="center"><tr>
 <td align="center"><img src="design/readme/platforms/samsung-tv.svg" width="36" alt=""><br>Samsung TV</td>
 <td align="center"><img src="design/readme/platforms/android.svg" width="36" alt=""><br>Android, Android TV</td>
-<td align="center"><img src="design/readme/platforms/apple.svg" width="36" alt=""><br>macOS</td>
+<td align="center"><img src="design/readme/platforms/apple.svg" width="36" alt=""><br>macOS, iPhone, iPad</td>
 <td align="center"><img src="design/readme/platforms/windows.svg" width="36" alt=""><br>Windows</td>
 <td align="center"><img src="design/readme/platforms/linux.svg" width="36" alt=""><br>Linux</td>
 </tr></table>
+
+**iPhone and iPad:** add this source in [AltStore](https://altstore.io) or
+[SideStore](https://sidestore.io) (Sources, +); it installs reel with your Apple ID and brings
+its updates:<br>
+`https://github.com/exzos28/reel/releases/latest/download/altstore.json`
 
 [How it works](docs/how-it-works.md) · [Building](docs/building.md) · [Releasing](docs/releasing.md) ·
 [Repository layout](docs/structure.md) · [Architecture](docs/architecture.md)

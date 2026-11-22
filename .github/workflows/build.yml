@@ -139,6 +139,23 @@ jobs:
             app/.nsh/dist/ios-simulator/screenshot-*.png
           if-no-files-found: error
 
+  # The release's .ipa: unsigned, for AltStore and SideStore (they sign it with the viewer's Apple
+  # ID). build/publish-release.sh publishes it as reel-ios.ipa with its source, altstore.json.
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-nsh
+        with:
+          rust-cache-key: ios
+      - run: build/build.sh ios
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: reel-ios-unsigned
+          path: app/.nsh/dist/ios/reel-*
+          if-no-files-found: error
+
   ios-device:
     # Optional: a signed .ipa, only when the repository variable REEL_IOS_DEVICE is "true" and
     # the signing secrets exist (a job's `if` cannot read secrets, so without the variable the job

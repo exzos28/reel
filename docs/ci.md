@@ -43,8 +43,9 @@ The version and build come from `app/nsh.json` only (`docs/releasing.md`). `REEL
   - Windows: `.zip`, plus `-setup.exe` when Inno Setup is on the runner
   - Android: `.apk`
   - iOS simulator: one universal `.app`, launched on an iPhone and an iPad simulator
-  - iOS device: `.ipa`, only when the repository variable `REEL_IOS_DEVICE` is `true` and the
-    signing secrets exist
+  - iOS: the unsigned `.ipa` the release carries for AltStore and SideStore
+  - iOS device: a signed `.ipa`, only when the repository variable `REEL_IOS_DEVICE` is `true`
+    and the signing secrets exist
   - Web: the static site
 - `tizen.yml`: the Samsung TV package (`.wgt`); by hand, from `ci.yml` and from `release.yml`.
 - `release.yml`: when main's `app/nsh.json` gets a version that has no release yet (a merged
@@ -52,7 +53,9 @@ The version and build come from `app/nsh.json` only (`docs/releasing.md`). `REEL
   universal macOS app) and `tizen.yml`; when all pass, `build/publish-release.sh --from`
   publishes the release `v<version>` on that commit, its notes from `CHANGELOG.md`, under the names
   the site links to (`reel-macos.zip`, `reel-android.apk`, `reel-samsung-tv.wgt`,
-  `reel-linux.tar.gz`, `reel-windows.zip`), each checked by `build/package-check.py`.
+  `reel-linux.tar.gz`, `reel-windows.zip`, `reel-ios.ipa`), each checked by
+  `build/package-check.py`, and `altstore.json`, the AltStore / SideStore source that lists the
+  `.ipa` (`build/altstore-source.py`, `docs/releasing.md`).
 
 ## Secrets
 
@@ -65,7 +68,7 @@ All secrets are optional. A build without them still works.
 | `APPLE_CERT_P12_BASE64`, `APPLE_CERT_PASSWORD` | Signing certificate (.p12), imported into a temporary keychain. |
 | `MACOS_SIGN_IDENTITY` | Developer ID Application identity for the macOS app. |
 | `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` | Notarization of the macOS app. |
-| `IOS_SIGN_IDENTITY`, `IOS_PROFILE_BASE64` | iOS device `.ipa`. The App Store will not accept a torrent client, so this is for sideloading or ad hoc builds. |
+| `IOS_SIGN_IDENTITY`, `IOS_PROFILE_BASE64` | iOS device `.ipa` (the `ios-device` job). The App Store will not accept a torrent client, so this is for sideloading or ad hoc builds; the release's `.ipa` is the unsigned one. |
 
 ## iPhone and iPad
 
