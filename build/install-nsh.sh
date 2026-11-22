@@ -41,10 +41,12 @@ elif [ -x "$exe" ] && has_version "$exe"; then
   echo "nsh $version is already installed in $bin" >&2
 else
   echo "installing nsh $tag" >&2
+  # The installers' own messages go to stderr: stdout is only the bin directory (callers take
+  # it with $(...) for PATH).
   if $windows; then
-    NSH_VERSION="$tag" powershell -NoProfile -ExecutionPolicy Bypass -Command "irm $base/install.ps1 | iex"
+    NSH_VERSION="$tag" powershell -NoProfile -ExecutionPolicy Bypass -Command "irm $base/install.ps1 | iex" >&2
   else
-    curl -fsSL "$base/install.sh" | NSH_VERSION="$tag" sh
+    curl -fsSL "$base/install.sh" | NSH_VERSION="$tag" sh >&2
   fi
   has_version "$exe" || { echo "install-nsh.sh: $exe is not nsh $version" >&2; exit 1; }
 fi
