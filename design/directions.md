@@ -140,7 +140,18 @@ near-neutral black, a hero fading to black, a neo-grotesque UI face. The mockups
 `design/concept/*.html` now show this direction; shared tokens live in `design/concept/minimal.css`.
 
 One idea: **the film is the only colour on screen.** The UI is black, white and grey; stills and
-posters carry all the colour. Red appears only in the logo, the rating star and "New season" tags.
+posters carry all the colour. Red appears only in the logo, the rating star, "New season" tags and
+the Play button.
+
+**Play is red** (the owner's decision, November 2026; until then it was white): Play / Resume on
+Home's and a title's hero, the split Play with its ⌄ part and the release line inside it, and
+Up next's "Play now". It is the one action the viewer came for, in the logo's colour. Its fill is
+`play`, `red` a little deeper (OKLCH L 0.55 against 0.61, the same hue): `snow` on `red` is 3.9:1,
+under the 4.5:1 a phone's 15 pt label needs; on `play` it is 4.9:1 (4.6:1 under the pointer's
+dim). The label, the icon, ⌄ and the release line are all `snow` (the release line at 0.8 was
+3.5:1, so it is under the label by size and weight, not by opacity); the watched part is `snow`
+on a darker track. The white focus ring now stands out around it on a TV. Other buttons keep
+their colours: a step's main action (Next, Browse) stays white, the rest grey.
 
 ## Tokens
 
@@ -149,9 +160,10 @@ posters carry all the colour. Red appears only in the logo, the rating star and 
 | `ink` | `#0F0F0F` | background |
 | `card` | `#1A1A1A` | raised surfaces: episode and release rows, filter chips, panels, icon buttons |
 | `raise` | `#2A2A2A` | selected pill or row, secondary button, outlined badge border, empty tracks |
-| `snow` | `#F5F5F5` | text, the Play button, the focus ring, watched range |
+| `snow` | `#F5F5F5` | text, the focus ring, watched range, a step's main button (Next, Browse) |
 | `ash` | `#8C8C8C` | secondary text: votes, genres, meta, notes |
-| `red` | `#E5383B` | logo, rating star, "New season" / "New episode" tag; nothing else |
+| `red` | `#E5383B` | logo, rating star, "New season" / "New episode" tag |
+| `play` | `#CC2A2E` | the Play button: `red` a little deeper, so white text on it reads; nothing else |
 
 No glow, no blur, no gradient except the backdrop fading into `ink`. People sharing is shown as
 the count with a person icon, never as colour.
@@ -176,7 +188,7 @@ TV: title 76–96, page title 60, section 30, body 26, meta 22–24 (nothing bel
 - **Home**: full-bleed still of the featured film in the top ~70%, fading to `ink`; bottom-left the
   logotype, meta line (★ rating, votes, year, runtime, outlined badges like `1080p`, `CC`), genres,
   2-line description, the **release line** (quality bold, size, people sharing, "starts in
-  seconds"), white Play/Resume and grey "My list" buttons. Below: "Continue watching" as 16:9
+  seconds"), red Play/Resume and grey "My list" buttons. Below: "Continue watching" as 16:9
   cards with a thin watched bar, title and "1 h 12 min left" or "S3:E4 · 7 min left".
 - **Browse (Movies, Shows)**: page title + grey subtitle; a "Trending" ("Current & upcoming" for
   shows) row of 2:3 posters with title and "★ 8.3 · 1927 · Movie" (shows: "S3:E5 · Nov 20");
@@ -207,7 +219,7 @@ TV: title 76–96, page title 60, section 30, body 26, meta 22–24 (nothing bel
 - **Up next** (`tv-player-end`): for an episode, a card appears bottom-right about 40 s before the
   end or when the credits start; the rest of the controls stay hidden. It shows the next episode's
   thumbnail, "Next episode · S3:E5", its title, "20 min · first 3 min ready, plays instantly"
-  (the engine starts fetching it while the card is up), a focused white "Play now · in 6 s" whose
+  (the engine starts fetching it while the card is up), a focused red "Play now · in 6 s" whose
   countdown runs as a thin bar along its bottom, and "Watch credits", which dismisses the card. Back
   also dismisses it. For a single film reel recommends nothing: at the credits the player just
   ends and returns to the film screen.
