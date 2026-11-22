@@ -5,16 +5,19 @@ import { rounded, row } from "./shape";
 import { labelText } from "./text";
 import { Pressable } from "./Pressable";
 
-type Kind = "primary" | "secondary";
+/** `play`: Play / Resume, red; `primary`: a step's main action (Next, Browse), white;
+ * `secondary`: grey. */
+type Kind = "play" | "primary" | "secondary";
 
 const foreground = (kind: Kind) => (kind === "primary" ? colors.ink() : colors.snow());
+const background = (kind: Kind) => (kind === "play" ? colors.play() : kind === "primary" ? colors.snow() : colors.raise());
 
 const buttonStyle = (kind: Kind, focused: boolean, height: number, grow: boolean): ViewStyle => ({
   ...row(u(12)),
   height: cs(height),
   paddingHorizontal: cs(28),
   ...rounded(),
-  backgroundColor: kind === "primary" ? colors.snow() : colors.raise(),
+  backgroundColor: background(kind),
   ...focusRing(focused),
   ...(grow ? { flexGrow: 1, flexBasis: 0, minWidth: 0, justifyContent: "center" } : {}),
 });
@@ -30,7 +33,7 @@ const fillStyle = (part: number): ViewStyle => ({
   backgroundColor: alpha(colors.snow(), 0.1),
 });
 
-/** A rounded-rectangle button: white Play, grey secondary. */
+/** A rounded-rectangle button: red Play, white primary, grey secondary. */
 export function Button(props: {
   label: () => string;
   icon?: () => ImageAsset;

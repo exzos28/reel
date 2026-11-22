@@ -17,12 +17,15 @@ export const colors = {
   card: () => token("card"),
   /** Selected pill or row, secondary button, empty tracks. */
   raise: () => token("raise"),
-  /** Text, the Play button, the focus ring. */
+  /** Text, the focus ring. */
   snow: () => token("snow"),
   /** Secondary text. */
   ash: () => token("ash"),
-  /** Logo, rating star, "New season" tags; nothing else. */
+  /** Logo, rating star, "New season" tags. */
   red: () => token("red"),
+  /** The Play button: `red` a little deeper, so `snow` on it reads at a phone's label size
+   * (4.9:1; on `red` it was 3.9:1). */
+  play: () => token("play"),
   /** The selected item of the nav pills. */
   nav: () => token("nav"),
   /** Long text (about) and chips. */
