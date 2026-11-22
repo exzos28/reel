@@ -92,7 +92,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `cues(job: u32, id: u32, from: f64, to: f64) -> String`: The cues of subtitle file `id` on screen at some moment of `from..=to` seconds; the overlay asks with `from == to` at its position (see `Playback::cues`): `{"state","cues":[{"start","end","text"}]}`.
   JSON: `{"state","cues":[{"start","end","text"}]}`
   Called from: `ui/tracks.ts`.
-- `firstFrame(job: u32)` (`first_frame`): The player shows the first frame of the job's film (for the timing log, `$TMPDIR/reel-timings.log`).
+- `firstFrame(job: u32)` (`first_frame`): The player shows the first frame of the job's film: its `ready` is 100 (and the timing log, `$TMPDIR/reel-timings.log`, notes it).
   Called from: `ui/playback.ts`.
 - `open(id: String) -> u32`: Starts playing `id` from the catalog (a title, or an episode `<title>:s<season>e<episode>`) with the release it picks from the user's search source: a job id for `status`, 0 when the engine could not start (see the log).
   Called from: `ui/playback.ts`.
@@ -101,7 +101,7 @@ Native hosts only: not in the wasm32 web build (a TV reaches it over HTTP).
 - `async seek(job: u32, seconds: f64) -> String`: Gets the place at `seconds` ready before the view seeks there (no player waits in pieces still to come: a TV's AVPlay holds the page meanwhile). `{"state":…}`: `ready` once it is in (at once when it was), `replaced` when a newer seek or `close` came first, `unknown` when the film has no index to tell (seek as it is).
   JSON: `{"state":…}`
   Called from: `ui/VideoSurface.tsx`.
-- `status(job: u32) -> String`: What the player shows for the job, JSON with a `phase` (see `Playback::status`).
+- `status(job: u32) -> String`: What the player shows for the job, JSON with a `phase` and, while it starts, `ready`: how far it is from its first frame, 0..=100, the loading bar (a share for each step before the bytes, then the bytes the player reads first; never going back, 100 only after `firstFrame`). See `Playback::status`.
   Called from: `ui/playback.ts`.
 - `subtitles(job: u32) -> String`: The subtitle files of what the job plays (fetching them starts with the first ready answer): `{"state":"pending"|"ready","files":[{"id", "language","label","format"}]}` (see `Playback::subtitles`).
   JSON: `{"state":"pending"|"ready","files":[{"id", "language","label","format"}]}`

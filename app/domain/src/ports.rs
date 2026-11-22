@@ -38,11 +38,14 @@ pub trait Playback: Send + Sync {
     /// pack. A job id for `status`. Err: the engine could not start.
     fn open_release(&self, source: &str, episode: Option<(u16, u16)>, through: Option<crate::numbering::Through>) -> Result<u32, String>;
     /// What the player shows for the job, JSON with a `phase` (`no_source`,
-    /// `not_in_release`, `no_space`, `resolving`, `ready`, `unsupported`, `failed`).
+    /// `not_in_release`, `no_space`, `resolving`, `ready`, `unsupported`, `failed`), and while
+    /// it starts (`resolving`, `ready`) `ready`: how far it is from its first frame, 0..=100
+    /// (`ready::Readiness`), never going back.
     fn status(&self, job: u32) -> Value;
     /// What the scrubber draws: `{"ranges":[[from,to],…],"ahead":seconds}`.
     fn timeline(&self, job: u32, position: f64, duration: f64, cached: f64, read_byte: f64, read_time: f64) -> Value;
-    /// The player shows the job's first frame (warming stops; the timing log notes it).
+    /// The player shows the job's first frame (warming stops, its `ready` is 100; the timing log
+    /// notes it).
     fn first_frame(&self, job: u32);
     /// Gets the place at `seconds` ready before the player seeks there (where the film's own
     /// index says the player reads): its pieces fetched first and kept in the buffer until the
