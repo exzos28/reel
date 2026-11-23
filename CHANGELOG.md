@@ -2,6 +2,11 @@
 
 What each version of reel changed for the viewer. Earlier versions: GitHub Releases.
 
+## 0.7.2 (2026-11-23)
+
+- On a Mac, Windows and Linux, Space always plays and pauses the film, whichever of the player's buttons was clicked last, and a click on the picture plays or pauses it (a double click is still full screen). On phones and tablets a tap on the picture hides the player's controls, and the next tap shows them.
+- On Windows, a Mac and Linux the screen no longer turns off or locks while a film plays; it dims as usual once the film is paused or over.
+
 ## 0.7.1 (2026-11-22)
 
 - On Android, the app icon fills the launcher's shape instead of sitting small inside a white circle.

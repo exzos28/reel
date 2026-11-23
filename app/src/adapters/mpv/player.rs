@@ -53,6 +53,8 @@ struct Shared {
     own_wait: std::sync::Mutex<OwnWait>,
     /// The hook the view holds mpv in (`Player::hold_in`).
     hooks: Arc<Hooks>,
+    /// The screen stays on while the film plays (`events`), until the view lets go (`close`).
+    awake: crate::adapters::awake::Part,
 }
 
 /// What the view does while mpv waits in its hook: called on the player's event thread with the
@@ -323,7 +325,7 @@ fn set_property(lib: &Lib, raw: Raw, name: &str, value: &str) {
     });
 }
 
-const OBSERVED: [(&str, c_int); 10] = [
+const OBSERVED: [(&str, c_int); 11] = [
     // The byte of the file mpv has read to: with demuxer-cache-time, where bytes are in time.
     ("stream-pos", ffi::FORMAT_INT64),
     ("time-pos", ffi::FORMAT_DOUBLE),
@@ -339,6 +341,8 @@ const OBSERVED: [(&str, c_int); 10] = [
     ("hwdec-current", ffi::FORMAT_STRING),
     // No file: once the view went, the playback has ended (`Player::close`).
     ("idle-active", ffi::FORMAT_FLAG),
+    // Paused by the viewer, or by mpv at the end (`keep-open`): the screen may dim then.
+    ("pause", ffi::FORMAT_FLAG),
 ];
 
 impl Player {
@@ -403,6 +407,7 @@ impl Player {
             at_end: AtomicBool::new(false),
             own_wait: Default::default(),
             hooks: Arc::new(Hooks { lib, raw, state: Default::default(), on_hook: std::sync::OnceLock::new() }),
+            awake: Default::default(),
         });
         let thread = {
             let shared = shared.clone();
@@ -593,6 +598,7 @@ impl Player {
             return;
         }
         self.shared.let_go.get_or_init(Instant::now);
+        self.shared.awake.let_go();
         if let Some(g) = &self.gate {
             g.forget();
         }
@@ -765,6 +771,8 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
     let mut no_picture = false;
     // The file's facts `load` reports, asked for when it loaded and on their way.
     let mut loading: Option<Loading> = None;
+    // The film plays (the screen stays on) unless paused or at its end, or with no file.
+    let (mut paused, mut at_end) = (false, false);
     loop {
         if shared.stop.load(Ordering::Relaxed) {
             return;
@@ -865,9 +873,13 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
                         }
                     }
                     (b"eof-reached", ffi::FORMAT_FLAG) => {
-                        if unsafe { *(p.data as *const c_int) } != 0 && !shared.at_end.swap(true, Ordering::Relaxed) {
+                        at_end = unsafe { *(p.data as *const c_int) } != 0;
+                        if at_end && !shared.at_end.swap(true, Ordering::Relaxed) {
                             emit("end", json!({}));
                         }
+                    }
+                    (b"pause", ffi::FORMAT_FLAG) => {
+                        paused = unsafe { *(p.data as *const c_int) } != 0;
                     }
                     (b"idle-active", ffi::FORMAT_FLAG) => {
                         let idle = unsafe { *(p.data as *const c_int) } != 0;
@@ -888,6 +900,7 @@ fn events(lib: &'static Lib, raw: Raw, shared: &Shared, emit: &Emit) {
                     }
                     _ => {}
                 }
+                shared.awake.set(!paused && !at_end && !shared.idle.load(Ordering::SeqCst));
             }
             _ => {}
         }
