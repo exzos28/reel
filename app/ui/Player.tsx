@@ -4,8 +4,10 @@
 // only Back works; a stall after that is a small note over the picture.
 // The overlay shows on any key,
 // press or mouse move and hides after a few quiet seconds, unless the film
-// is paused, buffering or the tracks panel is open. Remote: Space/Enter
-// play or pause, Left/Right seek 10 s on the scrubber row (move between
+// is paused, buffering or the tracks panel is open; on touch a tap on the
+// picture hides it again. A desktop's click on the picture plays or pauses, a
+// double click is full screen. Remote: Space/Enter play or pause (Space wherever
+// the keyboard focus is), Left/Right seek 10 s on the scrubber row (move between
 // buttons on the buttons row), Up/Down switch rows, Escape closes the
 // panel, then hides the overlay, then leaves. Near the end of an episode
 // the Up next card (tv-player-end.html) takes the remote instead.
@@ -501,6 +503,8 @@ function PlayerScreen(props: { turn: Turn | null }) {
     if (p !== untracked(shownSecond)) shownSecond.set(p);
   });
   const togglePause = () => paused.set(!paused());
+  /** The last click on the picture played or paused the film (a double click's second undoes it). */
+  let clickToggled = false;
   const openPanel = () => {
     panel.set(true);
     panelCol.set(0);
@@ -566,7 +570,6 @@ function PlayerScreen(props: { turn: Turn | null }) {
   keymap.bind({
     up: key((shown) => (panel() ? movePanel(0, -1) : shown && row.set("scrubber"))),
     down: key((shown) => (panel() ? movePanel(0, 1) : shown && row.set("buttons"))),
-    space: key(togglePause),
     enter: key(
       (shown) => {
         if (panel()) pick(panelCol(), panelRow());
@@ -576,6 +579,10 @@ function PlayerScreen(props: { turn: Turn | null }) {
       () => (cardButton() === 0 ? playNext() : dismissed.set(true)),
     ),
   });
+  // Space plays and pauses wherever the keyboard focus is, as in other players: a control a click
+  // or Tab left focused (±10 s, Back) would take it otherwise (NSH: Space presses the focused
+  // control). Return still presses it.
+  keymap.bind({ space: key(togglePause) }, { forFocus: true });
   // Back, in this order: the Up next card, the tracks panel, the controls (a
   // TV's: restarting a torrent is slow), full screen, the player.
   onBack(() => {
@@ -704,7 +711,9 @@ function PlayerScreen(props: { turn: Turn | null }) {
       }}
       onPress={() => {
         if (card()) return;
-        poke();
+        // Touch: a tap on the picture hides the controls that show, as video apps do.
+        if (caps.touch && overlay() && !staged()) hide();
+        else poke();
       }}
 
       // Touch: a swipe down closes the player, as a full-screen cover does.
@@ -775,17 +784,28 @@ function PlayerScreen(props: { turn: Turn | null }) {
         />
       </If>
 
-      {/* The picture's own layer, under the controls: a double click on it is full screen and
-          back, as in other players (on the controls it is not). Told by the presses going down
-          (each one comes, with its count), not by onPress (a quick second click may bring none). */}
+      {/* The picture's own layer, under the controls: a click on it plays or pauses, a double
+          click is full screen and back, as in other players (on the controls they are not). Told
+          by the presses going down (each one comes, with its count), not by onPress (a quick
+          second click may bring none): a double click's second press undoes its first's pause. */}
       <If when={caps.fullscreen}>
         <Pressable feedback="none"
           testID="picture"
           accessible={false}
+          // No stop of Tab's: the keys have the controls, Space the film.
+          focusable={false}
           style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
           onPress={() => !card() && poke()}
           onPressDown={(e) => {
-            if (!card() && e && isDoubleClick(e)) setFullscreen(!fullscreen());
+            if (card()) return;
+            if (e && isDoubleClick(e)) {
+              setFullscreen(!fullscreen());
+              if (clickToggled) togglePause();
+              clickToggled = false;
+            } else {
+              clickToggled = started() && !failed();
+              if (clickToggled) togglePause();
+            }
           }}
         />
       </If>
