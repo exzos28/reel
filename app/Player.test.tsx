@@ -181,6 +181,42 @@ test("left and right seek 10 seconds on the scrubber", async () => {
   expect(app.texts()).toContain("0:00");
 });
 
+/** Play on Dune in a desktop's window. */
+async function desktopPlaying(platform: "macos" | "windows" | "linux") {
+  const app = await openApp({ clock: {}, platform, width: 1440, height: 900, modules: { "app/native": { ...NATIVE, ...DUNE_FIRST, ...STILL, ...DETAILS, "Engine.status": status, "Engine.timeline": timeline } } });
+  await app.press("Play");
+  await app.wait(600);
+  return app;
+}
+
+test("desktop: Space plays and pauses with a control focused, and does not press it", async () => {
+  const app = await desktopPlaying("linux");
+  // Tab gives a control of the player the keyboard focus (Back, the first): Space would press it.
+  await app.keyboard.press("tab");
+  await app.keyboard.press("space");
+  expect(app.shows("label:Play")).toBe(true);
+  expect(app.shows("scrubber")).toBe(true); // still in the player
+  await app.keyboard.press("space");
+  expect(app.shows("label:Pause")).toBe(true);
+  expect(app.texts()).toContain("0:00"); // no seek either
+});
+
+test("desktop: a click on the picture pauses and plays; a double click is full screen, still playing", async () => {
+  for (const platform of ["macos", "windows"] as const) {
+    const app = await desktopPlaying(platform);
+    await app.press("picture");
+    expect(app.shows("label:Play")).toBe(true);
+    await app.wait(1000);
+    await app.press("picture");
+    expect(app.shows("label:Pause")).toBe(true);
+    await app.wait(1000);
+    await app.press("picture");
+    await app.press("picture");
+    expect(app.shows("label:Exit full screen")).toBe(true);
+    expect(app.shows("label:Pause")).toBe(true);
+  }
+});
+
 // A remote's media keys (Android TV's come as F7 to F10 and F12).
 test("the remote's media keys: rewind and fast forward step 10 seconds, play/pause, play and pause", async () => {
   const app = await playing();
@@ -370,6 +406,16 @@ async function phonePlaying(screen: typeof PORTRAIT, over: Record<string, unknow
   await app.wait(600);
   return app;
 }
+
+test("phone: a tap on the picture hides the controls, and the next one shows them", async () => {
+  const app = await phonePlaying(PORTRAIT, UPRIGHT);
+  expect(app.shows("scrubber")).toBe(true);
+  await app.press("player");
+  expect(app.shows("scrubber")).toBe(false);
+  await app.press("player");
+  expect(app.shows("scrubber")).toBe(true);
+  expect(app.shows("label:Pause")).toBe(true); // a tap never pauses
+});
 
 test("phone: Audio and subtitles is a sheet, one list at a time under Audio, Subtitles and Release", async () => {
   const app = await phonePlaying(PORTRAIT, UPRIGHT);
